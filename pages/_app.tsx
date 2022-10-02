@@ -7,7 +7,7 @@ function MyApp({ Component, pageProps }: AppProps) {
   return (
     <AppProvider>
       <MantineProvider
-        theme={{ colorScheme: 'dark' }}
+        theme={{ colorScheme: 'light' }}
         withGlobalStyles
         withNormalizeCSS
       >

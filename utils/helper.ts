@@ -75,3 +75,7 @@ export async function retryFn<T = any>(
     return fallback
   }
 }
+
+export function fillArray(n: number) {
+  return _.fill(Array(n), '').map((x, i) => i)
+}
