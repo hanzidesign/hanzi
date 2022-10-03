@@ -14,3 +14,9 @@ a {
 * {
   box-sizing: border-box;
 }
+
+.absolute-vertical {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+}

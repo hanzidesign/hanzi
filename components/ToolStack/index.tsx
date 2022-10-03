@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Divider, Accordion } from '@mantine/core'
 import { createStyles } from '@mantine/core'
 import { IoAddOutline } from 'react-icons/io5'
-import Text from './Text'
+import CharList from './CharList'
 
 type Cell = {
   t: string
@@ -12,15 +12,15 @@ type Cell = {
 const cells: Cell[] = [
   {
     t: 'Text',
-    c: <Text />,
+    c: <CharList />,
   },
   {
     t: 'Symbol',
-    c: <Text />,
+    c: <CharList />,
   },
   {
     t: 'Background',
-    c: <Text />,
+    c: <CharList />,
   },
 ]
 
