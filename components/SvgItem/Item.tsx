@@ -9,7 +9,7 @@ export default function SvgItem(props: SvgItemProps) {
   const { fId, imgUrl, ptnUrl, distort = 0 } = props
 
   return (
-    <svg viewBox="0 0 600 400" preserveAspectRatio="xMidYMid meet">
+    <svg viewBox="0 0 600 600" preserveAspectRatio="xMidYMid meet">
       <filter id={fId} x="-50%" y="-50%" width="200%" height="200%">
         <feImage
           xlinkHref={ptnUrl}

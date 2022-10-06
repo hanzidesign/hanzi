@@ -5,6 +5,7 @@ import { SimpleGrid, Button, Switch, Text } from '@mantine/core'
 import { Box, Title, ScrollArea } from '@mantine/core'
 import { setCharUrl } from 'store/slices/editor'
 import { countries, chars } from 'assets/list'
+import { StyledBox } from './common'
 import type { Char } from 'assets/list'
 
 export default function CharList() {
@@ -28,12 +29,7 @@ export default function CharList() {
   }, [year])
 
   return (
-    <Box
-      sx={(theme) => ({
-        padding: 20,
-        backgroundColor: theme.colors.gray[0],
-      })}
-    >
+    <StyledBox>
       <SimpleGrid cols={2}>
         <Box>
           <Title order={4}>Country</Title>
@@ -107,7 +103,7 @@ export default function CharList() {
           </ScrollArea>
         </Box>
       </SimpleGrid>
-    </Box>
+    </StyledBox>
   )
 }
 

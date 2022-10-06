@@ -1,8 +1,8 @@
-import { useState } from 'react'
-import { Divider, Accordion } from '@mantine/core'
+import { Accordion } from '@mantine/core'
 import { createStyles } from '@mantine/core'
 import { IoAddOutline } from 'react-icons/io5'
 import CharList from './CharList'
+import SymbolEditor from './SymbolEditor'
 
 type Cell = {
   t: string
@@ -16,7 +16,7 @@ const cells: Cell[] = [
   },
   {
     t: 'Symbol',
-    c: <CharList />,
+    c: <SymbolEditor />,
   },
   {
     t: 'Background',
