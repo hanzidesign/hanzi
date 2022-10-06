@@ -3,6 +3,7 @@ import { useState } from 'react'
 import Head from 'next/head'
 import { Divider, Group, Box, createStyles } from '@mantine/core'
 import ToolStack from 'components/ToolStack'
+import SvgItem from 'components/SvgItem'
 
 const useStyles = createStyles((theme) => ({
   box: {
@@ -39,7 +40,7 @@ const Home: NextPage<Props> = () => {
           <Divider orientation="vertical" />
 
           <Box className={classes.box} sx={{ flexGrow: 1 }}>
-            2
+            <SvgItem />
           </Box>
         </Group>
       </main>

@@ -7,7 +7,7 @@ export type Char =
 
 type Chars = {
   [country: string]: {
-    [year: number]: Char
+    [year: string]: Char
   }
 }
 

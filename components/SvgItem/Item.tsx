@@ -1,18 +1,18 @@
 type SvgItemProps = {
-  text: string
-  img: string
-  distort: number
+  fId: string // filter ID
+  imgUrl: string
+  ptnUrl: string
+  distort?: number
 }
 
 export default function SvgItem(props: SvgItemProps) {
-  const { img, distort, text } = props
-  const imageUrl = `/images/patterns/${img}`
+  const { fId, imgUrl, ptnUrl, distort = 0 } = props
 
   return (
-    <svg viewBox="0 0 600 400">
-      <filter id={img} x="-50%" y="-50%" width="200%" height="200%">
+    <svg viewBox="0 0 600 400" preserveAspectRatio="xMidYMid meet">
+      <filter id={fId} x="-50%" y="-50%" width="200%" height="200%">
         <feImage
-          xlinkHref={imageUrl}
+          xlinkHref={ptnUrl}
           x="0"
           y="0"
           width="100%"
@@ -64,8 +64,8 @@ export default function SvgItem(props: SvgItemProps) {
           <feMergeNode in="BLENDED_TEXT"></feMergeNode>
         </feMerge> */}
       </filter>
-      <g filter={`url(#${img})`}>
-        <text
+      <g filter={`url(#${fId})`}>
+        {/* <text
           dx="60"
           dy="200"
           fontSize="10em"
@@ -73,7 +73,8 @@ export default function SvgItem(props: SvgItemProps) {
           fill="#11cbe1"
         >
           {text}
-        </text>
+        </text> */}
+        <image href={imgUrl} x="0" y="0" width="100%" height="100%" />
       </g>
     </svg>
   )

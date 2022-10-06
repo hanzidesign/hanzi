@@ -1,13 +1,31 @@
 import _ from 'lodash'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useAppDispatch } from 'store'
 import { SimpleGrid, Button, Switch, Text } from '@mantine/core'
 import { Box, Title, ScrollArea } from '@mantine/core'
+import { setCharUrl } from 'store/slices/editor'
 import { countries, chars } from 'assets/list'
 import type { Char } from 'assets/list'
 
 export default function CharList() {
-  const [country, setCountry] = useState('int') // global
+  const dispatch = useAppDispatch()
+
+  const [country, setCountry] = useState('int') // int = global
+  const [year, setYear] = useState('')
   const [isTc, setIsTc] = useState(true)
+
+  useEffect(() => {
+    // reset
+    setYear('')
+  }, [country])
+
+  useEffect(() => {
+    if (year) {
+      const char = _.get(chars, [country, year])
+      const url = getCharUrl(country, year, char, isTc)
+      dispatch(setCharUrl(url))
+    }
+  }, [year])
 
   return (
     <Box
@@ -21,7 +39,9 @@ export default function CharList() {
           <Title order={4}>Country</Title>
         </Box>
         <Box sx={{ position: 'relative' }}>
-          <Title order={4}>Year</Title>
+          <Title order={4} sx={{ paddingLeft: 10 }}>
+            Year
+          </Title>
 
           <Switch
             className="absolute-vertical"
@@ -58,15 +78,15 @@ export default function CharList() {
         <Box>
           <ScrollArea type="auto" sx={{ height: 400 }}>
             {country &&
-              _.map(chars[country], (el, year) => (
+              _.map(chars[country], (el, y) => (
                 <Button
-                  key={year}
+                  key={y}
                   radius="md"
                   color="dark"
-                  variant="subtle"
+                  variant={y === year ? 'filled' : 'subtle'}
                   sx={{
                     display: 'block',
-                    margin: '0 0 4px -10px',
+                    margin: '0 0 4px',
                     padding: '2px 10px',
                     fontWeight: 400,
                   }}
@@ -76,8 +96,11 @@ export default function CharList() {
                       justifyContent: 'space-between',
                     },
                   }}
+                  onClick={() => {
+                    setYear(y)
+                  }}
                 >
-                  {year}
+                  {y}
                   <Text>({getChar(el, isTc)})</Text>
                 </Button>
               ))}
@@ -93,4 +116,12 @@ function getChar(char: Char, isTc: boolean) {
     return char
   }
   return isTc ? char[1] : char[0]
+}
+
+function getCharUrl(country: string, year: string, char: Char, isTc: boolean) {
+  const url = `/chars/${country}/${year}`
+  if (typeof char === 'string') {
+    return `${url}.svg`
+  }
+  return isTc ? `${url}-1.svg` : `${url}-0.svg`
 }
