@@ -2,15 +2,29 @@ type SvgItemProps = {
   fId: string // filter ID
   imgUrl: string
   ptnUrl: string
-  distort?: number
+  width?: number
+  distortion?: number
+  blur?: number
+  x?: number
+  y?: number
+  rotation?: number
 }
 
 export default function SvgItem(props: SvgItemProps) {
-  const { fId, imgUrl, ptnUrl, distort = 0 } = props
+  const { fId, imgUrl, ptnUrl, x = 0, y = 0, rotation = 0 } = props
+  const { width = 0, distortion = 0, blur = 0 } = props
 
   return (
     <svg viewBox="0 0 600 600" preserveAspectRatio="xMidYMid meet">
-      <filter id={fId} x="-50%" y="-50%" width="200%" height="200%">
+      <filter id={fId} x="0" y="0" width="100%" height="100%">
+        {/* change text width */}
+        <feMorphology
+          operator={width > 0 ? 'dilate' : 'erode'}
+          radius={Math.abs(width)}
+          in="SourceGraphic"
+          result="morphology"
+        />
+        {/* pattern */}
         <feImage
           xlinkHref={ptnUrl}
           x="0"
@@ -22,12 +36,12 @@ export default function SvgItem(props: SvgItemProps) {
         {/* desaturate the image */}
         <feColorMatrix type="saturate" values="0" result="IMAGE" />
         {/* decrease level of details so the effect on text is more realistic */}
-        <feGaussianBlur in="IMAGE" stdDeviation="0.5" result="MAP" />
+        <feGaussianBlur in="IMAGE" stdDeviation={blur} result="MAP" />
         {/* use the displacement map to distort the text */}
         <feDisplacementMap
-          in="SourceGraphic"
+          in="morphology"
           in2="MAP"
-          scale={distort}
+          scale={distortion}
           xChannelSelector="R"
           yChannelSelector="R"
           result="TEXTURED_TEXT"
@@ -74,7 +88,14 @@ export default function SvgItem(props: SvgItemProps) {
         >
           {text}
         </text> */}
-        <image href={imgUrl} x="0" y="0" width="100%" height="100%" />
+        <image
+          href={imgUrl}
+          x="0"
+          y="0"
+          width="100%"
+          height="100%"
+          transform={`translate(${x} ${y}) rotate(${rotation} 300 300)`}
+        />
       </g>
     </svg>
   )

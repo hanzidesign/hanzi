@@ -2,7 +2,21 @@ import { useAppSelector } from 'store'
 import Item from './Item'
 
 export default function SvgItem() {
-  const charUrl = useAppSelector((state) => state.editor.charUrl)
+  const editorState = useAppSelector((state) => state.editor)
+  const { charUrl, ptnUrl, distortion, blur, width, x, y, rotation } =
+    editorState
 
-  return <Item fId="f" imgUrl={charUrl} ptnUrl="" />
+  return (
+    <Item
+      fId="f"
+      imgUrl={charUrl}
+      ptnUrl={ptnUrl}
+      distortion={distortion}
+      blur={blur}
+      width={width}
+      x={x}
+      y={y}
+      rotation={rotation}
+    />
+  )
 }

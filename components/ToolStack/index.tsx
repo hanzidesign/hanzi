@@ -2,7 +2,7 @@ import { Accordion } from '@mantine/core'
 import { createStyles } from '@mantine/core'
 import { IoAddOutline } from 'react-icons/io5'
 import CharList from './CharList'
-import SymbolEditor from './SymbolEditor'
+import StyleEditor from './StyleEditor'
 
 type Cell = {
   t: string
@@ -15,12 +15,12 @@ const cells: Cell[] = [
     c: <CharList />,
   },
   {
-    t: 'Symbol',
-    c: <SymbolEditor />,
+    t: 'Style',
+    c: <StyleEditor />,
   },
   {
-    t: 'Background',
-    c: <CharList />,
+    t: 'Color',
+    c: <></>,
   },
 ]
 

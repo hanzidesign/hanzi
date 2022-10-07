@@ -1,21 +1,20 @@
 import type { NextPage } from 'next'
-import { useState } from 'react'
 import Head from 'next/head'
-import { Divider, Group, Box, createStyles } from '@mantine/core'
+import { Divider, Group, AspectRatio } from '@mantine/core'
+import { ScrollArea, Center, createStyles } from '@mantine/core'
 import ToolStack from 'components/ToolStack'
 import SvgItem from 'components/SvgItem'
 
 const useStyles = createStyles((theme) => ({
   box: {
-    height: '100vh',
     padding: 20,
+    height: '100vh',
   },
 }))
 
 type Props = {}
 
 const Home: NextPage<Props> = () => {
-  const [value, setValue] = useState(45)
   const { classes } = useStyles()
 
   return (
@@ -28,20 +27,29 @@ const Home: NextPage<Props> = () => {
 
       <main>
         <Group spacing={0}>
-          <Box
+          <ScrollArea
             className={classes.box}
             sx={{
               flex: '400px 0',
             }}
           >
             <ToolStack />
-          </Box>
+          </ScrollArea>
 
           <Divider orientation="vertical" />
 
-          <Box className={classes.box} sx={{ flexGrow: 1 }}>
-            <SvgItem />
-          </Box>
+          <Center className={classes.box} sx={{ flexGrow: 1 }}>
+            <AspectRatio
+              ratio={1}
+              sx={(theme) => ({
+                border: `1px solid ${theme.colors.gray[4]}`,
+                width: '100%',
+                maxWidth: 400,
+              })}
+            >
+              <SvgItem />
+            </AspectRatio>
+          </Center>
         </Group>
       </main>
     </>
