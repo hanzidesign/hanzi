@@ -8,11 +8,14 @@ type SvgItemProps = {
   x?: number
   y?: number
   rotation?: number
+  textColor?: string
+  bgColor?: string
 }
 
 export default function SvgItem(props: SvgItemProps) {
   const { fId, imgUrl, ptnUrl, x = 0, y = 0, rotation = 0 } = props
   const { width = 0, distortion = 0, blur = 0 } = props
+  const { textColor = 'black', bgColor = 'white' } = props
 
   return (
     <svg viewBox="0 0 600 600" preserveAspectRatio="xMidYMid meet">
@@ -78,22 +81,20 @@ export default function SvgItem(props: SvgItemProps) {
           <feMergeNode in="BLENDED_TEXT"></feMergeNode>
         </feMerge> */}
       </filter>
+
+      <mask maskUnits="userSpaceOnUse" id="mask" mask-type="alpha">
+        <image href={imgUrl} x="0" y="0" width="100%" height="100%" />
+      </mask>
+
+      <rect x="0" y="0" fill={bgColor} width="100%" height="100%" />
       <g filter={`url(#${fId})`}>
-        {/* <text
-          dx="60"
-          dy="200"
-          fontSize="10em"
-          transform="translate(-20 30) rotate(-7)"
-          fill="#11cbe1"
-        >
-          {text}
-        </text> */}
-        <image
-          href={imgUrl}
+        <rect
           x="0"
           y="0"
+          fill={textColor}
           width="100%"
           height="100%"
+          mask="url(#mask)"
           transform={`translate(${x} ${y}) rotate(${rotation} 300 300)`}
         />
       </g>

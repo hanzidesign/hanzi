@@ -11,17 +11,21 @@ export type EditorState = {
   x: number
   y: number
   rotation: number
+  textColor: string
+  bgColor: string
 }
 
 const initialState: EditorState = {
-  charUrl: '',
-  ptnUrl: '',
+  charUrl: '/chars/int/2006-1.svg',
+  ptnUrl: '/images/patterns/p0.jpeg',
   distortion: 10,
   blur: 0,
   width: 0,
   x: 0,
   y: 0,
   rotation: 0,
+  textColor: `rgba(0, 0, 0, 1)`,
+  bgColor: `rgba(255, 255, 255, 1)`,
 }
 
 // Actual Slice
@@ -56,6 +60,11 @@ export const slice = createSlice({
     setRotation(state, action) {
       state.rotation = action.payload
     },
+    setColor(state, action: PayloadAction<{ k: 'text' | 'bg'; c: string }>) {
+      const { k, c } = action.payload
+      const key = k === 'text' ? 'textColor' : 'bgColor'
+      state[key] = c
+    },
   },
 })
 
@@ -67,6 +76,7 @@ export const {
   setWidth,
   setPosition,
   setRotation,
+  setColor,
 } = slice.actions
 
 export default slice.reducer

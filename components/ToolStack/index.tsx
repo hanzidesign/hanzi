@@ -1,8 +1,8 @@
 import { Accordion } from '@mantine/core'
-import { createStyles } from '@mantine/core'
 import { IoAddOutline } from 'react-icons/io5'
 import CharList from './CharList'
-import StyleEditor from './StyleEditor'
+import Effect from './Effect'
+import Style from './Style'
 
 type Cell = {
   t: string
@@ -15,30 +15,19 @@ const cells: Cell[] = [
     c: <CharList />,
   },
   {
-    t: 'Style',
-    c: <StyleEditor />,
+    t: 'Effect',
+    c: <Effect />,
   },
   {
-    t: 'Color',
-    c: <></>,
+    t: 'Style',
+    c: <Style />,
   },
 ]
 
-const useStyles = createStyles(() => ({
-  button: {
-    fontSize: 24,
-    height: 64,
-    inner: {
-      justifyContent: 'left',
-    },
-  },
-}))
-
 export default function ToolStack() {
-  const { classes } = useStyles()
-
   return (
     <Accordion
+      defaultValue="0"
       chevron={<IoAddOutline size={24} />}
       styles={{
         chevron: {

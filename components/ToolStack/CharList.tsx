@@ -1,6 +1,6 @@
 import _ from 'lodash'
-import { useState, useEffect } from 'react'
-import { useAppDispatch } from 'store'
+import { useState } from 'react'
+import { useAppDispatch, useAppSelector } from 'store'
 import { SimpleGrid, Button, Switch, Text } from '@mantine/core'
 import { Box, Title, ScrollArea } from '@mantine/core'
 import { setCharUrl } from 'store/slices/editor'
@@ -10,23 +10,11 @@ import type { Char } from 'assets/list'
 
 export default function CharList() {
   const dispatch = useAppDispatch()
+  const charUrl = useAppSelector((state) => state.editor.charUrl)
+  const [currentCountry, currentYear] = parseCharUrl(charUrl)
 
   const [country, setCountry] = useState('int') // int = global
-  const [year, setYear] = useState('')
   const [isTc, setIsTc] = useState(true)
-
-  useEffect(() => {
-    // reset
-    setYear('')
-  }, [country])
-
-  useEffect(() => {
-    if (year) {
-      const char = _.get(chars, [country, year])
-      const url = getCharUrl(country, year, char, isTc)
-      dispatch(setCharUrl(url))
-    }
-  }, [year])
 
   return (
     <StyledBox>
@@ -79,7 +67,11 @@ export default function CharList() {
                   key={y}
                   radius="md"
                   color="dark"
-                  variant={y === year ? 'filled' : 'subtle'}
+                  variant={
+                    country === currentCountry && y === currentYear
+                      ? 'filled'
+                      : 'subtle'
+                  }
                   sx={{
                     display: 'block',
                     margin: '0 0 4px',
@@ -93,7 +85,8 @@ export default function CharList() {
                     },
                   }}
                   onClick={() => {
-                    setYear(y)
+                    const url = getCharUrl(country, y, el, isTc)
+                    dispatch(setCharUrl(url))
                   }}
                 >
                   {y}
@@ -120,4 +113,11 @@ function getCharUrl(country: string, year: string, char: Char, isTc: boolean) {
     return `${url}.svg`
   }
   return isTc ? `${url}-1.svg` : `${url}-0.svg`
+}
+
+function parseCharUrl(url: string) {
+  // /chars/int/2006-1.svg
+  const [, country, name] = _.compact(_.split(url, '/'))
+  const year = `${name}`.slice(0, 4)
+  return [country, year] as const
 }

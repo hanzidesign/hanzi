@@ -2,15 +2,15 @@ import _ from 'lodash'
 import { useAppDispatch, useAppSelector } from 'store'
 import { useState, useEffect, useRef } from 'react'
 import { SimpleGrid, AspectRatio, Group } from '@mantine/core'
-import { Center, Text, Slider, Box, CloseButton } from '@mantine/core'
-import { FileInput, NumberInput } from '@mantine/core'
+import { Center, Text, Button, CloseButton } from '@mantine/core'
+import { Slider, FileInput, NumberInput } from '@mantine/core'
 import { StyledBox, StyledText } from './common'
 import useFileReader from 'hooks/useFileReader'
 import { setPtnUrl, setDistortion, setBlur } from 'store/slices/editor'
 import { setWidth, setPosition, setRotation } from 'store/slices/editor'
-import { IoCloudUploadOutline } from 'react-icons/io5'
+import { IoCloudUploadOutline, IoDice } from 'react-icons/io5'
 
-export default function StyleEditor() {
+export default function Effect() {
   const dispatch = useAppDispatch()
   const { ptnUrl, distortion, blur, width, x, y, rotation } = useAppSelector(
     (state) => state.editor
@@ -38,12 +38,39 @@ export default function StyleEditor() {
             sx={{ position: 'relative', display: 'block' }}
           >
             Pattern
-            <Box className="absolute-vertical" sx={{ right: 0 }}>
+            <Group className="absolute-vertical" sx={{ right: 0 }} spacing="xs">
+              <Button
+                variant="subtle"
+                color="dark"
+                size="xs"
+                px={2}
+                sx={{
+                  '&:hover': {
+                    backgroundColor: 'transparent',
+                  },
+                }}
+                onClick={() => {
+                  const url = getRandomPtnUrl()
+                  dispatch(setPtnUrl(url))
+                }}
+              >
+                <IoDice size={24} />
+              </Button>
               <CloseButton
+                size={24}
                 title="Delete image"
                 onClick={() => dispatch(setPtnUrl(''))}
+                disabled={!ptnUrl}
+                variant="transparent"
+                sx={(theme) => ({
+                  width: 30,
+                  height: 30,
+                  '&:hover': {
+                    color: theme.colors.red[7],
+                  },
+                })}
               />
-            </Box>
+            </Group>
           </StyledText>
 
           <FileInput
@@ -159,4 +186,10 @@ export default function StyleEditor() {
       </SimpleGrid>
     </StyledBox>
   )
+}
+
+function getRandomPtnUrl() {
+  // /images/patterns/p0.jpeg
+  const n = _.random(15)
+  return `/images/patterns/p${n}.jpeg`
 }
