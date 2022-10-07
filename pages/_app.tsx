@@ -1,21 +1,27 @@
 import '../styles/globals.css'
 import type { AppProps } from 'next/app'
+import { Provider } from 'react-redux'
 import { MantineProvider } from '@mantine/core'
 import { AppProvider } from 'hooks/useAppContext'
 import { wrapper } from 'store'
 
-function MyApp({ Component, pageProps }: AppProps) {
+function MyApp({ Component, ...rest }: AppProps) {
+  const { store, props } = wrapper.useWrappedStore(rest)
+  const { pageProps } = props
+
   return (
-    <AppProvider>
-      <MantineProvider
-        theme={{ colorScheme: 'light' }}
-        withGlobalStyles
-        withNormalizeCSS
-      >
-        <Component {...pageProps} />
-      </MantineProvider>
-    </AppProvider>
+    <Provider store={store}>
+      <AppProvider>
+        <MantineProvider
+          theme={{ colorScheme: 'light' }}
+          withGlobalStyles
+          withNormalizeCSS
+        >
+          <Component {...pageProps} />
+        </MantineProvider>
+      </AppProvider>
+    </Provider>
   )
 }
 
-export default wrapper.withRedux(MyApp)
+export default MyApp

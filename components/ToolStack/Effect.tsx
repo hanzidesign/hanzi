@@ -96,6 +96,9 @@ export default function Effect() {
                 borderRadius: 8,
                 border: `1px solid ${theme.colors.gray[4]}`,
                 backgroundColor: theme.white,
+                ':hover': {
+                  cursor: 'pointer',
+                },
               })}
             >
               {hasImg ? (
