@@ -1,14 +1,15 @@
 import _ from 'lodash'
+import numeral from 'numeral'
 import { useAppDispatch, useAppSelector } from 'store'
 import { useState, useEffect, useRef } from 'react'
 import { SimpleGrid, AspectRatio, Group } from '@mantine/core'
-import { Center, Text, Button, CloseButton } from '@mantine/core'
+import { Center, Text, CloseButton } from '@mantine/core'
 import { Slider, FileInput, NumberInput } from '@mantine/core'
 import { StyledBox, StyledText } from './common'
 import useFileReader from 'hooks/useFileReader'
 import { setPtnUrl, setDistortion, setBlur } from 'store/slices/editor'
 import { setWidth, setPosition, setRotation } from 'store/slices/editor'
-import { IoCloudUploadOutline, IoDice } from 'react-icons/io5'
+import { IoCloudUploadOutline } from 'react-icons/io5'
 
 export default function Effect() {
   const dispatch = useAppDispatch()
@@ -39,23 +40,6 @@ export default function Effect() {
           >
             Pattern
             <Group className="absolute-vertical" sx={{ right: 0 }} spacing="xs">
-              <Button
-                variant="subtle"
-                color="dark"
-                size="xs"
-                px={2}
-                sx={{
-                  '&:hover': {
-                    backgroundColor: 'transparent',
-                  },
-                }}
-                onClick={() => {
-                  const url = getRandomPtnUrl()
-                  dispatch(setPtnUrl(url))
-                }}
-              >
-                <IoDice size={24} />
-              </Button>
               <CloseButton
                 size={24}
                 title="Delete image"
@@ -121,6 +105,17 @@ export default function Effect() {
           </AspectRatio>
         </div>
         <div>
+          <StyledText>Pattern Seed</StyledText>
+          <Slider
+            defaultValue={0}
+            min={0}
+            max={96}
+            color="dark"
+            value={getPatternSeed(ptnUrl)}
+            onChange={(n) => dispatch(setPtnUrl(toPtnUrl(n)))}
+          />
+        </div>
+        <div>
           <StyledText>Distortion</StyledText>
           <Slider
             defaultValue={0}
@@ -137,8 +132,8 @@ export default function Effect() {
           <Slider
             defaultValue={0}
             min={0}
-            max={50}
-            marks={[{ value: 25 }]}
+            max={10}
+            marks={[{ value: 5 }]}
             color="dark"
             value={blur}
             onChange={(n) => dispatch(setBlur(n))}
@@ -191,8 +186,15 @@ export default function Effect() {
   )
 }
 
-function getRandomPtnUrl() {
-  // /images/patterns/p0.jpeg
-  const n = _.random(15)
-  return `/images/patterns/p${n}.jpeg`
+function toPtnUrl(n: number) {
+  // /images/patterns/000.jpg
+  const name = numeral(n).format('000')
+  return `/images/patterns/${name}.jpg`
+}
+
+function getPatternSeed(url: string) {
+  // /images/patterns/000.jpg
+  const [, , name] = _.compact(_.split(url, '/'))
+  const n = `${name}`.slice(0, 3)
+  return Number(n) || 0
 }

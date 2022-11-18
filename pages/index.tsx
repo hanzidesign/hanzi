@@ -1,7 +1,10 @@
 import type { NextPage } from 'next'
 import Head from 'next/head'
-import { Divider, Group, AspectRatio } from '@mantine/core'
-import { ScrollArea, Center, createStyles } from '@mantine/core'
+import { useState } from 'react'
+import { useAppSelector } from 'store'
+import { useElementSize } from '@mantine/hooks'
+import { Divider, Group, Button, Box, Modal, Title } from '@mantine/core'
+import { ScrollArea, AspectRatio, Center, createStyles } from '@mantine/core'
 import ToolStack from 'components/ToolStack'
 import SvgItem from 'components/SvgItem'
 
@@ -15,7 +18,10 @@ const useStyles = createStyles((theme) => ({
 type Props = {}
 
 const Home: NextPage<Props> = () => {
+  const { ref, width, height } = useElementSize()
   const { classes } = useStyles()
+  const { bgColor } = useAppSelector((state) => state.editor)
+  const [open, setOpen] = useState(false)
 
   return (
     <>
@@ -25,7 +31,7 @@ const Home: NextPage<Props> = () => {
         <link rel="icon" href="/favicon.ico" />
       </Head>
 
-      <main>
+      <main ref={ref}>
         <Group spacing={0}>
           <ScrollArea
             className={classes.box}
@@ -34,23 +40,88 @@ const Home: NextPage<Props> = () => {
             }}
           >
             <ToolStack />
+            <Box sx={{ height: 120 }} />
+            <Group
+              grow
+              sx={{
+                position: 'fixed',
+                bottom: 0,
+                zIndex: 10,
+                left: 10,
+                width: 380,
+                padding: 20,
+                backgroundColor: 'white',
+              }}
+            >
+              <Button
+                size="lg"
+                variant="outline"
+                color="dark"
+                radius="md"
+                onClick={() => setOpen(true)}
+              >
+                Preview
+              </Button>
+              <Button size="lg" variant="outline" color="dark" radius="md">
+                Mint
+              </Button>
+            </Group>
           </ScrollArea>
 
           <Divider orientation="vertical" />
 
-          <Center className={classes.box} sx={{ flexGrow: 1 }}>
+          <Center
+            className={classes.box}
+            sx={{ flexGrow: 1, background: bgColor }}
+          >
             <AspectRatio
               ratio={1}
-              sx={(theme) => ({
-                border: `1px solid ${theme.colors.gray[4]}`,
+              sx={{
                 width: '100%',
-                maxWidth: 400,
-              })}
+                maxWidth: `calc(${height}px - 40px)`,
+              }}
             >
               <SvgItem />
             </AspectRatio>
           </Center>
         </Group>
+
+        <Modal
+          centered
+          opened={open}
+          onClose={() => setOpen(false)}
+          radius="lg"
+          title={
+            <Title order={2} className="absolute-horizontal">
+              Preview
+            </Title>
+          }
+        >
+          <Box sx={{ margin: '32px 0 16px' }}>
+            <AspectRatio
+              ratio={1}
+              sx={{
+                width: '100%',
+                borderRadius: 16,
+                overflow: 'hidden',
+              }}
+            >
+              <SvgItem />
+            </AspectRatio>
+          </Box>
+
+          <Box sx={{ textAlign: 'center' }}>
+            <Button
+              size="lg"
+              variant="outline"
+              color="dark"
+              radius="md"
+              px={64}
+            >
+              Mint
+            </Button>
+          </Box>
+        </Modal>
       </main>
     </>
   )

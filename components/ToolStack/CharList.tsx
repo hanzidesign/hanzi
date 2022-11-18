@@ -1,5 +1,5 @@
 import _ from 'lodash'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useAppDispatch, useAppSelector } from 'store'
 import { SimpleGrid, Button, Switch, Text } from '@mantine/core'
 import { Box, Title, ScrollArea } from '@mantine/core'
@@ -14,7 +14,14 @@ export default function CharList() {
   const [currentCountry, currentYear] = parseCharUrl(charUrl)
 
   const [country, setCountry] = useState('int') // int = global
+  const [year, setYear] = useState('2006')
+  const [char, setChar] = useState<Char>({ 0: '乱', 1: '亂' })
   const [isTc, setIsTc] = useState(true)
+
+  useEffect(() => {
+    const url = getCharUrl(country, year, char, isTc)
+    dispatch(setCharUrl(url))
+  }, [year, char, isTc])
 
   return (
     <StyledBox>
@@ -85,8 +92,8 @@ export default function CharList() {
                     },
                   }}
                   onClick={() => {
-                    const url = getCharUrl(country, y, el, isTc)
-                    dispatch(setCharUrl(url))
+                    setYear(y)
+                    setChar(el)
                   }}
                 >
                   {y}

@@ -17,7 +17,7 @@ export type EditorState = {
 
 const initialState: EditorState = {
   charUrl: '/chars/int/2006-1.svg',
-  ptnUrl: '/images/patterns/p0.jpeg',
+  ptnUrl: '/images/patterns/000.jpg',
   distortion: 10,
   blur: 0,
   width: 0,

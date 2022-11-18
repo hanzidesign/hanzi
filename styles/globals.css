@@ -21,6 +21,12 @@ a {
   transform: translateY(-50%);
 }
 
+.absolute-horizontal {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
 .absolute-center {
   position: absolute;
   top: 50%;
@@ -30,4 +36,8 @@ a {
 
 .fixed {
   position: fixed;
+}
+
+button:focus {
+  outline: none !important;
 }
