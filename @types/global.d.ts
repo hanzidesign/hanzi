@@ -19,6 +19,10 @@ declare global {
       DB_USER: string
       DB_PASS: string
       DB_DIRECT: string
+      // ether
+      ACCOUNT_PRIVATE_KEY: string
+      ALCHEMY_KEY_GOERLI: string
+      ALCHEMY_KEY_MAINNET: string
     }
   }
 }
