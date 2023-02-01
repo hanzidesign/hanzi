@@ -1,11 +1,9 @@
-import dotenv from 'dotenv'
+import './.env.ts' // dotenv.config()
 import 'tsconfig-paths/register'
 import '@nomicfoundation/hardhat-toolbox'
+import 'tasks' // hardhat tasks
 import { ethers } from 'ethers'
 import type { HardhatUserConfig } from 'hardhat/config'
-
-dotenv.config()
-dotenv.config({ path: '.env.local' })
 
 const { ACCOUNT_PRIVATE_KEY, ALCHEMY_KEY_GOERLI, ALCHEMY_KEY_MAINNET } =
   process.env
@@ -18,7 +16,7 @@ const config: HardhatUserConfig = {
       accounts: [
         {
           privateKey: ACCOUNT_PRIVATE_KEY,
-          balance: ethers.utils.formatUnits(1, 'ether'),
+          balance: ethers.utils.parseUnits('1', 'ether').toString(),
         },
       ],
     },

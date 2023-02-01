@@ -45,3 +45,4 @@ jspm_packages
 
 # keep
 !**/.gitkeep
+!.env.ts
