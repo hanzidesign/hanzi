@@ -26,6 +26,8 @@ declare global {
       // alchemy
       ALCHEMY_KEY_GOERLI: string
       ALCHEMY_KEY_MAINNET: string
+      // hardhat
+      ETHERSCAN_KEY: string
     }
   }
 }

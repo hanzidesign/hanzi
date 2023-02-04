@@ -1,87 +1,116 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import '@openzeppelin/contracts/token/ERC721/ERC721.sol';
-import '@openzeppelin/contracts/utils/Counters.sol';
-import '@openzeppelin/contracts/security/PullPayment.sol';
-import '@openzeppelin/contracts/access/Ownable.sol';
-import 'operator-filter-registry/src/DefaultOperatorFilterer.sol';
+import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
+import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
+import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
+import "@openzeppelin/contracts/utils/Strings.sol";
+import "@openzeppelin/contracts/utils/Counters.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/security/PullPayment.sol";
+import "operator-filter-registry/src/DefaultOperatorFilterer.sol";
 
-contract CH is ERC721, Ownable, PullPayment, DefaultOperatorFilterer {
-  using Counters for Counters.Counter;
-  Counters.Counter private currentTokenId;
+contract CH is ERC721, ERC721Enumerable, ERC721URIStorage, Ownable, PullPayment, DefaultOperatorFilterer {
+    using Counters for Counters.Counter;
+    using Strings for uint256;
 
-  /// @dev Base token URI used as a prefix by tokenURI().
-  string public baseTokenURI = '';
-  uint256 totalSupply = 0;
+    Counters.Counter private _tokenIdCounter;
 
-  constructor() ERC721('ChineseNFT', 'CH') {}
+    string public baseTokenURI;
 
-  function mintTo(address recipient) public returns (uint256) {
-    currentTokenId.increment();
-    totalSupply = currentTokenId.current();
-    _safeMint(recipient, totalSupply);
-    return totalSupply;
-  }
+    // Mapping from token ID to CID
+    mapping(uint256 => string) private _cids;
 
-  function setApprovalForAll(address operator, bool approved)
-    public
-    override
-    onlyAllowedOperatorApproval(operator)
-  {
-    super.setApprovalForAll(operator, approved);
-  }
+    constructor() ERC721("ChineseNFT", "CH") {
+        baseTokenURI = "";
+    }
 
-  function approve(address operator, uint256 tokenId)
-    public
-    override
-    onlyAllowedOperatorApproval(operator)
-  {
-    super.approve(operator, tokenId);
-  }
+    function supportsInterface(bytes4 interfaceId) public view override(ERC721, ERC721Enumerable) returns (bool) {
+        return super.supportsInterface(interfaceId);
+    }
 
-  function transferFrom(
-    address from,
-    address to,
-    uint256 tokenId
-  ) public override onlyAllowedOperator(from) {
-    super.transferFrom(from, to, tokenId);
-  }
+    function safeMint(address recipient, string memory uri) public returns (uint256) {
+        require(bytes(uri).length > 0, "CH: uri is not valid");
 
-  function safeTransferFrom(
-    address from,
-    address to,
-    uint256 tokenId
-  ) public override onlyAllowedOperator(from) {
-    super.safeTransferFrom(from, to, tokenId);
-  }
+        _tokenIdCounter.increment();
+        uint256 tokenId = _tokenIdCounter.current();
+        _setTokenURI(tokenId, uri);
+        _safeMint(recipient, tokenId);
 
-  function safeTransferFrom(
-    address from,
-    address to,
-    uint256 tokenId,
-    bytes memory data
-  ) public override onlyAllowedOperator(from) {
-    super.safeTransferFrom(from, to, tokenId, data);
-  }
+        return tokenId;
+    }
 
-  /// @dev Returns an URI for a given token ID
-  function _baseURI() internal view virtual override returns (string memory) {
-    return baseTokenURI;
-  }
+    function setApprovalForAll(
+        address operator,
+        bool approved
+    ) public override(IERC721, ERC721) onlyAllowedOperatorApproval(operator) {
+        super.setApprovalForAll(operator, approved);
+    }
 
-  /// @dev Sets the base token URI prefix.
-  function setBaseTokenURI(string memory _baseTokenURI) public onlyOwner {
-    baseTokenURI = _baseTokenURI;
-  }
+    function approve(
+        address operator,
+        uint256 tokenId
+    ) public override(IERC721, ERC721) onlyAllowedOperatorApproval(operator) {
+        super.approve(operator, tokenId);
+    }
 
-  /// @dev Overridden in order to make it an onlyOwner function
-  function withdrawPayments(address payable payee)
-    public
-    virtual
-    override
-    onlyOwner
-  {
-    super.withdrawPayments(payee);
-  }
+    function transferFrom(
+        address from,
+        address to,
+        uint256 tokenId
+    ) public override(IERC721, ERC721) onlyAllowedOperator(from) {
+        super.transferFrom(from, to, tokenId);
+    }
+
+    function safeTransferFrom(
+        address from,
+        address to,
+        uint256 tokenId
+    ) public override(IERC721, ERC721) onlyAllowedOperator(from) {
+        super.safeTransferFrom(from, to, tokenId);
+    }
+
+    function safeTransferFrom(
+        address from,
+        address to,
+        uint256 tokenId,
+        bytes memory data
+    ) public override(IERC721, ERC721) onlyAllowedOperator(from) {
+        super.safeTransferFrom(from, to, tokenId, data);
+    }
+
+    function _beforeTokenTransfer(
+        address from,
+        address to,
+        uint256 firstTokenId,
+        uint256 batchSize
+    ) internal override(ERC721, ERC721Enumerable) {
+        super._beforeTokenTransfer(from, to, firstTokenId, batchSize);
+    }
+
+    function _burn(uint256 tokenId) internal override(ERC721, ERC721URIStorage) {
+        super._burn(tokenId);
+    }
+
+    /**
+     * @dev See {IERC721Metadata-tokenURI}.
+     */
+    function tokenURI(uint256 tokenId) public view override(ERC721, ERC721URIStorage) returns (string memory) {
+        return super.tokenURI(tokenId);
+    }
+
+    /// @dev Returns an URI for a given token ID
+    function _baseURI() internal view override returns (string memory) {
+        return baseTokenURI;
+    }
+
+    /// @dev Sets the base token URI prefix.
+    function setBaseTokenURI(string memory _baseTokenURI) public onlyOwner {
+        baseTokenURI = _baseTokenURI;
+    }
+
+    /// @dev Overridden in order to make it an onlyOwner function
+    function withdrawPayments(address payable payee) public override onlyOwner {
+        super.withdrawPayments(payee);
+    }
 }
