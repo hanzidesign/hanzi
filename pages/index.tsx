@@ -70,10 +70,7 @@ const Home: NextPage<Props> = () => {
 
           <Divider orientation="vertical" />
 
-          <Center
-            className={classes.box}
-            sx={{ flexGrow: 1, background: bgColor }}
-          >
+          <Center className={classes.box} sx={{ flexGrow: 1, background: bgColor }}>
             <AspectRatio
               ratio={1}
               sx={{

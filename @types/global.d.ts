@@ -28,6 +28,8 @@ declare global {
       ALCHEMY_KEY_MAINNET: string
       // hardhat
       ETHERSCAN_KEY: string
+      // nft storage
+      NFT_STORAGE_TOKEN: string
     }
   }
 }

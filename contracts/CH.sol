@@ -43,14 +43,14 @@ contract CH is ERC721, ERC721Enumerable, ERC721URIStorage, Ownable, PullPayment,
     function setApprovalForAll(
         address operator,
         bool approved
-    ) public override(IERC721, ERC721) onlyAllowedOperatorApproval(operator) {
+    ) public override(ERC721, IERC721) onlyAllowedOperatorApproval(operator) {
         super.setApprovalForAll(operator, approved);
     }
 
     function approve(
         address operator,
         uint256 tokenId
-    ) public override(IERC721, ERC721) onlyAllowedOperatorApproval(operator) {
+    ) public override(ERC721, IERC721) onlyAllowedOperatorApproval(operator) {
         super.approve(operator, tokenId);
     }
 
@@ -58,7 +58,7 @@ contract CH is ERC721, ERC721Enumerable, ERC721URIStorage, Ownable, PullPayment,
         address from,
         address to,
         uint256 tokenId
-    ) public override(IERC721, ERC721) onlyAllowedOperator(from) {
+    ) public override(ERC721, IERC721) onlyAllowedOperator(from) {
         super.transferFrom(from, to, tokenId);
     }
 
@@ -66,7 +66,7 @@ contract CH is ERC721, ERC721Enumerable, ERC721URIStorage, Ownable, PullPayment,
         address from,
         address to,
         uint256 tokenId
-    ) public override(IERC721, ERC721) onlyAllowedOperator(from) {
+    ) public override(ERC721, IERC721) onlyAllowedOperator(from) {
         super.safeTransferFrom(from, to, tokenId);
     }
 
@@ -75,7 +75,7 @@ contract CH is ERC721, ERC721Enumerable, ERC721URIStorage, Ownable, PullPayment,
         address to,
         uint256 tokenId,
         bytes memory data
-    ) public override(IERC721, ERC721) onlyAllowedOperator(from) {
+    ) public override(ERC721, IERC721) onlyAllowedOperator(from) {
         super.safeTransferFrom(from, to, tokenId, data);
     }
 
