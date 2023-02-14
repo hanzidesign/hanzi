@@ -17,11 +17,24 @@ export default function Effect() {
     (state) => state.editor
   )
 
+  const [seed, setSeed] = useState(0)
   const [file, setFile] = useState<File | null>(null)
   const fileResult = useFileReader(file)
   const fileRef = useRef<HTMLButtonElement>(null)
 
   const hasImg = Boolean(ptnUrl)
+
+  const ptnToFile = async () => {
+    // override ptnUrl with dataURI
+    if (_.includes(ptnUrl, '/images/patterns/')) {
+      try {
+        const file = await urlToFile(ptnUrl)
+        setFile(file)
+      } catch (error) {
+        console.error(error)
+      }
+    }
+  }
 
   useEffect(() => {
     if (fileResult) {
@@ -29,15 +42,19 @@ export default function Effect() {
     }
   }, [fileResult])
 
+  useEffect(() => {
+    ptnToFile()
+  }, [ptnUrl])
+
+  useEffect(() => {
+    dispatch(setPtnUrl(toPtnUrl(seed)))
+  }, [seed])
+
   return (
     <StyledBox>
       <SimpleGrid cols={1} spacing="xl">
         <div>
-          <StyledText
-            span
-            mb={8}
-            sx={{ position: 'relative', display: 'block' }}
-          >
+          <StyledText span mb={8} sx={{ position: 'relative', display: 'block' }}>
             Pattern
             <Group className="absolute-vertical" sx={{ right: 0 }} spacing="xs">
               <CloseButton
@@ -111,8 +128,8 @@ export default function Effect() {
             min={0}
             max={96}
             color="dark"
-            value={getPatternSeed(ptnUrl)}
-            onChange={(n) => dispatch(setPtnUrl(toPtnUrl(n)))}
+            value={seed}
+            onChange={(n) => setSeed(n)}
           />
         </div>
         <div>
@@ -192,9 +209,9 @@ function toPtnUrl(n: number) {
   return `/images/patterns/${name}.jpg`
 }
 
-function getPatternSeed(url: string) {
-  // /images/patterns/000.jpg
-  const [, , name] = _.compact(_.split(url, '/'))
-  const n = `${name}`.slice(0, 3)
-  return Number(n) || 0
+const urlToFile = async (url: string) => {
+  const res = await fetch(url)
+  const blob = await res.blob()
+  const file = new File([blob], 'pattern.jpg', { type: blob.type })
+  return file
 }

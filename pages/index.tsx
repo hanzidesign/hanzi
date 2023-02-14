@@ -23,6 +23,10 @@ const Home: NextPage<Props> = () => {
   const { bgColor } = useAppSelector((state) => state.editor)
   const [open, setOpen] = useState(false)
 
+  const toStr = (compStr: string) => {
+    console.log(compStr)
+  }
+
   return (
     <>
       <Head>
@@ -78,7 +82,7 @@ const Home: NextPage<Props> = () => {
                 maxWidth: `calc(${height}px - 40px)`,
               }}
             >
-              <SvgItem />
+              <SvgItem toStr={toStr} />
             </AspectRatio>
           </Center>
         </Group>
@@ -108,13 +112,7 @@ const Home: NextPage<Props> = () => {
           </Box>
 
           <Box sx={{ textAlign: 'center' }}>
-            <Button
-              size="lg"
-              variant="outline"
-              color="dark"
-              radius="md"
-              px={64}
-            >
+            <Button size="lg" variant="outline" color="dark" radius="md" px={64}>
               Mint
             </Button>
           </Box>

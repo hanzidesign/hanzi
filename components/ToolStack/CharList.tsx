@@ -74,11 +74,7 @@ export default function CharList() {
                   key={y}
                   radius="md"
                   color="dark"
-                  variant={
-                    country === currentCountry && y === currentYear
-                      ? 'filled'
-                      : 'subtle'
-                  }
+                  variant={country === currentCountry && y === currentYear ? 'filled' : 'subtle'}
                   sx={{
                     display: 'block',
                     margin: '0 0 4px',
@@ -115,7 +111,8 @@ function getChar(char: Char, isTc: boolean) {
 }
 
 function getCharUrl(country: string, year: string, char: Char, isTc: boolean) {
-  const url = `/chars/${country}/${year}`
+  const { href } = window.location
+  const url = `${href}chars/${country}/${year}`
   if (typeof char === 'string') {
     return `${url}.svg`
   }
