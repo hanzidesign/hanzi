@@ -1,3 +1,5 @@
+// npx hardhat run scripts/deploy.js --network goerli
+
 async function main() {
   const [deployer] = await ethers.getSigners()
 

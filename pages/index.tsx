@@ -1,25 +1,38 @@
 import type { NextPage } from 'next'
 import Head from 'next/head'
-import { useState, useRef } from 'react'
+import { useState, useEffect, useRef } from 'react'
+import { getAccount, watchAccount, prepareWriteContract, writeContract } from '@wagmi/core'
 import { useAppSelector } from 'store'
-import { useElementSize } from '@mantine/hooks'
 import { AppShell, Navbar, Header, Text } from '@mantine/core'
 import { Group, Button, Box, Modal, Title } from '@mantine/core'
 import { ScrollArea, AspectRatio, Center } from '@mantine/core'
 import { ConnectButton } from '@rainbow-me/rainbowkit'
 import ToolStack from 'components/ToolStack'
 import SvgItem from 'components/SvgItem'
+import { nftContract } from 'lib/nftContract'
 import { mint } from 'lib/api'
+import json from 'artifacts/contracts/CH.sol/CH.json'
 import type { Metadata, Trait, NftMetadata } from 'types'
 
 type Props = {}
 
 const Home: NextPage<Props> = () => {
-  const { ref, width, height } = useElementSize()
   const { bgColor, country, year, ch } = useAppSelector((state) => state.editor)
   const [open, setOpen] = useState(false)
+  const [account, setAccount] = useState(getAccount().address)
   const [wait, setWait] = useState(false) // async
   const svgRef = useRef('')
+
+  useEffect(() => {
+    // watch
+    const unwatch = watchAccount(({ address }) => {
+      if (address) {
+        setAccount(address)
+        console.log(`Connect with ${address}`)
+      }
+    })
+    return unwatch
+  }, [])
 
   const toStr = (compStr: string) => {
     // cache
@@ -30,19 +43,35 @@ const Home: NextPage<Props> = () => {
     try {
       const svg = svgRef.current
       if (!svg) throw new Error('invalid svg component')
+      if (!account) throw new Error('no account')
 
       setWait(true)
 
+      const totalSupply = await nftContract.totalSupply()
+      const name = totalSupply.add(1).toString()
+
       const attributes = formatAttribute({ country, year, ch })
       const metadata: NftMetadata = {
-        name: 'test',
-        description: 'dev',
+        name,
+        description: `Created by ${account}`,
         external_url: window.location.origin,
         attributes,
       }
+      console.log(metadata)
 
       const token = await mint(svg, metadata)
       console.log({ ...token })
+
+      if (!token?.ipnft) throw new Error('invalid token ipnft')
+
+      const config = await prepareWriteContract({
+        address: nftContract.address as any,
+        abi: json.abi,
+        functionName: 'safeMint',
+        args: [account, token.ipnft],
+      })
+      const result = await writeContract(config)
+      console.log({ result })
     } catch (error) {
       console.error(error)
     }
@@ -59,11 +88,10 @@ const Home: NextPage<Props> = () => {
       </Head>
 
       <AppShell
-        ref={ref}
         header={
           <Header height={{ base: 72 }} p="md">
             <Group position="apart" spacing="xs">
-              <Text>Application header</Text>
+              <Text>Font NFT</Text>
               <ConnectButton />
             </Group>
           </Header>
@@ -100,6 +128,7 @@ const Home: NextPage<Props> = () => {
                   color="dark"
                   radius="md"
                   onClick={() => handleMint()}
+                  disabled={wait}
                 >
                   Mint
                 </Button>
@@ -117,7 +146,7 @@ const Home: NextPage<Props> = () => {
             ratio={1}
             sx={{
               width: '100%',
-              maxWidth: `calc(${height}px - 40px)`,
+              maxWidth: `calc(100vh - 120px)`,
             }}
           >
             <SvgItem toStr={toStr} />

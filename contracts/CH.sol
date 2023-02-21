@@ -18,11 +18,8 @@ contract CH is ERC721, ERC721Enumerable, ERC721URIStorage, Ownable, PullPayment,
 
     string public baseTokenURI;
 
-    // Mapping from token ID to CID
-    mapping(uint256 => string) private _cids;
-
     constructor() ERC721("ChineseNFT", "CH") {
-        baseTokenURI = "";
+        baseTokenURI = "ipfs://";
     }
 
     function supportsInterface(bytes4 interfaceId) public view override(ERC721, ERC721Enumerable) returns (bool) {
@@ -34,8 +31,8 @@ contract CH is ERC721, ERC721Enumerable, ERC721URIStorage, Ownable, PullPayment,
 
         _tokenIdCounter.increment();
         uint256 tokenId = _tokenIdCounter.current();
-        _setTokenURI(tokenId, uri);
         _safeMint(recipient, tokenId);
+        _setTokenURI(tokenId, uri);
 
         return tokenId;
     }
@@ -93,7 +90,7 @@ contract CH is ERC721, ERC721Enumerable, ERC721URIStorage, Ownable, PullPayment,
     }
 
     /**
-     * @dev See {IERC721Metadata-tokenURI}.
+     * @dev See {IERC721Metadata-tokenURI}
      */
     function tokenURI(uint256 tokenId) public view override(ERC721, ERC721URIStorage) returns (string memory) {
         return super.tokenURI(tokenId);
@@ -104,7 +101,7 @@ contract CH is ERC721, ERC721Enumerable, ERC721URIStorage, Ownable, PullPayment,
         return baseTokenURI;
     }
 
-    /// @dev Sets the base token URI prefix.
+    /// @dev Sets the base token URI prefix
     function setBaseTokenURI(string memory _baseTokenURI) public onlyOwner {
         baseTokenURI = _baseTokenURI;
     }
@@ -112,5 +109,10 @@ contract CH is ERC721, ERC721Enumerable, ERC721URIStorage, Ownable, PullPayment,
     /// @dev Overridden in order to make it an onlyOwner function
     function withdrawPayments(address payable payee) public override onlyOwner {
         super.withdrawPayments(payee);
+    }
+
+    /// @dev Sets the token URI
+    function setTokenURI(uint256 tokenId, string memory uri) public onlyOwner {
+        _setTokenURI(tokenId, uri);
     }
 }

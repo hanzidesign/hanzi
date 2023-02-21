@@ -5,7 +5,8 @@ import 'tasks' // hardhat tasks
 import { ethers } from 'ethers'
 import type { HardhatUserConfig } from 'hardhat/config'
 
-const { ACCOUNT_PRIVATE_KEY, ALCHEMY_KEY_GOERLI, ALCHEMY_KEY_MAINNET } = process.env
+const { ACCOUNT_PRIVATE_KEY, NEXT_PUBLIC_ALCHEMY_KEY_GOERLI, NEXT_PUBLIC_ALCHEMY_KEY_MAINNET } =
+  process.env
 const { ETHERSCAN_KEY } = process.env
 
 const config: HardhatUserConfig = {
@@ -21,12 +22,12 @@ const config: HardhatUserConfig = {
       ],
     },
     goerli: {
-      url: `https://eth-goerli.g.alchemy.com/v2/${ALCHEMY_KEY_GOERLI}`,
+      url: `https://eth-goerli.g.alchemy.com/v2/${NEXT_PUBLIC_ALCHEMY_KEY_GOERLI}`,
       accounts: [ACCOUNT_PRIVATE_KEY],
     },
     ethereum: {
       chainId: 1,
-      url: `https://eth-goerli.g.alchemy.com/v2/${ALCHEMY_KEY_MAINNET}`,
+      url: `https://eth-goerli.g.alchemy.com/v2/${NEXT_PUBLIC_ALCHEMY_KEY_MAINNET}`,
       accounts: [ACCOUNT_PRIVATE_KEY],
     },
   },

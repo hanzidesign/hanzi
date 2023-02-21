@@ -22,10 +22,10 @@ declare global {
       // ethers
       NETWORK: string
       ACCOUNT_PRIVATE_KEY: string
-      NFT_CONTRACT_ADDRESS: string
+      NEXT_PUBLIC_NFT_CONTRACT_ADDRESS: string
       // alchemy
-      ALCHEMY_KEY_GOERLI: string
-      ALCHEMY_KEY_MAINNET: string
+      NEXT_PUBLIC_ALCHEMY_KEY_GOERLI: string
+      NEXT_PUBLIC_ALCHEMY_KEY_MAINNET: string
       // hardhat
       ETHERSCAN_KEY: string
       // nft storage
