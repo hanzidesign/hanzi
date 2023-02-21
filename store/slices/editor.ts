@@ -1,8 +1,10 @@
 import _ from 'lodash'
 import { createSlice } from '@reduxjs/toolkit'
+import { countries } from 'assets/list'
 import type { PayloadAction } from '@reduxjs/toolkit'
+import type { Metadata } from 'types'
 
-export type EditorState = {
+export type EditorState = Metadata & {
   charUrl: string
   ptnUrl: string
   distortion: number
@@ -15,8 +17,11 @@ export type EditorState = {
   bgColor: string
 }
 
+const country = 'int'
+const year = 2006
+
 const initialState: EditorState = {
-  charUrl: '/chars/int/2006-1.svg',
+  charUrl: `/chars/${country}/${year}-1.svg`,
   ptnUrl: '/images/patterns/000.jpg',
   distortion: 10,
   blur: 0,
@@ -26,6 +31,9 @@ const initialState: EditorState = {
   rotation: 0,
   textColor: `rgba(0, 0, 0, 1)`,
   bgColor: `rgba(255, 255, 255, 1)`,
+  country: countries[country],
+  year,
+  ch: '亂',
 }
 
 // Actual Slice
@@ -65,6 +73,12 @@ export const slice = createSlice({
       const key = k === 'text' ? 'textColor' : 'bgColor'
       state[key] = c
     },
+    setMetadata(state, action: PayloadAction<Metadata>) {
+      const { country, year, ch } = action.payload
+      state.country = country
+      state.year = year
+      state.ch = ch
+    },
   },
 })
 
@@ -77,6 +91,7 @@ export const {
   setPosition,
   setRotation,
   setColor,
+  setMetadata,
 } = slice.actions
 
 export default slice.reducer

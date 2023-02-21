@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react'
 import { useAppDispatch, useAppSelector } from 'store'
 import { SimpleGrid, Button, Switch, Text } from '@mantine/core'
 import { Box, Title, ScrollArea } from '@mantine/core'
-import { setCharUrl } from 'store/slices/editor'
+import { setCharUrl, setMetadata } from 'store/slices/editor'
 import { countries, chars } from 'assets/list'
 import { StyledBox } from './common'
 import type { Char } from 'assets/list'
@@ -21,6 +21,16 @@ export default function CharList() {
   useEffect(() => {
     const url = getCharUrl(country, year, char, isTc)
     dispatch(setCharUrl(url))
+
+    const countryName = countries[country]
+    const ch = typeof char === 'string' ? char : isTc ? char[1] : char[0]
+    dispatch(
+      setMetadata({
+        country: countryName,
+        year: Number(year),
+        ch,
+      })
+    )
   }, [year, char, isTc])
 
   return (
@@ -74,7 +84,7 @@ export default function CharList() {
                   key={y}
                   radius="md"
                   color="dark"
-                  variant={country === currentCountry && y === currentYear ? 'filled' : 'subtle'}
+                  variant={country == currentCountry && y === currentYear ? 'filled' : 'subtle'}
                   sx={{
                     display: 'block',
                     margin: '0 0 4px',
@@ -120,8 +130,8 @@ function getCharUrl(country: string, year: string, char: Char, isTc: boolean) {
 }
 
 function parseCharUrl(url: string) {
-  // /chars/int/2006-1.svg
-  const [, country, name] = _.compact(_.split(url, '/'))
+  // http://localhost:3000/chars/int/2006-1.svg
+  const [country, name] = _.compact(_.split(url, '/')).slice(-2)
   const year = `${name}`.slice(0, 4)
   return [country, year] as const
 }

@@ -1,6 +1,7 @@
 import type { NextPage } from 'next'
 import Head from 'next/head'
-import { useState } from 'react'
+import axios from 'axios'
+import { useState, useRef } from 'react'
 import { useAppSelector } from 'store'
 import { useElementSize } from '@mantine/hooks'
 import { Divider, Group, Button, Box, Modal, Title } from '@mantine/core'
@@ -20,11 +21,22 @@ type Props = {}
 const Home: NextPage<Props> = () => {
   const { ref, width, height } = useElementSize()
   const { classes } = useStyles()
-  const { bgColor } = useAppSelector((state) => state.editor)
+  const { bgColor, country, year, ch } = useAppSelector((state) => state.editor)
   const [open, setOpen] = useState(false)
+  const compRef = useRef('')
 
   const toStr = (compStr: string) => {
-    console.log(compStr)
+    // cache
+    compRef.current = compStr
+  }
+
+  const mint = async () => {
+    try {
+      if (!compRef.current) throw new Error('invalid svg component')
+      // TODO: call api
+    } catch (error) {
+      console.error(error)
+    }
   }
 
   return (
