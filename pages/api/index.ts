@@ -3,11 +3,7 @@ import type { NextApiRequest, NextApiResponse } from 'next'
 import connectMongo from 'utils/connectMongo'
 import { convertSvg } from 'lib/convertSvg'
 import { uploadImage } from 'lib/nftStorage'
-
-type Token = {
-  ipnft: string
-  url: string
-}
+import type { Token } from 'types'
 
 export default async function handler(
   req: NextApiRequest,
@@ -18,10 +14,10 @@ export default async function handler(
 
     if (req.method === 'POST') {
       // Process a POST request
-      const { comp, metadata } = req.body
-      if (!comp || !metadata) throw new Error('invalid comp or metadata')
+      const { svg, metadata } = req.body
+      if (!svg || !metadata) throw new Error('invalid svg or metadata')
 
-      const dataURI = await convertSvg(comp)
+      const dataURI = await convertSvg(svg)
       const token = await uploadImage(dataURI, metadata)
 
       res.status(200).json({
@@ -30,10 +26,12 @@ export default async function handler(
           url: token.url,
         },
       })
+      return
     }
 
     res.status(200).json({})
   } catch (error) {
+    console.error(error)
     res.status(500).send({})
   }
 }

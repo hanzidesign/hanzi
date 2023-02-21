@@ -121,8 +121,8 @@ function getChar(char: Char, isTc: boolean) {
 }
 
 function getCharUrl(country: string, year: string, char: Char, isTc: boolean) {
-  const { href } = window.location
-  const url = `${href}chars/${country}/${year}`
+  const { origin } = window.location
+  const url = `${origin}/chars/${country}/${year}`
   if (typeof char === 'string') {
     return `${url}.svg`
   }

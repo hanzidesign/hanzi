@@ -1,42 +1,53 @@
 import type { NextPage } from 'next'
 import Head from 'next/head'
-import axios from 'axios'
 import { useState, useRef } from 'react'
 import { useAppSelector } from 'store'
 import { useElementSize } from '@mantine/hooks'
-import { Divider, Group, Button, Box, Modal, Title } from '@mantine/core'
-import { ScrollArea, AspectRatio, Center, createStyles } from '@mantine/core'
+import { AppShell, Navbar, Header, Text } from '@mantine/core'
+import { Group, Button, Box, Modal, Title } from '@mantine/core'
+import { ScrollArea, AspectRatio, Center } from '@mantine/core'
+import { ConnectButton } from '@rainbow-me/rainbowkit'
 import ToolStack from 'components/ToolStack'
 import SvgItem from 'components/SvgItem'
-
-const useStyles = createStyles((theme) => ({
-  box: {
-    padding: 20,
-    height: '100vh',
-  },
-}))
+import { mint } from 'lib/api'
+import type { Metadata, Trait, NftMetadata } from 'types'
 
 type Props = {}
 
 const Home: NextPage<Props> = () => {
   const { ref, width, height } = useElementSize()
-  const { classes } = useStyles()
   const { bgColor, country, year, ch } = useAppSelector((state) => state.editor)
   const [open, setOpen] = useState(false)
-  const compRef = useRef('')
+  const [wait, setWait] = useState(false) // async
+  const svgRef = useRef('')
 
   const toStr = (compStr: string) => {
     // cache
-    compRef.current = compStr
+    svgRef.current = compStr
   }
 
-  const mint = async () => {
+  const handleMint = async () => {
     try {
-      if (!compRef.current) throw new Error('invalid svg component')
-      // TODO: call api
+      const svg = svgRef.current
+      if (!svg) throw new Error('invalid svg component')
+
+      setWait(true)
+
+      const attributes = formatAttribute({ country, year, ch })
+      const metadata: NftMetadata = {
+        name: 'test',
+        description: 'dev',
+        external_url: window.location.origin,
+        attributes,
+      }
+
+      const token = await mint(svg, metadata)
+      console.log({ ...token })
     } catch (error) {
       console.error(error)
     }
+
+    setWait(false)
   }
 
   return (
@@ -47,57 +58,71 @@ const Home: NextPage<Props> = () => {
         <link rel="icon" href="/favicon.ico" />
       </Head>
 
-      <main ref={ref}>
-        <Group spacing={0}>
-          <ScrollArea
-            className={classes.box}
+      <AppShell
+        ref={ref}
+        header={
+          <Header height={{ base: 72 }} p="md">
+            <Group position="apart" spacing="xs">
+              <Text>Application header</Text>
+              <ConnectButton />
+            </Group>
+          </Header>
+        }
+        navbar={
+          <Navbar width={{ base: 400 }}>
+            <ScrollArea p={20}>
+              <ToolStack />
+              <Box sx={{ height: 120 }} />
+              <Group
+                grow
+                sx={{
+                  position: 'fixed',
+                  bottom: 0,
+                  zIndex: 10,
+                  left: 10,
+                  width: 380,
+                  padding: 20,
+                  backgroundColor: 'white',
+                }}
+              >
+                <Button
+                  size="lg"
+                  variant="outline"
+                  color="dark"
+                  radius="md"
+                  onClick={() => setOpen(true)}
+                >
+                  Preview
+                </Button>
+                <Button
+                  size="lg"
+                  variant="outline"
+                  color="dark"
+                  radius="md"
+                  onClick={() => handleMint()}
+                >
+                  Mint
+                </Button>
+              </Group>
+            </ScrollArea>
+          </Navbar>
+        }
+        padding={20}
+        styles={{
+          body: { background: bgColor },
+        }}
+      >
+        <Center h="100%">
+          <AspectRatio
+            ratio={1}
             sx={{
-              flex: '400px 0',
+              width: '100%',
+              maxWidth: `calc(${height}px - 40px)`,
             }}
           >
-            <ToolStack />
-            <Box sx={{ height: 120 }} />
-            <Group
-              grow
-              sx={{
-                position: 'fixed',
-                bottom: 0,
-                zIndex: 10,
-                left: 10,
-                width: 380,
-                padding: 20,
-                backgroundColor: 'white',
-              }}
-            >
-              <Button
-                size="lg"
-                variant="outline"
-                color="dark"
-                radius="md"
-                onClick={() => setOpen(true)}
-              >
-                Preview
-              </Button>
-              <Button size="lg" variant="outline" color="dark" radius="md">
-                Mint
-              </Button>
-            </Group>
-          </ScrollArea>
-
-          <Divider orientation="vertical" />
-
-          <Center className={classes.box} sx={{ flexGrow: 1, background: bgColor }}>
-            <AspectRatio
-              ratio={1}
-              sx={{
-                width: '100%',
-                maxWidth: `calc(${height}px - 40px)`,
-              }}
-            >
-              <SvgItem toStr={toStr} />
-            </AspectRatio>
-          </Center>
-        </Group>
+            <SvgItem toStr={toStr} />
+          </AspectRatio>
+        </Center>
 
         <Modal
           centered
@@ -129,7 +154,7 @@ const Home: NextPage<Props> = () => {
             </Button>
           </Box>
         </Modal>
-      </main>
+      </AppShell>
     </>
   )
 }
@@ -144,4 +169,22 @@ export async function getStaticProps() {
     // - At most once every 10 seconds
     revalidate: 60 * 60 * 24, // In seconds
   }
+}
+
+export function formatAttribute(metadata: Metadata): Trait[] {
+  const { country, year, ch } = metadata
+  const countryTrait: Trait = {
+    trait_type: 'country',
+    value: country,
+  }
+  const yearTrait: Trait = {
+    trait_type: 'year',
+    value: year,
+  }
+  const chTrait: Trait = {
+    trait_type: 'ch',
+    value: ch,
+  }
+
+  return [countryTrait, yearTrait, chTrait]
 }

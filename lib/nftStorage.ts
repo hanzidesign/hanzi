@@ -2,19 +2,7 @@ import _ from 'lodash'
 import { NFTStorage, File } from 'nft.storage'
 import mimeTypes from 'mime-types'
 import { png } from './data'
-import type { Metadata } from 'types'
-
-type Trait = {
-  trait_type: string
-  value: string | number
-}
-
-export type NftMetadata = {
-  name: string
-  description: string
-  external_url: string // web url
-  attributes: Trait[]
-}
+import type { NftMetadata } from 'types'
 
 const token = process.env.NFT_STORAGE_TOKEN
 if (!token) throw new Error('no api token of nft.storage')
@@ -51,22 +39,4 @@ const dataURItoFile = (dataURI: string, name: string) => {
 
 const decodeBase64 = (data: string) => {
   return Buffer.from(data, 'base64').toString('binary')
-}
-
-export function formatAttribute(metadata: Metadata): Trait[] {
-  const { country, year, ch } = metadata
-  const countryTrait: Trait = {
-    trait_type: 'country',
-    value: country,
-  }
-  const yearTrait: Trait = {
-    trait_type: 'year',
-    value: year,
-  }
-  const chTrait: Trait = {
-    trait_type: 'ch',
-    value: ch,
-  }
-
-  return [countryTrait, yearTrait, chTrait]
 }
