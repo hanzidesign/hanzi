@@ -10,7 +10,7 @@ if (!token) throw new Error('no api token of nft.storage')
 const client = new NFTStorage({ token })
 
 export async function uploadImage(dataURI: string, metadata: NftMetadata) {
-  const { name } = metadata
+  const name = metadata.name.replace('#', '')
   const image = dataURItoFile(dataURI, name)
   const token = await client.store({ ...metadata, image })
   // token {

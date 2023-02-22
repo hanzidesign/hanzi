@@ -2,6 +2,9 @@
   "name": "nextapp",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": "14.x"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -22,6 +25,7 @@
     "@rainbow-me/rainbowkit": "^0.11.0",
     "@reduxjs/toolkit": "^1.9.2",
     "axios": "^1.3.3",
+    "chrome-aws-lambda": "10.1.0",
     "convert-svg-to-png": "^0.6.4",
     "date-fns": "^2.29.3",
     "date-fns-tz": "^2.0.0",
@@ -34,7 +38,7 @@
     "nft.storage": "^7.0.0",
     "numeral": "^2.0.6",
     "operator-filter-registry": "^1.4.0",
-    "puppeteer": "^19.7.2",
+    "puppeteer-core": "10.1.0",
     "react": "18.2.0",
     "react-dom": "18.2.0",
     "react-icons": "^4.7.1",
