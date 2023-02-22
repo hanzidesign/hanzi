@@ -1,7 +1,7 @@
 import type { NextPage } from 'next'
 import Head from 'next/head'
 import { useState, useEffect, useRef } from 'react'
-import { getAccount, watchAccount, prepareWriteContract, writeContract } from '@wagmi/core'
+import { getAccount, watchAccount, writeContract } from '@wagmi/core'
 import { useAppSelector } from 'store'
 import { AppShell, Navbar, Header, Text } from '@mantine/core'
 import { Group, Button, Box, Modal, Title } from '@mantine/core'
@@ -9,8 +9,8 @@ import { ScrollArea, AspectRatio, Center } from '@mantine/core'
 import { ConnectButton } from '@rainbow-me/rainbowkit'
 import ToolStack from 'components/ToolStack'
 import SvgItem from 'components/SvgItem'
-import { nftContract } from 'lib/nftContract'
-import { mint } from 'lib/api'
+import { nftContract, prepareSafeMint } from 'lib/nftContract'
+import { uploadImage } from 'lib/api'
 import json from 'artifacts/contracts/CH.sol/CH.json'
 import type { Metadata, Trait, NftMetadata } from 'types'
 
@@ -54,23 +54,19 @@ const Home: NextPage<Props> = () => {
       const metadata: NftMetadata = {
         name,
         description: `Created by ${account}`,
-        external_url: window.location.origin,
+        external_url: `${window.location.origin}/token/${name}`,
         attributes,
       }
       console.log(metadata)
 
-      const token = await mint(svg, metadata)
+      const token = await uploadImage(svg, metadata)
       console.log({ ...token })
 
-      if (!token?.ipnft) throw new Error('invalid token ipnft')
-
-      const config = await prepareWriteContract({
-        address: nftContract.address as any,
-        abi: json.abi,
-        functionName: 'safeMint',
-        args: [account, token.ipnft],
-      })
+      if (!token?.url) throw new Error('invalid token url')
+      const tokenURI = token.url.replace('ipfs://', '')
+      const config = await prepareSafeMint(account, tokenURI)
       const result = await writeContract(config)
+
       console.log({ result })
     } catch (error) {
       console.error(error)
