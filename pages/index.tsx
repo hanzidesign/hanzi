@@ -11,8 +11,8 @@ import ToolStack from 'components/ToolStack'
 import SvgItem from 'components/SvgItem'
 import { nftContract, prepareSafeMint } from 'lib/nftContract'
 import { uploadImage } from 'lib/api'
-import json from 'artifacts/contracts/CH.sol/CH.json'
-import type { Metadata, Trait, NftMetadata } from 'types'
+import { setAttributes, setMetadata } from 'lib/metadata'
+import type { NftMetadata } from 'types'
 
 type Props = {}
 
@@ -47,26 +47,24 @@ const Home: NextPage<Props> = () => {
 
       setWait(true)
 
+      // id
       const totalSupply = await nftContract.totalSupply()
       const name = totalSupply.add(1).toString()
 
-      const attributes = formatAttribute({ country, year, ch })
-      const metadata: NftMetadata = {
-        name,
-        description: `Created by ${account}`,
-        external_url: `${window.location.origin}/token/${name}`,
-        attributes,
-      }
+      // metadata
+      const attributes = setAttributes({ country, year, ch })
+      const metadata = setMetadata(name, account, attributes)
       console.log(metadata)
 
+      // ipfs
       const token = await uploadImage(svg, metadata)
       console.log({ ...token })
 
+      // mint
       if (!token?.url) throw new Error('invalid token url')
       const tokenURI = token.url.replace('ipfs://', '')
       const config = await prepareSafeMint(account, tokenURI)
       const result = await writeContract(config)
-
       console.log({ result })
     } catch (error) {
       console.error(error)
@@ -194,22 +192,4 @@ export async function getStaticProps() {
     // - At most once every 10 seconds
     revalidate: 60 * 60 * 24, // In seconds
   }
-}
-
-export function formatAttribute(metadata: Metadata): Trait[] {
-  const { country, year, ch } = metadata
-  const countryTrait: Trait = {
-    trait_type: 'country',
-    value: country,
-  }
-  const yearTrait: Trait = {
-    trait_type: 'year',
-    value: year,
-  }
-  const chTrait: Trait = {
-    trait_type: 'ch',
-    value: ch,
-  }
-
-  return [countryTrait, yearTrait, chTrait]
 }
