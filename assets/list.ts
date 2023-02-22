@@ -11,7 +11,7 @@ type Chars = {
   }
 }
 
-const countries = {
+const countries: { [key: string]: string } = {
   int: 'Global',
   cn: 'China',
   fr: 'France',

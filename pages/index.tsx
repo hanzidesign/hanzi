@@ -1,27 +1,79 @@
 import type { NextPage } from 'next'
 import Head from 'next/head'
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
+import { getAccount, watchAccount, writeContract } from '@wagmi/core'
 import { useAppSelector } from 'store'
-import { useElementSize } from '@mantine/hooks'
-import { Divider, Group, Button, Box, Modal, Title } from '@mantine/core'
-import { ScrollArea, AspectRatio, Center, createStyles } from '@mantine/core'
+import { AppShell, Navbar, Header, Text } from '@mantine/core'
+import { Group, Button, Box, Modal, Title } from '@mantine/core'
+import { ScrollArea, AspectRatio, Center } from '@mantine/core'
+import { ConnectButton } from '@rainbow-me/rainbowkit'
 import ToolStack from 'components/ToolStack'
 import SvgItem from 'components/SvgItem'
-
-const useStyles = createStyles((theme) => ({
-  box: {
-    padding: 20,
-    height: '100vh',
-  },
-}))
+import { nftContract, prepareSafeMint } from 'lib/nftContract'
+import { uploadImage } from 'lib/api'
+import json from 'artifacts/contracts/CH.sol/CH.json'
+import type { Metadata, Trait, NftMetadata } from 'types'
 
 type Props = {}
 
 const Home: NextPage<Props> = () => {
-  const { ref, width, height } = useElementSize()
-  const { classes } = useStyles()
-  const { bgColor } = useAppSelector((state) => state.editor)
+  const { bgColor, country, year, ch } = useAppSelector((state) => state.editor)
   const [open, setOpen] = useState(false)
+  const [account, setAccount] = useState(getAccount().address)
+  const [wait, setWait] = useState(false) // async
+  const svgRef = useRef('')
+
+  useEffect(() => {
+    // watch
+    const unwatch = watchAccount(({ address }) => {
+      if (address) {
+        setAccount(address)
+        console.log(`Connect with ${address}`)
+      }
+    })
+    return unwatch
+  }, [])
+
+  const toStr = (compStr: string) => {
+    // cache
+    svgRef.current = compStr
+  }
+
+  const handleMint = async () => {
+    try {
+      const svg = svgRef.current
+      if (!svg) throw new Error('invalid svg component')
+      if (!account) throw new Error('no account')
+
+      setWait(true)
+
+      const totalSupply = await nftContract.totalSupply()
+      const name = totalSupply.add(1).toString()
+
+      const attributes = formatAttribute({ country, year, ch })
+      const metadata: NftMetadata = {
+        name,
+        description: `Created by ${account}`,
+        external_url: `${window.location.origin}/token/${name}`,
+        attributes,
+      }
+      console.log(metadata)
+
+      const token = await uploadImage(svg, metadata)
+      console.log({ ...token })
+
+      if (!token?.url) throw new Error('invalid token url')
+      const tokenURI = token.url.replace('ipfs://', '')
+      const config = await prepareSafeMint(account, tokenURI)
+      const result = await writeContract(config)
+
+      console.log({ result })
+    } catch (error) {
+      console.error(error)
+    }
+
+    setWait(false)
+  }
 
   return (
     <>
@@ -31,60 +83,71 @@ const Home: NextPage<Props> = () => {
         <link rel="icon" href="/favicon.ico" />
       </Head>
 
-      <main ref={ref}>
-        <Group spacing={0}>
-          <ScrollArea
-            className={classes.box}
+      <AppShell
+        header={
+          <Header height={{ base: 72 }} p="md">
+            <Group position="apart" spacing="xs">
+              <Text>Font NFT</Text>
+              <ConnectButton />
+            </Group>
+          </Header>
+        }
+        navbar={
+          <Navbar width={{ base: 400 }}>
+            <ScrollArea p={20}>
+              <ToolStack />
+              <Box sx={{ height: 120 }} />
+              <Group
+                grow
+                sx={{
+                  position: 'fixed',
+                  bottom: 0,
+                  zIndex: 10,
+                  left: 10,
+                  width: 380,
+                  padding: 20,
+                  backgroundColor: 'white',
+                }}
+              >
+                <Button
+                  size="lg"
+                  variant="outline"
+                  color="dark"
+                  radius="md"
+                  onClick={() => setOpen(true)}
+                >
+                  Preview
+                </Button>
+                <Button
+                  size="lg"
+                  variant="outline"
+                  color="dark"
+                  radius="md"
+                  onClick={() => handleMint()}
+                  disabled={wait}
+                >
+                  Mint
+                </Button>
+              </Group>
+            </ScrollArea>
+          </Navbar>
+        }
+        padding={20}
+        styles={{
+          body: { background: bgColor },
+        }}
+      >
+        <Center h="100%">
+          <AspectRatio
+            ratio={1}
             sx={{
-              flex: '400px 0',
+              width: '100%',
+              maxWidth: `calc(100vh - 120px)`,
             }}
           >
-            <ToolStack />
-            <Box sx={{ height: 120 }} />
-            <Group
-              grow
-              sx={{
-                position: 'fixed',
-                bottom: 0,
-                zIndex: 10,
-                left: 10,
-                width: 380,
-                padding: 20,
-                backgroundColor: 'white',
-              }}
-            >
-              <Button
-                size="lg"
-                variant="outline"
-                color="dark"
-                radius="md"
-                onClick={() => setOpen(true)}
-              >
-                Preview
-              </Button>
-              <Button size="lg" variant="outline" color="dark" radius="md">
-                Mint
-              </Button>
-            </Group>
-          </ScrollArea>
-
-          <Divider orientation="vertical" />
-
-          <Center
-            className={classes.box}
-            sx={{ flexGrow: 1, background: bgColor }}
-          >
-            <AspectRatio
-              ratio={1}
-              sx={{
-                width: '100%',
-                maxWidth: `calc(${height}px - 40px)`,
-              }}
-            >
-              <SvgItem />
-            </AspectRatio>
-          </Center>
-        </Group>
+            <SvgItem toStr={toStr} />
+          </AspectRatio>
+        </Center>
 
         <Modal
           centered
@@ -111,18 +174,12 @@ const Home: NextPage<Props> = () => {
           </Box>
 
           <Box sx={{ textAlign: 'center' }}>
-            <Button
-              size="lg"
-              variant="outline"
-              color="dark"
-              radius="md"
-              px={64}
-            >
+            <Button size="lg" variant="outline" color="dark" radius="md" px={64}>
               Mint
             </Button>
           </Box>
         </Modal>
-      </main>
+      </AppShell>
     </>
   )
 }
@@ -137,4 +194,22 @@ export async function getStaticProps() {
     // - At most once every 10 seconds
     revalidate: 60 * 60 * 24, // In seconds
   }
+}
+
+export function formatAttribute(metadata: Metadata): Trait[] {
+  const { country, year, ch } = metadata
+  const countryTrait: Trait = {
+    trait_type: 'country',
+    value: country,
+  }
+  const yearTrait: Trait = {
+    trait_type: 'year',
+    value: year,
+  }
+  const chTrait: Trait = {
+    trait_type: 'ch',
+    value: ch,
+  }
+
+  return [countryTrait, yearTrait, chTrait]
 }
