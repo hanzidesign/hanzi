@@ -1,44 +1,30 @@
 import _ from 'lodash'
-import { useEffect } from 'react'
-import { renderToString } from 'react-dom/server'
+import axios from 'axios'
+import { useState, useEffect } from 'react'
 import { useAppSelector } from 'store'
 import Item from './Item'
 
-type SvgItemProps = {
-  toStr?: (compStr: string) => void
-}
-
-export default function SvgItem(props: SvgItemProps) {
-  const { toStr } = props
+export default function SvgItem(props: { uid?: string }) {
   const editorState = useAppSelector((state) => state.editor)
   const { charUrl, ptnUrl, distortion, blur, width, x, y, rotation, textColor, bgColor } =
     editorState
 
-  useEffect(() => {
-    if (!toStr || _.includes(ptnUrl, '/images/patterns/')) return
+  const [svgData, setSvgData] = useState(getDefaultSvgData(charUrl))
 
-    const str = renderToString(
-      <Item
-        fId="f"
-        imgUrl={charUrl}
-        ptnUrl={ptnUrl}
-        distortion={distortion}
-        blur={blur}
-        width={width}
-        x={x}
-        y={y}
-        rotation={rotation}
-        textColor={textColor}
-        bgColor={bgColor}
-      />
-    )
-    toStr(str)
-  }, [toStr, editorState])
+  const getSvgData = async (charUrl: string) => {
+    const data = await downloadSvgData(charUrl)
+    setSvgData(data)
+  }
+
+  useEffect(() => {
+    getSvgData(charUrl)
+  }, [charUrl])
 
   return (
     <Item
+      uid={props.uid}
       fId="f"
-      imgUrl={charUrl}
+      svgData={svgData}
       ptnUrl={ptnUrl}
       distortion={distortion}
       blur={blur}
@@ -50,4 +36,20 @@ export default function SvgItem(props: SvgItemProps) {
       bgColor={bgColor}
     />
   )
+}
+
+function getDefaultSvgData(charUrl: string) {
+  return `<image href="${charUrl}" x="0" y="0" width="100%" height="100%" />`
+}
+
+async function downloadSvgData(url: string): Promise<string> {
+  if (!url) return getDefaultSvgData(url)
+
+  try {
+    const res = await axios(url)
+    return res.data.toString()
+  } catch (error) {
+    console.error(error)
+    return getDefaultSvgData(url)
+  }
 }

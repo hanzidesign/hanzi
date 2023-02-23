@@ -1,6 +1,7 @@
 import type { NextPage } from 'next'
 import Head from 'next/head'
 import { useState, useEffect, useRef } from 'react'
+import d3ToPng from 'd3-svg-to-png'
 import { getAccount, watchAccount, writeContract } from '@wagmi/core'
 import { useAppSelector } from 'store'
 import { AppShell, Navbar, Header, Text } from '@mantine/core'
@@ -9,10 +10,9 @@ import { ScrollArea, AspectRatio, Center } from '@mantine/core'
 import { ConnectButton } from '@rainbow-me/rainbowkit'
 import ToolStack from 'components/ToolStack'
 import SvgItem from 'components/SvgItem'
-import { nftContract, prepareSafeMint } from 'lib/nftContract'
-import { uploadImage } from 'lib/api'
+import { uploadImage } from 'lib/nftStorage'
+import { prepareSafeMint } from 'lib/nftContract'
 import { setAttributes, setMetadata } from 'lib/metadata'
-import type { NftMetadata } from 'types'
 
 type Props = {}
 
@@ -34,30 +34,26 @@ const Home: NextPage<Props> = () => {
     return unwatch
   }, [])
 
-  const toStr = (compStr: string) => {
-    // cache
-    svgRef.current = compStr
-  }
-
   const handleMint = async () => {
     try {
-      const svg = svgRef.current
-      if (!svg) throw new Error('invalid svg component')
       if (!account) throw new Error('no account')
 
       setWait(true)
 
-      // id
-      const totalSupply = await nftContract.totalSupply()
-      const name = totalSupply.add(1).toString()
-
       // metadata
+      const name = `${country}-${year}-${ch}`
       const attributes = setAttributes({ country, year, ch })
       const metadata = setMetadata(name, account, attributes)
       console.log(metadata)
 
+      const dataURI = await d3ToPng('#SVG-BOX', name, {
+        scale: 1,
+        format: 'webp',
+        download: false,
+      })
+
       // ipfs
-      const token = await uploadImage(svg, metadata)
+      const token = await uploadImage(dataURI, metadata)
       console.log({ ...token })
 
       // mint
@@ -143,7 +139,7 @@ const Home: NextPage<Props> = () => {
               maxWidth: `calc(100vh - 120px)`,
             }}
           >
-            <SvgItem toStr={toStr} />
+            <SvgItem />
           </AspectRatio>
         </Center>
 
@@ -177,6 +173,22 @@ const Home: NextPage<Props> = () => {
             </Button>
           </Box>
         </Modal>
+
+        {/* for d3 */}
+        <Box
+          sx={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            zIndex: -1,
+            width: 1200,
+            height: 1200,
+            opacity: 0,
+            pointerEvents: 'none',
+          }}
+        >
+          <SvgItem uid="SVG-BOX" />
+        </Box>
       </AppShell>
     </>
   )

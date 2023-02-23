@@ -20,7 +20,7 @@ export function setAttributes(metadata: Metadata): Trait[] {
 
 export function setMetadata(name: string, account: string, attributes: Trait[]): NftMetadata {
   return {
-    name: `#${name}`,
+    name: `${name}`,
     description: `Created by ${account}`,
     external_url: `${window.location.origin}/token/${name}`,
     attributes,

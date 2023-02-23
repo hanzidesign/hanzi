@@ -4,13 +4,13 @@ import mimeTypes from 'mime-types'
 import { png } from './data'
 import type { NftMetadata } from 'types'
 
-const token = process.env.NFT_STORAGE_TOKEN
+const token = process.env.NEXT_PUBLIC_NFT_STORAGE_TOKEN
 if (!token) throw new Error('no api token of nft.storage')
 
 const client = new NFTStorage({ token })
 
 export async function uploadImage(dataURI: string, metadata: NftMetadata) {
-  const name = metadata.name.replace('#', '')
+  const { name } = metadata
   const image = dataURItoFile(dataURI, name)
   const token = await client.store({ ...metadata, image })
   // token {
@@ -23,8 +23,8 @@ export async function uploadImage(dataURI: string, metadata: NftMetadata) {
 const dataURItoFile = (dataURI: string, name: string) => {
   const arr = dataURI.split(',')
   const matches = arr[0].match(/:(.*?);/)
-  const type = _.get(matches, [1], 'png')
-  const extension = mimeTypes.extension(type) || 'png'
+  const type = _.get(matches, [1], 'webp')
+  const extension = mimeTypes.extension(type) || 'webp'
   const fileName = `${name}.${extension}`
   // to blob
   const bstr = decodeBase64(arr[1]) // atob(arr[1])

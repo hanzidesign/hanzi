@@ -1,6 +1,7 @@
 type SvgItemProps = {
+  uid?: string
   fId: string // filter ID
-  imgUrl: string
+  svgData: string
   ptnUrl: string
   width?: number
   distortion?: number
@@ -13,12 +14,12 @@ type SvgItemProps = {
 }
 
 export default function SvgItem(props: SvgItemProps) {
-  const { fId, imgUrl, ptnUrl, x = 0, y = 0, rotation = 0 } = props
+  const { uid, fId, svgData, ptnUrl, x = 0, y = 0, rotation = 0 } = props
   const { width = 0, distortion = 0, blur = 0 } = props
   const { textColor = 'black', bgColor = 'white' } = props
 
   return (
-    <svg viewBox="0 0 600 600" preserveAspectRatio="xMidYMid meet">
+    <svg id={uid} viewBox="0 0 600 600" preserveAspectRatio="xMidYMid meet">
       <filter id={fId} x="0" y="0" width="100%" height="100%">
         {/* change text width */}
         <feMorphology
@@ -82,9 +83,12 @@ export default function SvgItem(props: SvgItemProps) {
         </feMerge> */}
       </filter>
 
-      <mask maskUnits="userSpaceOnUse" id="mask" mask-type="alpha">
-        <image href={imgUrl} x="0" y="0" width="100%" height="100%" />
-      </mask>
+      <mask
+        maskUnits="userSpaceOnUse"
+        id="mask"
+        mask-type="alpha"
+        dangerouslySetInnerHTML={{ __html: svgData }}
+      ></mask>
 
       <rect x="0" y="0" fill={bgColor} width="100%" height="100%" />
       <g filter={`url(#${fId})`}>
