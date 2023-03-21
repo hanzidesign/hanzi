@@ -175,13 +175,13 @@ export default function Effect() {
               defaultValue={0}
               label="x"
               value={x}
-              onChange={(x) => dispatch(setPosition({ x }))}
+              onChange={(x) => dispatch(setPosition({ x: x as number }))}
             />
             <NumberInput
               defaultValue={0}
               label="y"
               value={y}
-              onChange={(y) => dispatch(setPosition({ y }))}
+              onChange={(y) => dispatch(setPosition({ y: y as number }))}
             />
           </Group>
         </div>

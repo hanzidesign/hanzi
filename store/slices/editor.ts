@@ -2,20 +2,9 @@ import _ from 'lodash'
 import { createSlice } from '@reduxjs/toolkit'
 import { countries } from 'assets/list'
 import type { PayloadAction } from '@reduxjs/toolkit'
-import type { Metadata } from 'types'
+import type { Metadata, NftData } from 'types'
 
-export type EditorState = Metadata & {
-  charUrl: string
-  ptnUrl: string
-  distortion: number
-  blur: number
-  width: number
-  x: number
-  y: number
-  rotation: number
-  textColor: string
-  bgColor: string
-}
+export type EditorState = Metadata & NftData
 
 const country = 'int'
 const year = 2006
