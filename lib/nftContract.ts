@@ -1,6 +1,6 @@
 import { getProvider, getContract, prepareWriteContract } from '@wagmi/core'
-import json from 'hardhat/artifacts/contracts/CH.sol/CH.json'
-import type { CH } from 'hardhat/typechain-types/contracts/CH'
+import json from 'types/ch/CH.json'
+import type { CH } from 'types/ch/CH'
 
 const address = process.env.NEXT_PUBLIC_NFT_CONTRACT_ADDRESS
 const nftContract = getContract({ address, abi: json.abi, signerOrProvider: getProvider() }) as CH

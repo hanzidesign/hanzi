@@ -16,3 +16,7 @@ export type Token = {
   ipnft: string
   url: string
 }
+
+export enum Constants {
+  svgId = 'SVG-BOX',
+}
