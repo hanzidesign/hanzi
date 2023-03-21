@@ -21,13 +21,10 @@ declare global {
       DB_DIRECT: string
       // ethers
       NETWORK: string
-      ACCOUNT_PRIVATE_KEY: string
       NEXT_PUBLIC_NFT_CONTRACT_ADDRESS: string
       // alchemy
       NEXT_PUBLIC_ALCHEMY_KEY_GOERLI: string
       NEXT_PUBLIC_ALCHEMY_KEY_MAINNET: string
-      // hardhat
-      ETHERSCAN_KEY: string
       // nft storage
       NEXT_PUBLIC_NFT_STORAGE_TOKEN: string
     }

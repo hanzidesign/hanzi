@@ -1,7 +1,6 @@
 import _ from 'lodash'
-import { NFTStorage, File } from 'nft.storage'
 import mimeTypes from 'mime-types'
-import { png } from './data'
+import { NFTStorage, File } from 'nft.storage'
 import type { NftMetadata } from 'types'
 
 const token = process.env.NEXT_PUBLIC_NFT_STORAGE_TOKEN
