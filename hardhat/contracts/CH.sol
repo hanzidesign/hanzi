@@ -112,7 +112,16 @@ contract CH is ERC721, ERC721Enumerable, ERC721URIStorage, Ownable, PullPayment,
     }
 
     /// @dev Sets the token URI
-    function setTokenURI(uint256 tokenId, string memory uri) public onlyOwner {
-        _setTokenURI(tokenId, uri);
+    function setTokenURI(uint256[] memory tokenIds, string memory uri) public onlyOwner {
+        for (uint i = 0; i < tokenIds.length; i++) {
+            _setTokenURI(tokenIds[i], uri);
+        }
+    }
+
+    /// @dev Burns invalid tokens
+    function burnTokens(uint256[] memory tokenIds) public onlyOwner {
+        for (uint i = 0; i < tokenIds.length; i++) {
+            _burn(tokenIds[i]);
+        }
     }
 }
