@@ -12,6 +12,8 @@ const year = 2006
 const initialState: EditorState = {
   charUrl: `/chars/${country}/${year}-1.svg`,
   ptnUrl: '/images/patterns/000.jpg',
+  seed: 0,
+  isTc: true,
   distortion: 10,
   blur: 0,
   width: 0,
@@ -35,6 +37,12 @@ export const slice = createSlice({
     },
     setPtnUrl(state, action) {
       state.ptnUrl = action.payload
+    },
+    setSeed(state, action) {
+      state.seed = action.payload
+    },
+    setIsTc(state, action) {
+      state.isTc = action.payload
     },
     setDistortion(state, action) {
       state.distortion = action.payload
@@ -74,6 +82,8 @@ export const slice = createSlice({
 export const {
   setCharUrl,
   setPtnUrl,
+  setSeed,
+  setIsTc,
   setDistortion,
   setBlur,
   setWidth,

@@ -1,16 +1,22 @@
 import { useDispatch, useSelector } from 'react-redux'
 import { configureStore, ThunkAction, Action } from '@reduxjs/toolkit'
 import { createWrapper } from 'next-redux-wrapper'
-import editor from './slices/editor'
-import queue from './slices/queue'
+import { persistReducer, FLUSH, REHYDRATE, PAUSE, PERSIST, PURGE, REGISTER } from 'redux-persist'
+import storage from 'redux-persist/lib/storage'
+import reducers from './reducers'
 import type { TypedUseSelectorHook } from 'react-redux'
+
+const reducer = persistReducer({ key: 'root', storage, blacklist: ['queue'] }, reducers)
 
 const makeStore = () =>
   configureStore({
-    reducer: {
-      editor,
-      queue,
-    },
+    reducer,
+    middleware: (getDefaultMiddleware) =>
+      getDefaultMiddleware({
+        serializableCheck: {
+          ignoredActions: [FLUSH, REHYDRATE, PAUSE, PERSIST, PURGE, REGISTER],
+        },
+      }),
     devTools: true,
   })
 

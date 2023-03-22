@@ -1,9 +1,9 @@
 import { createSlice } from '@reduxjs/toolkit'
 import type { PayloadAction } from '@reduxjs/toolkit'
-import type { NftData } from 'types'
+import type { NFT } from 'types'
 
 export type QueueState = {
-  list: { [at: string]: NftData }
+  list: { [at: string]: NFT }
 }
 
 const initialState: QueueState = {
@@ -11,10 +11,10 @@ const initialState: QueueState = {
 }
 
 export const slice = createSlice({
-  name: 'queue',
+  name: 'nft',
   initialState,
   reducers: {
-    addJob(state, action) {
+    addNft(state, action) {
       const createdAt = Date.now()
     },
   },

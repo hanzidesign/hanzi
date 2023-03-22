@@ -3,6 +3,8 @@ export type Metadata = { country: string; year: number; ch: string }
 export type NftData = {
   charUrl: string
   ptnUrl: string
+  seed: number
+  isTc: boolean
   distortion: number
   blur: number
   width: number
@@ -13,12 +15,10 @@ export type NftData = {
   bgColor: string
 }
 
-export type Queue = {
+export type NFT = {
   createdAt: number
-  uploaded: boolean // nft.storage
-  imageUrl?: string
-  minted: boolean // send tx
-  hash?: string
+  imageUrl: string // nft.storage
+  hash: string // send tx
 }
 
 export type Trait = {

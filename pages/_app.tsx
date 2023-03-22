@@ -9,6 +9,8 @@ import { publicProvider } from 'wagmi/providers/public'
 import { Provider } from 'react-redux'
 import { MantineProvider, useMantineTheme } from '@mantine/core'
 import { ModalsProvider } from '@mantine/modals'
+import { PersistGate } from 'redux-persist/integration/react'
+import { persistStore } from 'redux-persist'
 import { AppProvider } from 'hooks/useAppContext'
 import { wrapper } from 'store'
 import { myTheme } from 'theme'
@@ -32,6 +34,7 @@ const wagmiClient = createClient({
 
 function MyApp({ Component, ...rest }: AppProps) {
   const { store, props } = wrapper.useWrappedStore(rest)
+  const persistor = persistStore(store)
   const { pageProps } = props
   const theme = useMantineTheme()
 
@@ -48,13 +51,15 @@ function MyApp({ Component, ...rest }: AppProps) {
         })}
       >
         <Provider store={store}>
-          <AppProvider>
-            <MantineProvider theme={myTheme} withGlobalStyles withNormalizeCSS>
-              <ModalsProvider>
-                <Component {...pageProps} />
-              </ModalsProvider>
-            </MantineProvider>
-          </AppProvider>
+          <PersistGate loading={null} persistor={persistor}>
+            <AppProvider>
+              <MantineProvider theme={myTheme} withGlobalStyles withNormalizeCSS>
+                <ModalsProvider>
+                  <Component {...pageProps} />
+                </ModalsProvider>
+              </MantineProvider>
+            </AppProvider>
+          </PersistGate>
         </Provider>
       </RainbowKitProvider>
     </WagmiConfig>

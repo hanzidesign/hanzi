@@ -1,24 +1,19 @@
 import _ from 'lodash'
-import { useEffect, useState } from 'react'
 import { useAppDispatch, useAppSelector } from 'store'
 import { SimpleGrid, Button, Switch, Text } from '@mantine/core'
 import { Box, Title, ScrollArea } from '@mantine/core'
-import { setCharUrl, setMetadata } from 'store/slices/editor'
+import { setCharUrl, setMetadata, setIsTc } from 'store/slices/editor'
 import { countries, chars } from 'assets/list'
 import { StyledBox } from './common'
 import type { Char } from 'assets/list'
 
 export default function CharList() {
   const dispatch = useAppDispatch()
-  const charUrl = useAppSelector((state) => state.editor.charUrl)
-  const [currentCountry, currentYear] = parseCharUrl(charUrl)
+  const { charUrl, isTc } = useAppSelector((state) => state.editor)
+  const [country, year] = parseCharUrl(charUrl)
 
-  const [country, setCountry] = useState('int') // int = global
-  const [year, setYear] = useState('2006')
-  const [char, setChar] = useState<Char>({ 0: '乱', 1: '亂' })
-  const [isTc, setIsTc] = useState(true)
-
-  useEffect(() => {
+  const handleChange = (country: string, year: string, isTc: boolean) => {
+    const char = chars[country][year]
     const url = getCharUrl(country, year, char, isTc)
     dispatch(setCharUrl(url))
 
@@ -31,7 +26,7 @@ export default function CharList() {
         ch,
       })
     )
-  }, [year, char, isTc])
+  }
 
   return (
     <StyledBox>
@@ -54,7 +49,11 @@ export default function CharList() {
               right: 0,
             }}
             checked={isTc}
-            onChange={(event) => setIsTc(event.currentTarget.checked)}
+            onChange={(event) => {
+              const { checked } = event.currentTarget
+              dispatch(setIsTc(checked))
+              handleChange(country, year, checked)
+            }}
           />
         </Box>
         <Box>
@@ -70,7 +69,10 @@ export default function CharList() {
                 padding: '2px 10px',
                 fontWeight: 400,
               }}
-              onClick={() => setCountry(key)}
+              onClick={() => {
+                const [year] = _.keys(chars[key])
+                handleChange(key, year, isTc)
+              }}
             >
               {el}
             </Button>
@@ -78,34 +80,32 @@ export default function CharList() {
         </Box>
         <Box>
           <ScrollArea type="auto" sx={{ height: 400 }}>
-            {country &&
-              _.map(chars[country], (el, y) => (
-                <Button
-                  key={y}
-                  radius="md"
-                  color="dark"
-                  variant={country == currentCountry && y === currentYear ? 'filled' : 'subtle'}
-                  sx={{
-                    display: 'block',
-                    margin: '0 0 4px',
-                    padding: '2px 10px',
-                    fontWeight: 400,
-                  }}
-                  styles={{
-                    label: {
-                      width: 64,
-                      justifyContent: 'space-between',
-                    },
-                  }}
-                  onClick={() => {
-                    setYear(y)
-                    setChar(el)
-                  }}
-                >
-                  {y}
-                  <Text>({getChar(el, isTc)})</Text>
-                </Button>
-              ))}
+            {_.map(chars[country], (el, y) => (
+              <Button
+                key={y}
+                radius="md"
+                color="dark"
+                variant={y === year ? 'filled' : 'subtle'}
+                sx={{
+                  display: 'block',
+                  margin: '0 0 4px',
+                  padding: '2px 10px',
+                  fontWeight: 400,
+                }}
+                styles={{
+                  label: {
+                    width: 64,
+                    justifyContent: 'space-between',
+                  },
+                }}
+                onClick={() => {
+                  handleChange(country, y, isTc)
+                }}
+              >
+                {y}
+                <Text>({getChar(el, isTc)})</Text>
+              </Button>
+            ))}
           </ScrollArea>
         </Box>
       </SimpleGrid>

@@ -7,17 +7,17 @@ import { Center, Text, CloseButton } from '@mantine/core'
 import { Slider, FileInput, NumberInput } from '@mantine/core'
 import { StyledBox, StyledText } from './common'
 import useFileReader from 'hooks/useFileReader'
-import { setPtnUrl, setDistortion, setBlur } from 'store/slices/editor'
+import { setPtnUrl, setDistortion, setBlur, setSeed } from 'store/slices/editor'
 import { setWidth, setPosition, setRotation } from 'store/slices/editor'
 import { IoCloudUploadOutline } from 'react-icons/io5'
 
 export default function Effect() {
   const dispatch = useAppDispatch()
-  const { ptnUrl, distortion, blur, width, x, y, rotation } = useAppSelector(
+  const { seed, ptnUrl, distortion, blur, width, x, y, rotation } = useAppSelector(
     (state) => state.editor
   )
 
-  const [seed, setSeed] = useState(0)
+  const [tooBig, setTooBig] = useState(false)
   const [file, setFile] = useState<File | null>(null)
   const fileResult = useFileReader(file)
   const fileRef = useRef<HTMLButtonElement>(null)
@@ -30,6 +30,7 @@ export default function Effect() {
       try {
         const file = await urlToFile(ptnUrl)
         setFile(file)
+        setTooBig(false)
       } catch (error) {
         console.error(error)
       }
@@ -45,10 +46,6 @@ export default function Effect() {
   useEffect(() => {
     ptnToFile()
   }, [ptnUrl])
-
-  useEffect(() => {
-    dispatch(setPtnUrl(toPtnUrl(seed)))
-  }, [seed])
 
   return (
     <StyledBox>
@@ -77,7 +74,14 @@ export default function Effect() {
           <FileInput
             ref={fileRef}
             value={file}
-            onChange={setFile}
+            onChange={(v) => {
+              if (v && v.size > 2097152) {
+                setTooBig(true)
+              } else {
+                setFile(v)
+                setTooBig(false)
+              }
+            }}
             accept="image/*"
             styles={{
               input: {
@@ -129,7 +133,10 @@ export default function Effect() {
             max={96}
             color="dark"
             value={seed}
-            onChange={(n) => setSeed(n)}
+            onChange={(n) => {
+              dispatch(setSeed(n))
+              dispatch(setPtnUrl(toPtnUrl(n)))
+            }}
           />
         </div>
         <div>
