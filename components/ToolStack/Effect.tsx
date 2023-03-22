@@ -3,13 +3,13 @@ import numeral from 'numeral'
 import { useAppDispatch, useAppSelector } from 'store'
 import { useState, useEffect, useRef } from 'react'
 import { SimpleGrid, AspectRatio, Group } from '@mantine/core'
-import { Center, Text, CloseButton } from '@mantine/core'
+import { Center, Text, Tooltip } from '@mantine/core'
 import { Slider, FileInput, NumberInput } from '@mantine/core'
 import { StyledBox, StyledText } from './common'
 import useFileReader from 'hooks/useFileReader'
 import { setPtnUrl, setDistortion, setBlur, setSeed } from 'store/slices/editor'
 import { setWidth, setPosition, setRotation } from 'store/slices/editor'
-import { IoCloudUploadOutline } from 'react-icons/io5'
+import { IoMdImage } from 'react-icons/io'
 
 export default function Effect() {
   const dispatch = useAppDispatch()
@@ -17,7 +17,6 @@ export default function Effect() {
     (state) => state.editor
   )
 
-  const [tooBig, setTooBig] = useState(false)
   const [file, setFile] = useState<File | null>(null)
   const fileResult = useFileReader(file)
   const fileRef = useRef<HTMLButtonElement>(null)
@@ -30,7 +29,6 @@ export default function Effect() {
       try {
         const file = await urlToFile(ptnUrl)
         setFile(file)
-        setTooBig(false)
       } catch (error) {
         console.error(error)
       }
@@ -53,22 +51,6 @@ export default function Effect() {
         <div>
           <StyledText span mb={8} sx={{ position: 'relative', display: 'block' }}>
             Pattern
-            <Group className="absolute-vertical" sx={{ right: 0 }} spacing="xs">
-              <CloseButton
-                size={24}
-                title="Delete image"
-                onClick={() => dispatch(setPtnUrl(''))}
-                disabled={!ptnUrl}
-                variant="transparent"
-                sx={(theme) => ({
-                  width: 30,
-                  height: 30,
-                  '&:hover': {
-                    color: theme.colors.red[7],
-                  },
-                })}
-              />
-            </Group>
           </StyledText>
 
           <FileInput
@@ -76,10 +58,9 @@ export default function Effect() {
             value={file}
             onChange={(v) => {
               if (v && v.size > 2097152) {
-                setTooBig(true)
+                dispatch(setPtnUrl(null))
               } else {
                 setFile(v)
-                setTooBig(false)
               }
             }}
             accept="image/*"
@@ -90,40 +71,43 @@ export default function Effect() {
               },
             }}
           />
-          <AspectRatio
-            ratio={1}
-            onClick={() => {
-              fileRef.current?.click()
-            }}
-          >
-            <Center
-              sx={(theme) => ({
-                borderRadius: 8,
-                border: `1px solid ${theme.colors.gray[4]}`,
-                backgroundColor: theme.white,
-                ':hover': {
-                  cursor: 'pointer',
-                },
-              })}
+
+          <Tooltip label="Click to upload an image under 2MB" withArrow>
+            <AspectRatio
+              ratio={1}
+              onClick={() => {
+                fileRef.current?.click()
+              }}
             >
-              {hasImg ? (
-                <img
-                  src={ptnUrl}
-                  width="100%"
-                  height="100%"
-                  style={{
-                    objectFit: 'cover',
-                    filter: `saturate(0) blur(${blur}px)`,
-                  }}
-                />
-              ) : (
-                <Group spacing="xs">
-                  <IoCloudUploadOutline />
-                  <Text size="sm">Upload Image</Text>
-                </Group>
-              )}
-            </Center>
-          </AspectRatio>
+              <Center
+                sx={(theme) => ({
+                  borderRadius: 8,
+                  border: `1px solid ${theme.colors.gray[4]}`,
+                  backgroundColor: theme.white,
+                  ':hover': {
+                    cursor: 'pointer',
+                  },
+                })}
+              >
+                {hasImg ? (
+                  <img
+                    src={ptnUrl}
+                    width="100%"
+                    height="100%"
+                    style={{
+                      objectFit: 'cover',
+                      filter: 'saturate(0)',
+                    }}
+                  />
+                ) : (
+                  <Group spacing="xs">
+                    <IoMdImage size={24} />
+                    <Text size="sm">Pick an image under 2MB</Text>
+                  </Group>
+                )}
+              </Center>
+            </AspectRatio>
+          </Tooltip>
         </div>
         <div>
           <StyledText>Pattern Seed</StyledText>
@@ -152,7 +136,7 @@ export default function Effect() {
           />
         </div>
         <div>
-          <StyledText>Blur</StyledText>
+          <StyledText>Smooth</StyledText>
           <Slider
             defaultValue={0}
             min={0}
@@ -164,7 +148,7 @@ export default function Effect() {
           />
         </div>
         <div>
-          <StyledText>Width</StyledText>
+          <StyledText>Stroke</StyledText>
           <Slider
             defaultValue={0}
             min={-20}
@@ -177,20 +161,31 @@ export default function Effect() {
         </div>
         <div>
           <StyledText>Position</StyledText>
-          <Group grow>
-            <NumberInput
-              defaultValue={0}
+
+          <>
+            <Slider
               label="x"
+              defaultValue={0}
+              min={-600}
+              max={600}
+              marks={[{ value: -300 }, { value: 0 }, { value: 300 }]}
+              color="dark"
               value={x}
               onChange={(x) => dispatch(setPosition({ x: x as number }))}
+              mt={8}
             />
-            <NumberInput
-              defaultValue={0}
+            <Slider
               label="y"
+              defaultValue={0}
+              min={-600}
+              max={600}
+              marks={[{ value: -300 }, { value: 0 }, { value: 300 }]}
+              color="dark"
               value={y}
               onChange={(y) => dispatch(setPosition({ y: y as number }))}
+              mt={8}
             />
-          </Group>
+          </>
         </div>
         <div>
           <StyledText>Rotation</StyledText>
