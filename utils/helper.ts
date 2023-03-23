@@ -79,3 +79,9 @@ export async function retryFn<T = any>(
 export function fillArray(n: number) {
   return _.fill(Array(n), '').map((x, i) => i)
 }
+
+export function getIpfsUrl(url: string) {
+  // ipfs://bafybeibq7cvtnmpmvqhig47rdg62zz4l4vfun3gdf4zwwd43awzc2vgn
+  const u = url.replace('ipfs://', '')
+  return `https://ipfs.io/ipfs/${u}`
+}

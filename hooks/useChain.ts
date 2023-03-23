@@ -1,8 +1,20 @@
 import { useNetwork } from 'wagmi'
+import { useEffect } from 'react'
+import { useAppDispatch } from 'store'
+import { setChainId } from 'store/slices/nft'
 
 export default function useChain() {
+  const dispatch = useAppDispatch()
   const { chain } = useNetwork()
   const etherscanUrl = getEtherscanUrl(chain?.id)
+
+  useEffect(() => {
+    if (chain) {
+      const { id: chainId } = chain
+      const etherscan = getEtherscanUrl(chainId)
+      dispatch(setChainId({ chainId, etherscan }))
+    }
+  }, [chain])
 
   return {
     chain,

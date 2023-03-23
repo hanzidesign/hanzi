@@ -25,11 +25,7 @@ export function getAccount() {
   return new ethers.Wallet(getEnvVariable('ACCOUNT_PRIVATE_KEY'), getProvider())
 }
 
-export function getContract(
-  hre: HardhatRuntimeEnvironment,
-  name: string,
-  address: string
-) {
+export function getContract(hre: HardhatRuntimeEnvironment, name: string, address: string) {
   const account = getAccount()
   return getContractAt(hre, name, address, account)
 }

@@ -34,13 +34,6 @@ export const slice = createSlice({
         state.list = { ...state.list, [uid]: { ...job, ipfsUrl } }
       }
     },
-    setHash(state, action: PayloadAction<{ uid: string; hash: string }>) {
-      const { uid, hash } = action.payload
-      const job = state.list[uid]
-      if (job) {
-        state.list = { ...state.list, [uid]: { ...job, hash } }
-      }
-    },
     setCancel(state, action: PayloadAction<string>) {
       const uid = action.payload
       const job = state.list[uid]
@@ -59,5 +52,5 @@ export const slice = createSlice({
   },
 })
 
-export const { addJob, setStart, setIpfsUrl, setHash, setCancel, setSaved } = slice.actions
+export const { addJob, setStart, setIpfsUrl, setCancel, setSaved } = slice.actions
 export default slice.reducer

@@ -22,7 +22,7 @@ export function setMetadata(name: string, account: string, attributes: Trait[]):
   return {
     name: `${name}`,
     description: `Created by ${account}`,
-    external_url: `${window.location.origin}/token/${name}`,
+    external_url: `${window.location.origin}/`,
     attributes,
   }
 }

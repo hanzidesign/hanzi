@@ -1,14 +1,18 @@
+import _ from 'lodash'
 import { createSlice } from '@reduxjs/toolkit'
 import type { PayloadAction } from '@reduxjs/toolkit'
 import type { NftTx } from 'types'
 
-export type QueueState = {
+export type NftState = {
   account?: string
-  list: { [at: string]: NftTx }
+  chainId?: number
+  etherscan: string
+  list: { [at: string]: NftTx | undefined }
 }
 
-const initialState: QueueState = {
+const initialState: NftState = {
   list: {},
+  etherscan: 'https://optimistic.etherscan.io',
 }
 
 export const slice = createSlice({
@@ -18,16 +22,30 @@ export const slice = createSlice({
     setAccount(state, action) {
       state.account = action.payload
     },
-    addNft(state, action: PayloadAction<{ ipfsUrl: string; hash: string }>) {
-      const { ipfsUrl, hash } = action.payload
-      const createdAt = Date.now()
-      const key = `${createdAt}`
-      const tx: NftTx = { createdAt, ipfsUrl, hash }
-      state.list = { ...state.list, [key]: tx }
-      console.log({ tx })
+    setNft(state, action: PayloadAction<{ at: string; ipfsUrl: string; hash?: string }>) {
+      const { at, ipfsUrl, hash } = action.payload
+      const nft = state.list[at]
+      const cloned = _.clone(state.list)
+      const createdAt = Number(at)
+      cloned[at] = { ...nft, createdAt, ipfsUrl, hash }
+      state.list = cloned
+    },
+    setImage(state, action: PayloadAction<{ at: string; image: string }>) {
+      const { at, image } = action.payload
+      const nft = state.list[at]
+      if (nft) {
+        const cloned = _.clone(state.list)
+        cloned[at] = { ...nft, image }
+        state.list = cloned
+      }
+    },
+    setChainId(state, action: PayloadAction<{ etherscan: string; chainId?: number }>) {
+      const { etherscan, chainId } = action.payload
+      state.chainId = chainId
+      state.etherscan = etherscan
     },
   },
 })
 
-export const { setAccount, addNft } = slice.actions
+export const { setAccount, setNft, setImage, setChainId } = slice.actions
 export default slice.reducer

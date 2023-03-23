@@ -1,34 +1,27 @@
 import _ from 'lodash'
 import { useState, useEffect } from 'react'
-import { useConnectModal } from '@rainbow-me/rainbowkit'
-import { writeContract } from '@wagmi/core'
-import useChain from 'hooks/useChain'
-import { prepareSafeMint } from 'lib/nftContract'
+import useMint from 'hooks/useMint'
 import { useAppSelector, useAppDispatch } from 'store'
-import { setCancel, setHash } from 'store/slices/queue'
+import { setCancel } from 'store/slices/queue'
 import { useInterval, useMediaQuery } from '@mantine/hooks'
 import { SimpleGrid, AspectRatio, Box, Text, Group, Button } from '@mantine/core'
 import Item, { SvgItemProps } from 'components/SvgItem/Item'
+import { getIpfsUrl } from 'utils/helper'
 import { IoMdImage } from 'react-icons/io'
-import type { Job } from 'types'
+import type { Job, NftTx } from 'types'
 
-type ItemCardProps = {
-  data: Job
-}
-
-function ItemCard(props: ItemCardProps) {
+function JobCard(props: { data: Job }) {
   const dispatch = useAppDispatch()
-  const { account } = useAppSelector((state) => state.nft)
-
-  const { openConnectModal } = useConnectModal()
-  const { etherscanUrl } = useChain()
+  const { list: nftList, etherscan } = useAppSelector((state) => state.nft)
 
   const { data } = props
   const itemProps = getItemProps(data)
-  const { uid, startAt, ipfsUrl, hash } = data
+  const { uid, startAt, ipfsUrl, createdAt } = data
+  const at = `${createdAt}`
+  const { hash } = nftList[at] || {}
 
+  const { handleMint } = useMint(at, ipfsUrl)
   const [progress, setProgress] = useState(0)
-  const [minted, setMinted] = useState(false)
 
   const interval = useInterval(() => {
     if (startAt && progress <= 100) {
@@ -41,23 +34,6 @@ function ItemCard(props: ItemCardProps) {
       }
     }
   }, 1000)
-
-  const handleMint = async () => {
-    try {
-      if (!account) {
-        if (openConnectModal) {
-          openConnectModal()
-        }
-      } else if (!minted && ipfsUrl) {
-        setMinted(true)
-        const { hash } = await mint(ipfsUrl, account)
-        dispatch(setHash({ uid, hash }))
-      }
-    } catch (error) {
-      setMinted(false)
-      console.log(error)
-    }
-  }
 
   useEffect(() => {
     if (startAt && !ipfsUrl) {
@@ -87,7 +63,7 @@ function ItemCard(props: ItemCardProps) {
               variant="default"
               size="xs"
               onClick={() => {
-                window.open(`${etherscanUrl}/tx/${hash}`, '_blank')
+                window.open(`${etherscan}/tx/${hash}`, '_blank')
               }}
             >
               Open Tx
@@ -119,17 +95,69 @@ function ItemCard(props: ItemCardProps) {
   )
 }
 
+function NftTxCard(props: { data: NftTx }) {
+  const { etherscan } = useAppSelector((state) => state.nft)
+  const { createdAt, ipfsUrl, image, hash } = props.data
+  const at = `${createdAt}`
+  const img = image ? getIpfsUrl(image) : ''
+
+  const { handleMint } = useMint(at, ipfsUrl)
+
+  return (
+    <Box>
+      <AspectRatio
+        ratio={1}
+        sx={(theme) => ({
+          borderRadius: 16,
+          border: `1px solid ${theme.colors.gray[9]}`,
+          overflow: 'hidden',
+        })}
+      >
+        <img src={img} width="100%" height="100%" style={{ objectFit: 'cover' }} />
+      </AspectRatio>
+      <Group py={8} sx={{ justifyContent: 'space-between' }}>
+        <Box />
+        {hash ? (
+          <Button
+            variant="default"
+            size="xs"
+            onClick={() => {
+              window.open(`${etherscan}/tx/${hash}`, '_blank')
+            }}
+          >
+            Open Tx
+          </Button>
+        ) : (
+          <Button size="xs" onClick={handleMint}>
+            Mint
+          </Button>
+        )}
+      </Group>
+    </Box>
+  )
+}
+
 export default function Queue() {
-  const { list } = useAppSelector((state) => state.queue)
-  const arr = _.orderBy(_.compact(_.map(list, (v) => v)), ['createdAt'], ['desc'])
   const matches = useMediaQuery('(min-width: 992px)')
+
+  const { list: nft } = useAppSelector((state) => state.nft)
+  const { list: queue } = useAppSelector((state) => state.queue)
+  const q = _.orderBy(_.compact(_.map(queue, (v) => v)), ['createdAt'], ['desc'])
+  const n = _.orderBy(
+    _.compact(_.map(nft, (v) => v)).filter((n) => !Boolean(queue[n.createdAt])),
+    ['createdAt'],
+    ['desc']
+  )
 
   return (
     <>
-      {arr.length > 0 ? (
+      {q.length > 0 || n.length > 0 ? (
         <SimpleGrid cols={matches ? 4 : 3}>
-          {arr.map((v) => (
-            <ItemCard key={v.uid} data={v} />
+          {q.map((v) => (
+            <JobCard key={v.uid} data={v} />
+          ))}
+          {n.map((v) => (
+            <NftTxCard key={v.createdAt} data={v} />
           ))}
         </SimpleGrid>
       ) : (
@@ -158,14 +186,4 @@ function getItemProps(data: Job): SvgItemProps {
     textColor,
     bgColor,
   }
-}
-
-async function mint(uri: string, account: string) {
-  const config = await prepareSafeMint(account, uri)
-  const result = await writeContract(config)
-  if (!result.hash) {
-    throw new Error('no hash')
-  }
-  console.log({ hash: result.hash })
-  return result
 }

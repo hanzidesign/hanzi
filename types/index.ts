@@ -1,4 +1,7 @@
+import { metadataExample } from 'assets/metadata'
+
 export type Metadata = { country: string; year: number; ch: string }
+export type MetadataJson = typeof metadataExample
 
 export type NftData = {
   charUrl: string
@@ -17,13 +20,15 @@ export type NftData = {
 export type NftTx = {
   createdAt: number
   ipfsUrl: string // nft.storage
-  hash: string // send tx
+  hash?: string // send tx
+  image?: string
 }
 
-export type NftQueue = Partial<NftTx> & {
+export type NftQueue = {
   uid: string
   createdAt: number
   startAt?: number
+  ipfsUrl?: string // nft.storage
   saved?: boolean // save to nft
 }
 

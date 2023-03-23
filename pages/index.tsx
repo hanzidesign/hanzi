@@ -6,6 +6,7 @@ import { usePreviousDifferent } from 'rooks'
 import useAccount from 'hooks/useAccount'
 import useQueue from 'hooks/useQueue'
 import useNft from 'hooks/useNft'
+import useChain from 'hooks/useChain'
 import { useAppSelector, useAppDispatch } from 'store'
 import { addJob } from 'store/slices/queue'
 import { selectNftData } from 'store/selectors'
@@ -24,14 +25,15 @@ const Home: NextPage<{}> = () => {
 
   const { bgColor, country, year, ch } = useAppSelector((state) => state.editor)
   const nftData = useAppSelector(selectNftData)
-  const { list } = useAppSelector((state) => state.queue)
-  const unmint = _.compact(_.map(list, (v) => v)).filter((el) => el.ipfsUrl && !el.hash)
+  const { list } = useAppSelector((state) => state.nft)
+  const unmint = _.compact(_.map(list, (v) => v)).filter((el) => !el.hash)
   const preUnmint = usePreviousDifferent(unmint)
 
   // background tasks
   useAccount()
   useQueue()
   useNft()
+  useChain()
 
   const openPreviewModal = () => {
     modals.openConfirmModal({
