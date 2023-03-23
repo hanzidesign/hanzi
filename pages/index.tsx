@@ -1,71 +1,37 @@
 import type { NextPage } from 'next'
+import _ from 'lodash'
 import Head from 'next/head'
-import { useState, useEffect } from 'react'
-import d3ToPng from 'd3-svg-to-png'
-import { getAccount, watchAccount, writeContract } from '@wagmi/core'
+import { useEffect } from 'react'
+import { usePreviousDifferent } from 'rooks'
+import useAccount from 'hooks/useAccount'
+import useQueue from 'hooks/useQueue'
+import useNft from 'hooks/useNft'
 import { useAppSelector, useAppDispatch } from 'store'
 import { addJob } from 'store/slices/queue'
 import { selectNftData } from 'store/selectors'
 import { AppShell, Navbar, Header, Text } from '@mantine/core'
-import { Group, Button, Box, Title } from '@mantine/core'
+import { Group, Button, Box, Title, Indicator } from '@mantine/core'
 import { ScrollArea, AspectRatio, Center } from '@mantine/core'
 import { modals } from '@mantine/modals'
 import { ConnectButton } from '@rainbow-me/rainbowkit'
 import ToolStack from 'components/ToolStack'
 import Queue from 'components/Queue'
 import SvgItem from 'components/SvgItem'
-import { uploadImage } from 'lib/nftStorage'
-import { prepareSafeMint } from 'lib/nftContract'
-import { setAttributes, setMetadata } from 'lib/metadata'
 import { Constants } from 'types'
 
 const Home: NextPage<{}> = () => {
   const dispatch = useAppDispatch()
+
   const { bgColor, country, year, ch } = useAppSelector((state) => state.editor)
-  const [account, setAccount] = useState(getAccount().address)
   const nftData = useAppSelector(selectNftData)
+  const { list } = useAppSelector((state) => state.queue)
+  const unmint = _.compact(_.map(list, (v) => v)).filter((el) => el.ipfsUrl && !el.hash)
+  const preUnmint = usePreviousDifferent(unmint)
 
-  useEffect(() => {
-    // watch
-    const unwatch = watchAccount(({ address }) => {
-      if (address) {
-        setAccount(address)
-        console.log(`Connect with ${address}`)
-      }
-    })
-    return unwatch
-  }, [])
-
-  const handleMint = async () => {
-    try {
-      if (!account) throw new Error('no account')
-
-      // metadata
-      const name = `${country}-${year}-${ch}`
-      const attributes = setAttributes({ country, year, ch })
-      const metadata = setMetadata(name, account, attributes)
-      console.log(metadata)
-
-      const dataURI = await d3ToPng(`#${Constants.svgId}`, name, {
-        scale: 1,
-        format: 'webp',
-        download: false,
-      })
-
-      // ipfs
-      const token = await uploadImage(dataURI, metadata)
-      console.log({ ...token })
-
-      // mint
-      if (!token?.url) throw new Error('invalid token url')
-      const tokenURI = token.url.replace('ipfs://', '')
-      const config = await prepareSafeMint(account, tokenURI)
-      const result = await writeContract(config)
-      console.log({ result })
-    } catch (error) {
-      console.error(error)
-    }
-  }
+  // background tasks
+  useAccount()
+  useQueue()
+  useNft()
 
   const openPreviewModal = () => {
     modals.openConfirmModal({
@@ -78,13 +44,14 @@ const Home: NextPage<{}> = () => {
       ),
       centered: true,
       radius: 'lg',
-      labels: { confirm: 'Mint', cancel: 'Back' },
+      labels: { confirm: 'Upload', cancel: 'Back' },
       groupProps: {
         position: 'center',
         grow: true,
       },
       onConfirm: () => {
-        dispatch(addJob(nftData))
+        dispatch(addJob({ ...nftData, country, year, ch }))
+        // open connect
       },
       children: (
         <Box sx={{ margin: '32px 0 16px' }}>
@@ -116,6 +83,14 @@ const Home: NextPage<{}> = () => {
       },
     })
   }
+
+  useEffect(() => {
+    if (unmint && preUnmint) {
+      if (unmint.length > preUnmint.length) {
+        openQueueModal()
+      }
+    }
+  }, [unmint, preUnmint])
 
   return (
     <>
@@ -151,15 +126,18 @@ const Home: NextPage<{}> = () => {
                   backgroundColor: 'white',
                 }}
               >
-                <Button
-                  size="lg"
-                  variant="outline"
-                  color="dark"
-                  radius="md"
-                  onClick={openQueueModal}
-                >
-                  Queue
-                </Button>
+                <Indicator label={unmint.length} size={24} disabled={unmint.length === 0}>
+                  <Button
+                    size="lg"
+                    variant="outline"
+                    color="dark"
+                    radius="md"
+                    w="100%"
+                    onClick={openQueueModal}
+                  >
+                    Queue
+                  </Button>
+                </Indicator>
                 <Button
                   size="lg"
                   variant="outline"

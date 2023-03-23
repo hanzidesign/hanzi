@@ -24,9 +24,10 @@ export type NftQueue = Partial<NftTx> & {
   uid: string
   createdAt: number
   startAt?: number
+  saved?: boolean // save to nft
 }
 
-export type Job = NftData & NftQueue
+export type Job = Metadata & NftData & NftQueue
 
 export type Trait = {
   trait_type: string
