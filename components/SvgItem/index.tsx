@@ -1,19 +1,19 @@
 import _ from 'lodash'
 import axios from 'axios'
-import { useState, useEffect } from 'react'
-import { useAppSelector } from 'store'
+import { useEffect } from 'react'
+import { useAppSelector, useAppDispatch } from 'store'
+import { setSvgData } from 'store/slices/editor'
 import Item from './Item'
 
 export default function SvgItem(props: { uid?: string }) {
+  const dispatch = useAppDispatch()
   const editorState = useAppSelector((state) => state.editor)
-  const { charUrl, ptnUrl, distortion, blur, width, x, y, rotation, textColor, bgColor } =
+  const { charUrl, svgData, ptnUrl, distortion, blur, width, x, y, rotation, textColor, bgColor } =
     editorState
-
-  const [svgData, setSvgData] = useState(getDefaultSvgData(charUrl))
 
   const getSvgData = async (charUrl: string) => {
     const data = await downloadSvgData(charUrl)
-    setSvgData(data)
+    dispatch(setSvgData(data))
   }
 
   useEffect(() => {
@@ -38,18 +38,12 @@ export default function SvgItem(props: { uid?: string }) {
   )
 }
 
-function getDefaultSvgData(charUrl: string) {
-  return `<image href="${charUrl}" x="0" y="0" width="100%" height="100%" />`
-}
-
 async function downloadSvgData(url: string): Promise<string> {
-  if (!url) return getDefaultSvgData(url)
-
   try {
     const res = await axios(url)
     return res.data.toString()
   } catch (error) {
     console.error(error)
-    return getDefaultSvgData(url)
+    return `<image href="${url}" x="0" y="0" width="100%" height="100%" />`
   }
 }

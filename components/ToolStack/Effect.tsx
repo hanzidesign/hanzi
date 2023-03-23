@@ -3,12 +3,12 @@ import numeral from 'numeral'
 import { useAppDispatch, useAppSelector } from 'store'
 import { useState, useEffect, useRef } from 'react'
 import { SimpleGrid, AspectRatio, Group } from '@mantine/core'
-import { Center, Text, Tooltip } from '@mantine/core'
-import { Slider, FileInput, NumberInput } from '@mantine/core'
+import { Center, Text, Tooltip, Button } from '@mantine/core'
+import { Slider, FileInput } from '@mantine/core'
 import { StyledBox, StyledText } from './common'
 import useFileReader from 'hooks/useFileReader'
 import { setPtnUrl, setDistortion, setBlur, setSeed } from 'store/slices/editor'
-import { setWidth, setPosition, setRotation } from 'store/slices/editor'
+import { setWidth, setPosition, setRotation, reset } from 'store/slices/editor'
 import { IoMdImage } from 'react-icons/io'
 
 export default function Effect() {
@@ -199,7 +199,12 @@ export default function Effect() {
             onChange={(n) => dispatch(setRotation(n))}
           />
         </div>
-        <div />
+
+        <Group position="right" py={24}>
+          <Button size="xs" onClick={() => dispatch(reset())}>
+            Reset
+          </Button>
+        </Group>
       </SimpleGrid>
     </StyledBox>
   )

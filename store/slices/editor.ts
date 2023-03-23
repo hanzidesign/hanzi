@@ -4,13 +4,18 @@ import { countries } from 'assets/list'
 import type { PayloadAction } from '@reduxjs/toolkit'
 import type { Metadata, NftData } from 'types'
 
-export type EditorState = Metadata & NftData
+export type EditorState = Metadata &
+  NftData & {
+    seed: number
+    isTc: boolean
+  }
 
 const country = 'int'
 const year = 2006
 
 const initialState: EditorState = {
   charUrl: `/chars/${country}/${year}-1.svg`,
+  svgData: '',
   ptnUrl: '/images/patterns/000.jpg',
   seed: 0,
   isTc: true,
@@ -33,7 +38,12 @@ export const slice = createSlice({
   initialState,
   reducers: {
     setCharUrl(state, action) {
-      state.charUrl = action.payload
+      const url = action.payload
+      state.charUrl = url
+      state.svgData = `<image href="${url}" x="0" y="0" width="100%" height="100%" />`
+    },
+    setSvgData(state, action) {
+      state.svgData = action.payload
     },
     setPtnUrl(state, action) {
       state.ptnUrl = action.payload
@@ -76,11 +86,20 @@ export const slice = createSlice({
       state.year = year
       state.ch = ch
     },
+    reset(state) {
+      state.distortion = 10
+      state.blur = 0
+      state.width = 0
+      state.x = 0
+      state.y = 0
+      state.rotation = 0
+    },
   },
 })
 
 export const {
   setCharUrl,
+  setSvgData,
   setPtnUrl,
   setSeed,
   setIsTc,
@@ -91,6 +110,7 @@ export const {
   setRotation,
   setColor,
   setMetadata,
+  reset,
 } = slice.actions
 
 export default slice.reducer

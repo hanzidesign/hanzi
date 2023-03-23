@@ -1,9 +1,9 @@
 import { createSlice } from '@reduxjs/toolkit'
 import type { PayloadAction } from '@reduxjs/toolkit'
-import type { NFT } from 'types'
+import type { NftQueue } from 'types'
 
 export type QueueState = {
-  list: { [at: string]: NFT }
+  list: { [at: string]: NftQueue }
 }
 
 const initialState: QueueState = {
@@ -19,5 +19,5 @@ export const slice = createSlice({
     },
   },
 })
-
+export const {} = slice.actions
 export default slice.reducer

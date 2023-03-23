@@ -3,13 +3,16 @@ import Head from 'next/head'
 import { useState, useEffect } from 'react'
 import d3ToPng from 'd3-svg-to-png'
 import { getAccount, watchAccount, writeContract } from '@wagmi/core'
-import { useAppSelector } from 'store'
+import { useAppSelector, useAppDispatch } from 'store'
+import { addJob } from 'store/slices/queue'
+import { selectNftData } from 'store/selectors'
 import { AppShell, Navbar, Header, Text } from '@mantine/core'
 import { Group, Button, Box, Title } from '@mantine/core'
 import { ScrollArea, AspectRatio, Center } from '@mantine/core'
 import { modals } from '@mantine/modals'
 import { ConnectButton } from '@rainbow-me/rainbowkit'
 import ToolStack from 'components/ToolStack'
+import Queue from 'components/Queue'
 import SvgItem from 'components/SvgItem'
 import { uploadImage } from 'lib/nftStorage'
 import { prepareSafeMint } from 'lib/nftContract'
@@ -17,8 +20,10 @@ import { setAttributes, setMetadata } from 'lib/metadata'
 import { Constants } from 'types'
 
 const Home: NextPage<{}> = () => {
+  const dispatch = useAppDispatch()
   const { bgColor, country, year, ch } = useAppSelector((state) => state.editor)
   const [account, setAccount] = useState(getAccount().address)
+  const nftData = useAppSelector(selectNftData)
 
   useEffect(() => {
     // watch
@@ -65,9 +70,11 @@ const Home: NextPage<{}> = () => {
   const openPreviewModal = () => {
     modals.openConfirmModal({
       title: (
-        <Title order={2} className="absolute-horizontal">
-          Preview
-        </Title>
+        <span>
+          <Title order={2} className="absolute-horizontal">
+            Preview
+          </Title>
+        </span>
       ),
       centered: true,
       radius: 'lg',
@@ -75,6 +82,9 @@ const Home: NextPage<{}> = () => {
       groupProps: {
         position: 'center',
         grow: true,
+      },
+      onConfirm: () => {
+        dispatch(addJob(nftData))
       },
       children: (
         <Box sx={{ margin: '32px 0 16px' }}>
@@ -90,6 +100,20 @@ const Home: NextPage<{}> = () => {
           </AspectRatio>
         </Box>
       ),
+    })
+  }
+
+  const openQueueModal = () => {
+    modals.open({
+      title: <span></span>,
+      centered: true,
+      size: 'xl',
+      children: <Queue />,
+      styles: {
+        content: {
+          height: '100%',
+        },
+      },
     })
   }
 
@@ -132,7 +156,7 @@ const Home: NextPage<{}> = () => {
                   variant="outline"
                   color="dark"
                   radius="md"
-                  onClick={openPreviewModal}
+                  onClick={openQueueModal}
                 >
                   Queue
                 </Button>

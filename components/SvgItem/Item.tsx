@@ -1,4 +1,4 @@
-type SvgItemProps = {
+export type SvgItemProps = {
   uid?: string
   fId: string // filter ID
   svgData: string
