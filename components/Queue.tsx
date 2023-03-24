@@ -2,7 +2,7 @@ import _ from 'lodash'
 import { useState, useEffect } from 'react'
 import useMint from 'hooks/useMint'
 import { useAppSelector, useAppDispatch } from 'store'
-import { setCancel } from 'store/slices/queue'
+import { setCancel, setStart } from 'store/slices/queue'
 import { delNft } from 'store/slices/nft'
 import { useInterval, useMediaQuery } from '@mantine/hooks'
 import { SimpleGrid, AspectRatio, Box, Text, Group } from '@mantine/core'
@@ -10,6 +10,8 @@ import { Button, CloseButton } from '@mantine/core'
 import Item, { SvgItemProps } from 'components/SvgItem/Item'
 import { getIpfsUrl } from 'utils/helper'
 import { IoMdImage } from 'react-icons/io'
+import { BiError } from 'react-icons/bi'
+
 import type { Job, NftTx } from 'types'
 
 function JobCard(props: { data: Job }) {
@@ -18,10 +20,11 @@ function JobCard(props: { data: Job }) {
 
   const { data } = props
   const itemProps = getItemProps(data)
-  const { uid, startAt, ipfsUrl, createdAt } = data
+  const { uid, startAt, ipfsUrl, createdAt, failed } = data
   const at = `${createdAt}`
   const { hash } = nftList[at] || {}
 
+  console.log({ failed })
   const { handleMint } = useMint(at, ipfsUrl)
   const [progress, setProgress] = useState(0)
 
@@ -74,12 +77,22 @@ function JobCard(props: { data: Job }) {
         ) : (
           <>
             <Group spacing={4}>
-              <IoMdImage size={20} />
+              {failed ? <BiError size={20} /> : <IoMdImage size={20} />}
               <Text fz={14}>
-                {startAt ? (ipfsUrl ? 'Ready' : `Uploading ${progress}%`) : 'Waiting'}
+                {failed
+                  ? 'Error'
+                  : startAt
+                  ? ipfsUrl
+                    ? 'Ready'
+                    : `Uploading ${progress}%`
+                  : 'Waiting'}
               </Text>
             </Group>
-            {startAt && ipfsUrl ? (
+            {failed ? (
+              <Button size="xs" onClick={() => dispatch(setStart({ uid, startAt: undefined }))}>
+                Retry
+              </Button>
+            ) : startAt && ipfsUrl ? (
               <Button size="xs" onClick={handleMint}>
                 Mint
               </Button>

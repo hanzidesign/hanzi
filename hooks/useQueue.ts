@@ -3,7 +3,7 @@ import { useEffect } from 'react'
 import d3ToPng from 'd3-svg-to-png'
 import { useConnectModal } from '@rainbow-me/rainbowkit'
 import { useAppSelector, useAppDispatch } from 'store'
-import { setStart, setIpfsUrl } from 'store/slices/queue'
+import { setStart, setIpfsUrl, setFailed } from 'store/slices/queue'
 import { uploadImage } from 'lib/nftStorage'
 import { setAttributes, setMetadata } from 'lib/metadata'
 import { Constants } from 'types'
@@ -20,14 +20,15 @@ export default function useQueue() {
   const [firstJob] = jobs.filter((el) => !el.ipfsUrl)
 
   const handleUpdate = async (job: Job) => {
+    const { uid, failed } = job
     try {
       if (account) {
         const ipfsUrl = await upload(job, account)
-        dispatch(setIpfsUrl({ uid: job.uid, ipfsUrl }))
+        dispatch(setIpfsUrl({ uid, ipfsUrl }))
       }
     } catch (error) {
       console.error(error)
-      // TODO: redo
+      setFailed({ uid, failed: true })
     }
   }
 
@@ -39,11 +40,11 @@ export default function useQueue() {
         }
       } else {
         // upload
-        dispatch(setStart(firstJob.uid))
+        dispatch(setStart({ uid: firstJob.uid, startAt: Date.now() }))
         handleUpdate(firstJob)
       }
     }
-  }, [account, jobs.length])
+  }, [account, firstJob])
 
   return firstJob
 }

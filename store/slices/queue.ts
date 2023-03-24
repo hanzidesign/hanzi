@@ -21,12 +21,12 @@ export const slice = createSlice({
       const job: Job = { ...action.payload, uid, createdAt }
       state.list = { ...state.list, [uid]: job }
     },
-    setStart(state, action: PayloadAction<string>) {
-      const uid = action.payload
+    setStart(state, action: PayloadAction<{ uid: string; startAt?: number }>) {
+      const { uid, startAt } = action.payload
       const job = state.list[uid]
       if (job) {
         const cloned = _.clone(state.list)
-        cloned[uid] = { ...job, startAt: Date.now() }
+        cloned[uid] = { ...job, startAt, failed: false }
         state.list = cloned
       }
     },
@@ -68,5 +68,5 @@ export const slice = createSlice({
   },
 })
 
-export const { addJob, setStart, setIpfsUrl, setCancel, setSaved } = slice.actions
+export const { addJob, setStart, setIpfsUrl, setCancel, setSaved, setFailed } = slice.actions
 export default slice.reducer

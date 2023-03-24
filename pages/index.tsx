@@ -10,7 +10,8 @@ import useChain from 'hooks/useChain'
 import { useAppSelector, useAppDispatch } from 'store'
 import { addJob } from 'store/slices/queue'
 import { selectNftData } from 'store/selectors'
-import { AppShell, Navbar, Header, Text } from '@mantine/core'
+import { useDisclosure } from '@mantine/hooks'
+import { AppShell, Navbar, Header, Text, Modal } from '@mantine/core'
 import { Group, Button, Box, Title, Indicator } from '@mantine/core'
 import { ScrollArea, AspectRatio, Center } from '@mantine/core'
 import { modals } from '@mantine/modals'
@@ -29,6 +30,7 @@ const Home: NextPage<{}> = () => {
   const nftData = useAppSelector(selectNftData)
   const { list: queue } = useAppSelector((state) => state.queue)
   const { list, account } = useAppSelector((state) => state.nft)
+  const [opened, { open, close }] = useDisclosure(false)
 
   const uploading = _.compact(
     _.filter(queue, (v) => Boolean(v?.startAt) && !Boolean(v?.ipfsUrl) && !Boolean(v?.failed))
@@ -45,6 +47,7 @@ const Home: NextPage<{}> = () => {
   useChain()
 
   const openPreviewModal = () => {
+    close()
     modals.openConfirmModal({
       title: (
         <span>
@@ -82,6 +85,7 @@ const Home: NextPage<{}> = () => {
   }
 
   const openQueueModal = () => {
+    close()
     modals.open({
       title: <span></span>,
       centered: true,
@@ -95,23 +99,6 @@ const Home: NextPage<{}> = () => {
     })
   }
 
-  const openLoading = () => {
-    modals.open({
-      title: <span></span>,
-      centered: true,
-      children: (
-        <Box pt={48} pb={64}>
-          <Box w={160} mx="auto">
-            <Lottie options={{ animationData: loadingAnim }} />
-          </Box>
-          <Text align="center" fz={32}>
-            Please wait a moment
-          </Text>
-        </Box>
-      ),
-    })
-  }
-
   useEffect(() => {
     if (unmint && preUnmint) {
       if (unmint.length > preUnmint.length) {
@@ -122,7 +109,7 @@ const Home: NextPage<{}> = () => {
 
   useEffect(() => {
     if (account && uploading.length === 1 && preUploading?.length === 0) {
-      openLoading()
+      open()
     }
   }, [uploading, preUploading, account])
 
@@ -218,6 +205,17 @@ const Home: NextPage<{}> = () => {
           <SvgItem uid={Constants.svgId} />
         </Box>
       </AppShell>
+
+      <Modal opened={opened} onClose={close} title={<span></span>} size="lg" centered>
+        <Box pt={48} pb={64}>
+          <Box w={160} mx="auto">
+            <Lottie options={{ animationData: loadingAnim }} />
+          </Box>
+          <Text align="center" fz={32}>
+            Please wait a moment
+          </Text>
+        </Box>
+      </Modal>
     </>
   )
 }
