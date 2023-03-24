@@ -30,6 +30,7 @@ export type NftQueue = {
   startAt?: number
   ipfsUrl?: string // nft.storage
   saved?: boolean // save to nft
+  failed?: boolean // no ipfs
 }
 
 export type Job = Metadata & NftData & NftQueue

@@ -3,8 +3,10 @@ import { useState, useEffect } from 'react'
 import useMint from 'hooks/useMint'
 import { useAppSelector, useAppDispatch } from 'store'
 import { setCancel } from 'store/slices/queue'
+import { delNft } from 'store/slices/nft'
 import { useInterval, useMediaQuery } from '@mantine/hooks'
-import { SimpleGrid, AspectRatio, Box, Text, Group, Button } from '@mantine/core'
+import { SimpleGrid, AspectRatio, Box, Text, Group } from '@mantine/core'
+import { Button, CloseButton } from '@mantine/core'
 import Item, { SvgItemProps } from 'components/SvgItem/Item'
 import { getIpfsUrl } from 'utils/helper'
 import { IoMdImage } from 'react-icons/io'
@@ -43,7 +45,7 @@ function JobCard(props: { data: Job }) {
   }, [startAt, ipfsUrl])
 
   return (
-    <Box>
+    <Box pos="relative">
       <AspectRatio
         ratio={1}
         sx={(theme) => ({
@@ -77,25 +79,35 @@ function JobCard(props: { data: Job }) {
                 {startAt ? (ipfsUrl ? 'Ready' : `Uploading ${progress}%`) : 'Waiting'}
               </Text>
             </Group>
-            {startAt ? (
-              ipfsUrl ? (
-                <Button size="xs" onClick={handleMint}>
-                  Mint
-                </Button>
-              ) : null
-            ) : (
-              <Button variant="default" size="xs" onClick={() => dispatch(setCancel(uid))}>
-                Cancel
+            {startAt && ipfsUrl ? (
+              <Button size="xs" onClick={handleMint}>
+                Mint
               </Button>
-            )}
+            ) : null}
           </>
         )}
       </Group>
+
+      <CloseButton
+        onClick={() => {
+          dispatch(setCancel(at))
+          dispatch(delNft(at))
+        }}
+        sx={{
+          position: 'absolute',
+          top: 8,
+          right: 8,
+          '&:hover': {
+            backgroundColor: 'rgba(248, 249, 250, 0.2)',
+          },
+        }}
+      />
     </Box>
   )
 }
 
 function NftTxCard(props: { data: NftTx }) {
+  const dispatch = useAppDispatch()
   const { etherscan } = useAppSelector((state) => state.nft)
   const { createdAt, ipfsUrl, image, hash } = props.data
   const at = `${createdAt}`
@@ -104,7 +116,7 @@ function NftTxCard(props: { data: NftTx }) {
   const { handleMint } = useMint(at, ipfsUrl)
 
   return (
-    <Box>
+    <Box pos="relative">
       <AspectRatio
         ratio={1}
         sx={(theme) => ({
@@ -116,7 +128,15 @@ function NftTxCard(props: { data: NftTx }) {
         <img src={img} width="100%" height="100%" style={{ objectFit: 'cover' }} />
       </AspectRatio>
       <Group py={8} sx={{ justifyContent: 'space-between' }}>
-        <Box />
+        {hash ? (
+          <span />
+        ) : (
+          <Group spacing={4}>
+            <IoMdImage size={20} />
+            <Text fz={14}>Ready</Text>
+          </Group>
+        )}
+
         {hash ? (
           <Button
             variant="default"
@@ -133,6 +153,21 @@ function NftTxCard(props: { data: NftTx }) {
           </Button>
         )}
       </Group>
+
+      <CloseButton
+        onClick={() => {
+          dispatch(setCancel(at))
+          dispatch(delNft(at))
+        }}
+        sx={{
+          position: 'absolute',
+          top: 8,
+          right: 8,
+          '&:hover': {
+            backgroundColor: 'rgba(248, 249, 250, 0.2)',
+          },
+        }}
+      />
     </Box>
   )
 }

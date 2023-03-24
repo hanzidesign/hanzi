@@ -1,3 +1,4 @@
+import _ from 'lodash'
 import { createSlice } from '@reduxjs/toolkit'
 import type { PayloadAction } from '@reduxjs/toolkit'
 import type { NftData, Metadata, Job } from 'types'
@@ -24,20 +25,24 @@ export const slice = createSlice({
       const uid = action.payload
       const job = state.list[uid]
       if (job) {
-        state.list = { ...state.list, [uid]: { ...job, startAt: Date.now() } }
+        const cloned = _.clone(state.list)
+        cloned[uid] = { ...job, startAt: Date.now() }
+        state.list = cloned
       }
     },
     setIpfsUrl(state, action: PayloadAction<{ uid: string; ipfsUrl: string }>) {
       const { uid, ipfsUrl } = action.payload
       const job = state.list[uid]
       if (job) {
-        state.list = { ...state.list, [uid]: { ...job, ipfsUrl } }
+        const cloned = _.clone(state.list)
+        cloned[uid] = { ...job, ipfsUrl }
+        state.list = cloned
       }
     },
     setCancel(state, action: PayloadAction<string>) {
       const uid = action.payload
       const job = state.list[uid]
-      if (job && !job.startAt) {
+      if (job) {
         const { [uid]: i, ...rest } = state.list
         state.list = { ...rest }
       }
@@ -46,7 +51,18 @@ export const slice = createSlice({
       const uid = action.payload
       const job = state.list[uid]
       if (job) {
-        state.list = { ...state.list, [uid]: { ...job, saved: true } }
+        const cloned = _.clone(state.list)
+        cloned[uid] = { ...job, saved: true }
+        state.list = cloned
+      }
+    },
+    setFailed(state, action: PayloadAction<{ uid: string; failed: boolean }>) {
+      const { uid, failed } = action.payload
+      const job = state.list[uid]
+      if (job) {
+        const cloned = _.clone(state.list)
+        cloned[uid] = { ...job, failed }
+        state.list = cloned
       }
     },
   },

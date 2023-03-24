@@ -18,6 +18,8 @@ import { ConnectButton } from '@rainbow-me/rainbowkit'
 import ToolStack from 'components/ToolStack'
 import Queue from 'components/Queue'
 import SvgItem from 'components/SvgItem'
+import Lottie from 'components/Lottie'
+import loadingAnim from 'assets/loading.json'
 import { Constants } from 'types'
 
 const Home: NextPage<{}> = () => {
@@ -25,7 +27,14 @@ const Home: NextPage<{}> = () => {
 
   const { bgColor, country, year, ch } = useAppSelector((state) => state.editor)
   const nftData = useAppSelector(selectNftData)
-  const { list } = useAppSelector((state) => state.nft)
+  const { list: queue } = useAppSelector((state) => state.queue)
+  const { list, account } = useAppSelector((state) => state.nft)
+
+  const uploading = _.compact(
+    _.filter(queue, (v) => Boolean(v?.startAt) && !Boolean(v?.ipfsUrl) && !Boolean(v?.failed))
+  )
+  const preUploading = usePreviousDifferent(uploading)
+
   const unmint = _.compact(_.map(list, (v) => v)).filter((el) => !el.hash)
   const preUnmint = usePreviousDifferent(unmint)
 
@@ -86,6 +95,23 @@ const Home: NextPage<{}> = () => {
     })
   }
 
+  const openLoading = () => {
+    modals.open({
+      title: <span></span>,
+      centered: true,
+      children: (
+        <Box pt={48} pb={64}>
+          <Box w={160} mx="auto">
+            <Lottie options={{ animationData: loadingAnim }} />
+          </Box>
+          <Text align="center" fz={32}>
+            Please wait a moment
+          </Text>
+        </Box>
+      ),
+    })
+  }
+
   useEffect(() => {
     if (unmint && preUnmint) {
       if (unmint.length > preUnmint.length) {
@@ -93,6 +119,12 @@ const Home: NextPage<{}> = () => {
       }
     }
   }, [unmint, preUnmint])
+
+  useEffect(() => {
+    if (account && uploading.length === 1 && preUploading?.length === 0) {
+      openLoading()
+    }
+  }, [uploading, preUploading, account])
 
   return (
     <>

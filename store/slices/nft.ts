@@ -44,8 +44,16 @@ export const slice = createSlice({
       state.chainId = chainId
       state.etherscan = etherscan
     },
+    delNft(state, action: PayloadAction<string>) {
+      const at = action.payload
+      const nft = state.list[at]
+      if (nft) {
+        const { [at]: i, ...rest } = state.list
+        state.list = { ...rest }
+      }
+    },
   },
 })
 
-export const { setAccount, setNft, setImage, setChainId } = slice.actions
+export const { setAccount, setNft, setImage, setChainId, delNft } = slice.actions
 export default slice.reducer
