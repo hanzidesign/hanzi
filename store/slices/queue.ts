@@ -1,7 +1,7 @@
 import _ from 'lodash'
 import { createSlice } from '@reduxjs/toolkit'
 import type { PayloadAction } from '@reduxjs/toolkit'
-import type { NftData, Metadata, Job } from 'types'
+import type { Job } from 'types'
 
 export type QueueState = {
   list: { [uid: string]: Job | undefined }
@@ -15,11 +15,9 @@ export const slice = createSlice({
   name: 'queue',
   initialState,
   reducers: {
-    addJob(state, action: PayloadAction<NftData & Metadata>) {
-      const createdAt = Date.now()
-      const uid = `${createdAt}`
-      const job: Job = { ...action.payload, uid, createdAt }
-      state.list = { ...state.list, [uid]: job }
+    addJob(state, action: PayloadAction<Job>) {
+      const { uid } = action.payload
+      state.list = { ...state.list, [uid]: action.payload }
     },
     setStart(state, action: PayloadAction<{ uid: string; startAt?: number }>) {
       const { uid, startAt } = action.payload
@@ -61,7 +59,7 @@ export const slice = createSlice({
       const job = state.list[uid]
       if (job) {
         const cloned = _.clone(state.list)
-        cloned[uid] = { ...job, failed }
+        cloned[uid] = { ...job, failed, startAt: undefined }
         state.list = cloned
       }
     },

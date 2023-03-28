@@ -6,10 +6,12 @@ import { useAppSelector, useAppDispatch } from 'store'
 import { setNft } from 'store/slices/nft'
 
 export default function useMint(at: string, ipfsUrl?: string) {
-  const { account } = useAppSelector((state) => state.nft)
   const dispatch = useAppDispatch()
+  const { account } = useAppSelector((state) => state.nft)
+  const nft = useAppSelector((state) => state.nft.list[at])
+
   const { openConnectModal } = useConnectModal()
-  const [minted, setMinted] = useState(false)
+  const [minted, setMinted] = useState(Boolean(nft?.hash))
 
   const handleMint = async () => {
     if (!ipfsUrl) return
@@ -21,8 +23,9 @@ export default function useMint(at: string, ipfsUrl?: string) {
         }
       } else if (!minted && ipfsUrl) {
         setMinted(true)
-        const { hash } = await mint(ipfsUrl, account)
-        dispatch(setNft({ at, hash, ipfsUrl }))
+        const response = await mint(ipfsUrl, account)
+        dispatch(setNft({ at, hash: response.hash, ipfsUrl }))
+        return response
       }
     } catch (error) {
       setMinted(false)
@@ -30,7 +33,7 @@ export default function useMint(at: string, ipfsUrl?: string) {
     }
   }
 
-  return { handleMint }
+  return { nft, minted, handleMint }
 }
 
 async function mint(uri: string, account: string) {

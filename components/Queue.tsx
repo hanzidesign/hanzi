@@ -1,17 +1,16 @@
 import _ from 'lodash'
-import { useState, useEffect } from 'react'
 import useMint from 'hooks/useMint'
+import useProgress from 'hooks/useProgress'
 import { useAppSelector, useAppDispatch } from 'store'
 import { setCancel, setStart } from 'store/slices/queue'
 import { delNft } from 'store/slices/nft'
-import { useInterval, useMediaQuery } from '@mantine/hooks'
+import { useMediaQuery } from '@mantine/hooks'
 import { SimpleGrid, AspectRatio, Box, Text, Group } from '@mantine/core'
 import { Button, CloseButton } from '@mantine/core'
 import Item, { SvgItemProps } from 'components/SvgItem/Item'
 import { getIpfsUrl } from 'utils/helper'
 import { IoMdImage } from 'react-icons/io'
 import { BiError } from 'react-icons/bi'
-
 import type { Job, NftTx } from 'types'
 
 function JobCard(props: { data: Job }) {
@@ -24,28 +23,8 @@ function JobCard(props: { data: Job }) {
   const at = `${createdAt}`
   const { hash } = nftList[at] || {}
 
-  console.log({ failed })
   const { handleMint } = useMint(at, ipfsUrl)
-  const [progress, setProgress] = useState(0)
-
-  const interval = useInterval(() => {
-    if (startAt && progress <= 100) {
-      const diff = Date.now() - startAt
-      const p = _.round(diff / 1000)
-      setProgress(p)
-
-      if (p >= 100 || ipfsUrl) {
-        interval.stop()
-      }
-    }
-  }, 1000)
-
-  useEffect(() => {
-    if (startAt && !ipfsUrl) {
-      interval.start()
-    }
-    return interval.stop
-  }, [startAt, ipfsUrl])
+  const [progress] = useProgress(data)
 
   return (
     <Box pos="relative">
