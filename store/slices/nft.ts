@@ -25,12 +25,10 @@ export const slice = createSlice({
     setNft(state, action: PayloadAction<{ at: string; ipfsUrl: string; hash?: string }>) {
       const { at, ipfsUrl, hash } = action.payload
       const nft = state.list[at]
-      if (nft) {
-        const cloned = _.clone(state.list)
-        const createdAt = Number(at)
-        cloned[at] = { ...nft, createdAt, ipfsUrl, hash }
-        state.list = cloned
-      }
+      const cloned = _.clone(state.list)
+      const createdAt = Number(at)
+      cloned[at] = { ...nft, createdAt, ipfsUrl, hash }
+      state.list = cloned
     },
     setImage(state, action: PayloadAction<{ at: string; image: string }>) {
       const { at, image } = action.payload

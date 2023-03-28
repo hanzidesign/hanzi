@@ -59,7 +59,7 @@ export const slice = createSlice({
       const job = state.list[uid]
       if (job) {
         const cloned = _.clone(state.list)
-        cloned[uid] = { ...job, failed, startAt: undefined }
+        cloned[uid] = { ...job, failed }
         state.list = cloned
       }
     },

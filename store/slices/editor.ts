@@ -75,7 +75,7 @@ export const slice = createSlice({
     setRotation(state, action) {
       state.rotation = action.payload
     },
-    setColor(state, action: PayloadAction<{ k: 'text' | 'bg'; c: string }>) {
+    setColor(state, action: PayloadAction<{ k: string; c: string }>) {
       const { k, c } = action.payload
       const key = k === 'text' ? 'textColor' : 'bgColor'
       state[key] = c
