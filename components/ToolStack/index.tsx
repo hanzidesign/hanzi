@@ -27,7 +27,6 @@ const cells: Cell[] = [
 export default function ToolStack() {
   return (
     <Accordion
-      defaultValue="0"
       chevron={<IoAddOutline size={24} />}
       styles={{
         chevron: {
@@ -46,6 +45,7 @@ export default function ToolStack() {
           fontWeight: 'bold',
         },
       }}
+      multiple
     >
       {cells.map(({ t, c }, i) => (
         <Accordion.Item key={i} value={`${i}`}>
