@@ -10,12 +10,13 @@ import { Button, CloseButton } from '@mantine/core'
 import Item, { SvgItemProps } from 'components/SvgItem/Item'
 import { getIpfsUrl } from 'utils/helper'
 import { IoMdImage } from 'react-icons/io'
+import { IoWalletSharp } from 'react-icons/io5'
 import { BiError } from 'react-icons/bi'
 import type { Job, NftTx } from 'types'
 
 function JobCard(props: { data: Job }) {
   const dispatch = useAppDispatch()
-  const { list: nftList, etherscan } = useAppSelector((state) => state.nft)
+  const { list: nftList, etherscan, account } = useAppSelector((state) => state.nft)
 
   const { data } = props
   const itemProps = getItemProps(data)
@@ -56,7 +57,13 @@ function JobCard(props: { data: Job }) {
         ) : (
           <>
             <Group spacing={4}>
-              {failed ? <BiError size={20} /> : <IoMdImage size={20} />}
+              {failed ? (
+                <BiError size={20} />
+              ) : account ? (
+                <IoMdImage size={20} />
+              ) : (
+                <IoWalletSharp size={20} />
+              )}
               <Text fz={14}>
                 {failed
                   ? 'Error'
@@ -64,7 +71,9 @@ function JobCard(props: { data: Job }) {
                   ? ipfsUrl
                     ? 'Ready'
                     : `Uploading ${progress}%`
-                  : 'Waiting'}
+                  : account
+                  ? 'Waiting'
+                  : 'Wait for wallet'}
               </Text>
             </Group>
             {failed ? (

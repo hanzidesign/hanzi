@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react'
+import { useConnectModal } from '@rainbow-me/rainbowkit'
 import { Group, Button, Box, AspectRatio, Progress, Center, Text } from '@mantine/core'
 import useProgress from 'hooks/useProgress'
 import useMint from 'hooks/useMint'
@@ -14,11 +15,12 @@ type PreviewProps = {
 export default function Preview(props: PreviewProps) {
   const { onBack } = props
   const dispatch = useAppDispatch()
+  const { openConnectModal } = useConnectModal()
   const uidRef = useRef('')
 
   const nftData = useAppSelector(selectNftData)
   const { country, year, ch } = useAppSelector((state) => state.editor)
-  const { etherscan } = useAppSelector((state) => state.nft)
+  const { etherscan, account } = useAppSelector((state) => state.nft)
 
   const job = useAppSelector((state) => state.queue.list[uidRef.current])
   const [progress] = useProgress(job)
@@ -26,7 +28,10 @@ export default function Preview(props: PreviewProps) {
   const [hash, setHash] = useState('')
 
   const handleUpload = () => {
-    if (!job) {
+    if (!account && openConnectModal) {
+      openConnectModal()
+    }
+    if (!job && account) {
       const createdAt = Date.now()
       const uid = `${createdAt}`
       uidRef.current = uid
