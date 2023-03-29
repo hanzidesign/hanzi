@@ -42,7 +42,7 @@ const Home: NextPage<{}> = () => {
           </Text>
 
           <Button radius={99} size="xl" px={48} onClick={() => router.push('/mint')}>
-            Let's Try
+            Go Mint
           </Button>
         </Box>
       </AppShell>
