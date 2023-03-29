@@ -14,6 +14,7 @@ import { persistStore } from 'redux-persist'
 import { AppProvider } from 'hooks/useAppContext'
 import { wrapper } from 'store'
 import { myTheme } from 'theme'
+import PageHead from 'components/PageHead'
 import type { AppProps } from 'next/app'
 
 const { chains, provider } = configureChains(
@@ -39,30 +40,33 @@ function MyApp({ Component, ...rest }: AppProps) {
   const theme = useMantineTheme()
 
   return (
-    <WagmiConfig client={wagmiClient}>
-      <RainbowKitProvider
-        chains={chains}
-        initialChain={goerli}
-        appInfo={{
-          appName: 'Chinese NFT',
-        }}
-        theme={lightTheme({
-          accentColor: theme.colors.gray[9],
-        })}
-      >
-        <Provider store={store}>
-          <PersistGate loading={null} persistor={persistor}>
-            <AppProvider>
-              <MantineProvider theme={myTheme} withGlobalStyles withNormalizeCSS>
-                <ModalsProvider>
-                  <Component {...pageProps} />
-                </ModalsProvider>
-              </MantineProvider>
-            </AppProvider>
-          </PersistGate>
-        </Provider>
-      </RainbowKitProvider>
-    </WagmiConfig>
+    <>
+      <PageHead />
+      <WagmiConfig client={wagmiClient}>
+        <RainbowKitProvider
+          chains={chains}
+          initialChain={goerli}
+          appInfo={{
+            appName: 'Chinese NFT',
+          }}
+          theme={lightTheme({
+            accentColor: theme.colors.gray[9],
+          })}
+        >
+          <Provider store={store}>
+            <PersistGate loading={null} persistor={persistor}>
+              <AppProvider>
+                <MantineProvider theme={myTheme} withGlobalStyles withNormalizeCSS>
+                  <ModalsProvider>
+                    <Component {...pageProps} />
+                  </ModalsProvider>
+                </MantineProvider>
+              </AppProvider>
+            </PersistGate>
+          </Provider>
+        </RainbowKitProvider>
+      </WagmiConfig>
+    </>
   )
 }
 

@@ -45,3 +45,12 @@ button:focus {
 .c-pointer {
   cursor: pointer;
 }
+
+.object-fit-cover {
+  object-fit: cover;
+}
+
+.backdrop {
+  backdrop-filter: saturate(180%) blur(20px);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+}
