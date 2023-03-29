@@ -18,7 +18,7 @@ import PageHead from 'components/PageHead'
 import type { AppProps } from 'next/app'
 
 const { chains, provider } = configureChains(
-  [goerli, optimism],
+  [goerli],
   [alchemyProvider({ apiKey: process.env.NEXT_PUBLIC_ALCHEMY_KEY_GOERLI }), publicProvider()]
 )
 
