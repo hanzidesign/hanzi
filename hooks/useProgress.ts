@@ -9,14 +9,16 @@ export default function useProgress(job?: Job) {
 
   const interval = useInterval(() => {
     if (startAt && progress < 100) {
-      const diff = Date.now() - startAt
-      const v = _.round(diff / 1000)
-      const p = v > 100 ? 100 : v
-      setProgress(p)
+      setProgress((state) => {
+        const v = state + _.random(6, 10)
+        const p = v > 100 ? 100 : v
 
-      if (p >= 100 || ipfsUrl) {
-        interval.stop()
-      }
+        if (p >= 100 || ipfsUrl) {
+          interval.stop()
+        }
+
+        return p
+      })
     }
   }, 1000)
 
