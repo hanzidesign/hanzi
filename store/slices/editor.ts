@@ -11,7 +11,7 @@ export type EditorState = Metadata &
   }
 
 const country = 'int'
-const year = 2006
+const year = '2006'
 
 const initialState: EditorState = {
   charUrl: `/chars/${country}/${year}-1.svg`,

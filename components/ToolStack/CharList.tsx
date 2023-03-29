@@ -22,7 +22,7 @@ export default function CharList() {
     dispatch(
       setMetadata({
         country: countryName,
-        year: Number(year),
+        year,
         ch,
       })
     )
