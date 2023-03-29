@@ -174,7 +174,8 @@ function NftTxCard(props: { data: NftTx }) {
 }
 
 export default function Queue() {
-  const matches = useMediaQuery('(min-width: 992px)')
+  const matchesMD = useMediaQuery('(min-width: 992px)')
+  const matchesSM = useMediaQuery('(min-width: 576px)')
 
   const { list: nft } = useAppSelector((state) => state.nft)
   const { list: queue } = useAppSelector((state) => state.queue)
@@ -188,7 +189,7 @@ export default function Queue() {
   return (
     <>
       {q.length > 0 || n.length > 0 ? (
-        <SimpleGrid cols={matches ? 4 : 3}>
+        <SimpleGrid cols={matchesMD ? 4 : matchesSM ? 3 : 2}>
           {q.map((v) => (
             <JobCard key={v.uid} data={v} />
           ))}
@@ -198,7 +199,7 @@ export default function Queue() {
         </SimpleGrid>
       ) : (
         <Box h="60vh">
-          <Text className="absolute-center" fz={20} color="gray">
+          <Text className="absolute-center nowrap" fz={20} color="gray">
             Your NFT will appear here...
           </Text>
         </Box>

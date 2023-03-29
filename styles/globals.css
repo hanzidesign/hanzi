@@ -54,3 +54,7 @@ button:focus {
   backdrop-filter: saturate(180%) blur(20px);
   -webkit-backdrop-filter: saturate(180%) blur(20px);
 }
+
+.nowrap {
+  white-space: nowrap;
+}
