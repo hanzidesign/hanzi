@@ -3,7 +3,7 @@ import { Group, Button, Box, AspectRatio, Progress, Center, Text } from '@mantin
 import useProgress from 'hooks/useProgress'
 import useMint from 'hooks/useMint'
 import { useAppSelector, useAppDispatch } from 'store'
-import { addJob } from 'store/slices/queue'
+import { addJob, setStart } from 'store/slices/queue'
 import { selectNftData } from 'store/selectors'
 import SvgItem from 'components/SvgItem'
 
@@ -38,9 +38,7 @@ export default function Preview(props: PreviewProps) {
     try {
       const response = await handleMint()
       if (response) {
-        const { wait, hash } = response
-        await wait()
-        setHash(hash)
+        setHash(response.hash)
       }
     } catch (error) {
       console.error(error)
@@ -87,6 +85,28 @@ export default function Preview(props: PreviewProps) {
                   Mint
                 </Button>
               )}
+            </Box>
+          ) : job.failed ? (
+            <Box w="100%" pos="relative">
+              <Group grow>
+                <Button variant="outline" onClick={onBack}>
+                  Back
+                </Button>
+                <Button onClick={() => dispatch(setStart({ uid: job.uid, startAt: undefined }))}>
+                  Retry
+                </Button>
+              </Group>
+              <Text
+                className="absolute-horizontal"
+                fz={14}
+                opacity={0.55}
+                bottom={-32}
+                sx={{
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                Some error occurred while uploading
+              </Text>
             </Box>
           ) : (
             <Box pos="relative" w="100%">
