@@ -39,7 +39,7 @@ function JobCard(props: { data: Job }) {
         <Item {...itemProps} />
       </AspectRatio>
 
-      <Group py={8} sx={{ justifyContent: 'space-between' }}>
+      <Group h={48} py={8} sx={{ justifyContent: 'space-between' }}>
         {hash ? (
           <>
             <Box />
@@ -119,7 +119,7 @@ function NftTxCard(props: { data: NftTx }) {
       >
         <img src={img} width="100%" height="100%" style={{ objectFit: 'cover' }} />
       </AspectRatio>
-      <Group py={8} sx={{ justifyContent: 'space-between' }}>
+      <Group h={48} py={8} sx={{ justifyContent: 'space-between' }}>
         {hash ? (
           <span />
         ) : (
