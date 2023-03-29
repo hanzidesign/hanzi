@@ -8,6 +8,7 @@ import { alchemyProvider } from 'wagmi/providers/alchemy'
 import { publicProvider } from 'wagmi/providers/public'
 import { Provider } from 'react-redux'
 import { MantineProvider, useMantineTheme } from '@mantine/core'
+import { Notifications } from '@mantine/notifications'
 import { ModalsProvider } from '@mantine/modals'
 import { PersistGate } from 'redux-persist/integration/react'
 import { persistStore } from 'redux-persist'
@@ -57,6 +58,7 @@ function MyApp({ Component, ...rest }: AppProps) {
             <PersistGate loading={null} persistor={persistor}>
               <AppProvider>
                 <MantineProvider theme={myTheme} withGlobalStyles withNormalizeCSS>
+                  <Notifications />
                   <ModalsProvider>
                     <Component {...pageProps} />
                   </ModalsProvider>

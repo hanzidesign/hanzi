@@ -38,7 +38,7 @@ const Home: NextPage<{}> = () => {
             sx={(theme) => ({ color: theme.colors.dark[3] })}
           >
             Exploring the Possibilities of NFTs for Empowering Artists and Redefining the Art Market
-            in Chinese world
+            in Chinese World
           </Text>
 
           <Button radius={99} size="xl" px={48} onClick={() => router.push('/mint')}>
