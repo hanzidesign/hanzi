@@ -16,11 +16,9 @@ contract CH is ERC721, ERC721Enumerable, ERC721URIStorage, Ownable, PullPayment,
 
     Counters.Counter private _tokenIdCounter;
 
-    string public baseTokenURI;
+    string public baseTokenURI = "ipfs://";
 
-    constructor() ERC721("ChineseNFT", "CH") {
-        baseTokenURI = "ipfs://";
-    }
+    constructor() ERC721("ChineseNFT", "CH") {}
 
     function supportsInterface(bytes4 interfaceId) public view override(ERC721, ERC721Enumerable) returns (bool) {
         return super.supportsInterface(interfaceId);

@@ -21,12 +21,13 @@ const config: HardhatUserConfig = {
       ],
     },
     goerli: {
+      chainId: 5,
       url: `https://eth-goerli.g.alchemy.com/v2/${ALCHEMY_KEY_GOERLI}`,
       accounts: [ACCOUNT_PRIVATE_KEY],
     },
-    ethereum: {
+    mainnet: {
       chainId: 1,
-      url: `https://eth-goerli.g.alchemy.com/v2/${ALCHEMY_KEY_MAINNET}`,
+      url: `https://eth-mainnet.g.alchemy.com/v2/${ALCHEMY_KEY_MAINNET}`,
       accounts: [ACCOUNT_PRIVATE_KEY],
     },
   },

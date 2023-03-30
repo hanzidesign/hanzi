@@ -1,10 +1,14 @@
-// npx hardhat run scripts/deploy.js --network goerli
+// npx hardhat run scripts/deploy.ts --network goerli
+import { ethers } from 'hardhat'
 
 async function main() {
   const [deployer] = await ethers.getSigners()
+  const balance = await deployer.getBalance()
 
-  console.log('Deploying contracts with the account:', deployer.address)
-  console.log('Account balance:', (await deployer.getBalance()).toString())
+  console.log('Deploying contracts with the account:', {
+    address: deployer.address,
+    balance: ethers.utils.formatEther(balance),
+  })
 
   const CH = await ethers.getContractFactory('CH')
   const ch = await CH.deploy()
