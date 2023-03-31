@@ -3,27 +3,28 @@ import { useAppDispatch, useAppSelector } from 'store'
 import { SimpleGrid, Button, Switch, Text } from '@mantine/core'
 import { Box, Title, ScrollArea } from '@mantine/core'
 import { setCharUrl, setMetadata, setIsTc } from 'store/slices/editor'
-import { countries, chars } from 'assets/list'
+import { countries } from 'assets/list'
+import { chars, sortedChars } from 'assets/chars'
 import { StyledBox } from './common'
-import type { Char } from 'assets/list'
 
 export default function CharList() {
   const dispatch = useAppDispatch()
   const { charUrl, isTc } = useAppSelector((state) => state.editor)
   const [country, year] = parseCharUrl(charUrl)
+  const list = isTc ? sortedChars.tc : sortedChars.sc
 
   const handleChange = (country: string, year: string, isTc: boolean) => {
-    const char = chars[country][year]
-    const url = getCharUrl(country, year, char, isTc)
+    const list = isTc ? chars.tc : chars.sc
+    const char = list[country][year]
+    const url = getCharUrl(country, year, isTc)
     dispatch(setCharUrl(url))
 
     const countryName = countries[country]
-    const ch = typeof char === 'string' ? char : isTc ? char[1] : char[0]
     dispatch(
       setMetadata({
         country: countryName,
         year,
-        ch,
+        ch: char,
       })
     )
   }
@@ -70,7 +71,7 @@ export default function CharList() {
                 fontWeight: 400,
               }}
               onClick={() => {
-                const [year] = _.keys(chars[key])
+                const [{ year }] = list[key]
                 handleChange(key, year, isTc)
               }}
             >
@@ -79,8 +80,8 @@ export default function CharList() {
           ))}
         </Box>
         <Box>
-          <ScrollArea type="auto" sx={{ height: 400 }}>
-            {_.map(chars[country], (el, y) => (
+          <ScrollArea type="auto" sx={{ height: 552 }}>
+            {_.map(list[country], ({ year: y, ch }) => (
               <Button
                 key={y}
                 radius="md"
@@ -103,7 +104,7 @@ export default function CharList() {
                 }}
               >
                 {y}
-                <Text>({getChar(el, isTc)})</Text>
+                <Text>({ch})</Text>
               </Button>
             ))}
           </ScrollArea>
@@ -113,24 +114,15 @@ export default function CharList() {
   )
 }
 
-function getChar(char: Char, isTc: boolean) {
-  if (typeof char === 'string') {
-    return char
-  }
-  return isTc ? char[1] : char[0]
-}
-
-function getCharUrl(country: string, year: string, char: Char, isTc: boolean) {
-  const url = `/chars/${country}/${year}`
-  if (typeof char === 'string') {
-    return `${url}.svg`
-  }
-  return isTc ? `${url}-1.svg` : `${url}-0.svg`
+function getCharUrl(country: string, year: string, isTc: boolean) {
+  const root = isTc ? 'tc' : 'sc'
+  const url = `/chars/${root}/${country}/${year}`
+  return isTc ? `${url}.svg` : `${url}.svg`
 }
 
 function parseCharUrl(url: string) {
-  // http://localhost:3000/chars/int/2006-1.svg
+  // http://localhost:3000/chars/tc/int/2006.svg
   const [country, name] = _.compact(_.split(url, '/')).slice(-2)
-  const year = `${name}`.slice(0, 4)
+  const year = name.slice(0, 4)
   return [country, year] as const
 }

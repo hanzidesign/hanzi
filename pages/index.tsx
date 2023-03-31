@@ -1,12 +1,9 @@
 import type { NextPage } from 'next'
 import _ from 'lodash'
-import { useRouter } from 'next/router'
 import { AppShell, Title, Text, Box, Button } from '@mantine/core'
 import PageHeader from 'components/PageHeader'
 
 const Home: NextPage<{}> = () => {
-  const router = useRouter()
-
   return (
     <>
       <Box
@@ -41,7 +38,7 @@ const Home: NextPage<{}> = () => {
             in Chinese World
           </Text>
 
-          <Button radius={99} size="xl" px={48} onClick={() => router.push('/mint')}>
+          <Button radius={99} size="xl" px={48} onClick={() => (window.location.href = '/mint')}>
             Go Mint
           </Button>
         </Box>

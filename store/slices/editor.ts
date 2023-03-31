@@ -11,14 +11,15 @@ export type EditorState = Metadata &
   }
 
 const country = 'int'
-const year = '2006'
+const year = '2022'
+const isTc = true
 
 const initialState: EditorState = {
-  charUrl: `/chars/${country}/${year}-1.svg`,
+  charUrl: `chars/tc/${country}/${year}.svg`,
   svgData: '',
   ptnUrl: '/images/patterns/000.jpg',
   seed: 0,
-  isTc: true,
+  isTc,
   distortion: 10,
   blur: 0,
   width: 0,

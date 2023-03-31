@@ -25,7 +25,7 @@ contract CH is ERC721, ERC721Enumerable, ERC721URIStorage, Ownable, PullPayment,
     }
 
     function safeMint(address recipient, string memory uri) public returns (uint256) {
-        require(bytes(uri).length > 0, "CH: uri is not valid");
+        require(bytes(uri).length > 0, "URI is empty");
 
         _tokenIdCounter.increment();
         uint256 tokenId = _tokenIdCounter.current();
