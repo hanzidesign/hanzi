@@ -42,7 +42,7 @@ export async function sendTx(tx: TransactionRequest) {
   const gasLimit = await ethers.provider.estimateGas(tx).catch((error) => {
     throw new Error('cannot estimate gas')
   })
-  tx.gasLimit = mul(gasLimit, 1.2)
+  tx.gasLimit = mul(gasLimit, 1)
   tx.chainId = chainId
 
   return deployer.sendTransaction(tx)

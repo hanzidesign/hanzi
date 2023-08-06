@@ -1,6 +1,6 @@
 import { useNetwork } from 'wagmi'
 import { switchNetwork } from '@wagmi/core'
-import { goerli } from 'wagmi/chains'
+import { goerli, optimism } from 'wagmi/chains'
 import { useEffect } from 'react'
 import { useAppDispatch } from 'store'
 import { setChainId } from 'store/slices/nft'
@@ -12,7 +12,7 @@ export default function useChain() {
 
   const handleSwitch = async () => {
     try {
-      await switchNetwork({ chainId: goerli.id })
+      await switchNetwork({ chainId: optimism.id })
     } catch (error) {
       console.error(error)
     }
@@ -24,7 +24,7 @@ export default function useChain() {
       const etherscan = getEtherscanUrl(chainId)
       dispatch(setChainId({ chainId, etherscan }))
 
-      if (chain.id !== goerli.id) {
+      if (chain.id !== optimism.id) {
         handleSwitch()
       }
     }

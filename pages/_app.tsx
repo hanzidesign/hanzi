@@ -3,7 +3,7 @@ import '../styles/globals.css'
 
 import { getDefaultWallets, RainbowKitProvider, lightTheme } from '@rainbow-me/rainbowkit'
 import { configureChains, createClient, WagmiConfig } from 'wagmi'
-import { optimism, goerli } from 'wagmi/chains'
+import { optimism } from 'wagmi/chains'
 import { alchemyProvider } from 'wagmi/providers/alchemy'
 import { publicProvider } from 'wagmi/providers/public'
 import { Provider } from 'react-redux'
@@ -19,8 +19,8 @@ import PageHead from 'components/PageHead'
 import type { AppProps } from 'next/app'
 
 const { chains, provider } = configureChains(
-  [goerli],
-  [alchemyProvider({ apiKey: process.env.NEXT_PUBLIC_ALCHEMY_KEY_GOERLI }), publicProvider()]
+  [optimism],
+  [alchemyProvider({ apiKey: process.env.NEXT_PUBLIC_ALCHEMY_KEY_OPTIMISM }), publicProvider()]
 )
 
 const { connectors } = getDefaultWallets({
@@ -46,7 +46,7 @@ function MyApp({ Component, ...rest }: AppProps) {
       <WagmiConfig client={wagmiClient}>
         <RainbowKitProvider
           chains={chains}
-          initialChain={goerli}
+          initialChain={optimism}
           appInfo={{
             appName: 'Chinese NFT',
           }}

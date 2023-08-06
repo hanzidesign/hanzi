@@ -46,7 +46,7 @@ const config: HardhatUserConfig = {
     apiKey: {
       mainnet: ETHERSCAN_KEY,
       goerli: ETHERSCAN_KEY,
-      optimism: OPT_ETHERSCAN_KEY,
+      optimisticEthereum: OPT_ETHERSCAN_KEY,
     },
   },
 }

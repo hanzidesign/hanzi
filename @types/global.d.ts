@@ -26,6 +26,7 @@ declare global {
       // alchemy
       NEXT_PUBLIC_ALCHEMY_KEY_GOERLI: string
       NEXT_PUBLIC_ALCHEMY_KEY_MAINNET: string
+      NEXT_PUBLIC_ALCHEMY_KEY_OPTIMISM: string
       // nft storage
       NEXT_PUBLIC_NFT_STORAGE_TOKEN: string
     }
