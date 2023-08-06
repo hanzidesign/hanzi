@@ -10,7 +10,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/security/PullPayment.sol";
 import "operator-filter-registry/src/DefaultOperatorFilterer.sol";
 
-contract CH is ERC721, ERC721Enumerable, ERC721URIStorage, Ownable, PullPayment, DefaultOperatorFilterer {
+contract Hanzi is ERC721, ERC721Enumerable, ERC721URIStorage, Ownable, PullPayment, DefaultOperatorFilterer {
     using Counters for Counters.Counter;
     using Strings for uint256;
 
@@ -18,7 +18,7 @@ contract CH is ERC721, ERC721Enumerable, ERC721URIStorage, Ownable, PullPayment,
 
     string public baseTokenURI = "ipfs://";
 
-    constructor() ERC721("ChineseNFT", "CH") {}
+    constructor() ERC721("HanziDesign", "HANZI") {}
 
     function supportsInterface(bytes4 interfaceId) public view override(ERC721, ERC721Enumerable) returns (bool) {
         return super.supportsInterface(interfaceId);

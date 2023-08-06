@@ -1,5 +1,6 @@
 // npx hardhat run scripts/deploy.ts --network goerli
 import { ethers } from 'hardhat'
+import { sendTx } from 'utils/helper'
 
 async function main() {
   const [deployer] = await ethers.getSigners()
@@ -10,10 +11,10 @@ async function main() {
     balance: ethers.utils.formatEther(balance),
   })
 
-  const CH = await ethers.getContractFactory('CH')
-  const ch = await CH.deploy()
-
-  console.log('NFT address:', ch.address)
+  const Hanzi = await ethers.getContractFactory('Hanzi')
+  const tx = Hanzi.getDeployTransaction()
+  const { hash } = await sendTx(tx)
+  console.log({ hash })
 }
 
 main()
