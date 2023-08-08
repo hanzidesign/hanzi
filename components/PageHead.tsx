@@ -1,6 +1,6 @@
 import Head from 'next/head'
 
-const name = 'Chinese NFT'
+const name = 'Hanzi Design'
 const description =
   'Exploring the Possibilities of NFTs for Empowering Artists and Redefining the Art Market in Chinese World'
 

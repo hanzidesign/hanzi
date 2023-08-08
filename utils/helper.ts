@@ -85,3 +85,7 @@ export function getIpfsUrl(url: string) {
   const u = url.replace('ipfs://', '')
   return `https://ipfs.io/ipfs/${u}`
 }
+
+export function getName(year: string, country: string, ch: string) {
+  return `${year}-${country}-${ch}`
+}

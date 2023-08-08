@@ -1,9 +1,13 @@
 import { getProvider, getContract, prepareWriteContract } from '@wagmi/core'
-import json from 'types/ch/CH.json'
-import type { CH } from 'types/ch/CH'
+import json from 'types/hanzi/Hanzi.json'
+import type { Hanzi } from 'types/hanzi/Hanzi'
 
 const address = process.env.NEXT_PUBLIC_NFT_CONTRACT_ADDRESS
-const nftContract = getContract({ address, abi: json.abi, signerOrProvider: getProvider() }) as CH
+const nftContract = getContract({
+  address,
+  abi: json.abi,
+  signerOrProvider: getProvider(),
+}) as Hanzi
 
 export async function prepareSafeMint(account: string, tokenURI: string) {
   const config = await prepareWriteContract({

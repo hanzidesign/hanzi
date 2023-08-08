@@ -18,11 +18,13 @@ export function setAttributes(metadata: Metadata): Trait[] {
   return [countryTrait, yearTrait, chTrait]
 }
 
-export function setMetadata(name: string, account: string, attributes: Trait[]): NftMetadata {
+export function setMetadata(name: string, description: string, attributes: Trait[]): NftMetadata {
+  const external_url = process.env.NEXT_PUBLIC_WEB_URL
+  if (!external_url) throw new Error('no web url')
   return {
-    name: `${name}`,
-    description: `Created by ${account}`,
-    external_url: `${window.location.origin}/`,
+    name,
+    description,
+    external_url,
     attributes,
   }
 }

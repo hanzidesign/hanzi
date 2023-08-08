@@ -17,12 +17,13 @@ import type { FunctionFragment, Result, EventFragment } from '@ethersproject/abi
 import type { Listener, Provider } from '@ethersproject/providers'
 import type { TypedEventFilter, TypedEvent, TypedListener, OnEvent, PromiseOrValue } from './common'
 
-export interface CHInterface extends utils.Interface {
+export interface HanziInterface extends utils.Interface {
   functions: {
     'OPERATOR_FILTER_REGISTRY()': FunctionFragment
     'approve(address,uint256)': FunctionFragment
     'balanceOf(address)': FunctionFragment
     'baseTokenURI()': FunctionFragment
+    'burnTokens(uint256[])': FunctionFragment
     'getApproved(uint256)': FunctionFragment
     'isApprovedForAll(address,address)': FunctionFragment
     'name()': FunctionFragment
@@ -35,7 +36,7 @@ export interface CHInterface extends utils.Interface {
     'safeTransferFrom(address,address,uint256,bytes)': FunctionFragment
     'setApprovalForAll(address,bool)': FunctionFragment
     'setBaseTokenURI(string)': FunctionFragment
-    'setTokenURI(uint256,string)': FunctionFragment
+    'setTokenURI(uint256[],string)': FunctionFragment
     'supportsInterface(bytes4)': FunctionFragment
     'symbol()': FunctionFragment
     'tokenByIndex(uint256)': FunctionFragment
@@ -53,6 +54,7 @@ export interface CHInterface extends utils.Interface {
       | 'approve'
       | 'balanceOf'
       | 'baseTokenURI'
+      | 'burnTokens'
       | 'getApproved'
       | 'isApprovedForAll'
       | 'name'
@@ -84,6 +86,10 @@ export interface CHInterface extends utils.Interface {
   ): string
   encodeFunctionData(functionFragment: 'balanceOf', values: [PromiseOrValue<string>]): string
   encodeFunctionData(functionFragment: 'baseTokenURI', values?: undefined): string
+  encodeFunctionData(
+    functionFragment: 'burnTokens',
+    values: [PromiseOrValue<BigNumberish>[]]
+  ): string
   encodeFunctionData(
     functionFragment: 'getApproved',
     values: [PromiseOrValue<BigNumberish>]
@@ -121,7 +127,7 @@ export interface CHInterface extends utils.Interface {
   encodeFunctionData(functionFragment: 'setBaseTokenURI', values: [PromiseOrValue<string>]): string
   encodeFunctionData(
     functionFragment: 'setTokenURI',
-    values: [PromiseOrValue<BigNumberish>, PromiseOrValue<string>]
+    values: [PromiseOrValue<BigNumberish>[], PromiseOrValue<string>]
   ): string
   encodeFunctionData(
     functionFragment: 'supportsInterface',
@@ -152,6 +158,7 @@ export interface CHInterface extends utils.Interface {
   decodeFunctionResult(functionFragment: 'approve', data: BytesLike): Result
   decodeFunctionResult(functionFragment: 'balanceOf', data: BytesLike): Result
   decodeFunctionResult(functionFragment: 'baseTokenURI', data: BytesLike): Result
+  decodeFunctionResult(functionFragment: 'burnTokens', data: BytesLike): Result
   decodeFunctionResult(functionFragment: 'getApproved', data: BytesLike): Result
   decodeFunctionResult(functionFragment: 'isApprovedForAll', data: BytesLike): Result
   decodeFunctionResult(functionFragment: 'name', data: BytesLike): Result
@@ -232,12 +239,12 @@ export type TransferEvent = TypedEvent<[string, string, BigNumber], TransferEven
 
 export type TransferEventFilter = TypedEventFilter<TransferEvent>
 
-export interface CH extends BaseContract {
+export interface Hanzi extends BaseContract {
   connect(signerOrProvider: Signer | Provider | string): this
   attach(addressOrName: string): this
   deployed(): Promise<this>
 
-  interface: CHInterface
+  interface: HanziInterface
 
   queryFilter<TEvent extends TypedEvent>(
     event: TypedEventFilter<TEvent>,
@@ -268,6 +275,11 @@ export interface CH extends BaseContract {
     balanceOf(owner: PromiseOrValue<string>, overrides?: CallOverrides): Promise<[BigNumber]>
 
     baseTokenURI(overrides?: CallOverrides): Promise<[string]>
+
+    burnTokens(
+      tokenIds: PromiseOrValue<BigNumberish>[],
+      overrides?: Overrides & { from?: PromiseOrValue<string> }
+    ): Promise<ContractTransaction>
 
     getApproved(tokenId: PromiseOrValue<BigNumberish>, overrides?: CallOverrides): Promise<[string]>
 
@@ -322,7 +334,7 @@ export interface CH extends BaseContract {
     ): Promise<ContractTransaction>
 
     setTokenURI(
-      tokenId: PromiseOrValue<BigNumberish>,
+      tokenIds: PromiseOrValue<BigNumberish>[],
       uri: PromiseOrValue<string>,
       overrides?: Overrides & { from?: PromiseOrValue<string> }
     ): Promise<ContractTransaction>
@@ -379,6 +391,11 @@ export interface CH extends BaseContract {
 
   baseTokenURI(overrides?: CallOverrides): Promise<string>
 
+  burnTokens(
+    tokenIds: PromiseOrValue<BigNumberish>[],
+    overrides?: Overrides & { from?: PromiseOrValue<string> }
+  ): Promise<ContractTransaction>
+
   getApproved(tokenId: PromiseOrValue<BigNumberish>, overrides?: CallOverrides): Promise<string>
 
   isApprovedForAll(
@@ -432,7 +449,7 @@ export interface CH extends BaseContract {
   ): Promise<ContractTransaction>
 
   setTokenURI(
-    tokenId: PromiseOrValue<BigNumberish>,
+    tokenIds: PromiseOrValue<BigNumberish>[],
     uri: PromiseOrValue<string>,
     overrides?: Overrides & { from?: PromiseOrValue<string> }
   ): Promise<ContractTransaction>
@@ -486,6 +503,8 @@ export interface CH extends BaseContract {
 
     baseTokenURI(overrides?: CallOverrides): Promise<string>
 
+    burnTokens(tokenIds: PromiseOrValue<BigNumberish>[], overrides?: CallOverrides): Promise<void>
+
     getApproved(tokenId: PromiseOrValue<BigNumberish>, overrides?: CallOverrides): Promise<string>
 
     isApprovedForAll(
@@ -534,7 +553,7 @@ export interface CH extends BaseContract {
     setBaseTokenURI(_baseTokenURI: PromiseOrValue<string>, overrides?: CallOverrides): Promise<void>
 
     setTokenURI(
-      tokenId: PromiseOrValue<BigNumberish>,
+      tokenIds: PromiseOrValue<BigNumberish>[],
       uri: PromiseOrValue<string>,
       overrides?: CallOverrides
     ): Promise<void>
@@ -627,6 +646,11 @@ export interface CH extends BaseContract {
 
     baseTokenURI(overrides?: CallOverrides): Promise<BigNumber>
 
+    burnTokens(
+      tokenIds: PromiseOrValue<BigNumberish>[],
+      overrides?: Overrides & { from?: PromiseOrValue<string> }
+    ): Promise<BigNumber>
+
     getApproved(
       tokenId: PromiseOrValue<BigNumberish>,
       overrides?: CallOverrides
@@ -681,7 +705,7 @@ export interface CH extends BaseContract {
     ): Promise<BigNumber>
 
     setTokenURI(
-      tokenId: PromiseOrValue<BigNumberish>,
+      tokenIds: PromiseOrValue<BigNumberish>[],
       uri: PromiseOrValue<string>,
       overrides?: Overrides & { from?: PromiseOrValue<string> }
     ): Promise<BigNumber>
@@ -738,6 +762,11 @@ export interface CH extends BaseContract {
     ): Promise<PopulatedTransaction>
 
     baseTokenURI(overrides?: CallOverrides): Promise<PopulatedTransaction>
+
+    burnTokens(
+      tokenIds: PromiseOrValue<BigNumberish>[],
+      overrides?: Overrides & { from?: PromiseOrValue<string> }
+    ): Promise<PopulatedTransaction>
 
     getApproved(
       tokenId: PromiseOrValue<BigNumberish>,
@@ -798,7 +827,7 @@ export interface CH extends BaseContract {
     ): Promise<PopulatedTransaction>
 
     setTokenURI(
-      tokenId: PromiseOrValue<BigNumberish>,
+      tokenIds: PromiseOrValue<BigNumberish>[],
       uri: PromiseOrValue<string>,
       overrides?: Overrides & { from?: PromiseOrValue<string> }
     ): Promise<PopulatedTransaction>

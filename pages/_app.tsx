@@ -48,7 +48,7 @@ function MyApp({ Component, ...rest }: AppProps) {
           chains={chains}
           initialChain={optimism}
           appInfo={{
-            appName: 'Chinese NFT',
+            appName: 'Hanzi Design',
           }}
           theme={lightTheme({
             accentColor: theme.colors.gray[9],

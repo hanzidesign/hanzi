@@ -26,7 +26,7 @@ const Home: NextPage<{}> = () => {
       >
         <Box pos="relative" p={{ sm: 24 }}>
           <Title fz={{ sm: 48 }} pt={48} pb={24}>
-            Revolutionizing Art in <br /> Chinese NFT
+            Revolutionizing Art in <br /> Hanzi Design
           </Title>
           <Text
             fz={{ sm: 18 }}

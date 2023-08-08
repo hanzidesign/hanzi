@@ -3,6 +3,7 @@ import { IoAddOutline } from 'react-icons/io5'
 import CharList from './CharList'
 import Effect from './Effect'
 import Style from './Style'
+import Metadata from './Metadata'
 
 type Cell = {
   t: string
@@ -21,6 +22,10 @@ const cells: Cell[] = [
   {
     t: 'Style',
     c: <Style />,
+  },
+  {
+    t: 'Metadata',
+    c: <Metadata />,
   },
 ]
 

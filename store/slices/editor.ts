@@ -4,7 +4,7 @@ import { countries } from 'assets/list'
 import type { PayloadAction } from '@reduxjs/toolkit'
 import type { Metadata, NftData } from 'types'
 
-export type EditorState = Metadata &
+export type EditorState = Omit<Metadata, 'mintBy'> &
   NftData & {
     seed: number
     isTc: boolean
@@ -31,6 +31,8 @@ const initialState: EditorState = {
   country: countries[country],
   year,
   ch: '亂',
+  name: '',
+  description: '',
 }
 
 // Actual Slice
@@ -81,11 +83,17 @@ export const slice = createSlice({
       const key = k === 'text' ? 'textColor' : 'bgColor'
       state[key] = c
     },
-    setMetadata(state, action: PayloadAction<Metadata>) {
+    setMetadata(state, action: PayloadAction<Omit<Metadata, 'mintBy'>>) {
       const { country, year, ch } = action.payload
       state.country = country
       state.year = year
       state.ch = ch
+    },
+    setName(state, action: PayloadAction<string>) {
+      state.name = action.payload
+    },
+    setDescription(state, action: PayloadAction<string>) {
+      state.description = action.payload
     },
     reset(state) {
       state.distortion = 10
@@ -111,6 +119,8 @@ export const {
   setRotation,
   setColor,
   setMetadata,
+  setName,
+  setDescription,
   reset,
 } = slice.actions
 

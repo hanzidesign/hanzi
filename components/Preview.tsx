@@ -35,7 +35,7 @@ export default function Preview(props: PreviewProps) {
       const createdAt = Date.now()
       const uid = `${createdAt}`
       uidRef.current = uid
-      dispatch(addJob({ ...nftData, country, year, ch, createdAt, uid }))
+      dispatch(addJob({ ...nftData, country, year, ch, createdAt, uid, mintBy: account }))
     }
   }
 
@@ -97,9 +97,7 @@ export default function Preview(props: PreviewProps) {
                 <Button variant="outline" onClick={onBack}>
                   Back
                 </Button>
-                <Button onClick={() => dispatch(setStart({ uid: job.uid, startAt: undefined }))}>
-                  Retry
-                </Button>
+                <Button onClick={() => dispatch(setStart({ uid: job.uid, startAt: undefined }))}>Retry</Button>
               </Group>
               <Text
                 className="absolute-horizontal"

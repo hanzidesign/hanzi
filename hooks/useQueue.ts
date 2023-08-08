@@ -6,6 +6,7 @@ import { useAppSelector, useAppDispatch } from 'store'
 import { setStart, setIpfsUrl, setFailed } from 'store/slices/queue'
 import { uploadImage } from 'lib/nftStorage'
 import { setAttributes, setMetadata } from 'lib/metadata'
+import { getName } from 'utils/helper'
 import { Constants } from 'types'
 import type { Job } from 'types'
 
@@ -24,6 +25,8 @@ export default function useQueue() {
     try {
       if (account) {
         const ipfsUrl = await upload(job, account)
+        if (!ipfsUrl) throw new Error('no metadata url')
+
         dispatch(setIpfsUrl({ uid, ipfsUrl }))
       }
     } catch (error) {
@@ -49,12 +52,13 @@ export default function useQueue() {
   return firstJob
 }
 
-async function upload(job: Job, account: string) {
-  const { country, year, ch } = job
+async function upload(job: Job, mintBy: string) {
+  const { country, year, ch, name: n, description: d } = job
   // metadata
-  const name = `${country}-${year}-${ch}`
-  const attributes = setAttributes({ country, year, ch })
-  const metadata = setMetadata(name, account, attributes)
+  const name = n || getName(year, country, ch)
+  const description = d || `Created by ${mintBy}`
+  const attributes = setAttributes({ country, year, ch, mintBy })
+  const metadata = setMetadata(name, description, attributes)
   console.log(metadata)
 
   const dataURI = await d3ToPng(`#${Constants.svgId}`, name, {

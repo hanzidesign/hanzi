@@ -27,7 +27,7 @@ export default function PageHeader(props: PageHeaderProps) {
         <Group className="c-pointer" spacing={8} onClick={() => router.push(labelUrl)}>
           <img src="/icon.svg" alt="" style={{ width: 40, height: 40 }} />
           <Text fz={20} fw="bold">
-            Chinese NFT
+            Hanzi Design
           </Text>
         </Group>
 
@@ -45,7 +45,7 @@ export default function PageHeader(props: PageHeaderProps) {
                 <EtherscanIcon size={32} />
               </ActionIcon>
             </Tooltip>
-            <Tooltip label="Opensea">
+            {/* <Tooltip label="Opensea">
               <ActionIcon
                 color="dark"
                 radius="xl"
@@ -54,7 +54,7 @@ export default function PageHeader(props: PageHeaderProps) {
               >
                 <SiOpensea size={32} />
               </ActionIcon>
-            </Tooltip>
+            </Tooltip> */}
           </Group>
         )}
       </Group>

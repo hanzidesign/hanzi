@@ -1,6 +1,6 @@
 import { metadataExample } from 'assets/metadata'
 
-export type Metadata = { country: string; year: string; ch: string }
+export type Metadata = { country: string; year: string; ch: string; mintBy: string }
 export type MetadataJson = typeof metadataExample
 
 export type NftData = {
@@ -15,6 +15,8 @@ export type NftData = {
   rotation: number
   textColor: string
   bgColor: string
+  name: string
+  description: string
 }
 
 export type NftTx = {
