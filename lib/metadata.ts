@@ -1,7 +1,7 @@
 import type { Metadata, Trait, NftMetadata } from 'types'
 
 export function setAttributes(metadata: Metadata): Trait[] {
-  const { country, year, ch } = metadata
+  const { country, year, ch, mintBy } = metadata
   const countryTrait: Trait = {
     trait_type: 'country',
     value: country,
@@ -14,8 +14,12 @@ export function setAttributes(metadata: Metadata): Trait[] {
     trait_type: 'ch',
     value: ch,
   }
+  const mintByTrait: Trait = {
+    trait_type: 'mintBy',
+    value: mintBy,
+  }
 
-  return [countryTrait, yearTrait, chTrait]
+  return [countryTrait, yearTrait, chTrait, mintByTrait]
 }
 
 export function setMetadata(name: string, description: string, attributes: Trait[]): NftMetadata {
