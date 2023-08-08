@@ -45,16 +45,11 @@ export default function PageHeader(props: PageHeaderProps) {
                 <EtherscanIcon size={32} />
               </ActionIcon>
             </Tooltip>
-            {/* <Tooltip label="Opensea">
-              <ActionIcon
-                color="dark"
-                radius="xl"
-                variant="transparent"
-                onClick={() => window.open(opensea, '_blank')}
-              >
+            <Tooltip label="Opensea">
+              <ActionIcon color="dark" radius="xl" variant="transparent" onClick={() => window.open(opensea, '_blank')}>
                 <SiOpensea size={32} />
               </ActionIcon>
-            </Tooltip> */}
+            </Tooltip>
           </Group>
         )}
       </Group>
