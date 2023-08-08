@@ -43,28 +43,37 @@ export default function Style() {
       />
 
       <Stack spacing={8} py={24}>
-        {_.map(theme.colors, (colors, key) => (
-          <Group key={key} spacing={8} mx="auto">
-            {_.map(colors, (c) => (
-              <ColorSwatch
-                className="c-pointer"
-                key={c}
-                color={c}
-                size={22}
-                onClick={() => dispatch(setColor({ k: value, c }))}
-                radius={8}
-                styles={{
-                  shadowOverlay: {
-                    boxShadow:
-                      c === textColor || c === bgColor
-                        ? 'rgb(0 0 0 / 10%) 0 0 0 0.0625rem inset, rgb(0 0 0 / 15%) 0 0 0.25rem inset'
-                        : 'rgb(0 0 0 / 5%) 0 0 0 0.0625rem inset, rgb(0 0 0 / 10%) 0 0 0.25rem inset',
-                  },
-                }}
-              />
-            ))}
-          </Group>
-        ))}
+        {_.map(theme.colors, (v, key) => {
+          const colors = [...v]
+          if (key === 'dark') {
+            colors[9] = '#000'
+          }
+          if (key === 'gray') {
+            colors[0] = '#fff'
+          }
+          return (
+            <Group key={key} spacing={8} mx="auto">
+              {_.map(colors, (c) => (
+                <ColorSwatch
+                  className="c-pointer"
+                  key={c}
+                  color={c}
+                  size={22}
+                  onClick={() => dispatch(setColor({ k: value, c }))}
+                  radius={8}
+                  styles={{
+                    shadowOverlay: {
+                      boxShadow:
+                        c === textColor || c === bgColor
+                          ? 'rgb(0 0 0 / 10%) 0 0 0 0.0625rem inset, rgb(0 0 0 / 15%) 0 0 0.25rem inset'
+                          : 'rgb(0 0 0 / 5%) 0 0 0 0.0625rem inset, rgb(0 0 0 / 10%) 0 0 0.25rem inset',
+                    },
+                  }}
+                />
+              ))}
+            </Group>
+          )
+        })}
       </Stack>
 
       <Group position="right" pb={24} px={12}>
