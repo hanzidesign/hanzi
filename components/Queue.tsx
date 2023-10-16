@@ -6,7 +6,7 @@ import { setCancel, setStart } from 'store/slices/queue'
 import { delNft } from 'store/slices/nft'
 import { useMediaQuery } from '@mantine/hooks'
 import { SimpleGrid, AspectRatio, Box, Text, Group } from '@mantine/core'
-import { Button, CloseButton } from '@mantine/core'
+import { Button, CloseButton, useMantineTheme } from '@mantine/core'
 import Item, { SvgItemProps } from 'components/SvgItem/Item'
 import { getIpfsUrl } from 'utils/helper'
 import { IoMdImage } from 'react-icons/io'
@@ -17,6 +17,7 @@ import type { Job, NftTx } from 'types'
 function JobCard(props: { data: Job }) {
   const dispatch = useAppDispatch()
   const { list: nftList, etherscan, account } = useAppSelector((state) => state.nft)
+  const theme = useMantineTheme()
 
   const { data } = props
   const itemProps = getItemProps(data)
@@ -31,16 +32,16 @@ function JobCard(props: { data: Job }) {
     <Box pos="relative">
       <AspectRatio
         ratio={1}
-        sx={(theme) => ({
+        style={{
           borderRadius: 16,
           border: `1px solid ${theme.colors.gray[9]}`,
           overflow: 'hidden',
-        })}
+        }}
       >
         <Item {...itemProps} />
       </AspectRatio>
 
-      <Group h={48} py={8} sx={{ justifyContent: 'space-between' }}>
+      <Group h={48} py={8} style={{ justifyContent: 'space-between' }}>
         {hash ? (
           <>
             <Box />
@@ -56,14 +57,8 @@ function JobCard(props: { data: Job }) {
           </>
         ) : (
           <>
-            <Group spacing={4}>
-              {failed ? (
-                <BiError size={20} />
-              ) : account ? (
-                <IoMdImage size={20} />
-              ) : (
-                <IoWalletSharp size={20} />
-              )}
+            <Group gap={4}>
+              {failed ? <BiError size={20} /> : account ? <IoMdImage size={20} /> : <IoWalletSharp size={20} />}
               <Text fz={14}>
                 {failed
                   ? 'Error'
@@ -94,13 +89,12 @@ function JobCard(props: { data: Job }) {
           dispatch(setCancel(at))
           dispatch(delNft(at))
         }}
-        sx={{
-          position: 'absolute',
-          top: 8,
-          right: 8,
-          '&:hover': {
-            backgroundColor: 'rgba(248, 249, 250, 0.2)',
-          },
+        pos="absolute"
+        top={8}
+        right={8}
+        bg="rgba(248, 249, 250, 0.2)"
+        style={{
+          '&:hover': {},
         }}
       />
     </Box>
@@ -109,6 +103,7 @@ function JobCard(props: { data: Job }) {
 
 function NftTxCard(props: { data: NftTx }) {
   const dispatch = useAppDispatch()
+  const theme = useMantineTheme()
   const { etherscan } = useAppSelector((state) => state.nft)
   const { createdAt, ipfsUrl, image, hash } = props.data
   const at = `${createdAt}`
@@ -120,19 +115,19 @@ function NftTxCard(props: { data: NftTx }) {
     <Box pos="relative">
       <AspectRatio
         ratio={1}
-        sx={(theme) => ({
+        style={{
           borderRadius: 16,
           border: `1px solid ${theme.colors.gray[9]}`,
           overflow: 'hidden',
-        })}
+        }}
       >
         <img src={img} width="100%" height="100%" style={{ objectFit: 'cover' }} />
       </AspectRatio>
-      <Group h={48} py={8} sx={{ justifyContent: 'space-between' }}>
+      <Group h={48} py={8} style={{ justifyContent: 'space-between' }}>
         {hash ? (
           <span />
         ) : (
-          <Group spacing={4}>
+          <Group gap={4}>
             <IoMdImage size={20} />
             <Text fz={14}>Ready</Text>
           </Group>
@@ -160,10 +155,10 @@ function NftTxCard(props: { data: NftTx }) {
           dispatch(setCancel(at))
           dispatch(delNft(at))
         }}
-        sx={{
-          position: 'absolute',
-          top: 8,
-          right: 8,
+        pos="absolute"
+        top={8}
+        right={8}
+        style={{
           '&:hover': {
             backgroundColor: 'rgba(248, 249, 250, 0.2)',
           },

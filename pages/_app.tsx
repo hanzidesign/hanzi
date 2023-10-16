@@ -1,13 +1,14 @@
 import '@rainbow-me/rainbowkit/styles.css'
+import '@mantine/core/styles.css'
 import '../styles/globals.css'
 
 import { getDefaultWallets, RainbowKitProvider, lightTheme } from '@rainbow-me/rainbowkit'
-import { configureChains, createClient, WagmiConfig } from 'wagmi'
+import { configureChains, createConfig, WagmiConfig } from 'wagmi'
 import { optimism } from 'wagmi/chains'
 import { alchemyProvider } from 'wagmi/providers/alchemy'
 import { publicProvider } from 'wagmi/providers/public'
 import { Provider } from 'react-redux'
-import { MantineProvider, useMantineTheme } from '@mantine/core'
+import { MantineProvider } from '@mantine/core'
 import { Notifications } from '@mantine/notifications'
 import { ModalsProvider } from '@mantine/modals'
 import { PersistGate } from 'redux-persist/integration/react'
@@ -15,49 +16,51 @@ import { persistStore } from 'redux-persist'
 import { AppProvider } from 'hooks/useAppContext'
 import { wrapper } from 'store'
 import { myTheme } from 'theme'
+import { env } from 'utils/env'
 import PageHead from 'components/PageHead'
 import type { AppProps } from 'next/app'
 
-const { chains, provider } = configureChains(
+const { chains, publicClient, webSocketPublicClient } = configureChains(
   [optimism],
   [alchemyProvider({ apiKey: process.env.NEXT_PUBLIC_ALCHEMY_KEY_OPTIMISM }), publicProvider()]
 )
 
 const { connectors } = getDefaultWallets({
-  appName: 'My RainbowKit App',
+  appName: env.appName,
+  projectId: process.env.NEXT_PUBLIC_WALLETCONNECT,
   chains,
 })
 
-const wagmiClient = createClient({
+const wagmiConfig = createConfig({
   autoConnect: true,
   connectors,
-  provider,
+  publicClient,
 })
 
 function MyApp({ Component, ...rest }: AppProps) {
   const { store, props } = wrapper.useWrappedStore(rest)
-  const persistor = persistStore(store)
   const { pageProps } = props
-  const theme = useMantineTheme()
+
+  const persistor = persistStore(store)
 
   return (
     <>
       <PageHead />
-      <WagmiConfig client={wagmiClient}>
+      <WagmiConfig config={wagmiConfig}>
         <RainbowKitProvider
           chains={chains}
           initialChain={optimism}
           appInfo={{
-            appName: 'Hanzi Design',
+            appName: env.appName,
           }}
           theme={lightTheme({
-            accentColor: theme.colors.gray[9],
+            accentColor: '#212529',
           })}
         >
           <Provider store={store}>
             <PersistGate loading={null} persistor={persistor}>
               <AppProvider>
-                <MantineProvider theme={myTheme} withGlobalStyles withNormalizeCSS>
+                <MantineProvider theme={myTheme}>
                   <Notifications />
                   <ModalsProvider>
                     <Component {...pageProps} />

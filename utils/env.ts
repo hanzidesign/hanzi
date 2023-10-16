@@ -7,6 +7,7 @@ const env = {
   isDev: process.env.NODE_ENV === 'development',
   url: process.env.URL,
   dbDirect: toBool(process.env.DB_DIRECT),
+  appName: process.env.NEXT_PUBLIC_APP_NAME
 }
 
 // for browser by prefixing with NEXT_PUBLIC_

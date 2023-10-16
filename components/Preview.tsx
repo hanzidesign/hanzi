@@ -51,11 +51,11 @@ export default function Preview(props: PreviewProps) {
   }
 
   return (
-    <Box sx={{ margin: '32px 0 16px' }}>
+    <Box m="32px 0 16px">
       <AspectRatio
         ratio={1}
-        sx={{
-          width: '100%',
+        w="100%"
+        style={{
           borderRadius: 16,
           overflow: 'hidden',
         }}
@@ -65,7 +65,7 @@ export default function Preview(props: PreviewProps) {
       <Center py={16} h={80}>
         {job ? (
           job.ipfsUrl ? (
-            <Box w="100%" sx={{ textAlign: 'center' }}>
+            <Box w="100%" ta="center">
               {minted ? (
                 hash ? (
                   <Button
@@ -79,8 +79,9 @@ export default function Preview(props: PreviewProps) {
                   </Button>
                 ) : (
                   <>
-                    <Progress value={100} color="gray" size="xl" radius="xl" animate />
-                    <Text fz={14} align="center" mt={8} opacity={0.55}>
+                    <Progress value={100} color="gray" size="xl" radius="xl" animated />
+
+                    <Text fz={14} ta="center" mt={8} opacity={0.55}>
                       Wait for the transaction to be mined
                     </Text>
                   </>
@@ -104,7 +105,7 @@ export default function Preview(props: PreviewProps) {
                 fz={14}
                 opacity={0.55}
                 bottom={-32}
-                sx={{
+                style={{
                   whiteSpace: 'nowrap',
                 }}
               >
@@ -113,8 +114,13 @@ export default function Preview(props: PreviewProps) {
             </Box>
           ) : (
             <Box pos="relative" w="100%">
-              <Progress value={progress} label={`${progress}%`} size="xl" radius="xl" animate />
-              <Text fz={14} align="center" mt={8} opacity={0.55}>
+              <Progress.Root size="xl">
+                <Progress.Section value={progress} animated>
+                  <Progress.Label>{`${progress}%`}</Progress.Label>
+                </Progress.Section>
+              </Progress.Root>
+
+              <Text fz={14} ta="center" mt={8} opacity={0.55}>
                 {progress ? 'Wait for upload to complete' : 'Wait for upload to start'}
               </Text>
             </Box>

@@ -6,6 +6,7 @@ declare global {
       TIMEZONE: string
       URL: string
       NEXT_PUBLIC_GOOGLE_ANALYTICS: string
+      NEXT_PUBLIC_APP_NAME: string
       // ssh
       SSH_USERNAME: string
       SSH_KEY_FILEPATH: string
@@ -30,6 +31,8 @@ declare global {
       // nft storage
       NEXT_PUBLIC_NFT_STORAGE_TOKEN: string
       NEXT_PUBLIC_WEB_URL: string
+      // walletconnect
+      NEXT_PUBLIC_WALLETCONNECT: string
     }
   }
 }

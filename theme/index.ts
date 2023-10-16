@@ -1,7 +1,6 @@
-import type { MantineThemeOverride } from '@mantine/core'
+import { createTheme } from '@mantine/core'
 
-const myTheme: MantineThemeOverride = {
-  colorScheme: 'light',
+const myTheme = createTheme({
   primaryColor: 'dark',
   defaultRadius: 'md',
   components: {
@@ -11,6 +10,6 @@ const myTheme: MantineThemeOverride = {
       },
     },
   },
-}
+})
 
 export { myTheme }

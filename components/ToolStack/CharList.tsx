@@ -35,8 +35,8 @@ export default function CharList() {
         <Box>
           <Title order={4}>Country</Title>
         </Box>
-        <Box sx={{ position: 'relative' }}>
-          <Title order={4} sx={{ paddingLeft: 10 }}>
+        <Box pos="relative">
+          <Title order={4} pl={10}>
             Year
           </Title>
 
@@ -46,9 +46,7 @@ export default function CharList() {
             onLabel="TC"
             offLabel="SC"
             color="dark"
-            sx={{
-              right: 0,
-            }}
+            right={0}
             checked={isTc}
             onChange={(event) => {
               const { checked } = event.currentTarget
@@ -64,12 +62,10 @@ export default function CharList() {
               radius="md"
               color="dark"
               variant={key === country ? 'filled' : 'subtle'}
-              sx={{
-                display: 'block',
-                margin: '0 0 4px -8px',
-                padding: '2px 10px',
-                fontWeight: 400,
-              }}
+              display="block"
+              m="0 0 4px -8px"
+              p="2px 10px"
+              fw={400}
               onClick={() => {
                 const [{ year }] = list[key]
                 handleChange(key, year, isTc)
@@ -80,19 +76,17 @@ export default function CharList() {
           ))}
         </Box>
         <Box>
-          <ScrollArea type="auto" sx={{ height: 552 }}>
+          <ScrollArea type="auto" h={552}>
             {_.map(list[country], ({ year: y, ch }) => (
               <Button
                 key={y}
                 radius="md"
                 color="dark"
                 variant={y === year ? 'filled' : 'subtle'}
-                sx={{
-                  display: 'block',
-                  margin: '0 0 4px',
-                  padding: '2px 10px',
-                  fontWeight: 400,
-                }}
+                display="block"
+                m="0 0 4px"
+                p="2px 10px"
+                fw={400}
                 styles={{
                   label: {
                     width: 64,

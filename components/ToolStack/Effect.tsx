@@ -4,7 +4,7 @@ import { useAppDispatch, useAppSelector } from 'store'
 import { useState, useEffect, useRef } from 'react'
 import { SimpleGrid, AspectRatio, Group } from '@mantine/core'
 import { Center, Text, Tooltip, Button } from '@mantine/core'
-import { Slider, FileInput } from '@mantine/core'
+import { Slider, FileInput, useMantineTheme } from '@mantine/core'
 import { StyledBox, StyledText } from './common'
 import useFileReader from 'hooks/useFileReader'
 import { setPtnUrl, setDistortion, setBlur, setSeed } from 'store/slices/editor'
@@ -13,9 +13,8 @@ import { IoMdImage } from 'react-icons/io'
 
 export default function Effect() {
   const dispatch = useAppDispatch()
-  const { seed, ptnUrl, distortion, blur, width, x, y, rotation } = useAppSelector(
-    (state) => state.editor
-  )
+  const { seed, ptnUrl, distortion, blur, width, x, y, rotation } = useAppSelector((state) => state.editor)
+  const theme = useMantineTheme()
 
   const [file, setFile] = useState<File | null>(null)
   const fileResult = useFileReader(file)
@@ -49,7 +48,7 @@ export default function Effect() {
     <StyledBox>
       <SimpleGrid cols={1} spacing="xl">
         <div>
-          <StyledText span mb={8} sx={{ position: 'relative', display: 'block' }}>
+          <StyledText span mb={8} pos="relative" display="block">
             Pattern
           </StyledText>
 
@@ -80,14 +79,14 @@ export default function Effect() {
               }}
             >
               <Center
-                sx={(theme) => ({
+                style={{
                   borderRadius: 8,
                   border: `1px solid ${theme.colors.gray[4]}`,
-                  backgroundColor: theme.white,
                   ':hover': {
                     cursor: 'pointer',
                   },
-                })}
+                }}
+                bg={theme.white}
               >
                 {hasImg ? (
                   <img
@@ -100,7 +99,7 @@ export default function Effect() {
                     }}
                   />
                 ) : (
-                  <Group spacing="xs">
+                  <Group gap="xs">
                     <IoMdImage size={24} />
                     <Text size="sm">Pick an image under 2MB</Text>
                   </Group>
@@ -200,7 +199,7 @@ export default function Effect() {
           />
         </div>
 
-        <Group position="right" py={24}>
+        <Group align="right" py={24}>
           <Button size="xs" onClick={() => dispatch(reset())}>
             Reset
           </Button>

@@ -4,6 +4,7 @@ import CharList from './CharList'
 import Effect from './Effect'
 import Style from './Style'
 import Metadata from './Metadata'
+import classes from './index.module.css'
 
 type Cell = {
   t: string
@@ -32,14 +33,10 @@ const cells: Cell[] = [
 export default function ToolStack() {
   return (
     <Accordion
+      classNames={classes}
       defaultValue={['0']}
       chevron={<IoAddOutline size={24} />}
       styles={{
-        chevron: {
-          '&[data-rotate]': {
-            transform: 'rotate(45deg)',
-          },
-        },
         content: {
           margin: '6px 0 16px',
           padding: 0,

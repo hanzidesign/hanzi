@@ -4,6 +4,7 @@ import { useAppDispatch, useAppSelector } from 'store'
 import { Stack, Group, SegmentedControl, ColorSwatch, Button, useMantineTheme } from '@mantine/core'
 import { StyledBox } from './common'
 import { setColor } from 'store/slices/editor'
+import classes from './style.module.css'
 
 export default function Style() {
   const dispatch = useAppDispatch()
@@ -15,6 +16,7 @@ export default function Style() {
   return (
     <StyledBox>
       <SegmentedControl
+        classNames={classes}
         size="md"
         value={value}
         onChange={setValue}
@@ -23,7 +25,7 @@ export default function Style() {
           { label: 'Background', value: 'bg' },
         ]}
         mt={8}
-        styles={(theme) => ({
+        styles={{
           root: {
             width: '100%',
             border: `2px solid ${theme.colors.dark[9]}`,
@@ -36,13 +38,10 @@ export default function Style() {
           label: {
             color: 'inherit !important',
           },
-          controlActive: {
-            color: theme.white,
-          },
-        })}
+        }}
       />
 
-      <Stack spacing={8} py={24}>
+      <Stack gap={8} py={24}>
         {_.map(theme.colors, (v, key) => {
           const colors = [...v]
           if (key === 'dark') {
@@ -52,7 +51,7 @@ export default function Style() {
             colors[0] = '#fff'
           }
           return (
-            <Group key={key} spacing={8} mx="auto">
+            <Group key={key} gap={8} mx="auto">
               {_.map(colors, (c) => (
                 <ColorSwatch
                   className="c-pointer"
@@ -76,7 +75,7 @@ export default function Style() {
         })}
       </Stack>
 
-      <Group position="right" pb={24} px={12}>
+      <Group align="right" pb={24} px={12}>
         <Button
           size="xs"
           onClick={() => {

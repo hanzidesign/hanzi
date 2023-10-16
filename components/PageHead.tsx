@@ -1,6 +1,7 @@
 import Head from 'next/head'
+import { env } from 'utils/env'
 
-const name = 'Hanzi Design'
+const name = env.appName
 const description =
   'Exploring the Possibilities of NFTs for Empowering Artists and Redefining the Art Market in Chinese World'
 
