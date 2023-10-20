@@ -10,7 +10,7 @@ export type MotionType = 'a' | 'b' | 'x' | 'n'
 type Point = [number, number]
 type Axis = [1 | -1, 1 | -1]
 
-interface MotionPathProps {
+export type MotionPathProps = {
   type: MotionType
   initX: number
   initY: number
@@ -69,7 +69,6 @@ export default function MotionPath(props: React.PropsWithChildren<MotionPathProp
 
   const softBezier = React.useCallback(() => {
     const start: Point = [pointRef.current.x, pointRef.current.y]
-    console.log(start)
     const points: Point[] = [start, ...getRandomPoints(start, innerWidth, innerHeight, offsetX, offsetY, type)]
     // set next start point
     const lastPoint = _.last(points)
@@ -107,7 +106,7 @@ export default function MotionPath(props: React.PropsWithChildren<MotionPathProp
     // start
 
     const totalLength = scope.current.getTotalLength()
-    const duration = _.max([6, totalLength / 50])
+    const duration = _.max([8, totalLength / 25])
 
     const controls = animate(pathLength, 100, {
       duration,
@@ -125,7 +124,7 @@ export default function MotionPath(props: React.PropsWithChildren<MotionPathProp
   return (
     <Box pos="absolute" left={0} top={0} w="100%" h="100%" {...boxProps}>
       <motion.svg width="100%" height="100%" viewBox={`0 0 ${width} ${height}`}>
-        <motion.path ref={scope} d={path} stroke="#1f88eb" strokeWidth="2" fill="none" pathLength={pathLength} />
+        <motion.path ref={scope} d={path} stroke="#1f88eb" strokeWidth={0} fill="none" pathLength={pathLength} />
       </motion.svg>
       <Box pos="absolute" left={0} top={0} style={{ transform: 'translate(-50%, -50%)' }}>
         <motion.div style={{ x, y }}>
