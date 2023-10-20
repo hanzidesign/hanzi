@@ -115,7 +115,6 @@ export default function MotionPath(props: React.PropsWithChildren<MotionPathProp
         // restart
         pathLength.set(0)
         setPath(softBezier())
-        console.log('onComplete')
       },
     })
     return controls.stop
