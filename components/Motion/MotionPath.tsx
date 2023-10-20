@@ -1,7 +1,9 @@
 import React from 'react'
 import _ from 'lodash'
+import { Box } from '@mantine/core'
 import { useWindowSize } from 'rooks'
-import { gsap } from 'lib/gsap'
+import { motion, useMotionValue, useAnimate, useMotionValueEvent } from 'framer-motion'
+import type { BoxProps } from '@mantine/core'
 
 export type MotionType = 'a' | 'b' | 'x' | 'n'
 
@@ -9,14 +11,13 @@ type Point = [number, number]
 type Axis = [1 | -1, 1 | -1]
 
 interface MotionPathProps {
-  id: string
-  element: React.ReactElement
   type: MotionType
-  paused: boolean
+  initX: number
+  initY: number
   offsetX: number
   offsetY: number
-  durations: [number, number]
   smoothing?: number
+  boxProps?: BoxProps
 }
 
 const motionType: { [k in string]: Axis[] } = {
@@ -49,107 +50,89 @@ const motionType: { [k in string]: Axis[] } = {
   ],
 }
 
-const Root = styled(Box)({
-  display: 'inline-block',
-})
+export default function MotionPath(props: React.PropsWithChildren<MotionPathProps>) {
+  const { children, type, initX, initY, offsetX, offsetY, smoothing = 0.25, boxProps = {} } = props
 
-export default function MotionPath(props: MotionPathProps) {
-  const { id, element, type, paused, offsetX, offsetY, durations, smoothing = 0.25 } = props
-  const target = `#${id}`
+  const initRef = React.useRef(false)
+  const pointRef = React.useRef({ x: initX, y: initY })
 
   const { innerWidth, innerHeight } = useWindowSize()
+  const width = innerWidth || 0
+  const height = innerHeight || 0
 
-  const [init, setInit] = React.useState(false)
-  const [play, setPlay] = React.useState(false)
+  const [scope, animate] = useAnimate<SVGPathElement>()
+  const x = useMotionValue(initX)
+  const y = useMotionValue(initY)
+  const pathLength = useMotionValue(0)
 
-  const softBezier = React.useCallback(
-    (target: string) => {
-      const start: Point = [Number(gsap.getProperty(target, 'x')), Number(gsap.getProperty(target, 'y'))]
-      const points: Point[] = [start, ...getRandomPoints(start, innerWidth, innerHeight, offsetX, offsetY, type)]
+  const [path, setPath] = React.useState('')
 
-      return getPath(points, smoothing)
-    },
-    [innerWidth, innerHeight, offsetX, offsetY]
-  )
-
-  const tl = React.useMemo(() => {
-    if (!id) {
-      return
+  const softBezier = React.useCallback(() => {
+    const start: Point = [pointRef.current.x, pointRef.current.y]
+    console.log(start)
+    const points: Point[] = [start, ...getRandomPoints(start, innerWidth, innerHeight, offsetX, offsetY, type)]
+    // set next start point
+    const lastPoint = _.last(points)
+    if (lastPoint) {
+      pointRef.current.x = lastPoint[0]
+      pointRef.current.y = lastPoint[1]
     }
+    return getPath(points, smoothing)
+  }, [innerWidth, innerHeight, offsetX, offsetY, type])
 
-    return gsap.timeline({
-      repeat: -1,
-      repeatRefresh: true,
-    })
-  }, [id])
+  // subscribe
+  useMotionValueEvent(pathLength, 'change', (latest) => {
+    const el = scope.current
+    const totalLength = el.getTotalLength()
+    const progress = latest / 100
+    const latestPoint = el.getPointAtLength(progress * totalLength)
+    x.set(latestPoint.x)
+    y.set(latestPoint.y)
+  })
 
   React.useEffect(() => {
-    if (init) {
+    // for init
+    if (initRef.current) {
       return
     }
-
-    setInit(true)
 
     if (innerWidth && innerHeight) {
-      const x = gsap.utils.random(offsetX, innerWidth - offsetX)
-      const y = gsap.utils.random(offsetY, innerHeight - offsetY)
-
-      gsap.set(target, {
-        x,
-        y,
-      })
+      initRef.current = true
+      setPath(softBezier())
     }
-  }, [init, innerWidth, innerHeight])
+  }, [innerWidth, innerHeight])
 
   React.useEffect(() => {
-    if (!tl) {
-      return
-    }
-
-    tl.clear()
-
-    tl.set(target, {
-      xPercent: -50,
-      yPercent: -50,
-    })
-
+    if (!path) return
     // start
-    tl.to(target, {
-      motionPath: {
-        path: () => softBezier(target),
+
+    const totalLength = scope.current.getTotalLength()
+    const duration = _.max([6, totalLength / 50])
+
+    const controls = animate(pathLength, 100, {
+      duration,
+      ease: 'linear',
+      onComplete: () => {
+        // restart
+        pathLength.set(0)
+        setPath(softBezier())
+        console.log('onComplete')
       },
-      transformOrigin: '50% 50%',
-      duration: gsap.utils.random(durations[0], durations[1]),
-      ease: 'none',
     })
-  }, [tl, target, softBezier, durations, offsetX, offsetY])
-
-  React.useEffect(() => {
-    if (init) {
-      setPlay(true)
-    }
-  }, [init])
-
-  React.useEffect(() => {
-    if (tl) {
-      if (play && !paused) {
-        tl.play()
-      } else {
-        tl.pause()
-      }
-    }
-  }, [tl, play, paused])
-
-  React.useEffect(() => {
-    return () => {
-      tl?.kill()
-    }
-  }, [tl])
+    return controls.stop
+  }, [path])
 
   return (
-    <>
-      <Root id={id}>{element}</Root>
-    </>
+    <Box pos="absolute" left={0} top={0} w="100%" h="100%" {...boxProps}>
+      <motion.svg width="100%" height="100%" viewBox={`0 0 ${width} ${height}`}>
+        <motion.path ref={scope} d={path} stroke="#1f88eb" strokeWidth="2" fill="none" pathLength={pathLength} />
+      </motion.svg>
+      <Box pos="absolute" left={0} top={0} style={{ transform: 'translate(-50%, -50%)' }}>
+        <motion.div style={{ x, y }}>
+          <span>{children}</span>
+        </motion.div>
+      </Box>
+    </Box>
   )
 }
 
@@ -221,10 +204,8 @@ function getPointByAxis(axis: Axis, width: number, height: number, offsetX: numb
   const w = width / 2
   const h = height / 2
 
-  const x =
-    xAxis > 0 ? gsap.utils.random(offsetX / 3 + w, width - offsetX) : gsap.utils.random(offsetX, w - offsetX / 3)
-  const y =
-    yAxis < 0 ? gsap.utils.random(offsetY / 3 + h, height - offsetY) : gsap.utils.random(offsetY, h - offsetY / 3)
+  const x = xAxis > 0 ? _.random(offsetX / 3 + w, width - offsetX) : _.random(offsetX, w - offsetX / 3)
+  const y = yAxis < 0 ? _.random(offsetY / 3 + h, height - offsetY) : _.random(offsetY, h - offsetY / 3)
 
   return [x, y]
 }

@@ -2,6 +2,7 @@ import type { NextPage } from 'next'
 import _ from 'lodash'
 import { AppShell, Title, Text, Box, Button, useMantineTheme } from '@mantine/core'
 import PageHeader from 'components/PageHeader'
+import MotionPath from 'components/Motion/MotionPath'
 
 const Home: NextPage<{}> = () => {
   const theme = useMantineTheme()
@@ -13,18 +14,17 @@ const Home: NextPage<{}> = () => {
           <PageHeader labelUrl="/mint" />
         </AppShell.Header>
 
-        <Box pos="relative" p={{ sm: 24 }}>
-          <Title fz={{ sm: 48 }} pt={48} pb={24}>
-            Revolutionizing Art in <br /> Hanzi Design
-          </Title>
-          <Text fz={{ sm: 18 }} maw={440} pb={{ base: 48, sm: 80 }} c={theme.colors.dark[3]}>
-            Exploring the Possibilities of NFTs for Empowering Artists and Redefining the Art Market in Chinese World
-          </Text>
+        <AppShell.Main>
+          <Box pos="relative" h="100dvh" p={{ sm: 24 }}>
+            <MotionPath type="a" initX={40} initY={80} offsetX={40} offsetY={40}>
+              <p>Dev</p>
+            </MotionPath>
 
-          <Button radius={99} size="xl" px={48} onClick={() => (window.location.href = '/mint')}>
+            {/* <Button radius={99} size="xl" px={48} onClick={() => (window.location.href = '/mint')}>
             Go Mint
-          </Button>
-        </Box>
+          </Button> */}
+          </Box>
+        </AppShell.Main>
       </AppShell>
     </>
   )
