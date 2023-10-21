@@ -17,7 +17,7 @@ const config: HardhatUserConfig = {
       accounts: [
         {
           privateKey: ACCOUNT_PRIVATE_KEY,
-          balance: ethers.utils.parseUnits('1', 'ether').toString(),
+          balance: ethers.parseUnits('1', 'ether').toString(),
         },
       ],
     },

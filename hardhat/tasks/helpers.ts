@@ -1,5 +1,4 @@
 import { ethers } from 'ethers'
-import { getContractAt } from '@nomiclabs/hardhat-ethers/internal/helpers'
 import type { HardhatRuntimeEnvironment } from 'hardhat/types'
 
 export function getEnvVariable(key: string, defaultValue?: string) {
@@ -27,5 +26,5 @@ export function getAccount() {
 
 export function getContract(hre: HardhatRuntimeEnvironment, name: string, address: string) {
   const account = getAccount()
-  return getContractAt(hre, name, address, account)
+  return hre.ethers.getContractAt(name, address, account)
 }

@@ -3,53 +3,29 @@
 /* eslint-disable */
 import type {
   BaseContract,
-  BigNumber,
   BigNumberish,
   BytesLike,
-  CallOverrides,
-  ContractTransaction,
-  Overrides,
-  PopulatedTransaction,
-  Signer,
-  utils,
+  FunctionFragment,
+  Result,
+  Interface,
+  EventFragment,
+  AddressLike,
+  ContractRunner,
+  ContractMethod,
+  Listener,
 } from 'ethers'
-import type { FunctionFragment, Result, EventFragment } from '@ethersproject/abi'
-import type { Listener, Provider } from '@ethersproject/providers'
-import type { TypedEventFilter, TypedEvent, TypedListener, OnEvent, PromiseOrValue } from './common'
+import type {
+  TypedContractEvent,
+  TypedDeferredTopicFilter,
+  TypedEventLog,
+  TypedLogDescription,
+  TypedListener,
+  TypedContractMethod,
+} from './common'
 
-export interface HanziInterface extends utils.Interface {
-  functions: {
-    'OPERATOR_FILTER_REGISTRY()': FunctionFragment
-    'approve(address,uint256)': FunctionFragment
-    'balanceOf(address)': FunctionFragment
-    'baseTokenURI()': FunctionFragment
-    'burnTokens(uint256[])': FunctionFragment
-    'getApproved(uint256)': FunctionFragment
-    'isApprovedForAll(address,address)': FunctionFragment
-    'name()': FunctionFragment
-    'owner()': FunctionFragment
-    'ownerOf(uint256)': FunctionFragment
-    'payments(address)': FunctionFragment
-    'renounceOwnership()': FunctionFragment
-    'safeMint(address,string)': FunctionFragment
-    'safeTransferFrom(address,address,uint256)': FunctionFragment
-    'safeTransferFrom(address,address,uint256,bytes)': FunctionFragment
-    'setApprovalForAll(address,bool)': FunctionFragment
-    'setBaseTokenURI(string)': FunctionFragment
-    'setTokenURI(uint256[],string)': FunctionFragment
-    'supportsInterface(bytes4)': FunctionFragment
-    'symbol()': FunctionFragment
-    'tokenByIndex(uint256)': FunctionFragment
-    'tokenOfOwnerByIndex(address,uint256)': FunctionFragment
-    'tokenURI(uint256)': FunctionFragment
-    'totalSupply()': FunctionFragment
-    'transferFrom(address,address,uint256)': FunctionFragment
-    'transferOwnership(address)': FunctionFragment
-    'withdrawPayments(address)': FunctionFragment
-  }
-
+export interface HanziInterface extends Interface {
   getFunction(
-    nameOrSignatureOrTopic:
+    nameOrSignature:
       | 'OPERATOR_FILTER_REGISTRY'
       | 'approve'
       | 'balanceOf'
@@ -79,80 +55,41 @@ export interface HanziInterface extends utils.Interface {
       | 'withdrawPayments'
   ): FunctionFragment
 
+  getEvent(nameOrSignatureOrTopic: 'Approval' | 'ApprovalForAll' | 'OwnershipTransferred' | 'Transfer'): EventFragment
+
   encodeFunctionData(functionFragment: 'OPERATOR_FILTER_REGISTRY', values?: undefined): string
-  encodeFunctionData(
-    functionFragment: 'approve',
-    values: [PromiseOrValue<string>, PromiseOrValue<BigNumberish>]
-  ): string
-  encodeFunctionData(functionFragment: 'balanceOf', values: [PromiseOrValue<string>]): string
+  encodeFunctionData(functionFragment: 'approve', values: [AddressLike, BigNumberish]): string
+  encodeFunctionData(functionFragment: 'balanceOf', values: [AddressLike]): string
   encodeFunctionData(functionFragment: 'baseTokenURI', values?: undefined): string
-  encodeFunctionData(
-    functionFragment: 'burnTokens',
-    values: [PromiseOrValue<BigNumberish>[]]
-  ): string
-  encodeFunctionData(
-    functionFragment: 'getApproved',
-    values: [PromiseOrValue<BigNumberish>]
-  ): string
-  encodeFunctionData(
-    functionFragment: 'isApprovedForAll',
-    values: [PromiseOrValue<string>, PromiseOrValue<string>]
-  ): string
+  encodeFunctionData(functionFragment: 'burnTokens', values: [BigNumberish[]]): string
+  encodeFunctionData(functionFragment: 'getApproved', values: [BigNumberish]): string
+  encodeFunctionData(functionFragment: 'isApprovedForAll', values: [AddressLike, AddressLike]): string
   encodeFunctionData(functionFragment: 'name', values?: undefined): string
   encodeFunctionData(functionFragment: 'owner', values?: undefined): string
-  encodeFunctionData(functionFragment: 'ownerOf', values: [PromiseOrValue<BigNumberish>]): string
-  encodeFunctionData(functionFragment: 'payments', values: [PromiseOrValue<string>]): string
+  encodeFunctionData(functionFragment: 'ownerOf', values: [BigNumberish]): string
+  encodeFunctionData(functionFragment: 'payments', values: [AddressLike]): string
   encodeFunctionData(functionFragment: 'renounceOwnership', values?: undefined): string
-  encodeFunctionData(
-    functionFragment: 'safeMint',
-    values: [PromiseOrValue<string>, PromiseOrValue<string>]
-  ): string
+  encodeFunctionData(functionFragment: 'safeMint', values: [AddressLike, string]): string
   encodeFunctionData(
     functionFragment: 'safeTransferFrom(address,address,uint256)',
-    values: [PromiseOrValue<string>, PromiseOrValue<string>, PromiseOrValue<BigNumberish>]
+    values: [AddressLike, AddressLike, BigNumberish]
   ): string
   encodeFunctionData(
     functionFragment: 'safeTransferFrom(address,address,uint256,bytes)',
-    values: [
-      PromiseOrValue<string>,
-      PromiseOrValue<string>,
-      PromiseOrValue<BigNumberish>,
-      PromiseOrValue<BytesLike>
-    ]
+    values: [AddressLike, AddressLike, BigNumberish, BytesLike]
   ): string
-  encodeFunctionData(
-    functionFragment: 'setApprovalForAll',
-    values: [PromiseOrValue<string>, PromiseOrValue<boolean>]
-  ): string
-  encodeFunctionData(functionFragment: 'setBaseTokenURI', values: [PromiseOrValue<string>]): string
-  encodeFunctionData(
-    functionFragment: 'setTokenURI',
-    values: [PromiseOrValue<BigNumberish>[], PromiseOrValue<string>]
-  ): string
-  encodeFunctionData(
-    functionFragment: 'supportsInterface',
-    values: [PromiseOrValue<BytesLike>]
-  ): string
+  encodeFunctionData(functionFragment: 'setApprovalForAll', values: [AddressLike, boolean]): string
+  encodeFunctionData(functionFragment: 'setBaseTokenURI', values: [string]): string
+  encodeFunctionData(functionFragment: 'setTokenURI', values: [BigNumberish[], string]): string
+  encodeFunctionData(functionFragment: 'supportsInterface', values: [BytesLike]): string
   encodeFunctionData(functionFragment: 'symbol', values?: undefined): string
-  encodeFunctionData(
-    functionFragment: 'tokenByIndex',
-    values: [PromiseOrValue<BigNumberish>]
-  ): string
-  encodeFunctionData(
-    functionFragment: 'tokenOfOwnerByIndex',
-    values: [PromiseOrValue<string>, PromiseOrValue<BigNumberish>]
-  ): string
-  encodeFunctionData(functionFragment: 'tokenURI', values: [PromiseOrValue<BigNumberish>]): string
+  encodeFunctionData(functionFragment: 'tokenByIndex', values: [BigNumberish]): string
+  encodeFunctionData(functionFragment: 'tokenOfOwnerByIndex', values: [AddressLike, BigNumberish]): string
+  encodeFunctionData(functionFragment: 'tokenURI', values: [BigNumberish]): string
   encodeFunctionData(functionFragment: 'totalSupply', values?: undefined): string
-  encodeFunctionData(
-    functionFragment: 'transferFrom',
-    values: [PromiseOrValue<string>, PromiseOrValue<string>, PromiseOrValue<BigNumberish>]
-  ): string
-  encodeFunctionData(
-    functionFragment: 'transferOwnership',
-    values: [PromiseOrValue<string>]
-  ): string
-  encodeFunctionData(functionFragment: 'withdrawPayments', values: [PromiseOrValue<string>]): string
+  encodeFunctionData(functionFragment: 'transferFrom', values: [AddressLike, AddressLike, BigNumberish]): string
+  encodeFunctionData(functionFragment: 'transferOwnership', values: [AddressLike]): string
+  encodeFunctionData(functionFragment: 'withdrawPayments', values: [AddressLike]): string
 
   decodeFunctionResult(functionFragment: 'OPERATOR_FILTER_REGISTRY', data: BytesLike): Result
   decodeFunctionResult(functionFragment: 'approve', data: BytesLike): Result
@@ -167,14 +104,8 @@ export interface HanziInterface extends utils.Interface {
   decodeFunctionResult(functionFragment: 'payments', data: BytesLike): Result
   decodeFunctionResult(functionFragment: 'renounceOwnership', data: BytesLike): Result
   decodeFunctionResult(functionFragment: 'safeMint', data: BytesLike): Result
-  decodeFunctionResult(
-    functionFragment: 'safeTransferFrom(address,address,uint256)',
-    data: BytesLike
-  ): Result
-  decodeFunctionResult(
-    functionFragment: 'safeTransferFrom(address,address,uint256,bytes)',
-    data: BytesLike
-  ): Result
+  decodeFunctionResult(functionFragment: 'safeTransferFrom(address,address,uint256)', data: BytesLike): Result
+  decodeFunctionResult(functionFragment: 'safeTransferFrom(address,address,uint256,bytes)', data: BytesLike): Result
   decodeFunctionResult(functionFragment: 'setApprovalForAll', data: BytesLike): Result
   decodeFunctionResult(functionFragment: 'setBaseTokenURI', data: BytesLike): Result
   decodeFunctionResult(functionFragment: 'setTokenURI', data: BytesLike): Result
@@ -187,691 +118,266 @@ export interface HanziInterface extends utils.Interface {
   decodeFunctionResult(functionFragment: 'transferFrom', data: BytesLike): Result
   decodeFunctionResult(functionFragment: 'transferOwnership', data: BytesLike): Result
   decodeFunctionResult(functionFragment: 'withdrawPayments', data: BytesLike): Result
+}
 
-  events: {
-    'Approval(address,address,uint256)': EventFragment
-    'ApprovalForAll(address,address,bool)': EventFragment
-    'OwnershipTransferred(address,address)': EventFragment
-    'Transfer(address,address,uint256)': EventFragment
+export namespace ApprovalEvent {
+  export type InputTuple = [owner: AddressLike, approved: AddressLike, tokenId: BigNumberish]
+  export type OutputTuple = [owner: string, approved: string, tokenId: bigint]
+  export interface OutputObject {
+    owner: string
+    approved: string
+    tokenId: bigint
   }
-
-  getEvent(nameOrSignatureOrTopic: 'Approval'): EventFragment
-  getEvent(nameOrSignatureOrTopic: 'ApprovalForAll'): EventFragment
-  getEvent(nameOrSignatureOrTopic: 'OwnershipTransferred'): EventFragment
-  getEvent(nameOrSignatureOrTopic: 'Transfer'): EventFragment
+  export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>
+  export type Filter = TypedDeferredTopicFilter<Event>
+  export type Log = TypedEventLog<Event>
+  export type LogDescription = TypedLogDescription<Event>
 }
 
-export interface ApprovalEventObject {
-  owner: string
-  approved: string
-  tokenId: BigNumber
+export namespace ApprovalForAllEvent {
+  export type InputTuple = [owner: AddressLike, operator: AddressLike, approved: boolean]
+  export type OutputTuple = [owner: string, operator: string, approved: boolean]
+  export interface OutputObject {
+    owner: string
+    operator: string
+    approved: boolean
+  }
+  export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>
+  export type Filter = TypedDeferredTopicFilter<Event>
+  export type Log = TypedEventLog<Event>
+  export type LogDescription = TypedLogDescription<Event>
 }
-export type ApprovalEvent = TypedEvent<[string, string, BigNumber], ApprovalEventObject>
 
-export type ApprovalEventFilter = TypedEventFilter<ApprovalEvent>
-
-export interface ApprovalForAllEventObject {
-  owner: string
-  operator: string
-  approved: boolean
+export namespace OwnershipTransferredEvent {
+  export type InputTuple = [previousOwner: AddressLike, newOwner: AddressLike]
+  export type OutputTuple = [previousOwner: string, newOwner: string]
+  export interface OutputObject {
+    previousOwner: string
+    newOwner: string
+  }
+  export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>
+  export type Filter = TypedDeferredTopicFilter<Event>
+  export type Log = TypedEventLog<Event>
+  export type LogDescription = TypedLogDescription<Event>
 }
-export type ApprovalForAllEvent = TypedEvent<[string, string, boolean], ApprovalForAllEventObject>
 
-export type ApprovalForAllEventFilter = TypedEventFilter<ApprovalForAllEvent>
-
-export interface OwnershipTransferredEventObject {
-  previousOwner: string
-  newOwner: string
+export namespace TransferEvent {
+  export type InputTuple = [from: AddressLike, to: AddressLike, tokenId: BigNumberish]
+  export type OutputTuple = [from: string, to: string, tokenId: bigint]
+  export interface OutputObject {
+    from: string
+    to: string
+    tokenId: bigint
+  }
+  export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>
+  export type Filter = TypedDeferredTopicFilter<Event>
+  export type Log = TypedEventLog<Event>
+  export type LogDescription = TypedLogDescription<Event>
 }
-export type OwnershipTransferredEvent = TypedEvent<
-  [string, string],
-  OwnershipTransferredEventObject
->
-
-export type OwnershipTransferredEventFilter = TypedEventFilter<OwnershipTransferredEvent>
-
-export interface TransferEventObject {
-  from: string
-  to: string
-  tokenId: BigNumber
-}
-export type TransferEvent = TypedEvent<[string, string, BigNumber], TransferEventObject>
-
-export type TransferEventFilter = TypedEventFilter<TransferEvent>
 
 export interface Hanzi extends BaseContract {
-  connect(signerOrProvider: Signer | Provider | string): this
-  attach(addressOrName: string): this
-  deployed(): Promise<this>
+  connect(runner?: ContractRunner | null): Hanzi
+  waitForDeployment(): Promise<this>
 
   interface: HanziInterface
 
-  queryFilter<TEvent extends TypedEvent>(
-    event: TypedEventFilter<TEvent>,
+  queryFilter<TCEvent extends TypedContractEvent>(
+    event: TCEvent,
     fromBlockOrBlockhash?: string | number | undefined,
     toBlock?: string | number | undefined
-  ): Promise<Array<TEvent>>
-
-  listeners<TEvent extends TypedEvent>(
-    eventFilter?: TypedEventFilter<TEvent>
-  ): Array<TypedListener<TEvent>>
-  listeners(eventName?: string): Array<Listener>
-  removeAllListeners<TEvent extends TypedEvent>(eventFilter: TypedEventFilter<TEvent>): this
-  removeAllListeners(eventName?: string): this
-  off: OnEvent<this>
-  on: OnEvent<this>
-  once: OnEvent<this>
-  removeListener: OnEvent<this>
-
-  functions: {
-    OPERATOR_FILTER_REGISTRY(overrides?: CallOverrides): Promise<[string]>
-
-    approve(
-      operator: PromiseOrValue<string>,
-      tokenId: PromiseOrValue<BigNumberish>,
-      overrides?: Overrides & { from?: PromiseOrValue<string> }
-    ): Promise<ContractTransaction>
-
-    balanceOf(owner: PromiseOrValue<string>, overrides?: CallOverrides): Promise<[BigNumber]>
-
-    baseTokenURI(overrides?: CallOverrides): Promise<[string]>
-
-    burnTokens(
-      tokenIds: PromiseOrValue<BigNumberish>[],
-      overrides?: Overrides & { from?: PromiseOrValue<string> }
-    ): Promise<ContractTransaction>
-
-    getApproved(tokenId: PromiseOrValue<BigNumberish>, overrides?: CallOverrides): Promise<[string]>
-
-    isApprovedForAll(
-      owner: PromiseOrValue<string>,
-      operator: PromiseOrValue<string>,
-      overrides?: CallOverrides
-    ): Promise<[boolean]>
-
-    name(overrides?: CallOverrides): Promise<[string]>
-
-    owner(overrides?: CallOverrides): Promise<[string]>
-
-    ownerOf(tokenId: PromiseOrValue<BigNumberish>, overrides?: CallOverrides): Promise<[string]>
-
-    payments(dest: PromiseOrValue<string>, overrides?: CallOverrides): Promise<[BigNumber]>
-
-    renounceOwnership(
-      overrides?: Overrides & { from?: PromiseOrValue<string> }
-    ): Promise<ContractTransaction>
-
-    safeMint(
-      recipient: PromiseOrValue<string>,
-      uri: PromiseOrValue<string>,
-      overrides?: Overrides & { from?: PromiseOrValue<string> }
-    ): Promise<ContractTransaction>
-
-    'safeTransferFrom(address,address,uint256)'(
-      from: PromiseOrValue<string>,
-      to: PromiseOrValue<string>,
-      tokenId: PromiseOrValue<BigNumberish>,
-      overrides?: Overrides & { from?: PromiseOrValue<string> }
-    ): Promise<ContractTransaction>
-
-    'safeTransferFrom(address,address,uint256,bytes)'(
-      from: PromiseOrValue<string>,
-      to: PromiseOrValue<string>,
-      tokenId: PromiseOrValue<BigNumberish>,
-      data: PromiseOrValue<BytesLike>,
-      overrides?: Overrides & { from?: PromiseOrValue<string> }
-    ): Promise<ContractTransaction>
-
-    setApprovalForAll(
-      operator: PromiseOrValue<string>,
-      approved: PromiseOrValue<boolean>,
-      overrides?: Overrides & { from?: PromiseOrValue<string> }
-    ): Promise<ContractTransaction>
-
-    setBaseTokenURI(
-      _baseTokenURI: PromiseOrValue<string>,
-      overrides?: Overrides & { from?: PromiseOrValue<string> }
-    ): Promise<ContractTransaction>
-
-    setTokenURI(
-      tokenIds: PromiseOrValue<BigNumberish>[],
-      uri: PromiseOrValue<string>,
-      overrides?: Overrides & { from?: PromiseOrValue<string> }
-    ): Promise<ContractTransaction>
-
-    supportsInterface(
-      interfaceId: PromiseOrValue<BytesLike>,
-      overrides?: CallOverrides
-    ): Promise<[boolean]>
-
-    symbol(overrides?: CallOverrides): Promise<[string]>
-
-    tokenByIndex(
-      index: PromiseOrValue<BigNumberish>,
-      overrides?: CallOverrides
-    ): Promise<[BigNumber]>
-
-    tokenOfOwnerByIndex(
-      owner: PromiseOrValue<string>,
-      index: PromiseOrValue<BigNumberish>,
-      overrides?: CallOverrides
-    ): Promise<[BigNumber]>
-
-    tokenURI(tokenId: PromiseOrValue<BigNumberish>, overrides?: CallOverrides): Promise<[string]>
-
-    totalSupply(overrides?: CallOverrides): Promise<[BigNumber]>
-
-    transferFrom(
-      from: PromiseOrValue<string>,
-      to: PromiseOrValue<string>,
-      tokenId: PromiseOrValue<BigNumberish>,
-      overrides?: Overrides & { from?: PromiseOrValue<string> }
-    ): Promise<ContractTransaction>
-
-    transferOwnership(
-      newOwner: PromiseOrValue<string>,
-      overrides?: Overrides & { from?: PromiseOrValue<string> }
-    ): Promise<ContractTransaction>
-
-    withdrawPayments(
-      payee: PromiseOrValue<string>,
-      overrides?: Overrides & { from?: PromiseOrValue<string> }
-    ): Promise<ContractTransaction>
-  }
-
-  OPERATOR_FILTER_REGISTRY(overrides?: CallOverrides): Promise<string>
-
-  approve(
-    operator: PromiseOrValue<string>,
-    tokenId: PromiseOrValue<BigNumberish>,
-    overrides?: Overrides & { from?: PromiseOrValue<string> }
-  ): Promise<ContractTransaction>
-
-  balanceOf(owner: PromiseOrValue<string>, overrides?: CallOverrides): Promise<BigNumber>
-
-  baseTokenURI(overrides?: CallOverrides): Promise<string>
-
-  burnTokens(
-    tokenIds: PromiseOrValue<BigNumberish>[],
-    overrides?: Overrides & { from?: PromiseOrValue<string> }
-  ): Promise<ContractTransaction>
-
-  getApproved(tokenId: PromiseOrValue<BigNumberish>, overrides?: CallOverrides): Promise<string>
-
-  isApprovedForAll(
-    owner: PromiseOrValue<string>,
-    operator: PromiseOrValue<string>,
-    overrides?: CallOverrides
-  ): Promise<boolean>
-
-  name(overrides?: CallOverrides): Promise<string>
+  ): Promise<Array<TypedEventLog<TCEvent>>>
+  queryFilter<TCEvent extends TypedContractEvent>(
+    filter: TypedDeferredTopicFilter<TCEvent>,
+    fromBlockOrBlockhash?: string | number | undefined,
+    toBlock?: string | number | undefined
+  ): Promise<Array<TypedEventLog<TCEvent>>>
 
-  owner(overrides?: CallOverrides): Promise<string>
+  on<TCEvent extends TypedContractEvent>(event: TCEvent, listener: TypedListener<TCEvent>): Promise<this>
+  on<TCEvent extends TypedContractEvent>(
+    filter: TypedDeferredTopicFilter<TCEvent>,
+    listener: TypedListener<TCEvent>
+  ): Promise<this>
 
-  ownerOf(tokenId: PromiseOrValue<BigNumberish>, overrides?: CallOverrides): Promise<string>
+  once<TCEvent extends TypedContractEvent>(event: TCEvent, listener: TypedListener<TCEvent>): Promise<this>
+  once<TCEvent extends TypedContractEvent>(
+    filter: TypedDeferredTopicFilter<TCEvent>,
+    listener: TypedListener<TCEvent>
+  ): Promise<this>
 
-  payments(dest: PromiseOrValue<string>, overrides?: CallOverrides): Promise<BigNumber>
-
-  renounceOwnership(
-    overrides?: Overrides & { from?: PromiseOrValue<string> }
-  ): Promise<ContractTransaction>
+  listeners<TCEvent extends TypedContractEvent>(event: TCEvent): Promise<Array<TypedListener<TCEvent>>>
+  listeners(eventName?: string): Promise<Array<Listener>>
+  removeAllListeners<TCEvent extends TypedContractEvent>(event?: TCEvent): Promise<this>
 
-  safeMint(
-    recipient: PromiseOrValue<string>,
-    uri: PromiseOrValue<string>,
-    overrides?: Overrides & { from?: PromiseOrValue<string> }
-  ): Promise<ContractTransaction>
+  OPERATOR_FILTER_REGISTRY: TypedContractMethod<[], [string], 'view'>
 
-  'safeTransferFrom(address,address,uint256)'(
-    from: PromiseOrValue<string>,
-    to: PromiseOrValue<string>,
-    tokenId: PromiseOrValue<BigNumberish>,
-    overrides?: Overrides & { from?: PromiseOrValue<string> }
-  ): Promise<ContractTransaction>
+  approve: TypedContractMethod<[operator: AddressLike, tokenId: BigNumberish], [void], 'nonpayable'>
 
-  'safeTransferFrom(address,address,uint256,bytes)'(
-    from: PromiseOrValue<string>,
-    to: PromiseOrValue<string>,
-    tokenId: PromiseOrValue<BigNumberish>,
-    data: PromiseOrValue<BytesLike>,
-    overrides?: Overrides & { from?: PromiseOrValue<string> }
-  ): Promise<ContractTransaction>
+  balanceOf: TypedContractMethod<[owner: AddressLike], [bigint], 'view'>
 
-  setApprovalForAll(
-    operator: PromiseOrValue<string>,
-    approved: PromiseOrValue<boolean>,
-    overrides?: Overrides & { from?: PromiseOrValue<string> }
-  ): Promise<ContractTransaction>
-
-  setBaseTokenURI(
-    _baseTokenURI: PromiseOrValue<string>,
-    overrides?: Overrides & { from?: PromiseOrValue<string> }
-  ): Promise<ContractTransaction>
-
-  setTokenURI(
-    tokenIds: PromiseOrValue<BigNumberish>[],
-    uri: PromiseOrValue<string>,
-    overrides?: Overrides & { from?: PromiseOrValue<string> }
-  ): Promise<ContractTransaction>
-
-  supportsInterface(
-    interfaceId: PromiseOrValue<BytesLike>,
-    overrides?: CallOverrides
-  ): Promise<boolean>
-
-  symbol(overrides?: CallOverrides): Promise<string>
-
-  tokenByIndex(index: PromiseOrValue<BigNumberish>, overrides?: CallOverrides): Promise<BigNumber>
-
-  tokenOfOwnerByIndex(
-    owner: PromiseOrValue<string>,
-    index: PromiseOrValue<BigNumberish>,
-    overrides?: CallOverrides
-  ): Promise<BigNumber>
-
-  tokenURI(tokenId: PromiseOrValue<BigNumberish>, overrides?: CallOverrides): Promise<string>
-
-  totalSupply(overrides?: CallOverrides): Promise<BigNumber>
-
-  transferFrom(
-    from: PromiseOrValue<string>,
-    to: PromiseOrValue<string>,
-    tokenId: PromiseOrValue<BigNumberish>,
-    overrides?: Overrides & { from?: PromiseOrValue<string> }
-  ): Promise<ContractTransaction>
-
-  transferOwnership(
-    newOwner: PromiseOrValue<string>,
-    overrides?: Overrides & { from?: PromiseOrValue<string> }
-  ): Promise<ContractTransaction>
-
-  withdrawPayments(
-    payee: PromiseOrValue<string>,
-    overrides?: Overrides & { from?: PromiseOrValue<string> }
-  ): Promise<ContractTransaction>
-
-  callStatic: {
-    OPERATOR_FILTER_REGISTRY(overrides?: CallOverrides): Promise<string>
-
-    approve(
-      operator: PromiseOrValue<string>,
-      tokenId: PromiseOrValue<BigNumberish>,
-      overrides?: CallOverrides
-    ): Promise<void>
-
-    balanceOf(owner: PromiseOrValue<string>, overrides?: CallOverrides): Promise<BigNumber>
-
-    baseTokenURI(overrides?: CallOverrides): Promise<string>
-
-    burnTokens(tokenIds: PromiseOrValue<BigNumberish>[], overrides?: CallOverrides): Promise<void>
-
-    getApproved(tokenId: PromiseOrValue<BigNumberish>, overrides?: CallOverrides): Promise<string>
-
-    isApprovedForAll(
-      owner: PromiseOrValue<string>,
-      operator: PromiseOrValue<string>,
-      overrides?: CallOverrides
-    ): Promise<boolean>
-
-    name(overrides?: CallOverrides): Promise<string>
-
-    owner(overrides?: CallOverrides): Promise<string>
-
-    ownerOf(tokenId: PromiseOrValue<BigNumberish>, overrides?: CallOverrides): Promise<string>
-
-    payments(dest: PromiseOrValue<string>, overrides?: CallOverrides): Promise<BigNumber>
-
-    renounceOwnership(overrides?: CallOverrides): Promise<void>
-
-    safeMint(
-      recipient: PromiseOrValue<string>,
-      uri: PromiseOrValue<string>,
-      overrides?: CallOverrides
-    ): Promise<BigNumber>
-
-    'safeTransferFrom(address,address,uint256)'(
-      from: PromiseOrValue<string>,
-      to: PromiseOrValue<string>,
-      tokenId: PromiseOrValue<BigNumberish>,
-      overrides?: CallOverrides
-    ): Promise<void>
-
-    'safeTransferFrom(address,address,uint256,bytes)'(
-      from: PromiseOrValue<string>,
-      to: PromiseOrValue<string>,
-      tokenId: PromiseOrValue<BigNumberish>,
-      data: PromiseOrValue<BytesLike>,
-      overrides?: CallOverrides
-    ): Promise<void>
-
-    setApprovalForAll(
-      operator: PromiseOrValue<string>,
-      approved: PromiseOrValue<boolean>,
-      overrides?: CallOverrides
-    ): Promise<void>
-
-    setBaseTokenURI(_baseTokenURI: PromiseOrValue<string>, overrides?: CallOverrides): Promise<void>
-
-    setTokenURI(
-      tokenIds: PromiseOrValue<BigNumberish>[],
-      uri: PromiseOrValue<string>,
-      overrides?: CallOverrides
-    ): Promise<void>
-
-    supportsInterface(
-      interfaceId: PromiseOrValue<BytesLike>,
-      overrides?: CallOverrides
-    ): Promise<boolean>
-
-    symbol(overrides?: CallOverrides): Promise<string>
-
-    tokenByIndex(index: PromiseOrValue<BigNumberish>, overrides?: CallOverrides): Promise<BigNumber>
-
-    tokenOfOwnerByIndex(
-      owner: PromiseOrValue<string>,
-      index: PromiseOrValue<BigNumberish>,
-      overrides?: CallOverrides
-    ): Promise<BigNumber>
-
-    tokenURI(tokenId: PromiseOrValue<BigNumberish>, overrides?: CallOverrides): Promise<string>
-
-    totalSupply(overrides?: CallOverrides): Promise<BigNumber>
-
-    transferFrom(
-      from: PromiseOrValue<string>,
-      to: PromiseOrValue<string>,
-      tokenId: PromiseOrValue<BigNumberish>,
-      overrides?: CallOverrides
-    ): Promise<void>
-
-    transferOwnership(newOwner: PromiseOrValue<string>, overrides?: CallOverrides): Promise<void>
-
-    withdrawPayments(payee: PromiseOrValue<string>, overrides?: CallOverrides): Promise<void>
-  }
+  baseTokenURI: TypedContractMethod<[], [string], 'view'>
+
+  burnTokens: TypedContractMethod<[tokenIds: BigNumberish[]], [void], 'nonpayable'>
+
+  getApproved: TypedContractMethod<[tokenId: BigNumberish], [string], 'view'>
+
+  isApprovedForAll: TypedContractMethod<[owner: AddressLike, operator: AddressLike], [boolean], 'view'>
+
+  name: TypedContractMethod<[], [string], 'view'>
+
+  owner: TypedContractMethod<[], [string], 'view'>
+
+  ownerOf: TypedContractMethod<[tokenId: BigNumberish], [string], 'view'>
+
+  payments: TypedContractMethod<[dest: AddressLike], [bigint], 'view'>
+
+  renounceOwnership: TypedContractMethod<[], [void], 'nonpayable'>
+
+  safeMint: TypedContractMethod<[recipient: AddressLike, uri: string], [bigint], 'nonpayable'>
+
+  'safeTransferFrom(address,address,uint256)': TypedContractMethod<
+    [from: AddressLike, to: AddressLike, tokenId: BigNumberish],
+    [void],
+    'nonpayable'
+  >
+
+  'safeTransferFrom(address,address,uint256,bytes)': TypedContractMethod<
+    [from: AddressLike, to: AddressLike, tokenId: BigNumberish, data: BytesLike],
+    [void],
+    'nonpayable'
+  >
+
+  setApprovalForAll: TypedContractMethod<[operator: AddressLike, approved: boolean], [void], 'nonpayable'>
+
+  setBaseTokenURI: TypedContractMethod<[_baseTokenURI: string], [void], 'nonpayable'>
+
+  setTokenURI: TypedContractMethod<[tokenIds: BigNumberish[], uri: string], [void], 'nonpayable'>
+
+  supportsInterface: TypedContractMethod<[interfaceId: BytesLike], [boolean], 'view'>
+
+  symbol: TypedContractMethod<[], [string], 'view'>
+
+  tokenByIndex: TypedContractMethod<[index: BigNumberish], [bigint], 'view'>
+
+  tokenOfOwnerByIndex: TypedContractMethod<[owner: AddressLike, index: BigNumberish], [bigint], 'view'>
+
+  tokenURI: TypedContractMethod<[tokenId: BigNumberish], [string], 'view'>
+
+  totalSupply: TypedContractMethod<[], [bigint], 'view'>
+
+  transferFrom: TypedContractMethod<[from: AddressLike, to: AddressLike, tokenId: BigNumberish], [void], 'nonpayable'>
+
+  transferOwnership: TypedContractMethod<[newOwner: AddressLike], [void], 'nonpayable'>
+
+  withdrawPayments: TypedContractMethod<[payee: AddressLike], [void], 'nonpayable'>
+
+  getFunction<T extends ContractMethod = ContractMethod>(key: string | FunctionFragment): T
+
+  getFunction(nameOrSignature: 'OPERATOR_FILTER_REGISTRY'): TypedContractMethod<[], [string], 'view'>
+  getFunction(
+    nameOrSignature: 'approve'
+  ): TypedContractMethod<[operator: AddressLike, tokenId: BigNumberish], [void], 'nonpayable'>
+  getFunction(nameOrSignature: 'balanceOf'): TypedContractMethod<[owner: AddressLike], [bigint], 'view'>
+  getFunction(nameOrSignature: 'baseTokenURI'): TypedContractMethod<[], [string], 'view'>
+  getFunction(nameOrSignature: 'burnTokens'): TypedContractMethod<[tokenIds: BigNumberish[]], [void], 'nonpayable'>
+  getFunction(nameOrSignature: 'getApproved'): TypedContractMethod<[tokenId: BigNumberish], [string], 'view'>
+  getFunction(
+    nameOrSignature: 'isApprovedForAll'
+  ): TypedContractMethod<[owner: AddressLike, operator: AddressLike], [boolean], 'view'>
+  getFunction(nameOrSignature: 'name'): TypedContractMethod<[], [string], 'view'>
+  getFunction(nameOrSignature: 'owner'): TypedContractMethod<[], [string], 'view'>
+  getFunction(nameOrSignature: 'ownerOf'): TypedContractMethod<[tokenId: BigNumberish], [string], 'view'>
+  getFunction(nameOrSignature: 'payments'): TypedContractMethod<[dest: AddressLike], [bigint], 'view'>
+  getFunction(nameOrSignature: 'renounceOwnership'): TypedContractMethod<[], [void], 'nonpayable'>
+  getFunction(
+    nameOrSignature: 'safeMint'
+  ): TypedContractMethod<[recipient: AddressLike, uri: string], [bigint], 'nonpayable'>
+  getFunction(
+    nameOrSignature: 'safeTransferFrom(address,address,uint256)'
+  ): TypedContractMethod<[from: AddressLike, to: AddressLike, tokenId: BigNumberish], [void], 'nonpayable'>
+  getFunction(
+    nameOrSignature: 'safeTransferFrom(address,address,uint256,bytes)'
+  ): TypedContractMethod<
+    [from: AddressLike, to: AddressLike, tokenId: BigNumberish, data: BytesLike],
+    [void],
+    'nonpayable'
+  >
+  getFunction(
+    nameOrSignature: 'setApprovalForAll'
+  ): TypedContractMethod<[operator: AddressLike, approved: boolean], [void], 'nonpayable'>
+  getFunction(nameOrSignature: 'setBaseTokenURI'): TypedContractMethod<[_baseTokenURI: string], [void], 'nonpayable'>
+  getFunction(
+    nameOrSignature: 'setTokenURI'
+  ): TypedContractMethod<[tokenIds: BigNumberish[], uri: string], [void], 'nonpayable'>
+  getFunction(nameOrSignature: 'supportsInterface'): TypedContractMethod<[interfaceId: BytesLike], [boolean], 'view'>
+  getFunction(nameOrSignature: 'symbol'): TypedContractMethod<[], [string], 'view'>
+  getFunction(nameOrSignature: 'tokenByIndex'): TypedContractMethod<[index: BigNumberish], [bigint], 'view'>
+  getFunction(
+    nameOrSignature: 'tokenOfOwnerByIndex'
+  ): TypedContractMethod<[owner: AddressLike, index: BigNumberish], [bigint], 'view'>
+  getFunction(nameOrSignature: 'tokenURI'): TypedContractMethod<[tokenId: BigNumberish], [string], 'view'>
+  getFunction(nameOrSignature: 'totalSupply'): TypedContractMethod<[], [bigint], 'view'>
+  getFunction(
+    nameOrSignature: 'transferFrom'
+  ): TypedContractMethod<[from: AddressLike, to: AddressLike, tokenId: BigNumberish], [void], 'nonpayable'>
+  getFunction(nameOrSignature: 'transferOwnership'): TypedContractMethod<[newOwner: AddressLike], [void], 'nonpayable'>
+  getFunction(nameOrSignature: 'withdrawPayments'): TypedContractMethod<[payee: AddressLike], [void], 'nonpayable'>
+
+  getEvent(
+    key: 'Approval'
+  ): TypedContractEvent<ApprovalEvent.InputTuple, ApprovalEvent.OutputTuple, ApprovalEvent.OutputObject>
+  getEvent(
+    key: 'ApprovalForAll'
+  ): TypedContractEvent<
+    ApprovalForAllEvent.InputTuple,
+    ApprovalForAllEvent.OutputTuple,
+    ApprovalForAllEvent.OutputObject
+  >
+  getEvent(
+    key: 'OwnershipTransferred'
+  ): TypedContractEvent<
+    OwnershipTransferredEvent.InputTuple,
+    OwnershipTransferredEvent.OutputTuple,
+    OwnershipTransferredEvent.OutputObject
+  >
+  getEvent(
+    key: 'Transfer'
+  ): TypedContractEvent<TransferEvent.InputTuple, TransferEvent.OutputTuple, TransferEvent.OutputObject>
 
   filters: {
-    'Approval(address,address,uint256)'(
-      owner?: PromiseOrValue<string> | null,
-      approved?: PromiseOrValue<string> | null,
-      tokenId?: PromiseOrValue<BigNumberish> | null
-    ): ApprovalEventFilter
-    Approval(
-      owner?: PromiseOrValue<string> | null,
-      approved?: PromiseOrValue<string> | null,
-      tokenId?: PromiseOrValue<BigNumberish> | null
-    ): ApprovalEventFilter
+    'Approval(address,address,uint256)': TypedContractEvent<
+      ApprovalEvent.InputTuple,
+      ApprovalEvent.OutputTuple,
+      ApprovalEvent.OutputObject
+    >
+    Approval: TypedContractEvent<ApprovalEvent.InputTuple, ApprovalEvent.OutputTuple, ApprovalEvent.OutputObject>
 
-    'ApprovalForAll(address,address,bool)'(
-      owner?: PromiseOrValue<string> | null,
-      operator?: PromiseOrValue<string> | null,
-      approved?: null
-    ): ApprovalForAllEventFilter
-    ApprovalForAll(
-      owner?: PromiseOrValue<string> | null,
-      operator?: PromiseOrValue<string> | null,
-      approved?: null
-    ): ApprovalForAllEventFilter
+    'ApprovalForAll(address,address,bool)': TypedContractEvent<
+      ApprovalForAllEvent.InputTuple,
+      ApprovalForAllEvent.OutputTuple,
+      ApprovalForAllEvent.OutputObject
+    >
+    ApprovalForAll: TypedContractEvent<
+      ApprovalForAllEvent.InputTuple,
+      ApprovalForAllEvent.OutputTuple,
+      ApprovalForAllEvent.OutputObject
+    >
 
-    'OwnershipTransferred(address,address)'(
-      previousOwner?: PromiseOrValue<string> | null,
-      newOwner?: PromiseOrValue<string> | null
-    ): OwnershipTransferredEventFilter
-    OwnershipTransferred(
-      previousOwner?: PromiseOrValue<string> | null,
-      newOwner?: PromiseOrValue<string> | null
-    ): OwnershipTransferredEventFilter
+    'OwnershipTransferred(address,address)': TypedContractEvent<
+      OwnershipTransferredEvent.InputTuple,
+      OwnershipTransferredEvent.OutputTuple,
+      OwnershipTransferredEvent.OutputObject
+    >
+    OwnershipTransferred: TypedContractEvent<
+      OwnershipTransferredEvent.InputTuple,
+      OwnershipTransferredEvent.OutputTuple,
+      OwnershipTransferredEvent.OutputObject
+    >
 
-    'Transfer(address,address,uint256)'(
-      from?: PromiseOrValue<string> | null,
-      to?: PromiseOrValue<string> | null,
-      tokenId?: PromiseOrValue<BigNumberish> | null
-    ): TransferEventFilter
-    Transfer(
-      from?: PromiseOrValue<string> | null,
-      to?: PromiseOrValue<string> | null,
-      tokenId?: PromiseOrValue<BigNumberish> | null
-    ): TransferEventFilter
-  }
-
-  estimateGas: {
-    OPERATOR_FILTER_REGISTRY(overrides?: CallOverrides): Promise<BigNumber>
-
-    approve(
-      operator: PromiseOrValue<string>,
-      tokenId: PromiseOrValue<BigNumberish>,
-      overrides?: Overrides & { from?: PromiseOrValue<string> }
-    ): Promise<BigNumber>
-
-    balanceOf(owner: PromiseOrValue<string>, overrides?: CallOverrides): Promise<BigNumber>
-
-    baseTokenURI(overrides?: CallOverrides): Promise<BigNumber>
-
-    burnTokens(
-      tokenIds: PromiseOrValue<BigNumberish>[],
-      overrides?: Overrides & { from?: PromiseOrValue<string> }
-    ): Promise<BigNumber>
-
-    getApproved(
-      tokenId: PromiseOrValue<BigNumberish>,
-      overrides?: CallOverrides
-    ): Promise<BigNumber>
-
-    isApprovedForAll(
-      owner: PromiseOrValue<string>,
-      operator: PromiseOrValue<string>,
-      overrides?: CallOverrides
-    ): Promise<BigNumber>
-
-    name(overrides?: CallOverrides): Promise<BigNumber>
-
-    owner(overrides?: CallOverrides): Promise<BigNumber>
-
-    ownerOf(tokenId: PromiseOrValue<BigNumberish>, overrides?: CallOverrides): Promise<BigNumber>
-
-    payments(dest: PromiseOrValue<string>, overrides?: CallOverrides): Promise<BigNumber>
-
-    renounceOwnership(overrides?: Overrides & { from?: PromiseOrValue<string> }): Promise<BigNumber>
-
-    safeMint(
-      recipient: PromiseOrValue<string>,
-      uri: PromiseOrValue<string>,
-      overrides?: Overrides & { from?: PromiseOrValue<string> }
-    ): Promise<BigNumber>
-
-    'safeTransferFrom(address,address,uint256)'(
-      from: PromiseOrValue<string>,
-      to: PromiseOrValue<string>,
-      tokenId: PromiseOrValue<BigNumberish>,
-      overrides?: Overrides & { from?: PromiseOrValue<string> }
-    ): Promise<BigNumber>
-
-    'safeTransferFrom(address,address,uint256,bytes)'(
-      from: PromiseOrValue<string>,
-      to: PromiseOrValue<string>,
-      tokenId: PromiseOrValue<BigNumberish>,
-      data: PromiseOrValue<BytesLike>,
-      overrides?: Overrides & { from?: PromiseOrValue<string> }
-    ): Promise<BigNumber>
-
-    setApprovalForAll(
-      operator: PromiseOrValue<string>,
-      approved: PromiseOrValue<boolean>,
-      overrides?: Overrides & { from?: PromiseOrValue<string> }
-    ): Promise<BigNumber>
-
-    setBaseTokenURI(
-      _baseTokenURI: PromiseOrValue<string>,
-      overrides?: Overrides & { from?: PromiseOrValue<string> }
-    ): Promise<BigNumber>
-
-    setTokenURI(
-      tokenIds: PromiseOrValue<BigNumberish>[],
-      uri: PromiseOrValue<string>,
-      overrides?: Overrides & { from?: PromiseOrValue<string> }
-    ): Promise<BigNumber>
-
-    supportsInterface(
-      interfaceId: PromiseOrValue<BytesLike>,
-      overrides?: CallOverrides
-    ): Promise<BigNumber>
-
-    symbol(overrides?: CallOverrides): Promise<BigNumber>
-
-    tokenByIndex(index: PromiseOrValue<BigNumberish>, overrides?: CallOverrides): Promise<BigNumber>
-
-    tokenOfOwnerByIndex(
-      owner: PromiseOrValue<string>,
-      index: PromiseOrValue<BigNumberish>,
-      overrides?: CallOverrides
-    ): Promise<BigNumber>
-
-    tokenURI(tokenId: PromiseOrValue<BigNumberish>, overrides?: CallOverrides): Promise<BigNumber>
-
-    totalSupply(overrides?: CallOverrides): Promise<BigNumber>
-
-    transferFrom(
-      from: PromiseOrValue<string>,
-      to: PromiseOrValue<string>,
-      tokenId: PromiseOrValue<BigNumberish>,
-      overrides?: Overrides & { from?: PromiseOrValue<string> }
-    ): Promise<BigNumber>
-
-    transferOwnership(
-      newOwner: PromiseOrValue<string>,
-      overrides?: Overrides & { from?: PromiseOrValue<string> }
-    ): Promise<BigNumber>
-
-    withdrawPayments(
-      payee: PromiseOrValue<string>,
-      overrides?: Overrides & { from?: PromiseOrValue<string> }
-    ): Promise<BigNumber>
-  }
-
-  populateTransaction: {
-    OPERATOR_FILTER_REGISTRY(overrides?: CallOverrides): Promise<PopulatedTransaction>
-
-    approve(
-      operator: PromiseOrValue<string>,
-      tokenId: PromiseOrValue<BigNumberish>,
-      overrides?: Overrides & { from?: PromiseOrValue<string> }
-    ): Promise<PopulatedTransaction>
-
-    balanceOf(
-      owner: PromiseOrValue<string>,
-      overrides?: CallOverrides
-    ): Promise<PopulatedTransaction>
-
-    baseTokenURI(overrides?: CallOverrides): Promise<PopulatedTransaction>
-
-    burnTokens(
-      tokenIds: PromiseOrValue<BigNumberish>[],
-      overrides?: Overrides & { from?: PromiseOrValue<string> }
-    ): Promise<PopulatedTransaction>
-
-    getApproved(
-      tokenId: PromiseOrValue<BigNumberish>,
-      overrides?: CallOverrides
-    ): Promise<PopulatedTransaction>
-
-    isApprovedForAll(
-      owner: PromiseOrValue<string>,
-      operator: PromiseOrValue<string>,
-      overrides?: CallOverrides
-    ): Promise<PopulatedTransaction>
-
-    name(overrides?: CallOverrides): Promise<PopulatedTransaction>
-
-    owner(overrides?: CallOverrides): Promise<PopulatedTransaction>
-
-    ownerOf(
-      tokenId: PromiseOrValue<BigNumberish>,
-      overrides?: CallOverrides
-    ): Promise<PopulatedTransaction>
-
-    payments(dest: PromiseOrValue<string>, overrides?: CallOverrides): Promise<PopulatedTransaction>
-
-    renounceOwnership(
-      overrides?: Overrides & { from?: PromiseOrValue<string> }
-    ): Promise<PopulatedTransaction>
-
-    safeMint(
-      recipient: PromiseOrValue<string>,
-      uri: PromiseOrValue<string>,
-      overrides?: Overrides & { from?: PromiseOrValue<string> }
-    ): Promise<PopulatedTransaction>
-
-    'safeTransferFrom(address,address,uint256)'(
-      from: PromiseOrValue<string>,
-      to: PromiseOrValue<string>,
-      tokenId: PromiseOrValue<BigNumberish>,
-      overrides?: Overrides & { from?: PromiseOrValue<string> }
-    ): Promise<PopulatedTransaction>
-
-    'safeTransferFrom(address,address,uint256,bytes)'(
-      from: PromiseOrValue<string>,
-      to: PromiseOrValue<string>,
-      tokenId: PromiseOrValue<BigNumberish>,
-      data: PromiseOrValue<BytesLike>,
-      overrides?: Overrides & { from?: PromiseOrValue<string> }
-    ): Promise<PopulatedTransaction>
-
-    setApprovalForAll(
-      operator: PromiseOrValue<string>,
-      approved: PromiseOrValue<boolean>,
-      overrides?: Overrides & { from?: PromiseOrValue<string> }
-    ): Promise<PopulatedTransaction>
-
-    setBaseTokenURI(
-      _baseTokenURI: PromiseOrValue<string>,
-      overrides?: Overrides & { from?: PromiseOrValue<string> }
-    ): Promise<PopulatedTransaction>
-
-    setTokenURI(
-      tokenIds: PromiseOrValue<BigNumberish>[],
-      uri: PromiseOrValue<string>,
-      overrides?: Overrides & { from?: PromiseOrValue<string> }
-    ): Promise<PopulatedTransaction>
-
-    supportsInterface(
-      interfaceId: PromiseOrValue<BytesLike>,
-      overrides?: CallOverrides
-    ): Promise<PopulatedTransaction>
-
-    symbol(overrides?: CallOverrides): Promise<PopulatedTransaction>
-
-    tokenByIndex(
-      index: PromiseOrValue<BigNumberish>,
-      overrides?: CallOverrides
-    ): Promise<PopulatedTransaction>
-
-    tokenOfOwnerByIndex(
-      owner: PromiseOrValue<string>,
-      index: PromiseOrValue<BigNumberish>,
-      overrides?: CallOverrides
-    ): Promise<PopulatedTransaction>
-
-    tokenURI(
-      tokenId: PromiseOrValue<BigNumberish>,
-      overrides?: CallOverrides
-    ): Promise<PopulatedTransaction>
-
-    totalSupply(overrides?: CallOverrides): Promise<PopulatedTransaction>
-
-    transferFrom(
-      from: PromiseOrValue<string>,
-      to: PromiseOrValue<string>,
-      tokenId: PromiseOrValue<BigNumberish>,
-      overrides?: Overrides & { from?: PromiseOrValue<string> }
-    ): Promise<PopulatedTransaction>
-
-    transferOwnership(
-      newOwner: PromiseOrValue<string>,
-      overrides?: Overrides & { from?: PromiseOrValue<string> }
-    ): Promise<PopulatedTransaction>
-
-    withdrawPayments(
-      payee: PromiseOrValue<string>,
-      overrides?: Overrides & { from?: PromiseOrValue<string> }
-    ): Promise<PopulatedTransaction>
+    'Transfer(address,address,uint256)': TypedContractEvent<
+      TransferEvent.InputTuple,
+      TransferEvent.OutputTuple,
+      TransferEvent.OutputObject
+    >
+    Transfer: TypedContractEvent<TransferEvent.InputTuple, TransferEvent.OutputTuple, TransferEvent.OutputObject>
   }
 }
