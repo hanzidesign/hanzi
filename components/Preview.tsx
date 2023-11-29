@@ -1,12 +1,14 @@
+'use client'
+
 import { useRef, useState } from 'react'
 import { useConnectModal } from '@rainbow-me/rainbowkit'
 import { Group, Button, Box, AspectRatio, Progress, Center, Text } from '@mantine/core'
-import useProgress from 'hooks/useProgress'
-import useMint from 'hooks/useMint'
-import { useAppSelector, useAppDispatch } from 'store'
-import { addJob, setStart } from 'store/slices/queue'
-import { selectNftData } from 'store/selectors'
-import SvgItem from 'components/SvgItem'
+import useProgress from '@/hooks/useProgress'
+import useMint from '@/hooks/useMint'
+import { useAppSelector, useAppDispatch } from '@/store'
+import { addJob, setStart } from '@/store/slices/queue'
+import { selectNftData } from '@/store/selectors'
+import SvgItem from '@/components/SvgItem'
 
 type PreviewProps = {
   onBack: () => void

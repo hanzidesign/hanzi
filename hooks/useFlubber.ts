@@ -1,3 +1,5 @@
+'use client'
+
 import { interpolate } from 'flubber'
 import { MotionValue, useTransform } from 'framer-motion'
 

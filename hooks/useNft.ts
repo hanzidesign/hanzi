@@ -1,11 +1,13 @@
+'use client'
+
 import _ from 'lodash'
 import axios from 'axios'
 import { useState, useEffect } from 'react'
-import { useAppSelector, useAppDispatch } from 'store'
-import { setSaved } from 'store/slices/queue'
-import { setNft, setImage } from 'store/slices/nft'
-import { getIpfsUrl } from 'utils/helper'
-import type { MetadataJson } from 'types'
+import { useAppSelector, useAppDispatch } from '@/store'
+import { setSaved } from '@/store/slices/queue'
+import { setNft, setImage } from '@/store/slices/nft'
+import { getIpfsUrl } from '@/utils/helper'
+import type { MetadataJson } from '@/types'
 
 export default function useNft() {
   const dispatch = useAppDispatch()

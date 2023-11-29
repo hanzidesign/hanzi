@@ -1,8 +1,16 @@
+'use client'
+
 import { createTheme } from '@mantine/core'
 
-const myTheme = createTheme({
+const titleFF = 'var(--font-body)'
+const bodyFF = 'var(--font-body)'
+
+const theme = createTheme({
+  focusRing: 'never',
   primaryColor: 'dark',
   defaultRadius: 'md',
+  fontFamily: bodyFF,
+  headings: { fontFamily: titleFF },
   components: {
     Button: {
       defaultProps: {
@@ -12,4 +20,4 @@ const myTheme = createTheme({
   },
 })
 
-export { myTheme }
+export { theme }

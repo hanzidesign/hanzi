@@ -1,36 +1,34 @@
-import { useRouter } from 'next/router'
+'use client'
+
+import { usePathname, useRouter } from 'next/navigation'
 import { Group, Text, ActionIcon, Tooltip } from '@mantine/core'
 import { ConnectButton } from '@rainbow-me/rainbowkit'
-import useChain from 'hooks/useChain'
+import { getEtherscanUrl } from '@/utils/helper'
+import { publicEnv } from '@/utils/env'
 import { SiOpensea } from 'react-icons/si'
-import EtherscanIcon from 'assets/etherscanIcon'
+import EtherscanIcon from '@/assets/etherscanIcon'
 
 const opensea = process.env.NEXT_PUBLIC_OPENSEA_URL
 const contract = process.env.NEXT_PUBLIC_NFT_CONTRACT_ADDRESS
 
-type PageHeaderProps = {
-  showButton?: boolean
-  labelUrl?: string
-}
-
-export default function PageHeader(props: PageHeaderProps) {
-  const { showButton, labelUrl = '/' } = props
+export default function PageHeader() {
   const router = useRouter()
-  const { etherscanUrl } = useChain()
+  const pathname = usePathname()
+  const atHome = pathname === '/'
+
+  const etherscanUrl = getEtherscanUrl(publicEnv.chainId)
   const etherscan = `${etherscanUrl}/address/${contract}`
 
   return (
-    <Group gap="xs" h={40} justify="space-between">
-      <Group className="c-pointer" gap={8} onClick={() => router.push(labelUrl)}>
+    <Group gap="xs" justify="space-between">
+      <Group className="c-pointer" gap={8} onClick={() => router.push(atHome ? '/mint' : '/')}>
         <img src="/icon.svg" alt="" style={{ width: 40, height: 40 }} />
         <Text fz={20} fw="bold">
           Hanzi Design
         </Text>
       </Group>
 
-      {showButton ? (
-        <ConnectButton />
-      ) : (
+      {atHome ? (
         <Group gap={24}>
           <Tooltip label="Etherscan">
             <ActionIcon color="dark" radius="xl" variant="transparent" onClick={() => window.open(etherscan, '_blank')}>
@@ -43,6 +41,8 @@ export default function PageHeader(props: PageHeaderProps) {
             </ActionIcon>
           </Tooltip>
         </Group>
+      ) : (
+        <ConnectButton />
       )}
     </Group>
   )

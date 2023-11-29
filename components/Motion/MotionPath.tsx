@@ -1,3 +1,5 @@
+'use client'
+
 import React from 'react'
 import _ from 'lodash'
 import { Box } from '@mantine/core'

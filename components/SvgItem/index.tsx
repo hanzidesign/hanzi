@@ -1,15 +1,15 @@
-import _ from 'lodash'
+'use client'
+
 import axios from 'axios'
 import { useEffect } from 'react'
-import { useAppSelector, useAppDispatch } from 'store'
-import { setSvgData } from 'store/slices/editor'
+import { useAppSelector, useAppDispatch } from '@/store'
+import { setSvgData } from '@/store/slices/editor'
 import Item from './Item'
 
 export default function SvgItem(props: { uid?: string }) {
   const dispatch = useAppDispatch()
   const editorState = useAppSelector((state) => state.editor)
-  const { charUrl, svgData, ptnUrl, distortion, blur, width, x, y, rotation, textColor, bgColor } =
-    editorState
+  const { charUrl, svgData, ptnUrl, distortion, blur, width, x, y, rotation, textColor, bgColor } = editorState
 
   const getSvgData = async (charUrl: string) => {
     const data = await downloadSvgData(charUrl)

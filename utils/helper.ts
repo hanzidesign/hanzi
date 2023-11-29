@@ -1,9 +1,9 @@
 import _ from 'lodash'
 import { format } from 'date-fns'
 import { zonedTimeToUtc } from 'date-fns-tz'
-import Counter from 'utils/counter'
-import colors from 'utils/colors'
-import { env } from 'utils/env'
+import Counter from '@/utils/counter'
+import colors from '@/utils/colors'
+import { env } from '@/utils/env'
 
 export type TRetryOption<T = any> = {
   name?: string
@@ -88,4 +88,16 @@ export function getIpfsUrl(url: string) {
 
 export function getName(year: string, country: string, ch: string) {
   return `${year}-${country}-${ch}`
+}
+
+export function getEtherscanUrl(id?: number) {
+  switch (id) {
+    case 1:
+      return 'https://etherscan.io'
+    case 5:
+      return 'https://goerli.etherscan.io'
+    case 10:
+    default:
+      return 'https://optimistic.etherscan.io'
+  }
 }

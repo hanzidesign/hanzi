@@ -1,31 +1,26 @@
 import { useDispatch, useSelector } from 'react-redux'
 import { configureStore, ThunkAction, Action } from '@reduxjs/toolkit'
-import { createWrapper } from 'next-redux-wrapper'
-import { persistReducer, FLUSH, REHYDRATE, PAUSE, PERSIST, PURGE, REGISTER } from 'redux-persist'
-import storage from 'redux-persist/lib/storage'
+import { persistStore, persistReducer } from 'redux-persist'
+import storage from './customStorage'
 import reducers from './reducers'
+import { logger } from './logger'
 import type { TypedUseSelectorHook } from 'react-redux'
 
 const reducer = persistReducer({ key: 'root', storage, blacklist: ['queue'] }, reducers)
 
-const makeStore = () =>
-  configureStore({
-    reducer,
-    middleware: (getDefaultMiddleware) =>
-      getDefaultMiddleware({
-        serializableCheck: {
-          ignoredActions: [FLUSH, REHYDRATE, PAUSE, PERSIST, PURGE, REGISTER],
-        },
-      }),
-    devTools: true,
-  })
+const store = configureStore({
+  reducer,
+  middleware: (getDefaultMiddleware) => getDefaultMiddleware({ serializableCheck: false }).concat(logger),
+  devTools: true,
+})
 
-export type AppStore = ReturnType<typeof makeStore>
-export type AppState = ReturnType<AppStore['getState']>
-export type AppDispatch = AppStore['dispatch']
+const persistor = persistStore(store)
+
+export { store, persistor }
+
+export type AppState = ReturnType<typeof store.getState>
+export type AppDispatch = typeof store.dispatch
 export type AppThunk<ReturnType = void> = ThunkAction<ReturnType, AppState, unknown, Action>
-
-export const wrapper = createWrapper<AppStore>(makeStore)
 
 // Use throughout your app instead of plain `useDispatch` and `useSelector`
 export const useAppDispatch: () => AppDispatch = useDispatch

@@ -1,7 +1,9 @@
+'use client'
+
 import _ from 'lodash'
 import { useState, useEffect } from 'react'
 import { useInterval } from '@mantine/hooks'
-import type { Job } from 'types'
+import type { Job } from '@/types'
 
 const max = 96
 

@@ -1,9 +1,11 @@
+'use client'
+
 import { useNetwork } from 'wagmi'
 import { switchNetwork } from '@wagmi/core'
 import { goerli, optimism } from 'wagmi/chains'
 import { useEffect } from 'react'
-import { useAppDispatch } from 'store'
-import { setChainId } from 'store/slices/nft'
+import { useAppDispatch } from '@/store'
+import { setChainId } from '@/store/slices/nft'
 
 export default function useChain() {
   const dispatch = useAppDispatch()
@@ -40,8 +42,9 @@ function getEtherscanUrl(id?: number) {
   switch (id) {
     case 1:
       return 'https://etherscan.io'
-    case goerli.id:
+    case 5:
       return 'https://goerli.etherscan.io'
+    case 10:
     default:
       return 'https://optimistic.etherscan.io'
   }
