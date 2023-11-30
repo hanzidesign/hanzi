@@ -94,9 +94,9 @@ function JobCard(props: { data: Job }) {
         pos="absolute"
         top={8}
         right={8}
-        bg="rgba(248, 249, 250, 0.2)"
+        bg="rgba(248, 249, 250, 0.12)"
         style={{
-          '&:hover': {},
+          color: 'rgba(255, 255, 255, 0.5)',
         }}
       />
     </Box>

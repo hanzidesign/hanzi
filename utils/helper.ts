@@ -96,6 +96,8 @@ export function getEtherscanUrl(id?: number) {
       return 'https://etherscan.io'
     case 5:
       return 'https://goerli.etherscan.io'
+    case 420:
+      return 'https://goerli-optimism.etherscan.io'
     case 10:
     default:
       return 'https://optimistic.etherscan.io'

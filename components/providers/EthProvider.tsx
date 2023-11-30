@@ -3,15 +3,15 @@
 import { useEffect } from 'react'
 import { getDefaultWallets, RainbowKitProvider, lightTheme } from '@rainbow-me/rainbowkit'
 import { configureChains, createConfig, WagmiConfig } from 'wagmi'
-import { optimism, goerli } from 'wagmi/chains'
+import { optimism, optimismGoerli } from 'wagmi/chains'
 import { alchemyProvider } from 'wagmi/providers/alchemy'
 import { publicProvider } from 'wagmi/providers/public'
 import { useAppContext } from '@/hooks/useAppContext'
 import { publicEnv } from '@/utils/env'
 
 const { appName, isDev } = publicEnv
-const apiKey = isDev ? publicEnv.apiKeyGoerli : publicEnv.apiKeyOpti
-const chain = isDev ? goerli : optimism
+const apiKey = isDev ? publicEnv.apiKeyOptGoerli : publicEnv.apiKeyOpti
+const chain = isDev ? optimismGoerli : optimism
 
 const { chains, publicClient, webSocketPublicClient } = configureChains(
   [chain],

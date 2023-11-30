@@ -17,7 +17,7 @@ const publicEnv = {
   chainId: Number(process.env.NEXT_PUBLIC_CHAIN_ID),
   // api key
   apiKeyOpti: process.env.NEXT_PUBLIC_ALCHEMY_KEY_OPTIMISM,
-  apiKeyGoerli: process.env.ALCHEMY_KEY_GOERLI,
+  apiKeyOptGoerli: process.env.NEXT_PUBLIC_ALCHEMY_KEY_OPT_GOERLI,
 }
 
 export { env, publicEnv }

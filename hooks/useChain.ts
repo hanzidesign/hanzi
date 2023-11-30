@@ -2,19 +2,22 @@
 
 import { useNetwork } from 'wagmi'
 import { switchNetwork } from '@wagmi/core'
-import { goerli, optimism } from 'wagmi/chains'
+import { optimismGoerli, optimism } from 'wagmi/chains'
 import { useEffect } from 'react'
 import { useAppDispatch } from '@/store'
 import { setChainId } from '@/store/slices/nft'
+import { publicEnv } from '@/utils/env'
+import { getEtherscanUrl } from '@/utils/helper'
 
 export default function useChain() {
   const dispatch = useAppDispatch()
   const { chain } = useNetwork()
   const etherscanUrl = getEtherscanUrl(chain?.id)
+  const targetChain = publicEnv.isProd ? optimism : optimismGoerli
 
   const handleSwitch = async () => {
     try {
-      await switchNetwork({ chainId: optimism.id })
+      await switchNetwork({ chainId: targetChain.id })
     } catch (error) {
       console.error(error)
     }
@@ -26,7 +29,7 @@ export default function useChain() {
       const etherscan = getEtherscanUrl(chainId)
       dispatch(setChainId({ chainId, etherscan }))
 
-      if (chain.id !== optimism.id) {
+      if (chain.id !== targetChain.id) {
         handleSwitch()
       }
     }
@@ -35,17 +38,5 @@ export default function useChain() {
   return {
     chain,
     etherscanUrl,
-  }
-}
-
-function getEtherscanUrl(id?: number) {
-  switch (id) {
-    case 1:
-      return 'https://etherscan.io'
-    case 5:
-      return 'https://goerli.etherscan.io'
-    case 10:
-    default:
-      return 'https://optimistic.etherscan.io'
   }
 }

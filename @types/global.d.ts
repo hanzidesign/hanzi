@@ -12,11 +12,11 @@ declare global {
       NEXT_PUBLIC_NFT_CONTRACT_ADDRESS: string
       NEXT_PUBLIC_OPENSEA_URL: string
       NEXT_PUBLIC_CHAIN_ID: string
-      NEXT_PUBLIC_ETHERSCAN_URL: string
       // alchemy
       NEXT_PUBLIC_ALCHEMY_KEY_GOERLI: string
       NEXT_PUBLIC_ALCHEMY_KEY_MAINNET: string
       NEXT_PUBLIC_ALCHEMY_KEY_OPTIMISM: string
+      NEXT_PUBLIC_ALCHEMY_KEY_OPT_GOERLI: string
       // nft storage
       NEXT_PUBLIC_NFT_STORAGE_TOKEN: string
       NEXT_PUBLIC_WEB_URL: string

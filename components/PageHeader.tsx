@@ -10,14 +10,13 @@ import EtherscanIcon from '@/assets/etherscanIcon'
 
 const opensea = process.env.NEXT_PUBLIC_OPENSEA_URL
 const contract = process.env.NEXT_PUBLIC_NFT_CONTRACT_ADDRESS
+const etherscanUrl = getEtherscanUrl(publicEnv.chainId)
+const etherscan = `${etherscanUrl}/address/${contract}`
 
 export default function PageHeader() {
   const router = useRouter()
   const pathname = usePathname()
   const atHome = pathname === '/'
-
-  const etherscanUrl = getEtherscanUrl(publicEnv.chainId)
-  const etherscan = `${etherscanUrl}/address/${contract}`
 
   return (
     <Group gap="xs" justify="space-between">
