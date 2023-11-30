@@ -28,7 +28,6 @@ const wagmiConfig = createConfig({
   autoConnect: true,
   connectors,
   publicClient,
-  webSocketPublicClient,
 })
 
 export default function EthProvider({ children }: React.PropsWithChildren) {
