@@ -93,7 +93,7 @@ export default function CharList() {
                 fw={400}
                 styles={{
                   label: {
-                    width: 64,
+                    width: 72,
                     justifyContent: 'space-between',
                   },
                 }}
@@ -102,7 +102,7 @@ export default function CharList() {
                 }}
               >
                 {y}
-                <Text>({ch})</Text>
+                <Text ff="var(--font-noto)">({ch})</Text>
               </Button>
             ))}
           </ScrollArea>

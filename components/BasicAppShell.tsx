@@ -17,7 +17,7 @@ export default function BasicAppShell({ children }: React.PropsWithChildren) {
     >
       <AppShell.Header p={16} px={{ sm: 40 }} withBorder={!atHome} bg="transparent">
         <Group>
-          <Burger opened={opened} onClick={toggle} hiddenFrom="sm" size="sm" />
+          <Burger opened={opened} onClick={toggle} hiddenFrom="sm" hidden={atHome} size="sm" />
           <Box style={{ flexGrow: 1 }}>
             <PageHeader />
           </Box>

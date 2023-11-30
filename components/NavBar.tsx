@@ -41,8 +41,8 @@ export default function NavBar() {
   }
 
   return (
-    <Stack justify="space-between" h="calc(100dvh - 72px)">
-      <ScrollArea p={20}>
+    <Stack justify="space-between" gap={0} h="calc(100dvh - 72px)">
+      <ScrollArea p={20} pb={4}>
         <ToolStack />
         <Box h={120} />
       </ScrollArea>

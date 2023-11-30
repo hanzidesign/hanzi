@@ -1,10 +1,11 @@
-import '@/styles/globals.css'
+import './global.css'
 
 import Script from 'next/script'
 import Providers from '@/components/providers/Providers'
 import BasicAppShell from '@/components/BasicAppShell'
 import { ColorSchemeScript } from '@mantine/core'
 import { publicEnv } from '@/utils/env'
+import { fontVariables } from '@/theme/font'
 import type { Metadata, Viewport } from 'next'
 
 export const viewport: Viewport = {
@@ -46,7 +47,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" className={fontVariables}>
       <head>
         <Script async src={`https://www.googletagmanager.com/gtag/js?id=${gaId}`} />
         <Script id="google-analytics">
