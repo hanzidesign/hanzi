@@ -2,7 +2,7 @@
 
 import { usePathname } from 'next/navigation'
 import { useDisclosure } from '@mantine/hooks'
-import { AppShell } from '@mantine/core'
+import { AppShell, Burger, Group, Box } from '@mantine/core'
 import PageHeader from '@/components/PageHeader'
 import NavBar from '@/components/NavBar'
 
@@ -13,10 +13,15 @@ export default function BasicAppShell({ children }: React.PropsWithChildren) {
   return (
     <AppShell
       header={{ height: 72 }}
-      navbar={{ width: 400, breakpoint: 'xs', collapsed: { mobile: !opened || atHome, desktop: atHome } }}
+      navbar={{ width: 400, breakpoint: 'sm', collapsed: { mobile: !opened || atHome, desktop: atHome } }}
     >
       <AppShell.Header p={16} px={{ sm: 40 }} withBorder={!atHome} bg="transparent">
-        <PageHeader />
+        <Group>
+          <Burger opened={opened} onClick={toggle} hiddenFrom="sm" size="sm" />
+          <Box style={{ flexGrow: 1 }}>
+            <PageHeader />
+          </Box>
+        </Group>
       </AppShell.Header>
       <AppShell.Navbar>
         <NavBar />

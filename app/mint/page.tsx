@@ -1,60 +1,23 @@
 'use client'
 
-import _ from 'lodash'
-import { useEffect } from 'react'
 import useAccount from '@/hooks/useAccount'
 import useQueue from '@/hooks/useQueue'
 import useNft from '@/hooks/useNft'
 import useChain from '@/hooks/useChain'
 import { useAppSelector } from '@/store'
-import { useMediaQuery } from '@mantine/hooks'
-import { Button, Box, Text } from '@mantine/core'
+import { Box } from '@mantine/core'
 import { AspectRatio, Center } from '@mantine/core'
-import { modals } from '@mantine/modals'
 import SvgItem from '@/components/SvgItem'
 import { Constants } from '@/types'
 
 export default function Mint() {
   const { bgColor } = useAppSelector((state) => state.editor)
-  const matches = useMediaQuery('(max-width: 756px)')
 
   // background tasks
   useAccount()
   useQueue()
   useNft()
   useChain()
-
-  const openHint = () => {
-    modals.closeAll()
-    modals.open({
-      id: 'hint',
-      title: <span></span>,
-      children: (
-        <Center h="50dvh">
-          <Box ta="center">
-            <Text fz={16} c="dark" mb={64}>
-              Open app on desktop for <br /> better experience
-            </Text>
-            <Button size="sm" radius="xl" onClick={() => modals.closeAll()}>
-              Close
-            </Button>
-          </Box>
-        </Center>
-      ),
-      fullScreen: true,
-      styles: {
-        inner: {
-          width: '100vw',
-        },
-      },
-    })
-  }
-
-  useEffect(() => {
-    if (matches) {
-      openHint()
-    }
-  }, [matches])
 
   return (
     <>

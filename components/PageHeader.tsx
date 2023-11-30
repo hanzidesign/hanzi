@@ -1,7 +1,7 @@
 'use client'
 
 import { usePathname, useRouter } from 'next/navigation'
-import { Group, Text, ActionIcon, Tooltip } from '@mantine/core'
+import { Group, ActionIcon, Tooltip } from '@mantine/core'
 import { ConnectButton } from '@rainbow-me/rainbowkit'
 import { getEtherscanUrl } from '@/utils/helper'
 import { publicEnv } from '@/utils/env'
@@ -23,9 +23,6 @@ export default function PageHeader() {
     <Group gap="xs" justify="space-between">
       <Group className="c-pointer" gap={8} onClick={() => router.push(atHome ? '/mint' : '/')}>
         <img src="/icon.svg" alt="" style={{ width: 40, height: 40 }} />
-        <Text fz={20} fw="bold">
-          Hanzi Design
-        </Text>
       </Group>
 
       {atHome ? (
