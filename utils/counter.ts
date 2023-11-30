@@ -1,8 +1,8 @@
 import { differenceInSeconds } from 'date-fns'
 
 class Counter {
-  startTime: Date
-  endTime: Date
+  startTime: Date | undefined
+  endTime: Date | undefined
 
   get diffSec(): number {
     const startT = this.startTime || new Date()

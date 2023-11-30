@@ -1,7 +1,7 @@
 import _ from 'lodash'
 import { createSlice } from '@reduxjs/toolkit'
 import type { PayloadAction } from '@reduxjs/toolkit'
-import type { NftTx } from 'types'
+import type { NftTx } from '@/types'
 
 export type NftState = {
   account?: string

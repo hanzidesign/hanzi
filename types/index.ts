@@ -1,4 +1,4 @@
-import { metadataExample } from 'assets/metadata'
+import { metadataExample } from '@/assets/metadata'
 
 export type Metadata = { country: string; year: string; ch: string; mintBy: string }
 export type MetadataJson = typeof metadataExample

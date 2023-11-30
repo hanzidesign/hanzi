@@ -21,7 +21,7 @@ export default function PageHeader() {
   return (
     <Group gap="xs" justify="space-between">
       <Group className="c-pointer" gap={8} onClick={() => router.push(atHome ? '/mint' : '/')}>
-        <img src="/icon.svg" alt="" style={{ width: 40, height: 40 }} />
+        <img src="/images/logo.svg" alt="" style={{ width: 40, height: 40 }} />
       </Group>
 
       {atHome ? (

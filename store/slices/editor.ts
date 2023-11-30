@@ -1,8 +1,8 @@
 import _ from 'lodash'
 import { createSlice } from '@reduxjs/toolkit'
-import { countries } from 'assets/list'
+import { countries } from '@/assets/list'
 import type { PayloadAction } from '@reduxjs/toolkit'
-import type { Metadata, NftData } from 'types'
+import type { Metadata, NftData } from '@/types'
 
 export type EditorState = Omit<Metadata, 'mintBy'> &
   NftData & {
