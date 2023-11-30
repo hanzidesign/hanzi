@@ -1,7 +1,9 @@
+'use client'
+
 import _ from 'lodash'
 import mimeTypes from 'mime-types'
 import { NFTStorage, File } from 'nft.storage'
-import type { NftMetadata } from 'types'
+import type { NftMetadata } from '@/types'
 
 const token = process.env.NEXT_PUBLIC_NFT_STORAGE_TOKEN
 if (!token) throw new Error('no api token of nft.storage')

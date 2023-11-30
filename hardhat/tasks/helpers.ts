@@ -1,4 +1,3 @@
-import { ethers } from 'ethers'
 import type { HardhatRuntimeEnvironment } from 'hardhat/types'
 
 export function getEnvVariable(key: string, defaultValue?: string) {
@@ -9,22 +8,7 @@ export function getEnvVariable(key: string, defaultValue?: string) {
   return val
 }
 
-// Helper method for fetching a connection provider to the Ethereum network
-export function getProvider() {
-  const network = getEnvVariable('NETWORK', 'goerli')
-  const key = `ALCHEMY_KEY_${network}`.toUpperCase()
-  const alchemy = getEnvVariable(key)
-  return ethers.getDefaultProvider(network, {
-    alchemy,
-  })
-}
-
-// Helper method for fetching a wallet account using an environment variable for the PK
-export function getAccount() {
-  return new ethers.Wallet(getEnvVariable('ACCOUNT_PRIVATE_KEY'), getProvider())
-}
-
-export function getContract(hre: HardhatRuntimeEnvironment, name: string, address: string) {
-  const account = getAccount()
-  return hre.ethers.getContractAt(name, address, account)
+export async function getContract({ ethers }: HardhatRuntimeEnvironment, name: string, address: string) {
+  const [signer] = await ethers.getSigners()
+  return ethers.getContractAt(name, address, signer)
 }

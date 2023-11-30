@@ -1,7 +1,9 @@
+'use client'
+
 import _ from 'lodash'
 import { useWindowSize } from 'rooks'
-import MotionPath, { MotionPathProps } from 'components/Motion/MotionPath'
-import MotionShape from 'components/Motion/MotionShape'
+import MotionPath, { MotionPathProps } from '@/components/Motion/MotionPath'
+import MotionShape from '@/components/Motion/MotionShape'
 
 type MotionSvgProps = {
   index: number

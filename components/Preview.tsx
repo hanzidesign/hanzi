@@ -1,21 +1,24 @@
+'use client'
+
 import { useRef, useState } from 'react'
 import { useConnectModal } from '@rainbow-me/rainbowkit'
-import { Group, Button, Box, AspectRatio, Progress, Center, Text } from '@mantine/core'
-import useProgress from 'hooks/useProgress'
-import useMint from 'hooks/useMint'
-import { useAppSelector, useAppDispatch } from 'store'
-import { addJob, setStart } from 'store/slices/queue'
-import { selectNftData } from 'store/selectors'
-import SvgItem from 'components/SvgItem'
+import { Stack, Group, Button, Box, Progress, Center, Text } from '@mantine/core'
+import { useViewportSize } from '@mantine/hooks'
+import useProgress from '@/hooks/useProgress'
+import useMint from '@/hooks/useMint'
+import { useAppSelector, useAppDispatch } from '@/store'
+import { addJob, setStart } from '@/store/slices/queue'
+import { selectNftData } from '@/store/selectors'
+import SvgItem from '@/components/SvgItem'
 
 type PreviewProps = {
   onBack: () => void
 }
 
-export default function Preview(props: PreviewProps) {
-  const { onBack } = props
+export default function Preview({ onBack }: PreviewProps) {
   const dispatch = useAppDispatch()
   const { openConnectModal } = useConnectModal()
+  const { height, width } = useViewportSize()
   const uidRef = useRef('')
 
   const nftData = useAppSelector(selectNftData)
@@ -51,18 +54,19 @@ export default function Preview(props: PreviewProps) {
   }
 
   return (
-    <Box m="32px 0 16px">
-      <AspectRatio
-        ratio={1}
-        w="100%"
+    <Stack gap="xl" justify="space-between">
+      <Box
+        mx="auto"
+        w={height / 2}
+        h={height / 2}
         style={{
           borderRadius: 16,
           overflow: 'hidden',
         }}
       >
         <SvgItem />
-      </AspectRatio>
-      <Center py={16} h={80}>
+      </Box>
+      <Center>
         {job ? (
           job.ipfsUrl ? (
             <Box w="100%" ta="center">
@@ -134,6 +138,6 @@ export default function Preview(props: PreviewProps) {
           </Group>
         )}
       </Center>
-    </Box>
+    </Stack>
   )
 }

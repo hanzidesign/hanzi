@@ -1,7 +1,9 @@
+'use client'
+
 import { useEffect } from 'react'
 import { watchAccount, getAccount } from '@wagmi/core'
-import { useAppDispatch } from 'store'
-import { setAccount } from 'store/slices/nft'
+import { useAppDispatch } from '@/store'
+import { setAccount } from '@/store/slices/nft'
 
 export default function useAccount() {
   const dispatch = useAppDispatch()

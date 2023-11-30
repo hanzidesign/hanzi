@@ -1,10 +1,12 @@
+'use client'
+
 import { useState } from 'react'
 import { useConnectModal } from '@rainbow-me/rainbowkit'
 import { writeContract } from '@wagmi/core'
 import { notifications } from '@mantine/notifications'
-import { prepareSafeMint } from 'lib/nftContract'
-import { useAppSelector, useAppDispatch } from 'store'
-import { setNft } from 'store/slices/nft'
+import { prepareSafeMint } from '@/lib/nftContract'
+import { useAppSelector, useAppDispatch } from '@/store'
+import { setNft } from '@/store/slices/nft'
 
 export default function useMint(at: string, ipfsUrl?: string) {
   const dispatch = useAppDispatch()

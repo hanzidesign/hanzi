@@ -1,8 +1,10 @@
-import { useAppDispatch, useAppSelector } from 'store'
+'use client'
+
+import { useAppDispatch, useAppSelector } from '@/store'
 import { SimpleGrid, Textarea, TextInput } from '@mantine/core'
-import { setName, setDescription } from 'store/slices/editor'
+import { setName, setDescription } from '@/store/slices/editor'
 import { StyledBox, StyledText } from './common'
-import { getName } from 'utils/helper'
+import { getName } from '@/utils/helper'
 
 export default function Effect() {
   const dispatch = useAppDispatch()

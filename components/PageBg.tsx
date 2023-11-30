@@ -1,6 +1,6 @@
 import { Box } from '@mantine/core'
-import MotionSvg from 'components/Motion/MotionSvg'
-import type { MotionType } from 'components/Motion/MotionPath'
+import MotionSvg from '@/components/Motion/MotionSvg'
+import type { MotionType } from '@/components/Motion/MotionPath'
 
 const list = [0, 1, 2, 3, 4, 5, 6]
 const types: MotionType[] = ['a', 'b', 'x', 'n']

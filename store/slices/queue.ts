@@ -1,7 +1,7 @@
 import _ from 'lodash'
 import { createSlice } from '@reduxjs/toolkit'
 import type { PayloadAction } from '@reduxjs/toolkit'
-import type { Job } from 'types'
+import type { Job } from '@/types'
 
 export type QueueState = {
   list: { [uid: string]: Job | undefined }

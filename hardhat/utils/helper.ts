@@ -1,22 +1,22 @@
 import _ from 'lodash'
 import { ethers } from 'hardhat'
-import { BigNumber } from 'ethers'
-import { mul } from 'utils/calculator'
-import type { TransactionRequest } from '@ethersproject/abstract-provider'
+import { toBigInt } from 'ethers'
+import type { TransactionRequest } from 'ethers'
 
 export async function getFeeData() {
+  const { provider } = ethers
   const [block, maxPriorityFeeString] = await Promise.all([
-    ethers.provider.getBlock('latest'),
-    ethers.provider.send('eth_maxPriorityFeePerGas', []),
+    provider.getBlock('latest'),
+    provider.send('eth_maxPriorityFeePerGas', []),
   ])
 
-  let lastBaseFeePerGas: BigNumber | undefined = undefined
-  let maxFeePerGas: BigNumber | undefined = undefined
-  const maxPriorityFeePerGas = mul(BigNumber.from(maxPriorityFeeString), 1)
+  let lastBaseFeePerGas: bigint | undefined = undefined
+  let maxFeePerGas: bigint | undefined = undefined
+  const maxPriorityFeePerGas = toBigInt(maxPriorityFeeString)
 
   if (block && block.baseFeePerGas) {
     lastBaseFeePerGas = block.baseFeePerGas
-    maxFeePerGas = lastBaseFeePerGas.mul(2).add(maxPriorityFeePerGas)
+    maxFeePerGas = lastBaseFeePerGas * 2n + maxPriorityFeePerGas
   } else {
     throw new Error('no block data')
   }
@@ -26,12 +26,11 @@ export async function getFeeData() {
 
 export async function sendTx(tx: TransactionRequest) {
   const [deployer] = await ethers.getSigners()
-
-  const { chainId } = ethers.provider.network
+  const { chainId } = await ethers.provider.getNetwork()
 
   // Explicitly using EIP-1559
   const { maxFeePerGas, maxPriorityFeePerGas } = await getFeeData()
-  if (maxFeePerGas.isZero()) throw new Error('no fee data')
+  if (maxFeePerGas == 0n) throw new Error('no fee data')
 
   tx.type = 2
   tx.maxFeePerGas = maxFeePerGas
@@ -42,7 +41,7 @@ export async function sendTx(tx: TransactionRequest) {
   const gasLimit = await ethers.provider.estimateGas(tx).catch((error) => {
     throw new Error('cannot estimate gas')
   })
-  tx.gasLimit = mul(gasLimit, 1)
+  tx.gasLimit = gasLimit
   tx.chainId = chainId
 
   return deployer.sendTransaction(tx)

@@ -1,4 +1,4 @@
-import type { Metadata, Trait, NftMetadata } from 'types'
+import type { Metadata, Trait, NftMetadata } from '@/types'
 
 export function setAttributes(metadata: Metadata): Trait[] {
   const { country, year, ch, mintBy } = metadata

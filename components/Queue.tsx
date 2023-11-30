@@ -1,18 +1,20 @@
+'use client'
+
 import _ from 'lodash'
-import useMint from 'hooks/useMint'
-import useProgress from 'hooks/useProgress'
-import { useAppSelector, useAppDispatch } from 'store'
-import { setCancel, setStart } from 'store/slices/queue'
-import { delNft } from 'store/slices/nft'
+import useMint from '@/hooks/useMint'
+import useProgress from '@/hooks/useProgress'
+import { useAppSelector, useAppDispatch } from '@/store'
+import { setCancel, setStart } from '@/store/slices/queue'
+import { delNft } from '@/store/slices/nft'
 import { useMediaQuery } from '@mantine/hooks'
 import { SimpleGrid, AspectRatio, Box, Text, Group } from '@mantine/core'
 import { Button, CloseButton, useMantineTheme } from '@mantine/core'
-import Item, { SvgItemProps } from 'components/SvgItem/Item'
-import { getIpfsUrl } from 'utils/helper'
+import Item, { SvgItemProps } from '@/components/SvgItem/Item'
+import { getIpfsUrl } from '@/utils/helper'
 import { IoMdImage } from 'react-icons/io'
 import { IoWalletSharp } from 'react-icons/io5'
 import { BiError } from 'react-icons/bi'
-import type { Job, NftTx } from 'types'
+import type { Job, NftTx } from '@/types'
 
 function JobCard(props: { data: Job }) {
   const dispatch = useAppDispatch()
@@ -63,12 +65,12 @@ function JobCard(props: { data: Job }) {
                 {failed
                   ? 'Error'
                   : startAt
-                  ? ipfsUrl
-                    ? 'Ready'
-                    : `Uploading ${progress}%`
-                  : account
-                  ? 'Waiting'
-                  : 'Wait for wallet'}
+                    ? ipfsUrl
+                      ? 'Ready'
+                      : `Uploading ${progress}%`
+                    : account
+                      ? 'Waiting'
+                      : 'Wait for wallet'}
               </Text>
             </Group>
             {failed ? (
@@ -92,9 +94,9 @@ function JobCard(props: { data: Job }) {
         pos="absolute"
         top={8}
         right={8}
-        bg="rgba(248, 249, 250, 0.2)"
+        bg="rgba(248, 249, 250, 0.12)"
         style={{
-          '&:hover': {},
+          color: 'rgba(255, 255, 255, 0.5)',
         }}
       />
     </Box>

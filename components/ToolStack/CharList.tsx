@@ -1,10 +1,12 @@
+'use client'
+
 import _ from 'lodash'
-import { useAppDispatch, useAppSelector } from 'store'
-import { SimpleGrid, Button, Switch, Text } from '@mantine/core'
-import { Box, Title, ScrollArea } from '@mantine/core'
-import { setCharUrl, setMetadata, setIsTc } from 'store/slices/editor'
-import { countries } from 'assets/list'
-import { chars, sortedChars } from 'assets/chars'
+import { useAppDispatch, useAppSelector } from '@/store'
+import { SimpleGrid, Button, Switch } from '@mantine/core'
+import { Box, Text, ScrollArea } from '@mantine/core'
+import { setCharUrl, setMetadata, setIsTc } from '@/store/slices/editor'
+import { countries } from '@/assets/list'
+import { chars, sortedChars } from '@/assets/chars'
 import { StyledBox } from './common'
 
 export default function CharList() {
@@ -33,12 +35,14 @@ export default function CharList() {
     <StyledBox>
       <SimpleGrid cols={2}>
         <Box>
-          <Title order={4}>Country</Title>
+          <Text fw="700" fz="lg">
+            Country
+          </Text>
         </Box>
         <Box pos="relative">
-          <Title order={4} pl={10}>
+          <Text fw="700" fz="lg" pl={10}>
             Year
-          </Title>
+          </Text>
 
           <Switch
             className="absolute-vertical"

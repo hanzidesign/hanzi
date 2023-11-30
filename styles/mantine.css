@@ -1,0 +1,9 @@
+/* Override @mantine/core */
+
+.mantine-Button-root {
+  --button-padding-x-xs: calc(0.75rem * var(--mantine-scale));
+  --button-padding-x-sm: calc(1rem * var(--mantine-scale));
+  --button-padding-x-md: calc(1.25rem * var(--mantine-scale));
+  --button-padding-x-lg: calc(1.5rem * var(--mantine-scale));
+  --button-padding-x-xl: calc(2rem * var(--mantine-scale));
+}

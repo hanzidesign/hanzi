@@ -5,6 +5,8 @@ import 'tasks' // hardhat tasks
 import { ethers } from 'ethers'
 import type { HardhatUserConfig } from 'hardhat/config'
 
+// verify: npx hardhat verify --network optGoerli DEPLOYED_CONTRACT_ADDRESS
+
 const { ACCOUNT_PRIVATE_KEY, ALCHEMY_KEY_GOERLI, ALCHEMY_KEY_MAINNET } = process.env
 const { ALCHEMY_KEY_OPTIMISM, ALCHEMY_KEY_OPT_GOERLI } = process.env
 const { ETHERSCAN_KEY, OPT_ETHERSCAN_KEY } = process.env
@@ -47,6 +49,7 @@ const config: HardhatUserConfig = {
       mainnet: ETHERSCAN_KEY,
       goerli: ETHERSCAN_KEY,
       optimisticEthereum: OPT_ETHERSCAN_KEY,
+      optimisticGoerli: OPT_ETHERSCAN_KEY,
     },
   },
 }

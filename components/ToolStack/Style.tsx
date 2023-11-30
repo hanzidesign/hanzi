@@ -1,9 +1,11 @@
+'use client'
+
 import _ from 'lodash'
 import { useState } from 'react'
-import { useAppDispatch, useAppSelector } from 'store'
+import { useAppDispatch, useAppSelector } from '@/store'
 import { Stack, Group, SegmentedControl, ColorSwatch, Button, useMantineTheme } from '@mantine/core'
 import { StyledBox } from './common'
-import { setColor } from 'store/slices/editor'
+import { setColor } from '@/store/slices/editor'
 import classes from './style.module.css'
 
 export default function Style() {

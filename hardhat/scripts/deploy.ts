@@ -1,18 +1,19 @@
-// npx hardhat run scripts/deploy.ts --network goerli
+// npx hardhat run scripts/deploy.ts --network optGoerli
 import { ethers } from 'hardhat'
 import { sendTx } from 'utils/helper'
 
 async function main() {
+  const { provider } = ethers
   const [deployer] = await ethers.getSigners()
-  const balance = await deployer.getBalance()
+  const balance = await provider.getBalance(deployer.address)
 
   console.log('Deploying contracts with the account:', {
     address: deployer.address,
-    balance: ethers.utils.formatEther(balance),
+    balance: ethers.formatEther(balance),
   })
 
   const Hanzi = await ethers.getContractFactory('Hanzi')
-  const tx = Hanzi.getDeployTransaction()
+  const tx = await Hanzi.getDeployTransaction()
   const { hash } = await sendTx(tx)
   console.log({ hash })
 }

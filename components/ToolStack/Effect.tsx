@@ -1,14 +1,16 @@
+'use client'
+
 import _ from 'lodash'
 import numeral from 'numeral'
-import { useAppDispatch, useAppSelector } from 'store'
+import { useAppDispatch, useAppSelector } from '@/store'
 import { useState, useEffect, useRef } from 'react'
 import { SimpleGrid, AspectRatio, Group } from '@mantine/core'
 import { Center, Text, Tooltip, Button } from '@mantine/core'
 import { Slider, FileInput, useMantineTheme } from '@mantine/core'
 import { StyledBox, StyledText } from './common'
-import useFileReader from 'hooks/useFileReader'
-import { setPtnUrl, setDistortion, setBlur, setSeed } from 'store/slices/editor'
-import { setWidth, setPosition, setRotation, reset } from 'store/slices/editor'
+import useFileReader from '@/hooks/useFileReader'
+import { setPtnUrl, setDistortion, setBlur, setSeed } from '@/store/slices/editor'
+import { setWidth, setPosition, setRotation, reset } from '@/store/slices/editor'
 import { IoMdImage } from 'react-icons/io'
 
 export default function Effect() {

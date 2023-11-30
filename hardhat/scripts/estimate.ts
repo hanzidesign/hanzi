@@ -1,33 +1,34 @@
-// npx hardhat run scripts/estimate.ts --network goerli
+// npx hardhat run scripts/estimate.ts --network optGoerli
 import { ethers } from 'hardhat'
 import { getFeeData } from 'utils/helper'
 
 async function main() {
+  const { provider } = ethers
   const [deployer] = await ethers.getSigners()
-  const balance = await deployer.getBalance()
+  const balance = await provider.getBalance(deployer.address)
 
   console.log('Deploying contracts with the account:', {
     address: deployer.address,
-    balance: ethers.utils.formatEther(balance),
+    balance: ethers.formatEther(balance),
   })
 
   const Hanzi = await ethers.getContractFactory('Hanzi')
-  const { data } = Hanzi.getDeployTransaction()
+  const { data } = await Hanzi.getDeployTransaction()
 
   if (data) {
     const { lastBaseFeePerGas, maxFeePerGas, maxPriorityFeePerGas } = await getFeeData()
-    const estimatedGas = await ethers.provider.estimateGas({ data })
+    const estimatedGas = await provider.estimateGas({ data })
 
-    const baseFee = lastBaseFeePerGas.add(maxPriorityFeePerGas)
-    const basePrice = estimatedGas.mul(baseFee)
-    const maxPrice = estimatedGas.mul(maxFeePerGas)
+    const baseFee = lastBaseFeePerGas + maxPriorityFeePerGas
+    const basePrice = estimatedGas * baseFee
+    const maxPrice = estimatedGas * maxFeePerGas
 
     console.log({
-      basePrice: formatNumber(ethers.utils.formatEther(basePrice)) + ' eth',
-      maxPrice: formatNumber(ethers.utils.formatEther(maxPrice)) + ' eth',
-      priorityFee: formatNumber(ethers.utils.formatUnits(maxPriorityFeePerGas, 'gwei')) + ' gwei',
-      baseFee: formatNumber(ethers.utils.formatUnits(baseFee, 'gwei')) + ' gwei',
-      maxFee: formatNumber(ethers.utils.formatUnits(maxFeePerGas, 'gwei')) + ' gwei',
+      basePrice: formatNumber(ethers.formatEther(basePrice)) + ' eth',
+      maxPrice: formatNumber(ethers.formatEther(maxPrice)) + ' eth',
+      priorityFee: formatNumber(ethers.formatUnits(maxPriorityFeePerGas, 'gwei')) + ' gwei',
+      baseFee: formatNumber(ethers.formatUnits(baseFee, 'gwei')) + ' gwei',
+      maxFee: formatNumber(ethers.formatUnits(maxFeePerGas, 'gwei')) + ' gwei',
       estimatedGas: estimatedGas.toString(),
     })
   } else {

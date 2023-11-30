@@ -1,7 +1,9 @@
+'use client'
+
 import React from 'react'
 import { motion, useMotionValue, animate } from 'framer-motion'
-import { paths } from 'assets/paths'
-import SvgGradients, { ids } from 'components/Motion/SvgGradients'
+import { paths } from '@/assets/paths'
+import SvgGradients, { ids } from '@/components/Motion/SvgGradients'
 
 export type MotionShapeProps = {
   width: number
@@ -16,7 +18,7 @@ export default function MotionPath(props: MotionShapeProps) {
 
   const [pathIndex, setPathIndex] = React.useState(index % paths.length)
   const progress = useMotionValue(pathIndex)
-  const path = paths[index] // useFlubber(progress, paths)
+  const path = paths[index]
 
   React.useEffect(() => {
     const animation = animate(progress, pathIndex, {
