@@ -32,6 +32,7 @@
     "next": "14.0.3",
     "nft.storage": "^7.1.1",
     "numeral": "^2",
+    "openai": "^4.20.1",
     "react": "^18",
     "react-dom": "^18",
     "react-icons": "^4",

@@ -2,14 +2,13 @@
 
 import _ from 'lodash'
 import { useEffect } from 'react'
-import d3ToPng from 'd3-svg-to-png'
 import { useConnectModal } from '@rainbow-me/rainbowkit'
 import { useAppSelector, useAppDispatch } from '@/store'
 import { setStart, setIpfsUrl, setFailed } from '@/store/slices/queue'
 import { uploadImage } from '@/lib/nftStorage'
 import { setAttributes, setMetadata } from '@/lib/metadata'
 import { getName } from '@/utils/helper'
-import { Constants } from '@/types'
+import { toDataURI } from '@/lib/toDataURI'
 import type { Job } from '@/types'
 
 export default function useQueue() {
@@ -63,11 +62,7 @@ async function upload(job: Job, mintBy: string) {
   const metadata = setMetadata(name, description, attributes)
   console.log(metadata)
 
-  const dataURI = await d3ToPng(`#${Constants.svgId}`, name, {
-    scale: 1,
-    format: 'webp',
-    download: false,
-  })
+  const dataURI = await toDataURI(name)
 
   // ipfs
   const token = await uploadImage(dataURI, metadata)

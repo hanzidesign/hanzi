@@ -8,6 +8,7 @@ export type EditorState = Omit<Metadata, 'mintBy'> &
   NftData & {
     seed: number
     isTc: boolean
+    apiKey: string
   }
 
 const country = 'int'
@@ -33,6 +34,7 @@ const initialState: EditorState = {
   ch: '亂',
   name: '',
   description: '',
+  apiKey: '',
 }
 
 // Actual Slice
@@ -95,6 +97,9 @@ export const slice = createSlice({
     setDescription(state, action: PayloadAction<string>) {
       state.description = action.payload
     },
+    setApiKey(state, action) {
+      state.apiKey = action.payload
+    },
     reset(state) {
       state.distortion = 10
       state.blur = 0
@@ -121,6 +126,7 @@ export const {
   setMetadata,
   setName,
   setDescription,
+  setApiKey,
   reset,
 } = slice.actions
 

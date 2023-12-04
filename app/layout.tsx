@@ -20,12 +20,13 @@ const description =
 const gaId = process.env.NEXT_PUBLIC_GOOGLE_ANALYTICS
 
 export const metadata: Metadata = {
+  metadataBase: new URL(publicEnv.webUrl),
   title,
   description,
   openGraph: {
     title,
     description,
-    images: [`${publicEnv.webUrl}/cover.png`],
+    images: '/cover.png',
   },
   keywords: ['hanzi', 'design', 'art', 'nft', 'optimism'],
   manifest: '/site.webmanifest',
