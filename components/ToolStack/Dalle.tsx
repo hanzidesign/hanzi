@@ -6,7 +6,7 @@ import { useAppContext } from '@/hooks/useAppContext'
 import { Stack, Box, PasswordInput, Anchor, Pagination, Button } from '@mantine/core'
 import { setApiKey } from '@/store/slices/editor'
 import { StyledBox, StyledText } from './common'
-import { createVariation } from '@/lib/openai'
+import { createVariation } from '@/lib/dalle'
 import classes from './index.module.css'
 
 export default function Dalle() {
@@ -24,7 +24,7 @@ export default function Dalle() {
   const handleCreate = async () => {
     setLoading(true)
     try {
-      if (img) {
+      if (img && apiKey) {
         const data = await createVariation(apiKey, img)
         if (data) {
           const newData = [...dalleImages, `data:image/png;base64,${data}`]
