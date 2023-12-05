@@ -2,7 +2,7 @@ import '../.env.ts' // dotenv.config()
 import 'tsconfig-paths/register'
 import '@nomicfoundation/hardhat-toolbox'
 import 'tasks' // hardhat tasks
-import { ethers } from 'ethers'
+import { ethers } from 'hardhat'
 import type { HardhatUserConfig } from 'hardhat/config'
 
 // verify: npx hardhat verify --network optGoerli DEPLOYED_CONTRACT_ADDRESS

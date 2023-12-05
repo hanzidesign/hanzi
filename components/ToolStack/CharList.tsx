@@ -6,7 +6,7 @@ import { SimpleGrid, Button, Switch } from '@mantine/core'
 import { Box, Text, ScrollArea } from '@mantine/core'
 import { setCharUrl, setMetadata, setIsTc } from '@/store/slices/editor'
 import { countries } from '@/assets/list'
-import { chars, sortedChars } from '@/assets/chars'
+import { chars, sortedChars, parseCharUrl } from '@/assets/chars'
 import { StyledBox } from './common'
 
 export default function CharList() {
@@ -116,11 +116,4 @@ function getCharUrl(country: string, year: string, isTc: boolean) {
   const root = isTc ? 'tc' : 'sc'
   const url = `/chars/${root}/${country}/${year}`
   return isTc ? `${url}.svg` : `${url}.svg`
-}
-
-function parseCharUrl(url: string) {
-  // http://localhost:3000/chars/tc/int/2006.svg
-  const [country, name] = _.compact(_.split(url, '/')).slice(-2)
-  const year = name.slice(0, 4)
-  return [country, year] as const
 }

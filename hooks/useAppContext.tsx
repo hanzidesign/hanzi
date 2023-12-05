@@ -4,7 +4,9 @@ import _ from 'lodash'
 import { createContext, useContext, useMemo, useState } from 'react'
 
 const initialState = {
-  walletMounted: false,
+  dalleImages: [] as string[],
+  activeImg: 1,
+  showDelle: false,
 }
 
 type AppState = typeof initialState
@@ -14,6 +16,7 @@ const AppContext = createContext<
   | {
       state: AppState
       updateState: (value: Partial<AppState>) => void
+      getActiveImg: () => string | undefined
     }
   | typeof MISSING_PROVIDER
 >(MISSING_PROVIDER)
@@ -34,6 +37,7 @@ export function AppProvider(props: React.PropsWithChildren<{}>) {
     () => ({
       state,
       updateState: (value: Partial<AppState>) => setState((state) => ({ ...state, ...value })),
+      getActiveImg: () => state.dalleImages[state.activeImg - 1],
     }),
     [state]
   )

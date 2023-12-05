@@ -7,9 +7,8 @@ import { useAppSelector, useAppDispatch } from '@/store'
 import { setCancel, setStart } from '@/store/slices/queue'
 import { delNft } from '@/store/slices/nft'
 import { useMediaQuery } from '@mantine/hooks'
-import { SimpleGrid, AspectRatio, Box, Text, Group } from '@mantine/core'
+import { SimpleGrid, AspectRatio, Box, Text, Group, Image } from '@mantine/core'
 import { Button, CloseButton, useMantineTheme } from '@mantine/core'
-import Item, { SvgItemProps } from '@/components/SvgItem/Item'
 import { getIpfsUrl } from '@/utils/helper'
 import { IoMdImage } from 'react-icons/io'
 import { IoWalletSharp } from 'react-icons/io5'
@@ -22,8 +21,7 @@ function JobCard(props: { data: Job }) {
   const theme = useMantineTheme()
 
   const { data } = props
-  const itemProps = getItemProps(data)
-  const { uid, startAt, ipfsUrl, createdAt, failed } = data
+  const { uid, startAt, ipfsUrl, createdAt, failed, dataURI } = data
   const at = `${createdAt}`
   const { hash } = nftList[at] || {}
 
@@ -40,7 +38,7 @@ function JobCard(props: { data: Job }) {
           overflow: 'hidden',
         }}
       >
-        <Item {...itemProps} />
+        <Image src={dataURI} />
       </AspectRatio>
 
       <Group h={48} py={8} style={{ justifyContent: 'space-between' }}>
@@ -203,21 +201,4 @@ export default function Queue() {
       )}
     </>
   )
-}
-
-function getItemProps(data: Job): SvgItemProps {
-  const { uid, svgData, ptnUrl, width, distortion, blur, x, y, rotation, textColor, bgColor } = data
-  return {
-    fId: uid,
-    svgData,
-    ptnUrl,
-    width,
-    distortion,
-    blur,
-    x,
-    y,
-    rotation,
-    textColor,
-    bgColor,
-  }
 }

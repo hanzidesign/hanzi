@@ -8,8 +8,9 @@ import useProgress from '@/hooks/useProgress'
 import useMint from '@/hooks/useMint'
 import { useAppSelector, useAppDispatch } from '@/store'
 import { addJob, setStart } from '@/store/slices/queue'
-import { selectNftData } from '@/store/selectors'
-import SvgItem from '@/components/SvgItem'
+import { useAppContext } from '@/hooks/useAppContext'
+import { toDataURI } from '@/lib/toDataURI'
+import Img from '@/components/Img'
 
 type PreviewProps = {
   onBack: () => void
@@ -18,11 +19,14 @@ type PreviewProps = {
 export default function Preview({ onBack }: PreviewProps) {
   const dispatch = useAppDispatch()
   const { openConnectModal } = useConnectModal()
-  const { height, width } = useViewportSize()
+  const { height } = useViewportSize()
   const uidRef = useRef('')
 
-  const nftData = useAppSelector(selectNftData)
-  const { country, year, ch } = useAppSelector((state) => state.editor)
+  const {
+    state: { showDelle },
+    getActiveImg,
+  } = useAppContext()
+  const { country, year, ch, name, description } = useAppSelector((state) => state.editor)
   const { etherscan, account } = useAppSelector((state) => state.nft)
 
   const job = useAppSelector((state) => state.queue.list[uidRef.current])
@@ -30,15 +34,28 @@ export default function Preview({ onBack }: PreviewProps) {
   const { minted, handleMint } = useMint(uidRef.current, job?.ipfsUrl)
   const [hash, setHash] = useState('')
 
-  const handleUpload = () => {
-    if (!account && openConnectModal) {
-      openConnectModal()
-    }
-    if (!job && account) {
-      const createdAt = Date.now()
-      const uid = `${createdAt}`
-      uidRef.current = uid
-      dispatch(addJob({ ...nftData, country, year, ch, createdAt, uid, mintBy: account }))
+  const getDataURI = async () => {
+    const imgData = getActiveImg()
+    const dataURI = showDelle && imgData ? imgData : await toDataURI('NFT')
+    if (!dataURI) throw new Error('no dataURI')
+    return dataURI
+  }
+
+  const handleUpload = async () => {
+    try {
+      const dataURI = await getDataURI()
+
+      if (!account && openConnectModal) {
+        openConnectModal()
+      }
+      if (!job && account) {
+        const createdAt = Date.now()
+        const uid = `${createdAt}`
+        uidRef.current = uid
+        dispatch(addJob({ dataURI, name, description, country, year, ch, createdAt, uid, mintBy: account }))
+      }
+    } catch (err) {
+      console.error(err)
     }
   }
 
@@ -56,6 +73,7 @@ export default function Preview({ onBack }: PreviewProps) {
   return (
     <Stack gap="xl" justify="space-between">
       <Box
+        pos="relative"
         mx="auto"
         w={height / 2}
         h={height / 2}
@@ -64,7 +82,7 @@ export default function Preview({ onBack }: PreviewProps) {
           overflow: 'hidden',
         }}
       >
-        <SvgItem />
+        <Img />
       </Box>
       <Center>
         {job ? (
