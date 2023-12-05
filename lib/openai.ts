@@ -1,7 +1,7 @@
 import OpenAI from 'openai'
 
 export async function createVariation(apiKey: string, dataURI: string) {
-  const openai = new OpenAI({ apiKey })
+  const openai = new OpenAI({ apiKey, dangerouslyAllowBrowser: true })
   const image = await fetch(dataURI)
   const { data } = await openai.images.createVariation({
     image,
