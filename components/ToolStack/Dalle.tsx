@@ -1,12 +1,12 @@
 'use client'
 
+import axios from 'axios'
 import { useState } from 'react'
 import { useAppDispatch, useAppSelector } from '@/store'
 import { useAppContext } from '@/hooks/useAppContext'
 import { Stack, Box, PasswordInput, Anchor, Pagination, Button } from '@mantine/core'
 import { setApiKey } from '@/store/slices/editor'
 import { StyledBox, StyledText } from './common'
-
 import { createVariation } from '@/lib/openai'
 import classes from './index.module.css'
 
@@ -26,11 +26,9 @@ export default function Dalle() {
     setLoading(true)
     try {
       if (img) {
-        const data = await createVariation(apiKey, img)
-        if (data) {
-          const newData = [...dalleImages, `data:image/png;base64,${data}`]
-          updateState({ dalleImages: newData, activeImg: newData.length })
-        }
+        const { data } = await axios.post<{ image: string }>('/api/createVariation', { apiKey, dataURI: img })
+        const newData = [...dalleImages, `data:image/png;base64,${data.image}`]
+        updateState({ dalleImages: newData, activeImg: newData.length })
       }
     } catch (err) {
       console.error(err)

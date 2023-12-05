@@ -1,9 +1,8 @@
 import OpenAI from 'openai'
-import { toFile } from './toFile'
 
 export async function createVariation(apiKey: string, dataURI: string) {
-  const image = toFile(dataURI, 'img')
   const openai = new OpenAI({ apiKey })
+  const image = await fetch(dataURI)
   const { data } = await openai.images.createVariation({
     image,
     n: 1,

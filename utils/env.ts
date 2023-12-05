@@ -2,7 +2,6 @@ import _ from 'lodash'
 
 // for local
 const env = {
-  timezone: process.env.TIMEZONE,
   isProd: process.env.NODE_ENV === 'production',
   isDev: process.env.NODE_ENV === 'development',
 }

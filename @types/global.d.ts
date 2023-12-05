@@ -2,7 +2,7 @@ declare global {
   namespace NodeJS {
     interface ProcessEnv {
       // env
-      TIMEZONE: string
+
       NODE_ENV: 'production' | 'development'
       NEXT_PUBLIC_NODE_ENV: 'production' | 'development'
       NEXT_PUBLIC_GOOGLE_ANALYTICS: string
