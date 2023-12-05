@@ -1,5 +1,0 @@
-.label {
-  &[data-active] {
-    color: var(--mantine-color-white);
-  }
-}

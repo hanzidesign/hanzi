@@ -15,6 +15,7 @@ const publicEnv = {
   defaultColorScheme: process.env.NEXT_PUBLIC_COLOR_SCHEME,
   webUrl: getUrl(process.env.NEXT_PUBLIC_WEB_URL),
   chainId: Number(process.env.NEXT_PUBLIC_CHAIN_ID),
+  projectId: process.env.NEXT_PUBLIC_WALLETCONNECT,
   // api key
   apiKeyOpti: process.env.NEXT_PUBLIC_ALCHEMY_KEY_OPTIMISM,
   apiKeyOptGoerli: process.env.NEXT_PUBLIC_ALCHEMY_KEY_OPT_GOERLI,

@@ -8,7 +8,6 @@ import { setStart, setIpfsUrl, setFailed } from '@/store/slices/queue'
 import { uploadImage } from '@/lib/nftStorage'
 import { setAttributes, setMetadata } from '@/lib/metadata'
 import { getName } from '@/utils/helper'
-import { toDataURI } from '@/lib/toDataURI'
 import type { Job } from '@/types'
 
 export default function useQueue() {
@@ -54,15 +53,14 @@ export default function useQueue() {
 }
 
 async function upload(job: Job, mintBy: string) {
-  const { country, year, ch, name: n, description: d } = job
+  const { dataURI, country, year, ch, name: n, description: d } = job
+
   // metadata
   const name = n || getName(year, country, ch)
   const description = d || `Created by ${mintBy}`
   const attributes = setAttributes({ country, year, ch, mintBy })
   const metadata = setMetadata(name, description, attributes)
   console.log(metadata)
-
-  const dataURI = await toDataURI(name)
 
   // ipfs
   const token = await uploadImage(dataURI, metadata)

@@ -9,6 +9,7 @@ export type EditorState = Omit<Metadata, 'mintBy'> &
     seed: number
     isTc: boolean
     apiKey: string
+    accordion: string
   }
 
 const country = 'int'
@@ -35,6 +36,7 @@ const initialState: EditorState = {
   name: '',
   description: '',
   apiKey: '',
+  accordion: '0',
 }
 
 // Actual Slice
@@ -100,6 +102,9 @@ export const slice = createSlice({
     setApiKey(state, action) {
       state.apiKey = action.payload
     },
+    setAccordion(state, action) {
+      state.accordion = action.payload
+    },
     reset(state) {
       state.distortion = 10
       state.blur = 0
@@ -127,6 +132,7 @@ export const {
   setName,
   setDescription,
   setApiKey,
+  setAccordion,
   reset,
 } = slice.actions
 

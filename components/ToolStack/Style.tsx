@@ -6,7 +6,6 @@ import { useAppDispatch, useAppSelector } from '@/store'
 import { Stack, Group, SegmentedControl, ColorSwatch, Button, useMantineTheme } from '@mantine/core'
 import { StyledBox } from './common'
 import { setColor } from '@/store/slices/editor'
-import classes from './style.module.css'
 
 export default function Style() {
   const dispatch = useAppDispatch()
@@ -18,8 +17,9 @@ export default function Style() {
   return (
     <StyledBox>
       <SegmentedControl
-        classNames={classes}
         size="md"
+        color="dark.9"
+        fullWidth
         value={value}
         onChange={setValue}
         data={[
@@ -29,16 +29,11 @@ export default function Style() {
         mt={8}
         styles={{
           root: {
-            width: '100%',
             border: `2px solid ${theme.colors.dark[9]}`,
             borderRadius: 16,
           },
           indicator: {
-            background: theme.colors.dark[9],
             borderRadius: 12,
-          },
-          label: {
-            color: 'inherit !important',
           },
         }}
       />

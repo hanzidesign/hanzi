@@ -10,7 +10,8 @@ const reducer = persistReducer({ key: 'root', storage, blacklist: ['queue'] }, r
 
 const store = configureStore({
   reducer,
-  middleware: (getDefaultMiddleware) => getDefaultMiddleware({ serializableCheck: false }).concat(logger),
+  // @ts-ignore
+  middleware: (gDM) => gDM({ serializableCheck: false }).concat(logger),
   devTools: true,
 })
 

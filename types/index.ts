@@ -35,7 +35,12 @@ export type NftQueue = {
   failed?: boolean // no ipfs
 }
 
-export type Job = Metadata & NftData & NftQueue
+export type Job = Metadata &
+  NftQueue & {
+    name: string
+    description: string
+    dataURI: string
+  }
 
 export type Trait = {
   trait_type: string

@@ -17,12 +17,20 @@ export default function Providers({ children }: React.PropsWithChildren) {
       <AppProvider>
         <ReduxProvider>
           <MantineProvider theme={theme} defaultColorScheme={publicEnv.defaultColorScheme}>
-            <ModalsProvider modalProps={{ size: 'xl', radius: 'lg', centered: true }}>
-              {atHome ? <>{children}</> : <EthProvider>{children}</EthProvider>}
-            </ModalsProvider>
+            {atHome ? (
+              <MyProvider>{children}</MyProvider>
+            ) : (
+              <EthProvider>
+                <MyProvider>{children}</MyProvider>
+              </EthProvider>
+            )}
           </MantineProvider>
         </ReduxProvider>
       </AppProvider>
     </>
   )
+}
+
+function MyProvider({ children }: React.PropsWithChildren) {
+  return <ModalsProvider modalProps={{ size: 'xl', radius: 'lg', centered: true }}>{children}</ModalsProvider>
 }

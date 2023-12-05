@@ -3,3 +3,7 @@
     transform: rotate(135deg);
   }
 }
+
+.pagination > div {
+  justify-content: space-between;
+}

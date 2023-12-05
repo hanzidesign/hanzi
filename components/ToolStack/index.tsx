@@ -1,8 +1,13 @@
+'use client'
+
+import { useAppDispatch, useAppSelector } from '@/store'
 import { Accordion } from '@mantine/core'
+import { setAccordion } from '@/store/slices/editor'
 import { IoAddOutline } from 'react-icons/io5'
 import CharList from './CharList'
 import Effect from './Effect'
 import Style from './Style'
+import Dalle from './Dalle'
 import Metadata from './Metadata'
 import classes from './index.module.css'
 
@@ -25,16 +30,23 @@ const cells: Cell[] = [
     c: <Style />,
   },
   {
+    t: 'DALL·E',
+    c: <Dalle />,
+  },
+  {
     t: 'Metadata',
     c: <Metadata />,
   },
 ]
 
 export default function ToolStack() {
+  const dispatch = useAppDispatch()
+  const { accordion } = useAppSelector((state) => state.editor)
   return (
     <Accordion
       classNames={classes}
-      defaultValue="0"
+      value={accordion}
+      onChange={(v) => dispatch(setAccordion(v))}
       chevron={<IoAddOutline size={24} />}
       styles={{
         content: {

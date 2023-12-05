@@ -1,11 +1,9 @@
-'use client'
-
 import OpenAI from 'openai'
 import { toFile } from './toFile'
 
 export async function createVariation(apiKey: string, dataURI: string) {
   const image = toFile(dataURI, 'img')
-  const openai = new OpenAI({ apiKey })
+  const openai = new OpenAI({ apiKey, dangerouslyAllowBrowser: true })
   const { data } = await openai.images.createVariation({
     image,
     n: 1,
