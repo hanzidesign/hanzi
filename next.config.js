@@ -1,5 +1,9 @@
+const isProd = process.env.NODE_ENV === 'production'
+const compiler = isProd ? { removeConsole: true } : {}
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  compiler,
   webpack: (config, options) => {
     // svgr
     config.module.rules.map((rule) => {
@@ -14,7 +18,7 @@ const nextConfig = {
     })
 
     // https://codesandbox.io/p/devbox/with-next-app-foktft?file=%2Fnext.config.js%3A5%2C5-6%2C64
-    config.resolve.fallback = { fs: false, net: false, tls: false }
+    config.resolve.fallback = { fs: false, net: false, tls: false, child_process: false }
     config.externals.push('pino-pretty', 'lokijs', 'encoding')
     return config
   },

@@ -17,11 +17,14 @@ export default function Img() {
 
   return (
     <>
-      <Box className={clsx(classes.box, { hide: showImg })} style={{ transitionDelay: '100ms' }}>
+      <Box
+        className={clsx(classes.box, { hide: showImg, 'pointer-none': showImg })}
+        style={{ transitionDelay: '100ms' }}
+      >
         <SvgItem />
       </Box>
-      <Box className={clsx(classes.box, { hide: !showImg })}>
-        <Image src={img} />
+      <Box className={clsx(classes.box, { hide: !showImg, 'pointer-none': !showImg })}>
+        <Image w="100%" h="100%" src={img} />
       </Box>
     </>
   )

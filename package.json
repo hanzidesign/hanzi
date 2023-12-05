@@ -41,6 +41,7 @@
     "redux-logger": "^3.0.6",
     "redux-persist": "^6",
     "rooks": "^7",
+    "sharp": "^0.32.6",
     "viem": "^1.19.11",
     "wagmi": "^1.4.8"
   },

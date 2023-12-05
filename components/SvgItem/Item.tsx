@@ -19,7 +19,7 @@ export default function SvgItem(props: SvgItemProps) {
   const { textColor = 'black', bgColor = 'white' } = props
 
   return (
-    <svg id={uid} viewBox="0 0 600 600" preserveAspectRatio="xMidYMid meet">
+    <svg id={uid} viewBox="0 0 1024 1024" preserveAspectRatio="xMidYMid meet">
       <filter id={fId} x="0" y="0" width="100%" height="100%">
         {/* change text width */}
         <feMorphology
@@ -29,14 +29,7 @@ export default function SvgItem(props: SvgItemProps) {
           result="morphology"
         />
         {/* pattern */}
-        <feImage
-          xlinkHref={ptnUrl}
-          x="0"
-          y="0"
-          width="100%"
-          height="100%"
-          preserveAspectRatio="none"
-        />
+        <feImage xlinkHref={ptnUrl} x="0" y="0" width="100%" height="100%" preserveAspectRatio="none" />
         {/* desaturate the image */}
         <feColorMatrix type="saturate" values="0" result="IMAGE" />
         {/* decrease level of details so the effect on text is more realistic */}
@@ -83,12 +76,7 @@ export default function SvgItem(props: SvgItemProps) {
         </feMerge> */}
       </filter>
 
-      <mask
-        maskUnits="userSpaceOnUse"
-        id="mask"
-        mask-type="alpha"
-        dangerouslySetInnerHTML={{ __html: svgData }}
-      ></mask>
+      <mask maskUnits="userSpaceOnUse" id="mask" mask-type="alpha" dangerouslySetInnerHTML={{ __html: svgData }}></mask>
 
       <rect x="0" y="0" fill={bgColor} width="100%" height="100%" />
       <g filter={`url(#${fId})`}>

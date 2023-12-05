@@ -21,8 +21,12 @@
   position: fixed;
 }
 
+.pointer-none {
+  pointer-events: none;
+}
+
 .hide {
-  opacity: 0;
+  opacity: 0 !important;
 }
 
 .c-pointer {

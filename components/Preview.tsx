@@ -75,8 +75,8 @@ export default function Preview({ onBack }: PreviewProps) {
       <Box
         pos="relative"
         mx="auto"
-        w={height / 2}
-        h={height / 2}
+        w={height / 2.2}
+        h={height / 2.2}
         style={{
           borderRadius: 16,
           overflow: 'hidden',

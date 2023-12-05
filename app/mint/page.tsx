@@ -12,6 +12,7 @@ import Img from '@/components/Img'
 import SvgItem from '@/components/SvgItem'
 import { Constants } from '@/types'
 import { meaning, parseCharUrl } from '@/assets/chars'
+import classes from './page.module.css'
 
 export default function Mint() {
   const { bgColor, charUrl } = useAppSelector((state) => state.editor)
@@ -28,7 +29,7 @@ export default function Mint() {
   return (
     <>
       <Center pos="relative" h="calc(100dvh - 72px)" bg={bgColor}>
-        <AspectRatio pos="relative" ratio={1} w="100%" maw="calc(100vh - 120px)">
+        <AspectRatio pos="relative" ratio={1} w="100%" maw="calc(100dvh - 120px)">
           <Img />
         </AspectRatio>
         <Text fz={14} c="dark" className="absolute-horizontal" bottom={18}>
@@ -37,18 +38,7 @@ export default function Mint() {
       </Center>
 
       {/* for d3 */}
-      <Box
-        pos="fixed"
-        top={0}
-        left={0}
-        w={1024}
-        h={1024}
-        opacity={0}
-        style={{
-          zIndex: -1,
-          pointerEvents: 'none',
-        }}
-      >
+      <Box className={classes.d3}>
         <SvgItem uid={Constants.svgId} />
       </Box>
     </>
