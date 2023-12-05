@@ -17,7 +17,6 @@ export default function Mint() {
   const { bgColor, charUrl } = useAppSelector((state) => state.editor)
   const [country, year] = parseCharUrl(charUrl)
   const translation = _.get(meaning, [country, year])
-  console.log({ translation })
 
   // background tasks
   useAccount()
