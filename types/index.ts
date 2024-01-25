@@ -7,6 +7,7 @@ export type NftData = {
   charUrl: string
   svgData: string
   ptnUrl: string
+  ptnData: string
   distortion: number
   blur: number
   width: number

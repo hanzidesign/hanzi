@@ -9,42 +9,25 @@ import { Center, Text, Tooltip, Button } from '@mantine/core'
 import { Slider, FileInput, useMantineTheme } from '@mantine/core'
 import { StyledBox, StyledText } from './common'
 import useFileReader from '@/hooks/useFileReader'
-import { setPtnUrl, setDistortion, setBlur, setSeed } from '@/store/slices/editor'
+import { setPtnUrl, setPtnData, setDistortion, setBlur, setSeed } from '@/store/slices/editor'
 import { setWidth, setPosition, setRotation, reset } from '@/store/slices/editor'
 import { IoMdImage } from 'react-icons/io'
 
 export default function Effect() {
   const dispatch = useAppDispatch()
-  const { seed, ptnUrl, distortion, blur, width, x, y, rotation } = useAppSelector((state) => state.editor)
+  const { seed, ptnUrl, ptnData, distortion, blur, width, x, y, rotation } = useAppSelector((state) => state.editor)
   const theme = useMantineTheme()
 
   const [file, setFile] = useState<File | null>(null)
   const fileResult = useFileReader(file)
   const fileRef = useRef<HTMLButtonElement>(null)
-
-  const hasImg = Boolean(ptnUrl)
-
-  const ptnToFile = async () => {
-    // override ptnUrl with dataURI
-    if (_.includes(ptnUrl, '/images/patterns/')) {
-      try {
-        const file = await urlToFile(ptnUrl)
-        setFile(file)
-      } catch (error) {
-        console.error(error)
-      }
-    }
-  }
+  const hasImg = Boolean(ptnUrl) || Boolean(ptnData)
 
   useEffect(() => {
     if (fileResult) {
-      dispatch(setPtnUrl(fileResult))
+      dispatch(setPtnData(fileResult))
     }
   }, [fileResult])
-
-  useEffect(() => {
-    ptnToFile()
-  }, [ptnUrl])
 
   return (
     <StyledBox>
@@ -92,7 +75,7 @@ export default function Effect() {
               >
                 {hasImg ? (
                   <img
-                    src={ptnUrl}
+                    src={ptnUrl || ptnData}
                     width="100%"
                     height="100%"
                     style={{
@@ -215,11 +198,4 @@ function toPtnUrl(n: number) {
   // /images/patterns/000.jpg
   const name = numeral(n).format('000')
   return `/images/patterns/${name}.jpg`
-}
-
-const urlToFile = async (url: string) => {
-  const res = await fetch(url)
-  const blob = await res.blob()
-  const file = new File([blob], 'pattern.jpg', { type: blob.type })
-  return file
 }

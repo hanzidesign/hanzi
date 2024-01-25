@@ -6,6 +6,7 @@ import useQueue from '@/hooks/useQueue'
 import useNft from '@/hooks/useNft'
 import useChain from '@/hooks/useChain'
 import useDalle from '@/hooks/useDalle'
+import useImageLoader from '@/hooks/useImageLoader'
 import { useAppSelector } from '@/store'
 import { AspectRatio, Center, Box, Text } from '@mantine/core'
 import Img from '@/components/Img'
@@ -25,6 +26,7 @@ export default function Mint() {
   useNft()
   useChain()
   useDalle()
+  useImageLoader()
 
   return (
     <>
