@@ -15,7 +15,7 @@ import { meaning, parseCharUrl } from '@/assets/chars'
 import classes from './page.module.css'
 
 export default function Mint() {
-  const { bgColor, charUrl } = useAppSelector((state) => state.editor)
+  const { bgColor, charUrl, textColor } = useAppSelector((state) => state.editor)
   const [country, year] = parseCharUrl(charUrl)
   const translation = _.get(meaning, [country, year])
 
@@ -32,7 +32,7 @@ export default function Mint() {
         <AspectRatio pos="relative" ratio={1} w="100%" maw="calc(100dvh - 120px)">
           <Img />
         </AspectRatio>
-        <Text fz={14} c="dark" className="absolute-horizontal" bottom={18}>
+        <Text fz={14} c={textColor} className="absolute-horizontal" top={20}>
           {translation}
         </Text>
       </Center>
