@@ -55,10 +55,11 @@ export const slice = createSlice({
     },
     setPtnUrl(state, action) {
       state.ptnUrl = action.payload
-      state.ptnData = ''
+      if (action.payload) {
+        state.ptnData = ''
+      }
     },
     setPtnData(state, action) {
-      state.ptnUrl = ''
       state.ptnData = action.payload
     },
     setSeed(state, action) {

@@ -35,7 +35,9 @@ export default function useImageLoader() {
   }, [charUrl])
 
   useEffect(() => {
-    getPngData()
+    if (debouncedPtnUrl) {
+      getPngData()
+    }
   }, [debouncedPtnUrl])
 
   useEffect(() => {

@@ -26,6 +26,7 @@ export default function Effect() {
   useEffect(() => {
     if (fileResult) {
       dispatch(setPtnData(fileResult))
+      dispatch(setPtnUrl(null))
     }
   }, [fileResult])
 
@@ -65,6 +66,7 @@ export default function Effect() {
             >
               <Center
                 style={{
+                  overflow: 'hidden',
                   borderRadius: 8,
                   border: `1px solid ${theme.colors.gray[4]}`,
                   ':hover': {
