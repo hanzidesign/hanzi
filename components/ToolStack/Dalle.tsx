@@ -72,7 +72,7 @@ export default function Dalle() {
         </Box>
 
         <Button disabled={!apiKey || !img} onClick={handleCreate} loading={loading}>
-          Create Variation
+          {Boolean(img) ? 'Create Variation' : 'Loading...'}
         </Button>
         <Pagination
           className={classes.pagination}

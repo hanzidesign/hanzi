@@ -3,7 +3,7 @@
 import { useAppSelector } from '@/store'
 import { useAppContext } from '@/hooks/useAppContext'
 import { useEffect } from 'react'
-import { toDataURI } from '@/lib/toDataURI'
+import { svgToPng } from '@/lib/svgToPng'
 
 export default function useDalle() {
   const { accordion, ch, ptnUrl, distortion, blur, width, x, y, rotation, textColor, bgColor } = useAppSelector(
@@ -18,7 +18,7 @@ export default function useDalle() {
   useEffect(() => {
     // show
     if (isDalle && !showDelle) {
-      toDataURI('origin', 'png')
+      svgToPng()
         .then((data) => {
           updateState({ dalleImages: [data], activeImg: 1, showDelle: true })
         })
@@ -28,6 +28,6 @@ export default function useDalle() {
 
   useEffect(() => {
     // hide
-    updateState({ showDelle: false })
+    updateState({ dalleImages: [], showDelle: false })
   }, [ch, ptnUrl, distortion, blur, width, x, y, rotation, textColor, bgColor])
 }

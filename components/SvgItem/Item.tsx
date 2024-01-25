@@ -29,7 +29,7 @@ export default function SvgItem(props: SvgItemProps) {
           result="morphology"
         />
         {/* pattern */}
-        <feImage xlinkHref={ptnUrl} x="0" y="0" width="100%" height="100%" preserveAspectRatio="none" />
+        <feImage href={ptnUrl} x="0" y="0" width="100%" height="100%" preserveAspectRatio="none" />
         {/* desaturate the image */}
         <feColorMatrix type="saturate" values="0" result="IMAGE" />
         {/* decrease level of details so the effect on text is more realistic */}
@@ -45,7 +45,7 @@ export default function SvgItem(props: SvgItemProps) {
         />
         {/* add the image as a background behind the text again */}
         {/* <feImage
-          xlinkHref={img}
+          href={img}
           x="0"
           y="0"
           width="100%"

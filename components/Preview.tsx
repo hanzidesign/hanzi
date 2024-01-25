@@ -9,7 +9,7 @@ import useMint from '@/hooks/useMint'
 import { useAppSelector, useAppDispatch } from '@/store'
 import { addJob, setStart } from '@/store/slices/queue'
 import { useAppContext } from '@/hooks/useAppContext'
-import { toDataURI } from '@/lib/toDataURI'
+import { svgToPng } from '@/lib/svgToPng'
 import Img from '@/components/Img'
 
 type PreviewProps = {
@@ -36,7 +36,7 @@ export default function Preview({ onBack }: PreviewProps) {
 
   const getDataURI = async () => {
     const imgData = getActiveImg()
-    const dataURI = showDelle && imgData ? imgData : await toDataURI('NFT')
+    const dataURI = showDelle && imgData ? imgData : await svgToPng()
     if (!dataURI) throw new Error('no dataURI')
     return dataURI
   }
