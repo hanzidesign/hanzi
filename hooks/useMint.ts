@@ -44,7 +44,6 @@ async function mint(uri: string, account: string) {
     title: 'Confirm in wallet',
     message: 'Go to your wallet and send the transaction',
     color: 'dark',
-    autoClose: 5000,
   })
   const config = await prepareSafeMint(account, uri)
   const result = await writeContract(config)

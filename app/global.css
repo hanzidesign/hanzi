@@ -3,6 +3,7 @@
 
 /* core styles are required for packages */
 @import '@mantine/core/styles.css';
+@import '@mantine/notifications/styles.css';
 @import '@rainbow-me/rainbowkit/styles.css';
 
 /* overwrite styles */

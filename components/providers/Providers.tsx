@@ -2,6 +2,7 @@
 
 import { usePathname } from 'next/navigation'
 import { MantineProvider } from '@mantine/core'
+import { Notifications } from '@mantine/notifications'
 import { ModalsProvider } from '@mantine/modals'
 import ReduxProvider from '@/store/ReduxProvider'
 import EthProvider from '@/components/providers/EthProvider'
@@ -17,6 +18,8 @@ export default function Providers({ children }: React.PropsWithChildren) {
       <AppProvider>
         <ReduxProvider>
           <MantineProvider theme={theme} defaultColorScheme={publicEnv.defaultColorScheme}>
+            <Notifications containerWidth={400} />
+
             {atHome ? (
               <MyProvider>{children}</MyProvider>
             ) : (

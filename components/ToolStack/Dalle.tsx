@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useAppDispatch, useAppSelector } from '@/store'
 import { useAppContext } from '@/hooks/useAppContext'
 import { Stack, Box, PasswordInput, Anchor, Pagination, Button } from '@mantine/core'
+import { notifications } from '@mantine/notifications'
 import { setApiKey } from '@/store/slices/editor'
 import { StyledBox, StyledText } from './common'
 import { createVariation } from '@/lib/dalle'
@@ -26,13 +27,20 @@ export default function Dalle() {
     try {
       if (img && apiKey) {
         const data = await createVariation(apiKey, img)
-        if (data) {
-          const newData = [...dalleImages, `data:image/png;base64,${data}`]
-          updateState({ dalleImages: newData, activeImg: newData.length })
+        if (data.length) {
+          const images = data.map((d) => `data:image/png;base64,${d}`)
+          const newData = [...dalleImages, ...images]
+          updateState({ dalleImages: newData, activeImg: newData.length - 1 })
         }
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error(err)
+
+      notifications.show({
+        title: 'OpenAI API Key Error',
+        message: getErrorMessage(err),
+        color: 'red',
+      })
     }
     setLoading(false)
   }
@@ -76,4 +84,25 @@ export default function Dalle() {
       </Stack>
     </StyledBox>
   )
+}
+
+function getErrorMessage(err: any) {
+  switch (err.status) {
+    case 400: {
+      return (
+        <span>
+          Billing hard limit has been reached. <br />
+          Please go to upgrade your plan.
+        </span>
+      )
+    }
+    default: {
+      return (
+        <span>
+          The API key is invalid. <br />
+          Check your API key and try again.
+        </span>
+      )
+    }
+  }
 }
