@@ -28,5 +28,5 @@ export default function useDalle() {
   useEffect(() => {
     // hide
     updateState({ dalleImages: [], showDelle: false })
-  }, [ch, ptnUrl, distortion, blur, width, x, y, rotation, textColor, bgColor])
+  }, [ch, ptnUrl, ptnData, distortion, blur, width, x, y, rotation, textColor, bgColor])
 }
