@@ -22,6 +22,8 @@ declare global {
       NEXT_PUBLIC_WEB_URL: string
       // walletconnect
       NEXT_PUBLIC_WALLETCONNECT: string
+      // other
+      NEXT_PUBLIC_GITHUB_URL: string
     }
   }
 }

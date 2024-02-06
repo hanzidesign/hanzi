@@ -3,14 +3,14 @@
 import React from 'react'
 import { motion, useMotionValue, animate } from 'framer-motion'
 import { paths } from '@/assets/paths'
-import SvgGradients, { ids } from '@/components/Motion/SvgGradients'
 
 export type MotionShapeProps = {
   width: number
   index: number
 }
 
-const durations = [5, 6, 7, 8, 9, 10]
+const durations = [2, 3, 3, 4, 4, 5]
+const colors = ['#fb5bdc', '#0cfe77', '#18cffa', '#16eefb', '#638FFF']
 
 export default function MotionPath(props: MotionShapeProps) {
   const { width, index } = props
@@ -39,7 +39,7 @@ export default function MotionPath(props: MotionShapeProps) {
 
   return (
     <motion.svg
-      viewBox="0 0 16 16"
+      viewBox="0 0 240 240"
       width={width}
       animate={{ width: Math.round(width * 1.5) }}
       transition={{
@@ -49,8 +49,7 @@ export default function MotionPath(props: MotionShapeProps) {
         ease: 'linear',
       }}
     >
-      <SvgGradients />
-      <motion.path fill={`url(#${ids[index % ids.length]})`} d={path} />
+      <motion.path fill={colors[index % colors.length]} d={path} />
     </motion.svg>
   )
 }

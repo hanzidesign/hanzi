@@ -15,7 +15,7 @@ export default function BasicAppShell({ children }: React.PropsWithChildren) {
       header={{ height: 72 }}
       navbar={{ width: 400, breakpoint: 'sm', collapsed: { mobile: !opened || atHome, desktop: atHome } }}
     >
-      <AppShell.Header p={16} px={{ sm: 40 }} withBorder={!atHome} bg="transparent">
+      <AppShell.Header p={16} withBorder={!atHome} bg="transparent">
         <Group>
           <Burger opened={opened} onClick={toggle} hiddenFrom="sm" hidden={atHome} size="sm" />
           <Box style={{ flexGrow: 1 }}>

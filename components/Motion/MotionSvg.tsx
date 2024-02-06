@@ -10,7 +10,7 @@ type MotionSvgProps = {
   pathProps?: Partial<MotionPathProps>
 }
 
-const sizes = [0.2, 0.4, 0.5, 0.6, 0.8]
+const sizes = [0.5, 0.6, 0.7, 0.8, 0.9]
 
 export default function MotionSvg(props: MotionSvgProps) {
   const { index, pathProps = {} } = props

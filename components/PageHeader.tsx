@@ -5,9 +5,10 @@ import { Group, ActionIcon, Tooltip } from '@mantine/core'
 import { ConnectButton } from '@rainbow-me/rainbowkit'
 import { getEtherscanUrl } from '@/utils/helper'
 import { publicEnv } from '@/utils/env'
-import { SiOpensea } from 'react-icons/si'
+import { SiOpensea, SiGithub } from 'react-icons/si'
 import EtherscanIcon from '@/assets/etherscanIcon'
 
+const github = process.env.NEXT_PUBLIC_GITHUB_URL
 const opensea = process.env.NEXT_PUBLIC_OPENSEA_URL
 const contract = process.env.NEXT_PUBLIC_NFT_CONTRACT_ADDRESS
 const etherscanUrl = getEtherscanUrl(publicEnv.chainId)
@@ -26,6 +27,11 @@ export default function PageHeader() {
 
       {atHome ? (
         <Group gap={24}>
+          <Tooltip label="Github">
+            <ActionIcon color="dark" radius="xl" variant="transparent" onClick={() => window.open(github, '_blank')}>
+              <SiGithub size={32} />
+            </ActionIcon>
+          </Tooltip>
           <Tooltip label="Etherscan">
             <ActionIcon color="dark" radius="xl" variant="transparent" onClick={() => window.open(etherscan, '_blank')}>
               <EtherscanIcon size={32} />

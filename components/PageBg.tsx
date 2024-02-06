@@ -14,7 +14,7 @@ export default function PageBg() {
       top={0}
       left={0}
       style={{
-        filter: 'blur(75px)',
+        filter: 'blur(100px)',
       }}
     >
       <Box

@@ -105,7 +105,10 @@ export default function MotionPath(props: React.PropsWithChildren<MotionPathProp
 
   React.useEffect(() => {
     if (!path) return
-    // start
+
+    if (pathLength.get() === 100) {
+      pathLength.set(0) // restart
+    }
 
     const totalLength = scope.current.getTotalLength()
     const duration = _.max([8, totalLength / 25])
@@ -114,12 +117,11 @@ export default function MotionPath(props: React.PropsWithChildren<MotionPathProp
       duration,
       ease: 'linear',
       onComplete: () => {
-        // restart
-        pathLength.set(0)
         setPath(softBezier())
       },
     })
-    return controls.stop
+
+    return controls.pause
   }, [path])
 
   return (

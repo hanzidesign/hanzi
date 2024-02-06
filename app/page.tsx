@@ -3,12 +3,13 @@
 import { useRouter } from 'next/navigation'
 import { Text, Box, Center, Button } from '@mantine/core'
 import PageBg from '@/components/PageBg'
+import Footer from '@/components/Footer'
 
 export default function Home() {
   const router = useRouter()
 
   return (
-    <>
+    <Box pos="relative">
       <PageBg />
       <Center pos="relative" h="calc(100dvh - 72px)" style={{ flexDirection: 'column' }}>
         <Text px={24} pb={64} ta="center" c="#3E3E55" fz={{ base: 40, sm: 48 }} ff="var(--font-title)">
@@ -34,6 +35,9 @@ export default function Home() {
           </Button>
         </Box>
       </Center>
-    </>
+      <Box pos="absolute" w="100%" bottom={0}>
+        <Footer />
+      </Box>
+    </Box>
   )
 }
