@@ -1,6 +1,5 @@
-// npx hardhat run scripts/deploy.ts --network optGoerli
+// npx hardhat run scripts/deploy.ts --network optiSepolia
 import { ethers } from 'hardhat'
-import { sendTx } from 'utils/helper'
 
 async function main() {
   const { provider } = ethers
@@ -12,10 +11,11 @@ async function main() {
     balance: ethers.formatEther(balance),
   })
 
-  const Hanzi = await ethers.getContractFactory('Hanzi')
-  const tx = await Hanzi.getDeployTransaction()
-  const { hash } = await sendTx(tx)
-  console.log({ hash })
+  const Contract = await ethers.getContractFactory('Hanzi')
+  const response = await Contract.deploy()
+  const { hash } = response.deploymentTransaction() || {}
+  const address = await response.getAddress()
+  console.log({ hash, contract: address })
 }
 
 main()

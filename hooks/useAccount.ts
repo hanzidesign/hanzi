@@ -1,5 +1,7 @@
 'use client'
 
+//TODO: fix @wagmi/core
+
 import { useEffect } from 'react'
 import { watchAccount, getAccount } from '@wagmi/core'
 import { useAppDispatch } from '@/store'

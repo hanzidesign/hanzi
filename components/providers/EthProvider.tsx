@@ -1,62 +1,41 @@
-'use client'
-
-import { useEffect, useState } from 'react'
-import { getDefaultWallets, RainbowKitProvider, lightTheme, connectorsForWallets } from '@rainbow-me/rainbowkit'
-import { argentWallet, trustWallet, ledgerWallet } from '@rainbow-me/rainbowkit/wallets'
-import { configureChains, createConfig, WagmiConfig } from 'wagmi'
-import { optimism, optimismGoerli } from 'wagmi/chains'
-import { alchemyProvider } from 'wagmi/providers/alchemy'
-import { publicProvider } from 'wagmi/providers/public'
-import { publicEnv } from '@/utils/env'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { RainbowKitProvider, getDefaultConfig, lightTheme } from '@rainbow-me/rainbowkit'
+import { WagmiProvider, http } from 'wagmi'
+import { optimism, optimismSepolia } from 'wagmi/chains'
+import { env, publicEnv } from '@/utils/env'
 
 const { appName, isDev, projectId } = publicEnv
-const apiKey = isDev ? publicEnv.apiKeyOptGoerli : publicEnv.apiKeyOpti
-const chain = isDev ? optimismGoerli : optimism
+const chain = isDev ? optimismSepolia : optimism
 
-const { chains, publicClient } = configureChains([chain], [alchemyProvider({ apiKey }), publicProvider()])
-
-const { wallets } = getDefaultWallets({
+const config = getDefaultConfig({
   appName,
   projectId,
-  chains,
-})
-
-const connectors = connectorsForWallets([
-  ...wallets,
-  {
-    groupName: 'Other',
-    wallets: [
-      argentWallet({ projectId, chains }),
-      trustWallet({ projectId, chains }),
-      ledgerWallet({ projectId, chains }),
-    ],
+  chains: [chain],
+  transports: {
+    [optimism.id]: http(env.chainMain),
+    [optimismSepolia.id]: http(env.chainTest),
   },
-])
-
-const wagmiConfig = createConfig({
-  autoConnect: true,
-  connectors,
-  publicClient,
+  ssr: true,
 })
+
+const queryClient = new QueryClient()
 
 export default function EthProvider({ children }: React.PropsWithChildren) {
-  const [mounted, setMounted] = useState(false)
-  useEffect(() => setMounted(true), [])
-
   return (
-    <WagmiConfig config={wagmiConfig}>
-      <RainbowKitProvider
-        chains={chains}
-        initialChain={chain}
-        appInfo={{
-          appName,
-        }}
-        theme={lightTheme({
-          accentColor: '#212529',
-        })}
-      >
-        {mounted && children}
-      </RainbowKitProvider>
-    </WagmiConfig>
+    <WagmiProvider config={config}>
+      <QueryClientProvider client={queryClient}>
+        <RainbowKitProvider
+          initialChain={chain}
+          appInfo={{
+            appName,
+          }}
+          theme={lightTheme({
+            accentColor: '#212529',
+          })}
+        >
+          {children}
+        </RainbowKitProvider>
+      </QueryClientProvider>
+    </WagmiProvider>
   )
 }

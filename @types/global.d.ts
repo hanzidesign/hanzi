@@ -1,9 +1,13 @@
 declare global {
   namespace NodeJS {
     interface ProcessEnv {
-      // env
-
+      // private
       NODE_ENV: 'production' | 'development'
+      // api key
+      CHAIN_MAIN: string
+      CHAIN_TEST: string
+
+      // public
       NEXT_PUBLIC_NODE_ENV: 'production' | 'development'
       NEXT_PUBLIC_GOOGLE_ANALYTICS: string
       NEXT_PUBLIC_APP_NAME: string
@@ -13,8 +17,6 @@ declare global {
       NEXT_PUBLIC_OPENSEA_URL: string
       NEXT_PUBLIC_CHAIN_ID: string
       // alchemy
-      NEXT_PUBLIC_ALCHEMY_KEY_GOERLI: string
-      NEXT_PUBLIC_ALCHEMY_KEY_MAINNET: string
       NEXT_PUBLIC_ALCHEMY_KEY_OPTIMISM: string
       NEXT_PUBLIC_ALCHEMY_KEY_OPT_GOERLI: string
       // nft storage

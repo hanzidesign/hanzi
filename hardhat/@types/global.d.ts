@@ -7,11 +7,9 @@ declare global {
       NETWORK: string
       ACCOUNT_PRIVATE_KEY: string
       NFT_CONTRACT_ADDRESS: string
-      // alchemy
-      ALCHEMY_KEY_GOERLI: string
-      ALCHEMY_KEY_MAINNET: string
-      ALCHEMY_KEY_OPTIMISM: string
-      ALCHEMY_KEY_OPT_GOERLI: string
+      // keys
+      KEY_OPTIMISM: string
+      KEY_OPTI_SEPOLIA: string
       // hardhat
       ETHERSCAN_KEY: string
       OPT_ETHERSCAN_KEY: string
