@@ -25,7 +25,7 @@ function JobCard(props: { data: Job }) {
   const at = `${createdAt}`
   const { hash } = nftList[at] || {}
 
-  const { handleMint } = useMint(at, ipfsUrl)
+  const { handleMint, isPending } = useMint(at, ipfsUrl)
   const [progress] = useProgress(data)
 
   return (
@@ -76,7 +76,7 @@ function JobCard(props: { data: Job }) {
                 Retry
               </Button>
             ) : startAt && ipfsUrl ? (
-              <Button size="xs" onClick={handleMint}>
+              <Button size="xs" onClick={handleMint} disabled={isPending}>
                 Mint
               </Button>
             ) : null}
@@ -109,7 +109,7 @@ function NftTxCard(props: { data: NftTx }) {
   const at = `${createdAt}`
   const img = image ? getIpfsUrl(image) : ''
 
-  const { handleMint } = useMint(at, ipfsUrl)
+  const { handleMint, isPending } = useMint(at, ipfsUrl)
 
   return (
     <Box pos="relative">
@@ -144,7 +144,7 @@ function NftTxCard(props: { data: NftTx }) {
             Open Tx
           </Button>
         ) : (
-          <Button size="xs" onClick={handleMint}>
+          <Button size="xs" onClick={handleMint} disabled={isPending}>
             Mint
           </Button>
         )}
