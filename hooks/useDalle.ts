@@ -10,7 +10,7 @@ export default function useDalle() {
     useAppSelector((state) => state.editor)
   const isDalle = Number(accordion) >= 3
   const {
-    state: { showDelle },
+    state: { showDelle, dalleImages },
     updateState,
   } = useAppContext()
 
@@ -19,7 +19,8 @@ export default function useDalle() {
     if (isDalle && !showDelle && ptnData) {
       svgToPng()
         .then((data) => {
-          updateState({ dalleImages: [data], activeImg: 1, showDelle: true })
+          const [, ...rest] = dalleImages
+          updateState({ dalleImages: [data, ...rest], activeImg: 1, showDelle: true })
         })
         .catch((err) => console.error(err))
     }
@@ -27,6 +28,11 @@ export default function useDalle() {
 
   useEffect(() => {
     // hide
-    updateState({ dalleImages: [], showDelle: false })
+    updateState({ showDelle: false })
   }, [ch, ptnUrl, ptnData, distortion, blur, width, x, y, rotation, textColor, bgColor])
+
+  useEffect(() => {
+    // reset
+    updateState({ dalleImages: [] })
+  }, [ch])
 }

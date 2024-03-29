@@ -3,11 +3,12 @@
 import { useState } from 'react'
 import { useAppDispatch, useAppSelector } from '@/store'
 import { useAppContext } from '@/hooks/useAppContext'
-import { Stack, Box, PasswordInput, Anchor, Pagination, Button } from '@mantine/core'
+import { Stack, Box, PasswordInput, Anchor, Pagination, ActionIcon, Button, Textarea, Divider } from '@mantine/core'
 import { notifications } from '@mantine/notifications'
 import { setApiKey } from '@/store/slices/editor'
 import { StyledBox, StyledText } from './common'
-import { createVariation } from '@/lib/dalle'
+import { createVariation, createPrompt } from '@/lib/dalle'
+import { BsStars } from 'react-icons/bs'
 import classes from './index.module.css'
 
 export default function Dalle() {
@@ -18,9 +19,30 @@ export default function Dalle() {
     updateState,
   } = useAppContext()
 
-  const { apiKey } = useAppSelector((state) => state.editor)
+  const { apiKey, ch } = useAppSelector((state) => state.editor)
   const [loading, setLoading] = useState(false)
+  const [bgLoading, setBgLoading] = useState(false)
+  const [bgTextLoading, setBgTextLoading] = useState(false)
+  const [bgText, setBgText] = useState('')
   const img = getActiveImg()
+
+  const handleBgText = async () => {
+    setBgTextLoading(true)
+
+    const { completion, error } = await createPrompt(apiKey, ch)
+    setBgText(completion)
+
+    setBgTextLoading(false)
+
+    if (error) {
+      console.error(error)
+      notifications.show({
+        title: 'OpenAI API Key Error',
+        message: getErrorMessage(error),
+        color: 'red',
+      })
+    }
+  }
 
   const handleCreate = async () => {
     setLoading(true)
@@ -71,16 +93,55 @@ export default function Dalle() {
           </Anchor>
         </Box>
 
-        <Button disabled={!apiKey || !img} onClick={handleCreate} loading={loading}>
-          {Boolean(img) ? 'Create Variation' : 'Loading...'}
-        </Button>
-        <Pagination
-          className={classes.pagination}
-          size="sm"
-          total={dalleImages.length}
-          value={activeImg}
-          onChange={(activeImg) => updateState({ activeImg })}
-        />
+        <Divider />
+
+        {/* Background */}
+        <Stack>
+          <Box>
+            <Box pos="relative">
+              <StyledText mb={8}>Prompts for background image</StyledText>
+              <ActionIcon
+                onClick={handleBgText}
+                loading={bgTextLoading}
+                size="sm"
+                variant="default"
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  right: 0,
+                }}
+              >
+                <BsStars size={12} />
+              </ActionIcon>
+            </Box>
+            <Textarea
+              placeholder="Input your idea"
+              value={bgText}
+              onChange={(event) => setBgText(event.currentTarget.value)}
+            />
+          </Box>
+
+          <Button disabled={!apiKey} loading={bgLoading} w="100%">
+            Create Background
+          </Button>
+        </Stack>
+
+        <Divider />
+
+        {/* Variation */}
+        <Stack>
+          <StyledText>Variations for the current image</StyledText>
+          <Button disabled={!apiKey || !img} onClick={handleCreate} loading={loading}>
+            {Boolean(img) ? 'Create Variation' : 'Loading...'}
+          </Button>
+          <Pagination
+            className={classes.pagination}
+            size="sm"
+            total={dalleImages.length}
+            value={activeImg}
+            onChange={(activeImg) => updateState({ activeImg })}
+          />
+        </Stack>
       </Stack>
     </StyledBox>
   )
@@ -88,6 +149,14 @@ export default function Dalle() {
 
 function getErrorMessage(err: any) {
   switch (err.status) {
+    case 429: {
+      return (
+        <span>
+          Exceeded your current quota. <br />
+          Please go to upgrade your plan.
+        </span>
+      )
+    }
     case 400: {
       return (
         <span>

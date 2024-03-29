@@ -32,7 +32,7 @@
     "next": "14.1.4",
     "nft.storage": "^7.1.1",
     "numeral": "^2",
-    "openai": "^4.29.2",
+    "openai": "^4.30.0",
     "react": "^18",
     "react-dom": "^18",
     "react-icons": "^5",
@@ -40,7 +40,7 @@
     "redux-logger": "^3.0.6",
     "redux-persist": "^6",
     "rooks": "^7",
-    "sharp": "^0.33.2",
+    "sharp": "0.33.2",
     "viem": "^2.9.3",
     "wagmi": "^2.5.13"
   },

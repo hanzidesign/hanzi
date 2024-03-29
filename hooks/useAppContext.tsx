@@ -4,6 +4,7 @@ import _ from 'lodash'
 import { createContext, useContext, useMemo, useState } from 'react'
 
 const initialState = {
+  dalleBg: [] as string[],
   dalleImages: [] as string[],
   activeImg: 1,
   showDelle: false,

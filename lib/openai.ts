@@ -1,5 +1,5 @@
 import { APIClient } from 'openai/core'
-import { Images } from 'openai/resources/index'
+import { Images, Chat } from 'openai/resources/index'
 import type { ClientOptions } from 'openai'
 import type { DefaultQuery, FinalRequestOptions, Headers } from 'openai/core'
 
@@ -32,6 +32,8 @@ export default class OpenAI extends APIClient {
   }
 
   images: Images = new Images(this as any)
+
+  chat: Chat = new Chat(this as any)
 
   protected override defaultQuery(): DefaultQuery | undefined {
     return this._options.defaultQuery

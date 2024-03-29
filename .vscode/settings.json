@@ -1,5 +1,5 @@
 {
   "editor.formatOnSave": true,
   "editor.tabSize": 2,
-  "cSpell.words": ["Delle"]
+  "CodeGPT.Autocomplete.enabled": false
 }
