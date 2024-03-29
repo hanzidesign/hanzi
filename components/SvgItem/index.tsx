@@ -1,10 +1,11 @@
 'use client'
 
-import axios from 'axios'
 import { useAppSelector } from '@/store'
+import { useAppContext } from '@/hooks/useAppContext'
 import Item from './Item'
 
 export default function SvgItem(props: { uid?: string }) {
+  const { getActiveBg } = useAppContext()
   const editorState = useAppSelector((state) => state.editor)
   const { svgData, ptnData, distortion, blur, width, x, y, rotation, textColor, bgColor } = editorState
 
@@ -22,6 +23,7 @@ export default function SvgItem(props: { uid?: string }) {
       rotation={rotation}
       textColor={textColor}
       bgColor={bgColor}
+      bgData={getActiveBg()}
     />
   )
 }

@@ -14,6 +14,20 @@ export async function createVariation(apiKey: string, dataURI: string) {
   return _.compact(data.map((o) => o.b64_json))
 }
 
+export async function createImage(apiKey: string, prompt: string) {
+  const openai = new OpenAI({ apiKey })
+
+  const { data } = await openai.images.generate({
+    model: 'dall-e-3',
+    prompt,
+    n: 1,
+    size: '1024x1024',
+    response_format: 'b64_json',
+  })
+
+  return _.compact(data.map((o) => o.b64_json))
+}
+
 export async function createPrompt(apiKey: string, char: string) {
   const openai = new OpenAI({ apiKey })
 

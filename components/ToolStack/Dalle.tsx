@@ -7,14 +7,16 @@ import { Stack, Box, PasswordInput, Anchor, Pagination, ActionIcon, Button, Text
 import { notifications } from '@mantine/notifications'
 import { setApiKey } from '@/store/slices/editor'
 import { StyledBox, StyledText } from './common'
-import { createVariation, createPrompt } from '@/lib/dalle'
+import { createVariation, createPrompt, createImage } from '@/lib/dalle'
 import { BsStars } from 'react-icons/bs'
 import classes from './index.module.css'
+
+// TODO: split this component into smaller components
 
 export default function Dalle() {
   const dispatch = useAppDispatch()
   const {
-    state: { dalleImages, activeImg },
+    state: { dalleImages, activeImg, dalleBg, activeBg },
     getActiveImg,
     updateState,
   } = useAppContext()
@@ -42,6 +44,31 @@ export default function Dalle() {
         color: 'red',
       })
     }
+  }
+
+  const handleBg = async () => {
+    setBgLoading(true)
+
+    try {
+      if (bgText && apiKey) {
+        const data = await createImage(apiKey, bgText)
+        if (data.length) {
+          const images = data.map((d) => `data:image/png;base64,${d}`)
+          const newData = [...dalleBg, ...images]
+          updateState({ dalleBg: newData, activeBg: newData.length - 1 })
+        }
+      }
+    } catch (err: any) {
+      console.error(err)
+
+      notifications.show({
+        title: 'OpenAI API Key Error',
+        message: getErrorMessage(err),
+        color: 'red',
+      })
+    }
+
+    setBgLoading(false)
   }
 
   const handleCreate = async () => {
@@ -121,9 +148,17 @@ export default function Dalle() {
             />
           </Box>
 
-          <Button disabled={!apiKey} loading={bgLoading} w="100%">
+          <Button onClick={handleBg} disabled={!apiKey || !bgText} loading={bgLoading} w="100%">
             Create Background
           </Button>
+
+          <Pagination
+            className={classes.pagination}
+            size="sm"
+            total={dalleBg.length}
+            value={activeBg}
+            onChange={(activeBg) => updateState({ activeBg })}
+          />
         </Stack>
 
         <Divider />

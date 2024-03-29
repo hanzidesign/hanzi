@@ -4,9 +4,10 @@ import _ from 'lodash'
 import { createContext, useContext, useMemo, useState } from 'react'
 
 const initialState = {
-  dalleBg: [] as string[],
+  dalleBg: [''] as string[],
+  activeBg: 1, // dalleBg
   dalleImages: [] as string[],
-  activeImg: 1,
+  activeImg: 1, // dalleImages
   showDelle: false,
 }
 
@@ -18,6 +19,7 @@ const AppContext = createContext<
       state: AppState
       updateState: (value: Partial<AppState>) => void
       getActiveImg: () => string | undefined
+      getActiveBg: () => string | undefined
     }
   | typeof MISSING_PROVIDER
 >(MISSING_PROVIDER)
@@ -39,6 +41,7 @@ export function AppProvider(props: React.PropsWithChildren<{}>) {
       state,
       updateState: (value: Partial<AppState>) => setState((state) => ({ ...state, ...value })),
       getActiveImg: () => state.dalleImages[state.activeImg - 1],
+      getActiveBg: () => state.dalleBg[state.activeBg - 1],
     }),
     [state]
   )
