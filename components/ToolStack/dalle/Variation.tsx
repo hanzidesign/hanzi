@@ -1,17 +1,15 @@
 'use client'
 
 import { useState } from 'react'
-import { useAppDispatch, useAppSelector } from '@/store'
+import { useAppSelector } from '@/store'
 import { useAppContext } from '@/hooks/useAppContext'
-import { Stack, Box, PasswordInput, Anchor, Pagination, Button } from '@mantine/core'
+import { Stack, Pagination, Button } from '@mantine/core'
 import { notifications } from '@mantine/notifications'
-import { setApiKey } from '@/store/slices/editor'
-import { StyledBox, StyledText } from './common'
+import Wrapper, { getErrorMessage } from './Wrapper'
 import { createVariation } from '@/lib/dalle'
-import classes from './index.module.css'
+import classes from '../index.module.css'
 
-export default function Dalle() {
-  const dispatch = useAppDispatch()
+export default function Variation() {
   const {
     state: { dalleImages, activeImg },
     getActiveImg,
@@ -46,31 +44,9 @@ export default function Dalle() {
   }
 
   return (
-    <StyledBox>
-      <Stack gap="xl" mb={24}>
-        <Box pos="relative">
-          <StyledText mb={8}>API Key</StyledText>
-          <PasswordInput
-            description="Only store in your device"
-            value={apiKey}
-            placeholder="Paste your OpenAI api key"
-            onChange={(e) => dispatch(setApiKey(e.currentTarget.value))}
-          />
-          <Anchor
-            fz={12}
-            href="https://platform.openai.com/api-keys"
-            target="_blank"
-            underline="always"
-            style={{
-              position: 'absolute',
-              top: 2,
-              right: 0,
-            }}
-          >
-            Go to OpenAI
-          </Anchor>
-        </Box>
-
+    <Wrapper>
+      {/* Variation */}
+      <Stack>
         <Button disabled={!apiKey || !img} onClick={handleCreate} loading={loading}>
           {Boolean(img) ? 'Create Variation' : 'Loading...'}
         </Button>
@@ -82,27 +58,6 @@ export default function Dalle() {
           onChange={(activeImg) => updateState({ activeImg })}
         />
       </Stack>
-    </StyledBox>
+    </Wrapper>
   )
-}
-
-function getErrorMessage(err: any) {
-  switch (err.status) {
-    case 400: {
-      return (
-        <span>
-          Billing hard limit has been reached. <br />
-          Please go to upgrade your plan.
-        </span>
-      )
-    }
-    default: {
-      return (
-        <span>
-          The API key is invalid. <br />
-          Check your API key and try again.
-        </span>
-      )
-    }
-  }
 }

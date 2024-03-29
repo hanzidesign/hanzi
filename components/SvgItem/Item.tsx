@@ -11,10 +11,11 @@ export type SvgItemProps = {
   rotation?: number
   textColor?: string
   bgColor?: string
+  bgData?: string
 }
 
 export default function SvgItem(props: SvgItemProps) {
-  const { uid, fId, svgData, ptnData, x = 0, y = 0, rotation = 0 } = props
+  const { uid, fId, svgData, ptnData, bgData, x = 0, y = 0, rotation = 0 } = props
   const { width = 0, distortion = 0, blur = 0 } = props
   const { textColor = 'black', bgColor = 'white' } = props
 
@@ -57,6 +58,9 @@ export default function SvgItem(props: SvgItemProps) {
       <mask maskUnits="userSpaceOnUse" id="mask" mask-type="alpha" dangerouslySetInnerHTML={{ __html: svgData }}></mask>
 
       <rect x="0" y="0" fill={bgColor} width="100%" height="100%" />
+
+      {bgData ? <image href={bgData} x="0" y="0" width="100%" height="100%" preserveAspectRatio="none" /> : null}
+
       <g filter={`url(#${fId})`}>
         <rect
           x="0"

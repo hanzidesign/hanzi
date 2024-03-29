@@ -2,15 +2,15 @@
 
 import { useAppSelector } from '@/store'
 import { useAppContext } from '@/hooks/useAppContext'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { svgToPng } from '@/lib/svgToPng'
 
 export default function useDalle() {
   const { accordion, ch, ptnUrl, ptnData, distortion, blur, width, x, y, rotation, textColor, bgColor } =
     useAppSelector((state) => state.editor)
-  const isDalle = Number(accordion) >= 3
+  const isDalle = Number(accordion) >= 4
   const {
-    state: { showDelle },
+    state: { showDelle, dalleImages },
     updateState,
   } = useAppContext()
 
@@ -19,7 +19,8 @@ export default function useDalle() {
     if (isDalle && !showDelle && ptnData) {
       svgToPng()
         .then((data) => {
-          updateState({ dalleImages: [data], activeImg: 1, showDelle: true })
+          const [, ...rest] = dalleImages
+          updateState({ dalleImages: [data, ...rest], activeImg: 1, showDelle: true })
         })
         .catch((err) => console.error(err))
     }
@@ -27,6 +28,22 @@ export default function useDalle() {
 
   useEffect(() => {
     // hide
-    updateState({ dalleImages: [], showDelle: false })
+    updateState({ showDelle: false })
   }, [ch, ptnUrl, ptnData, distortion, blur, width, x, y, rotation, textColor, bgColor])
+
+  useEffect(() => {
+    updateState({ activeBg: 1 })
+  }, [bgColor])
+
+  useEffect(() => {
+    // background
+    if (Number(accordion) === 3) {
+      updateState({ showDelle: false })
+    }
+  }, [accordion])
+
+  useEffect(() => {
+    // reset
+    updateState({ dalleImages: [], dalleBg: [''] })
+  }, [ch])
 }

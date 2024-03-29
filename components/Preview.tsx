@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { useRef } from 'react'
 import { useConnectModal } from '@rainbow-me/rainbowkit'
 import { Stack, Group, Button, Box, Progress, Center, Text } from '@mantine/core'
 import { useViewportSize } from '@mantine/hooks'
@@ -31,8 +31,7 @@ export default function Preview({ onBack }: PreviewProps) {
 
   const job = useAppSelector((state) => state.queue.list[uidRef.current])
   const [progress] = useProgress(job)
-  const { minted, handleMint } = useMint(uidRef.current, job?.ipfsUrl)
-  const [hash, setHash] = useState('')
+  const { isPending, minted, hash, handleMint } = useMint(uidRef.current, job?.ipfsUrl)
 
   const getDataURI = async () => {
     const imgData = getActiveImg()
@@ -56,17 +55,6 @@ export default function Preview({ onBack }: PreviewProps) {
       }
     } catch (err) {
       console.error(err)
-    }
-  }
-
-  const handleClick = async () => {
-    try {
-      const response = await handleMint()
-      if (response) {
-        setHash(response.hash)
-      }
-    } catch (error) {
-      console.error(error)
     }
   }
 
@@ -109,7 +97,7 @@ export default function Preview({ onBack }: PreviewProps) {
                   </>
                 )
               ) : (
-                <Button px={32} onClick={handleClick}>
+                <Button px={32} onClick={handleMint} disabled={isPending}>
                   Mint
                 </Button>
               )}

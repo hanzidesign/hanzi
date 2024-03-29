@@ -1,4 +1,4 @@
-// npx hardhat run scripts/estimate.ts --network optGoerli
+// npx hardhat run scripts/estimate.ts --network optiSepolia
 import { ethers } from 'hardhat'
 import { getFeeData } from 'utils/helper'
 

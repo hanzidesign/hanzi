@@ -404,6 +404,7 @@ const sc: Chars = {
 
 const meaning: Chars = {
   jp: {
+    2023: 'Tax',
     2022: 'Battle',
     2021: 'Gold',
     2020: 'Close contact',
@@ -434,6 +435,7 @@ const meaning: Chars = {
     1995: 'Earthquake',
   },
   int: {
+    2023: 'Danger',
     2022: 'War',
     2021: 'Pandemic',
     2020: 'Pandemic',
@@ -453,6 +455,7 @@ const meaning: Chars = {
     2006: 'Chaos',
   },
   cn: {
+    2023: 'Revitalization',
     2022: 'Stabilize',
     2021: 'Governance',
     2020: 'Nationality',
@@ -472,6 +475,7 @@ const meaning: Chars = {
     2006: 'Hype',
   },
   tw: {
+    2023: 'Shortage',
     2022: 'Rise',
     2021: 'Stay Home',
     2020: 'Pandemic',
@@ -489,6 +493,7 @@ const meaning: Chars = {
     2008: 'Chaos',
   },
   cs: {
+    2023: 'Harmony',
     2022: 'Think',
     2021: 'Difficult',
     2020: 'Depress',
@@ -506,6 +511,7 @@ const meaning: Chars = {
     2008: 'Earthquake',
   },
   aw: {
+    2023: 'Competition',
     2022: 'Blew up',
     2021: 'Stable',
     2020: 'Mask',
@@ -522,6 +528,7 @@ const meaning: Chars = {
     2009: 'Start',
   },
   my: {
+    2023: 'Expensive',
     2022: 'Rise (cost of living)',
     2021: 'Look forward to',
     2020: 'Pandemic',
@@ -536,6 +543,7 @@ const meaning: Chars = {
     2011: 'Shift',
   },
   sg: {
+    2023: 'Scam',
     2022: 'Rise (cost of living)',
     2021: 'Look forward to',
     2020: 'Mask',
@@ -563,6 +571,7 @@ const meaning: Chars = {
     2012: 'Expensive',
   },
   hk: {
+    2023: 'Boom',
     2022: 'Through',
     2021: 'Pandemic',
     2020: 'Safe',
@@ -574,6 +583,7 @@ const meaning: Chars = {
     2013: 'Harmony',
   },
   us: {
+    2023: 'Birth and growth (Al)',
     2022: 'Gaslighting',
     2021: 'Rise',
     2020: 'Anti-Covid-19',

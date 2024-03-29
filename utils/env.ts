@@ -4,6 +4,8 @@ import _ from 'lodash'
 const env = {
   isProd: process.env.NODE_ENV === 'production',
   isDev: process.env.NODE_ENV === 'development',
+  chainMain: process.env.CHAIN_MAIN,
+  chainTest: process.env.CHAIN_TEST,
 }
 
 // for browser by prefixing with NEXT_PUBLIC_
