@@ -28,10 +28,10 @@ export async function createImage(apiKey: string, prompt: string) {
   return _.compact(data.map((o) => o.b64_json))
 }
 
-export async function createPrompt(apiKey: string, char: string) {
+export async function createPrompt(apiKey: string, char: string, bgColor: string) {
   const openai = new OpenAI({ apiKey })
 
-  const fallback = `Inspired by the chinese character ${char}`
+  const fallback = `A abstract composition inspired by the chinese character ${char}`
 
   try {
     const { choices } = await openai.chat.completions.create({
@@ -43,7 +43,7 @@ export async function createPrompt(apiKey: string, char: string) {
     })
 
     const completion = _.get(choices, '0.message.content', fallback)
-    return { completion }
+    return { completion: `${completion} with the theme color of ${bgColor}.` }
   } catch (error: any) {
     return { completion: fallback, error }
   }

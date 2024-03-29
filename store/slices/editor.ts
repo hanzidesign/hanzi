@@ -13,7 +13,7 @@ export type EditorState = Omit<Metadata, 'mintBy'> &
   }
 
 const country = 'int'
-const year = '2022'
+const year = '2023'
 const isTc = true
 
 const initialState: EditorState = {
@@ -33,7 +33,7 @@ const initialState: EditorState = {
   bgColor: `rgba(255, 255, 255, 1)`,
   country: countries[country],
   year,
-  ch: '亂',
+  ch: '危',
   name: '',
   description: '',
   apiKey: '',

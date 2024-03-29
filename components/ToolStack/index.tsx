@@ -7,7 +7,8 @@ import { IoAddOutline } from 'react-icons/io5'
 import CharList from './CharList'
 import Effect from './Effect'
 import Style from './Style'
-import Dalle from './Dalle'
+import BgImage from './dalle/BgImage'
+import Variation from './dalle/Variation'
 import Metadata from './Metadata'
 import classes from './index.module.css'
 
@@ -30,8 +31,12 @@ const cells: Cell[] = [
     c: <Style />,
   },
   {
-    t: 'DALL·E',
-    c: <Dalle />,
+    t: 'Background',
+    c: <BgImage />,
+  },
+  {
+    t: 'Variation',
+    c: <Variation />,
   },
   {
     t: 'Metadata',
