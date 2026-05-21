@@ -1,0 +1,67 @@
+# Hanzi Studio Refactor Planning
+
+Detailed implementation plan: `tasks/hanzi-studio-refactor-plan.md`.
+
+## Checklist
+
+- [x] Inspect current repo structure, docs, package dependencies, and Web3/Redux/OpenAI touchpoints.
+- [x] Resolve product boundary: Hanzi Studio is an SVG character editor for viewing SVG effects only.
+- [x] Resolve route and naming boundary for the editor surface.
+- [x] Resolve replacement state model after Redux removal.
+- [x] Resolve exact removal scope for Web3/NFT/OpenAI/hardhat files and dependencies.
+- [x] Resolve verification plan for the eventual implementation.
+- [x] Write detailed implementation plan document without changing application code.
+- [x] Wait for explicit user approval before implementation.
+- [x] Implement Next 16 App Router route split with `/` introduction and `/studio` editor.
+- [x] Replace Redux-owned editor state with route-local React Context.
+- [x] Remove Web3, wallet, mint, queue, NFT metadata, DALL-E/OpenAI, export/conversion, and hardhat code paths.
+- [x] Switch package workflow to pnpm and update dependency lockfile.
+- [x] Modernize `next.config.js` into the Next 16 TypeScript config style.
+- [x] Verify TypeScript, lint, production build, runtime Studio smoke path, and removed-scope grep checks.
+
+## Review
+
+- Current repo already declares `next: 16.2.6` and uses the App Router under `app/`.
+- Current `/mint` surface still carries legacy wallet, queue, NFT storage, minting, DALL-E/OpenAI, and Redux-owned state concepts.
+- Product scope is now narrower than the initial recommendation: no export, no mint, no queue, no upload, no NFT, no DALL-E background image generation, and no OpenAI.
+- Route boundary: keep `/` as the introduction page and move the editor to `/studio`; remove the legacy `/mint` route name.
+- State and routing boundary: replace Redux with React Provider/Context for Studio state, scoped to the Studio editor; use Next App Router route files and navigation conventions instead of React Router-style routing.
+- Studio context boundary: move all surviving editor state into the React Context layer, including character selection, pattern source, SVG effect parameters, style colors, and current panel state.
+- Studio context location: implement the route-local context in `app/studio/studio-context.tsx`.
+- Background/effect boundary: remove the Background panel and all DALL-E/OpenAI background-image generation; keep pattern because it is one of the local SVG effects, along with the related effect controls and parameter editing.
+- Pattern state boundary: keep pattern as SVG effect state managed by Studio React Context, not Redux; pattern is distinct from removed background tooling.
+- Metadata boundary: remove the Metadata panel and NFT metadata fields such as `name`, `description`, and `mintBy`; keep only character selection state needed to render the SVG.
+- Web3 workspace boundary: remove the full `hardhat/` workspace and all contract, chain, wallet, tx, etherscan, account, NFT, IPFS, and minting code paths.
+- Studio UI boundary: remove the bottom `Queue`/`Mint` action area and modal workflow; the sidebar should only expose editor controls: `Character`, SVG effect parameters, and style controls.
+- Panel naming boundary: rename the current `Text` panel to `Character` because it selects a Hanzi SVG character, not free text.
+- Studio component boundary: move Studio-specific UI under `components/studio/`; rename `ToolStack` to `StudioControls`, `CharList` to `CharacterPanel`, `Effect` to `EffectPanel`, `Style` to `StylePanel`, `Img` to `StudioCanvas`, and `SvgItem` to `SvgEffectView`.
+- Deleted component boundary: remove `Preview`, `Queue`, `Metadata`, and `ToolStack/dalle/*` rather than adapting them.
+- Shell boundary: do not keep a global `BasicAppShell` with pathname branching for editor behavior; keep the introduction page simple and implement `/studio` with a dedicated `StudioShell`.
+- Provider boundary: simplify global providers to Mantine/theme only; remove `ReduxProvider`, `EthProvider`, legacy `AppProvider`, notifications, and modal providers unless a remaining non-deleted UI proves it needs them. `/studio` owns `StudioProvider`.
+- App Router boundary: keep `app/layout.tsx` as a server component with metadata; use a small client wrapper for Mantine/theme providers; make `/` a server introduction page using `next/link`; let `/studio/page.tsx` render a client `StudioApp` that owns `StudioProvider`, `StudioShell`, controls, and interactive SVG view.
+- Dependency boundary: remove `@tanstack/react-query` because it is only used by the removed Wagmi/RainbowKit wallet provider.
+- Dependency boundary: remove `axios`; the remaining Studio editor should rely on local assets and native browser/Next primitives if any fetch is needed later.
+- API boundary: remove `app/api/svgToPng/route.ts` and `app/api/compress/route.ts`; the Studio view does not need server conversion, compression, upload, or export endpoints.
+- Library boundary: remove `lib/sharp.ts`, `lib/svgToPng.ts`, and `lib/toFile.ts` because conversion/file/export/upload support is out of scope.
+- Metadata/type boundary: remove NFT metadata builders, sample metadata, and types such as `Metadata`, `NftData`, `Job`, `NftTx`, IPFS, and token-related shapes; keep or recreate only Studio editor/effect state types.
+- Env boundary: clean env code/types down to app UI needs such as `appName`, `webUrl`, `defaultColorScheme`, and `isDev` if still used; remove chain, contract, NFT storage, WalletConnect, and OpenAI env contracts. Do not edit `.env*` secret files unless explicitly requested.
+- Public asset metadata boundary: inspect `site.webmanifest`, `browserconfig`, and public metadata-like assets for stale product naming; update NFT/Web3 copy but keep neutral favicon/logo assets unless they explicitly encode removed concepts.
+- README boundary: rewrite the scaffold README to describe Hanzi Studio, Next 16 App Router usage, `/` introduction, `/studio` editor, and dev/build commands without NFT/Web3/OpenAI references.
+- Package manager boundary: use `pnpm`; remove root `package-lock.json` and generate/update `pnpm-lock.yaml` during implementation.
+- Persistence boundary: do not add state persistence in the first refactor; Studio context state resets to defaults on reload.
+- Verification gate: run `pnpm install`, lint with the available ESLint/Next command, run `pnpm build`, start `pnpm dev`, verify `/` and `/studio` in browser, test Character/Effect/Style controls, confirm SVG effect view is nonblank, and grep for removed Redux/Web3/NFT/OpenAI/upload/mint/queue/DALL-E/hardhat remnants.
+- ADR boundary: do not create an ADR for this refactor; keep decisions in `CONTEXT.md` and this planning file.
+- Introduction CTA: use `Open Studio` and route it to `/studio`.
+- Public metadata copy: replace NFT/Optimism description and keywords with Hanzi SVG character editor language.
+- Plan-only boundary: current work is documentation/planning only. Do not implement application code until the user explicitly approves implementation.
+
+## Implementation Review
+
+- Implemented `/studio` as the Character Editor route with route-local Studio React Context and no persistence.
+- Kept `/` as the introduction page and changed the CTA to `Open Studio` using Next App Router navigation.
+- Removed legacy `/mint`, Redux store/slices/providers, Web3 wallet provider/UI, queue/mint/upload/export/conversion APIs, NFT metadata builders, DALL-E/OpenAI UI, and related helper code.
+- Kept SVG effect pattern as an Effect control, separate from removed background-image generation.
+- Replaced `next.config.js` with typed `next.config.ts` and moved linting to ESLint flat config for the Next 16 toolchain.
+- Runtime verification found and fixed a Framer Motion cleanup crash, a non-scrollable Studio sidebar, and Mantine root hydration warning.
+- Follow-up correction: SVG filter patterns must use data URLs in `feImage`; built-in pattern URLs stay only as preview/loading sources and are converted before the effect renders them. Any editor input that changes `ptnUrl` must clear stale `ptnData` and trigger a fresh conversion.
+- Verification passed: `pnpm exec tsc --noEmit`, `pnpm lint`, `pnpm build`, and a Playwright smoke test for `/` to `/studio` with Character/Effect/Style controls and nonblank SVG effect markup.

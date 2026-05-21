@@ -34,8 +34,8 @@ export default function MotionPath(props: MotionShapeProps) {
       },
     })
 
-    return animation.stop
-  }, [pathIndex])
+    return () => animation.stop()
+  }, [duration, pathIndex, progress])
 
   return (
     <motion.svg

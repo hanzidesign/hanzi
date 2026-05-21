@@ -79,7 +79,7 @@ export default function MotionPath(props: React.PropsWithChildren<MotionPathProp
       pointRef.current.y = lastPoint[1]
     }
     return getPath(points, smoothing)
-  }, [innerWidth, innerHeight, offsetX, offsetY, type])
+  }, [innerWidth, innerHeight, offsetX, offsetY, smoothing, type])
 
   // subscribe
   useMotionValueEvent(pathLength, 'change', (latest) => {
@@ -101,7 +101,7 @@ export default function MotionPath(props: React.PropsWithChildren<MotionPathProp
       initRef.current = true
       setPath(softBezier())
     }
-  }, [innerWidth, innerHeight])
+  }, [innerWidth, innerHeight, softBezier])
 
   React.useEffect(() => {
     if (!path) return
@@ -121,8 +121,8 @@ export default function MotionPath(props: React.PropsWithChildren<MotionPathProp
       },
     })
 
-    return controls.pause
-  }, [path])
+    return () => controls.stop()
+  }, [animate, path, pathLength, scope, softBezier])
 
   return (
     <Box pos="absolute" left={0} top={0} w="100%" h="100%" {...boxProps}>

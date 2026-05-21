@@ -2,7 +2,6 @@ import './global.css'
 
 import Script from 'next/script'
 import Providers from '@/components/providers/Providers'
-import BasicAppShell from '@/components/BasicAppShell'
 import { ColorSchemeScript } from '@mantine/core'
 import { publicEnv } from '@/utils/env'
 import { fontVariables } from '@/theme/font'
@@ -15,8 +14,7 @@ export const viewport: Viewport = {
 }
 
 const title = publicEnv.appName
-const description =
-  'Exploring the Possibilities of NFTs for Empowering Artists and Redefining the Art Market in Chinese World'
+const description = 'A visual editor for exploring Hanzi SVG character effects.'
 const gaId = process.env.NEXT_PUBLIC_GOOGLE_ANALYTICS
 
 export const metadata: Metadata = {
@@ -28,7 +26,7 @@ export const metadata: Metadata = {
     description,
     images: '/cover.png',
   },
-  keywords: ['hanzi', 'design', 'art', 'nft', 'optimism'],
+  keywords: ['hanzi', 'svg', 'character editor', 'visual design'],
   manifest: '/site.webmanifest',
   icons: {
     icon: [
@@ -48,23 +46,25 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={fontVariables}>
+    <html lang="en" className={fontVariables} suppressHydrationWarning>
       <head>
-        <Script async src={`https://www.googletagmanager.com/gtag/js?id=${gaId}`} />
-        <Script id="google-analytics">
-          {`
+        {gaId ? (
+          <>
+            <Script async src={`https://www.googletagmanager.com/gtag/js?id=${gaId}`} />
+            <Script id="google-analytics">
+              {`
               window.dataLayer = window.dataLayer || [];
               function gtag(){dataLayer.push(arguments);}
               gtag('js', new Date());
               gtag('config', '${gaId}');
           `}
-        </Script>
+            </Script>
+          </>
+        ) : null}
         <ColorSchemeScript defaultColorScheme={publicEnv.defaultColorScheme} />
       </head>
       <body>
-        <Providers>
-          <BasicAppShell>{children}</BasicAppShell>
-        </Providers>
+        <Providers>{children}</Providers>
       </body>
     </html>
   )
