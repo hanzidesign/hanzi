@@ -10,6 +10,7 @@ import type { ColorTarget } from '@/app/studio/studio-context'
 export default function StylePanel() {
   const {
     state: { textColor, bgColor },
+    resetStyle,
     setColor,
   } = useStudio()
   const theme = useMantineTheme()
@@ -74,13 +75,7 @@ export default function StylePanel() {
       </Stack>
 
       <Group align="right" pb={24} px={12}>
-        <Button
-          size="xs"
-          onClick={() => {
-            setColor('text', '#000')
-            setColor('bg', '#fff')
-          }}
-        >
+        <Button size="xs" onClick={resetStyle}>
           Reset
         </Button>
       </Group>

@@ -26,7 +26,7 @@ export default function EffectPanel() {
   const patternPreview = ptnData || ptnUrl
 
   useEffect(() => {
-    if (typeof fileResult === 'string') {
+    if (fileResult) {
       setPatternData(fileResult)
     }
   }, [fileResult, setPatternData])

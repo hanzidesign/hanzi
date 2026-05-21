@@ -632,6 +632,7 @@ const chars = { tc, sc }
 const sortedChars = { tc: sortedTc, sc: sortedSc }
 
 export { chars, sortedChars, meaning }
+export type CharScript = keyof typeof chars
 
 function sort(list: CharList, country: string, target: SortedChar) {
   const arr = _.map(list, (ch, year) => ({ ch, year, y: Number(year) }))
@@ -643,4 +644,8 @@ export function parseCharUrl(url: string) {
   const [country, name] = _.compact(_.split(url, '/')).slice(-2)
   const year = name.slice(0, 4)
   return [country, year] as const
+}
+
+export function toCharUrl(script: CharScript, country: string, year: string) {
+  return `/chars/${script}/${country}/${year}.svg`
 }

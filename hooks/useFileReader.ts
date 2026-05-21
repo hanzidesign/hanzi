@@ -1,32 +1,29 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { isAbortError, readBlobAsDataUrl } from '@/utils/dataUrl'
 
 export default function useFileReader(file: File | null) {
-  const [result, setResult] = useState<string | ArrayBuffer | null>(null)
+  const [result, setResult] = useState<string | null>(null)
 
   useEffect(() => {
-    let fileReader: FileReader
-    let isCancel = false
-
-    if (file) {
-      fileReader = new FileReader()
-      fileReader.onload = (e) => {
-        const { result } = e.target || {}
-        if (result && !isCancel) {
-          setResult(result)
-        }
-      }
-      fileReader.readAsDataURL(file)
-    } else {
+    if (!file) {
       setResult(null)
+      return
     }
 
+    const controller = new AbortController()
+
+    readBlobAsDataUrl(file, controller.signal)
+      .then(setResult)
+      .catch((error) => {
+        if (!isAbortError(error)) {
+          setResult(null)
+        }
+      })
+
     return () => {
-      isCancel = true
-      if (fileReader && fileReader.readyState === 1) {
-        fileReader.abort()
-      }
+      controller.abort()
     }
   }, [file])
 
