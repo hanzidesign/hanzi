@@ -4,6 +4,30 @@ Detailed implementation plan: `tasks/hanzi-studio-refactor-plan.md`.
 Shader redesign implementation plan: `tasks/shader-effect-redesign-plan.md`.
 Shader redesign phased implementation plan: `tasks/shader-effect-redesign-phased-implementation-plan.md`.
 
+## Phase 0 Execution: Tooling And Shader Source Foundation
+
+- [x] Confirm execution location: work directly on existing `v2` branch checkout.
+- [x] Install runtime shader dependencies with pnpm.
+- [x] Confirm Vitest dependency is installed with pnpm.
+- [x] Wire `pnpm test` to `vitest run`.
+- [x] Add `.glsl` raw import support while preserving production `removeConsole`.
+- [x] Add GLSL module declaration.
+- [x] Add shader preset, param, validation, and uniform helper contracts.
+- [x] Cover default params, uniform conversion, reserved uniforms, and stale params with Vitest.
+- [x] Run `pnpm test`.
+- [x] Run `pnpm exec tsc --noEmit`.
+- [x] Run `pnpm lint`.
+- [x] Run `pnpm build`.
+
+### Phase 0 Review - 2026-05-24
+
+- Added raw `.glsl` import support for both webpack (`asset/source`) and Turbopack (`type: raw`) while preserving production `removeConsole`.
+- Added `@types/glsl.d.ts`, shader preset/param types, reserved uniform validation, default param creation, hex color conversion, uniform conversion, and stale param sanitization.
+- Added Vitest coverage for number/color/boolean/select defaults, color-to-`THREE.Vector3`, boolean/select uniform conversion, reserved uniform collision rejection, and stale persisted param sanitization.
+- Verification: `pnpm test` passed with 2 files and 10 tests; `pnpm exec tsc --noEmit` passed; `pnpm lint` exited 0 with one pre-existing warning in `components/studio/StudioCanvas.tsx` for unused `Box`; `pnpm build` passed with Next 16.2.6 Turbopack.
+- Simplify pass: reused Three's `IUniform` type, removed duplicated sanitize/convert work in uniform creation, shared hex color validation, and tightened preset/param validation without changing exported helper names.
+- No Studio UI behavior was changed in Phase 0.
+
 ## Shader Effect Playground Planning
 
 - [x] Inspect existing product language, planning docs, dependencies, and Studio editor state boundary.
