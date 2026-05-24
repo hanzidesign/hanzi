@@ -17,3 +17,5 @@
 - When upgrading a Next app to the current App Router/toolchain, include config-file modernization in scope; for Next 16 prefer a typed `next.config.ts` over preserving old CommonJS config style.
 - In Hanzi Studio SVG filters, never pass a deployed asset URL directly into `feImage`; convert built-in pattern assets to data URLs first because browser SVG rendering rules can block URL-backed filter images on Vercel.
 - Treat `ptnUrl` as the pattern source and `ptnData` as the SVG-filter-ready derived value. Any editor path that changes `ptnUrl` must clear stale `ptnData` and trigger a fresh URL-to-data-URL conversion.
+- When a user asks about a design branch such as SVG-as-3D-mesh, do not downgrade it to future scope after giving tradeoffs. Ask whether it is the current target or later scope before recommending the implementation path.
+- Do not assume Studio editor state should remain session-only once the user is designing heavier WebGL/shader controls. If refresh safety matters, treat local persistence as part of the product contract.

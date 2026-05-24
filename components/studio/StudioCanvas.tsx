@@ -23,9 +23,6 @@ export default function StudioCanvas() {
           {translation}
         </Text>
       ) : null}
-      <Box className="sr-only" aria-live="polite">
-        Hanzi Studio SVG effect view
-      </Box>
     </Center>
   )
 }
