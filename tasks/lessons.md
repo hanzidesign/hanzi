@@ -23,3 +23,7 @@
 ## 2026-05-24
 
 - When the user says to work on the `v2` branch only, keep implementation in the existing `v2` checkout and do not create a worktree even if an execution skill normally prefers isolation.
+
+## 2026-05-25
+
+- Do not persist uploaded pattern image data URLs in localStorage. Treat uploaded pattern data as session-only because localStorage has practical size limits; persist only compact built-in pattern choices and other serializable editor settings.

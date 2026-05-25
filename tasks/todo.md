@@ -4,6 +4,114 @@ Detailed implementation plan: `tasks/hanzi-studio-refactor-plan.md`.
 Shader redesign implementation plan: `tasks/shader-effect-redesign-plan.md`.
 Shader redesign phased implementation plan: `tasks/shader-effect-redesign-phased-implementation-plan.md`.
 
+## Phase 1 Grill Session: Shader Preset Registry
+
+- [x] Review current lessons, glossary, Phase 1 plan, and existing shader helper code before asking questions.
+- [x] Resolve whether Phase 1 is a design-review checkpoint only or includes immediate implementation.
+- [x] Grill unresolved registry decisions one at a time against `CONTEXT.md` and the current code.
+- [x] Update `CONTEXT.md` inline only when a domain term or relationship is newly resolved.
+- [x] Add a Phase 1 grill review note with decisions, open questions, and verification expectations.
+
+### Phase 1 Grill Notes
+
+- Resolved: include `shaders/shared/default-vertex.glsl` in Phase 1 so raw shader imports and the shared vertex contract are verified before WebGL canvas work; keep built-in presets fragment-shader-only in Phase 1.
+- Resolved: create original built-in GLSL presets in Phase 1 instead of waiting for an external sample set.
+- Resolved: set `usesDisplacementMap: false` for all Phase 1 presets and avoid sampling `u_displacementMap` in fragment shaders until the later Displacement phase.
+- Resolved: `getShaderPresetById` returns `ShaderPreset | undefined`; `getDefaultShaderPreset()` owns the hard fallback behavior.
+- No `CONTEXT.md` update needed: the resolved items refine the existing shader preset implementation contract, not the domain glossary.
+
+## Phase 1 Execution: Shader Preset Registry
+
+- [x] Add failing registry tests for built-in preset validation, uniqueness, defaults, and lookup helpers.
+- [x] Add shared default vertex shader.
+- [x] Add three original built-in fragment shader presets and preset modules.
+- [x] Add central shader preset registry helpers.
+- [x] Run focused registry tests.
+- [x] Run full verification: `pnpm test`, `pnpm exec tsc --noEmit`, `pnpm lint`, and `pnpm build`.
+
+### Phase 1 Review - 2026-05-25
+
+- Added a typed registry with `shaderPresets`, `getShaderPresetById`, `getDefaultShaderPreset`, and exported shared `defaultVertexShader`.
+- Added original built-in presets: `Flowing Noise`, `Kaleidoscope Noise`, and `Grid Pulse`.
+- Added real `.glsl` fragment files for each preset and a shared default vertex shader.
+- Kept Phase 1 presets fragment-only and `usesDisplacementMap: false`; no fragment shader samples `u_displacementMap`.
+- Added a Vitest raw GLSL loader so registry tests exercise shader source imports as strings.
+- Added registry tests for preset ids, validation, defaults, uniforms, categories, lookup fallback, Phase 1 displacement scope, and shared vertex shader contract.
+- No open grill questions remain for Phase 1.
+- Verification: `pnpm test` passed with 3 files and 20 tests; `pnpm exec tsc --noEmit` passed; `pnpm lint` exited 0 with the pre-existing `StudioCanvas.tsx` unused `Box` warning; `pnpm build` passed with Next 16.2.6 Turbopack.
+
+## Phase 2 Grill Session: Persisted Studio Store
+
+- [x] Review current lessons, glossary, Phase 2 plan, and existing Studio context consumers before asking questions.
+- [x] Resolve whether Phase 2 wires the current `/studio` UI through the Zustand store or only creates an unused store module.
+- [x] Grill unresolved store decisions one at a time against `CONTEXT.md` and the current code.
+- [x] Update `CONTEXT.md` inline only when a domain term or relationship is newly resolved.
+- [x] Add a Phase 2 grill review note with decisions, open questions, and verification expectations.
+
+### Phase 2 Grill Notes
+
+- Resolved: wire the current `/studio` UI through the Zustand store now, using `studio-context.tsx` as a compatibility wrapper for existing consumers.
+- Resolved: keep compatibility state in the store for the current SVG-filter UI until the renderer swap, while also owning the planned shader, mesh, displacement, and view state fields.
+- Resolved: do not persist uploaded pattern image data URLs because localStorage has size limits; uploaded pattern data stays session-only.
+- No `CONTEXT.md` update needed: the existing refresh-safety and no-backend persistence language already covers the Phase 2 store behavior.
+
+## Phase 2 Execution: Persisted Studio Store
+
+- [x] Add failing store tests for defaults, persistence serialization shape, stale preset hydration, stale param sanitization, and preset switching preservation.
+- [x] Add route-local persisted Zustand store in `app/studio/studio-store.ts`.
+- [x] Wire `studio-context.tsx` to use the Zustand store while preserving the current `useStudio()` consumer API.
+- [x] Preserve current `/studio` SVG-effect behavior until the renderer swap.
+- [x] Run focused store tests.
+- [x] Run full verification: `pnpm test`, `pnpm exec tsc --noEmit`, `pnpm lint`, and `pnpm build`.
+
+### Phase 2 Review - 2026-05-25
+
+- Added route-local persisted Zustand store in `app/studio/studio-store.ts` with character, shader, mesh, displacement, view, compatibility SVG-effect, and runtime-only fields.
+- Wired `studio-context.tsx` to the Zustand store as a compatibility wrapper, preserving the current `useStudio()` API and existing `/studio` panels.
+- Fixed the review finding where subscribing to the whole Zustand state would have retriggered SVG and pattern fetch effects after unrelated store updates; the wrapper now uses narrow store selectors and stable action dependencies.
+- Persisted only compact serializable editor choices. Runtime `svgData`, derived `ptnData`, and uploaded pattern data URLs are excluded from persistence.
+- Added hydration sanitization for stale shader preset ids and stale shader params while preserving valid character, mesh, displacement, and view state.
+- Added store tests for defaults, preset switching, stale persisted shader state, missing preset fallback, and compact persistence payloads.
+- No open grill questions remain for Phase 2.
+- Verification: `pnpm test` passed with 4 files and 25 tests; `pnpm exec tsc --noEmit` passed; `pnpm lint` exited 0 with the pre-existing `StudioCanvas.tsx` unused `Box` warning; `pnpm build` passed with Next 16.2.6 Turbopack; browser smoke opened `/studio`, opened the Effect panel, and found no page console errors.
+
+## Phase 3 Grill Session: WebGL Canvas Skeleton
+
+- [x] Review current lessons, glossary, Phase 3 plan, and existing Studio canvas/store code before asking questions.
+- [x] Resolve whether Phase 3 fully replaces the old SVG-filter preview or keeps it as a fallback beside WebGL.
+- [x] Grill unresolved WebGL skeleton decisions one at a time against `CONTEXT.md` and the current code.
+- [x] Update `CONTEXT.md` inline only when a domain term or relationship is newly resolved.
+- [x] Add a Phase 3 grill review note with decisions, open questions, and verification expectations.
+
+### Phase 3 Grill Notes
+
+- Resolved: fully replace `StudioCanvas` preview content with `ShaderCanvas`; keep `SvgEffectView.tsx` untouched but unused until later cleanup.
+- Resolved: the Phase 3 placeholder mesh should obey persisted mesh controls now, including rotation, scale, XY position, auto-rotation, and auto-rotate speed. Use box depth as the placeholder stand-in for extrusion depth until Phase 4.
+- No `CONTEXT.md` update needed: the resolved items implement the existing **Shader Effect View** and **Character Mesh** direction without changing domain terms.
+
+## Phase 3 Execution: WebGL Canvas Skeleton
+
+- [x] Add failing tests for shader material/uniform assembly around selected preset params and common uniforms.
+- [x] Create `components/studio/ShaderCanvas.tsx` as a full-size `@react-three/fiber` canvas with placeholder mesh.
+- [x] Create `components/studio/ShaderErrorOverlay.tsx` for preview-area shader errors.
+- [x] Replace the `StudioCanvas` preview content with `ShaderCanvas` while keeping the current shell/control layout.
+- [x] Apply selected preset switching, schema-driven uniforms, `u_time`, `u_mouse`, `u_resolution`, displacement uniforms, and bounds uniforms.
+- [x] Add OrbitControls for inspection without writing orbit changes into Zustand.
+- [x] Run focused tests.
+- [x] Run full verification: `pnpm test`, `pnpm exec tsc --noEmit`, `pnpm lint`, and `pnpm build`.
+- [x] Run browser visual smoke for nonblank WebGL canvas and `/studio` stability.
+
+### Phase 3 Review - 2026-05-25
+
+- Added `ShaderCanvas` as the WebGL preview surface and replaced `StudioCanvas` preview content with it.
+- Added a placeholder box mesh using the selected shader preset material, schema-driven uniforms, common uniforms, animated `u_time`, pointer-backed `u_mouse`, `u_resolution`, bounds uniforms, and displacement uniforms.
+- Applied persisted mesh controls to the placeholder mesh: rotation, scale, XY position, auto-rotation, auto-rotate speed, and box depth as the temporary extrusion-depth stand-in.
+- Added `OrbitControls` for inspection without writing orbit changes into Zustand.
+- Added `ShaderErrorOverlay` structure for preview-area shader errors.
+- Added shader material helper tests for common uniforms, preset param uniforms, canvas values, bounds values, displacement values, and stale preset fallback.
+- No open grill questions remain for Phase 3. The user-facing shader preset selector remains planned for Phase 5, so preset switching is wired through store/material logic but not yet exposed as a final panel.
+- Verification: `pnpm test` passed with 5 files and 28 tests; `pnpm exec tsc --noEmit` passed; `pnpm lint` passed with no warnings; `pnpm build` passed with Next 16.2.6 Turbopack; browser visual smoke passed on desktop and mobile with nonblank WebGL screenshots and pixel sampling.
+
 ## Phase 0 Execution: Tooling And Shader Source Foundation
 
 - [x] Confirm execution location: work directly on existing `v2` branch checkout.
