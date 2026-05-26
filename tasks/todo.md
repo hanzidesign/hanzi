@@ -14,7 +14,7 @@ Shader redesign phased implementation plan: `tasks/shader-effect-redesign-phased
 
 ### Phase 1 Grill Notes
 
-- Resolved: include `shaders/shared/default-vertex.glsl` in Phase 1 so raw shader imports and the shared vertex contract are verified before WebGL canvas work; keep built-in presets fragment-shader-only in Phase 1.
+- Resolved: include `shaders/shared/default-vertex.glsl` in Phase 1 so shader source imports and the shared vertex contract are verified before WebGL canvas work; keep built-in presets fragment-shader-only in Phase 1.
 - Resolved: create original built-in GLSL presets in Phase 1 instead of waiting for an external sample set.
 - Resolved: set `usesDisplacementMap: false` for all Phase 1 presets and avoid sampling `u_displacementMap` in fragment shaders until the later Displacement phase.
 - Resolved: `getShaderPresetById` returns `ShaderPreset | undefined`; `getDefaultShaderPreset()` owns the hard fallback behavior.
@@ -87,6 +87,14 @@ Shader redesign phased implementation plan: `tasks/shader-effect-redesign-phased
 
 - Resolved: fully replace `StudioCanvas` preview content with `ShaderCanvas`; keep `SvgEffectView.tsx` untouched but unused until later cleanup.
 - Resolved: the Phase 3 placeholder mesh should obey persisted mesh controls now, including rotation, scale, XY position, auto-rotation, and auto-rotate speed. Use box depth as the placeholder stand-in for extrusion depth until Phase 4.
+- Resolved: `u_mouse` means screen viewport pointer for the preview, not mesh UV. Mesh-local sampling remains the role of `v_uv`.
+- Resolved: auto-rotation must be frame-rate independent. Detect/use the render delta so rotation speed remains fixed across different display refresh rates.
+- Resolved: keep `ShaderCanvas` inside the existing square `AspectRatio` preview frame. "Full-size canvas" means filling that square frame, not changing the Studio layout to a freeform viewport.
+- Resolved: Phase 3 should not expose the final shader preset selector. Preset switching must work through store/material logic and tests; visible panel-driven preset switching belongs to Phase 5.
+- Resolved: Phase 3 should keep a neutral displacement texture and only wire displacement uniforms. Real pattern texture loading belongs to the later displacement work.
+- Resolved: keep the placeholder as a simple box. The actual extruded **Character Mesh** belongs to Phase 4.
+- Resolved: Phase 3 only needs preview-area error overlay structure plus material creation errors; WebGL program compile fallback and last-valid-material behavior can be handled in the later error-handling cleanup phase.
+- Resolved: keep old panel files through Phase 3. When new panels are introduced in Phase 5, their visual style should follow the current Studio panel style instead of creating an unrelated control surface.
 - No `CONTEXT.md` update needed: the resolved items implement the existing **Shader Effect View** and **Character Mesh** direction without changing domain terms.
 
 ## Phase 3 Execution: WebGL Canvas Skeleton
@@ -110,7 +118,74 @@ Shader redesign phased implementation plan: `tasks/shader-effect-redesign-phased
 - Added `ShaderErrorOverlay` structure for preview-area shader errors.
 - Added shader material helper tests for common uniforms, preset param uniforms, canvas values, bounds values, displacement values, and stale preset fallback.
 - No open grill questions remain for Phase 3. The user-facing shader preset selector remains planned for Phase 5, so preset switching is wired through store/material logic but not yet exposed as a final panel.
+- Phase 3 re-grill on 2026-05-26 clarified follow-up constraints: `u_mouse` is screen viewport pointer rather than mesh UV; auto-rotation should use render-delta timing for fixed speed across refresh rates; the canvas remains inside the square `AspectRatio`; and future panels should preserve the current Studio panel style.
 - Verification: `pnpm test` passed with 5 files and 28 tests; `pnpm exec tsc --noEmit` passed; `pnpm lint` passed with no warnings; `pnpm build` passed with Next 16.2.6 Turbopack; browser visual smoke passed on desktop and mobile with nonblank WebGL screenshots and pixel sampling.
+
+## Phase 3 Follow-up Execution: Pointer And Rotation Contract
+
+- [x] Add focused tests for screen viewport pointer normalization and frame-rate-independent auto-rotation math.
+- [x] Replace mesh-UV `u_mouse` updates with preview-level pointer tracking.
+- [x] Replace per-frame auto-rotation increments with render-delta-based rotation.
+- [x] Run focused tests.
+- [x] Run full verification: `pnpm test`, `pnpm exec tsc --noEmit`, `pnpm lint`, and `pnpm build`.
+- [x] Add review notes with results.
+
+### Phase 3 Follow-up Review - 2026-05-26
+
+- Added `components/studio/shader-canvas-math.ts` for preview pointer normalization and render-delta rotation math.
+- Added `components/studio/shader-canvas-math.test.ts` covering viewport pointer normalization, clamping, zero-size fallback, and elapsed-seconds rotation.
+- Updated `ShaderCanvas` so `u_mouse` is driven by pointer movement over the preview frame instead of mesh UV.
+- Updated placeholder auto-rotation to use `useFrame` delta timing instead of fixed per-frame increments.
+- Verification: focused `pnpm vitest run components/studio/shader-canvas-math.test.ts` passed with 4 tests; `pnpm test` passed with 6 files and 32 tests; `pnpm exec tsc --noEmit` passed; `pnpm lint` passed; `pnpm build` passed with Next 16.2.6 Turbopack; browser smoke opened `/studio`, confirmed a nonblank 600x600 WebGL canvas inside the square preview frame, and found no page console errors.
+
+## Phase 4 Grill Session: SVG To Extruded Character Mesh
+
+- [x] Review current lessons, glossary, Phase 4 plan, character SVG assets, and current `ShaderCanvas` placeholder boundary before asking questions.
+- [x] Resolve SVG parsing, geometry construction, centering, bounds, loading, failure, test, and visual review decisions.
+- [x] Update `CONTEXT.md` inline only if Phase 4 changes domain language or relationships.
+- [x] Add a Phase 4 grill review note with decisions, open questions, and verification expectations.
+
+### Phase 4 Grill Notes
+
+- Resolved: normalize SVG geometry into centered object space so the rendered **Character Mesh** stays upright like the source SVG and rotates around its visual center.
+- Resolved: keep the previous valid mesh visible while a newly selected character SVG loads or parses.
+- Resolved: show a loading indicator at the bottom of the parent div that wraps `<Center>` in `StudioCanvas` while the next character mesh is loading, not inside `ShaderCanvas`.
+- Resolved: show mesh loading/parsing error text at the bottom of the parent div that wraps `<Center>` in `StudioCanvas`, not inside `ShaderCanvas`. Do not fall back to `fallbackSvgData()` because SVG `<image>` fallback is not extrudable.
+- Resolved: implement the full multi-path/multi-shape loop even though the current character corpus is one `<path>` per SVG.
+- Resolved: render one mesh per shape/path in v1, sharing one `ShaderMaterial`; do not merge geometries unless performance requires it later.
+- Resolved: recreate `ExtrudeGeometry` when extrusion depth changes, with a tiny positive depth clamp matching the placeholder behavior.
+- Resolved: keep `bevelEnabled: false` and avoid geometry-detail controls in Phase 4 unless visual QA proves the mesh is too crude.
+- Resolved: feed shader bounds from normalized, centered geometry before user transform. Rotation, scale, position, and auto-rotation must not change `u_boundsMin` or `u_boundsMax`.
+- Resolved: preserve a 1:1 shader/displacement sampling ratio by using aspect-preserving mesh-local UVs. Do not stretch shader effects or displacement patterns independently across X and Y; pad the shorter axis instead.
+- Resolved: apply the selected unlit `ShaderMaterial` to front, back, and side faces.
+- Resolved: explicitly dispose replaced `ExtrudeGeometry` instances when character or depth changes.
+- Resolved: add focused tests for SVG/path-to-geometry normalization, bounds calculation, empty-shape failure, depth clamping, and aspect-preserving UV math. Browser smoke remains the real SVGLoader proof.
+- Resolved: visual review must include default `tc/int/2023`, one dense character, one sparse character, one simplified-character selection, and one refresh-preserved state.
+- No `CONTEXT.md` update needed: the resolved items refine implementation of the existing **Character Mesh** contract without changing domain terms or relationships.
+
+## Phase 4 Execution: SVG To Extruded Character Mesh
+
+- [x] Add failing tests for SVG geometry normalization, bounds, empty-shape failure, depth clamping, and aspect-preserving UV bounds.
+- [x] Implement character mesh geometry helpers.
+- [x] Replace the placeholder mesh with selected SVG-derived `CharacterMesh` geometry.
+- [x] Preserve the last valid mesh during character loading and parse failures.
+- [x] Show loading and error text at the bottom of the parent div that wraps `<Center>` in `StudioCanvas`.
+- [x] Keep shader and displacement sampling 1:1 with aspect-preserving mesh-local UVs.
+- [x] Run focused tests.
+- [x] Run full verification: `pnpm test`, `pnpm exec tsc --noEmit`, `pnpm lint`, and `pnpm build`.
+- [x] Run browser visual smoke for multiple character selections, depth, auto-rotation, refresh, and parent-level loading/error placement.
+- [x] Add Phase 4 review notes with results.
+
+### Phase 4 Review - 2026-05-26
+
+- Added `CharacterMesh` to load the selected character SVG, parse it with `SVGLoader`, create one extruded mesh per SVG shape, share the selected `ShaderMaterial`, and dispose replaced geometries/materials.
+- Added `character-mesh-geometry.ts` to normalize SVG y-down coordinates into centered upright object space, clamp extrusion depth to a tiny positive value, compute real geometry bounds, and pad shader bounds to preserve 1:1 shader/displacement sampling.
+- Replaced the placeholder mesh in `ShaderCanvas` with the selected SVG-derived mesh while preserving persisted mesh controls, delta-based auto-rotation, `OrbitControls`, pointer-backed `u_mouse`, and last-valid-mesh behavior during load/parse failures.
+- Moved mesh loading/error status text into the bottom of the parent div that wraps `<Center>` in `StudioCanvas`, outside the `ShaderCanvas` preview wrapper as clarified.
+- Changed `.glsl` source loading to one local loader shared by Turbopack and webpack after browser verification showed Next's direct `type: raw` path emitted `undefined` shader strings in dev.
+- Added tests for character geometry normalization, bounds, empty-shape failure, depth clamping, aspect-preserving shader bounds, all-face `DoubleSide` shader material behavior, and the shared GLSL source loader.
+- Verification: focused `pnpm vitest run loaders/glsl-source-loader.test.ts components/studio/character-mesh-geometry.test.ts components/studio/shader-material.test.ts components/studio/shader-canvas-math.test.ts` passed with 4 files and 14 tests; `pnpm test` passed with 8 files and 39 tests; `pnpm exec tsc --noEmit` passed; `pnpm lint` passed; `pnpm build` passed with Next 16.2.6 Turbopack.
+- Browser smoke: desktop 1280x720 and mobile 390x844 rendered nonblank WebGL character canvases with visible extruded side depth, changed canvas pixel hashes after drag, showed no loading/error status after successful loads, preserved selection after refresh, and produced no shader `vertexShader`/`fragmentShader` undefined warnings. Remaining warnings were the pre-existing Three clock deprecation and a Next image LCP warning for `/images/logo.svg`.
 
 ## Phase 0 Execution: Tooling And Shader Source Foundation
 
@@ -118,7 +193,7 @@ Shader redesign phased implementation plan: `tasks/shader-effect-redesign-phased
 - [x] Install runtime shader dependencies with pnpm.
 - [x] Confirm Vitest dependency is installed with pnpm.
 - [x] Wire `pnpm test` to `vitest run`.
-- [x] Add `.glsl` raw import support while preserving production `removeConsole`.
+- [x] Add `.glsl` source import support while preserving production `removeConsole`.
 - [x] Add GLSL module declaration.
 - [x] Add shader preset, param, validation, and uniform helper contracts.
 - [x] Cover default params, uniform conversion, reserved uniforms, and stale params with Vitest.
@@ -129,7 +204,7 @@ Shader redesign phased implementation plan: `tasks/shader-effect-redesign-phased
 
 ### Phase 0 Review - 2026-05-24
 
-- Added raw `.glsl` import support for both webpack (`asset/source`) and Turbopack (`type: raw`) while preserving production `removeConsole`.
+- Added `.glsl` source import support through a shared local loader for webpack and Turbopack while preserving production `removeConsole`.
 - Added `@types/glsl.d.ts`, shader preset/param types, reserved uniform validation, default param creation, hex color conversion, uniform conversion, and stale param sanitization.
 - Added Vitest coverage for number/color/boolean/select defaults, color-to-`THREE.Vector3`, boolean/select uniform conversion, reserved uniform collision rejection, and stale persisted param sanitization.
 - Verification: `pnpm test` passed with 2 files and 10 tests; `pnpm exec tsc --noEmit` passed; `pnpm lint` exited 0 with one pre-existing warning in `components/studio/StudioCanvas.tsx` for unused `Box`; `pnpm build` passed with Next 16.2.6 Turbopack.
@@ -190,7 +265,7 @@ Shader redesign phased implementation plan: `tasks/shader-effect-redesign-phased
 - Character selection remains the existing SVG preset workflow.
 - Rendering target: parse selected SVG paths into grouped extruded `ExtrudeGeometry` meshes sharing one unlit `ShaderMaterial`.
 - Shader preset system: one folder per preset plus a central typed registry; start implementation with 3 curated built-in presets.
-- Shader source: use `.glsl` files imported as raw source through a minimal Next webpack rule.
+- Shader source: use `.glsl` files imported as source strings through a minimal Next loader wired for both Turbopack and webpack.
 - State: retire `app/studio/studio-context.tsx` as state owner and move Studio editor state into a route-local Zustand store.
 - Persistence: use Zustand `persist` with `localStorage`, storing only serializable editor choices.
 - Controls: split panels into `Character`, `Shader`, `Mesh`, and `Displacement`.

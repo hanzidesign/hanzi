@@ -1,20 +1,23 @@
 import type { NextConfig } from 'next'
+import path from 'node:path'
 
 const isProd = process.env.NODE_ENV === 'production'
+const glslSourceLoader = path.resolve('./loaders/glsl-source-loader.cjs')
 
 const nextConfig: NextConfig = {
   compiler: isProd ? { removeConsole: true } : undefined,
   turbopack: {
     rules: {
       '*.glsl': {
-        type: 'raw',
+        loaders: [glslSourceLoader],
+        as: '*.js',
       },
     },
   },
   webpack(config) {
     config.module.rules.push({
       test: /\.glsl$/i,
-      type: 'asset/source',
+      use: [glslSourceLoader],
     })
 
     return config

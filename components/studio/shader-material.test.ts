@@ -1,7 +1,8 @@
-import { Vector2, Vector3 } from 'three'
+import { DoubleSide, Vector2, Vector3 } from 'three'
 import { describe, expect, it } from 'vitest'
 
 import {
+  createShaderMaterial,
   createShaderMaterialUniforms,
   resolveShaderPresetForCanvas,
 } from './shader-material'
@@ -61,5 +62,17 @@ describe('shader material helpers', () => {
     expect(resolveShaderPresetForCanvas('removed-preset')).toBe(
       getDefaultShaderPreset(),
     )
+  })
+
+  it('renders the shared shader material on front, back, and side faces', () => {
+    const preset = getDefaultShaderPreset()
+    const material = createShaderMaterial({
+      preset,
+      params: createDefaultParams(preset),
+    })
+
+    expect(material.side).toBe(DoubleSide)
+
+    material.dispose()
   })
 })

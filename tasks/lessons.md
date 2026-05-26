@@ -27,3 +27,11 @@
 ## 2026-05-25
 
 - Do not persist uploaded pattern image data URLs in localStorage. Treat uploaded pattern data as session-only because localStorage has practical size limits; persist only compact built-in pattern choices and other serializable editor settings.
+
+## 2026-05-26
+
+- For Hanzi Studio WebGL planning, `u_mouse` means the preview's screen viewport pointer, not mesh UV. Use `v_uv` for mesh-local shader sampling.
+- Auto-rotation in WebGL previews should be frame-rate independent by using render-delta timing rather than per-frame increments.
+- When replacing Studio panels, preserve the current panel visual style unless the user explicitly asks for a new design system.
+- For Phase 4 Character Mesh loading, loading and mesh-error text belong at the bottom of the parent div that wraps `<Center>` in `StudioCanvas`, not inside `ShaderCanvas`; keep the last valid mesh visible during transitions.
+- Shader and displacement map sampling should preserve a 1:1 ratio; use aspect-preserving mesh-local UVs instead of stretching effects across non-square character bounds.

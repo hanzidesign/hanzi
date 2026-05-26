@@ -1,5 +1,6 @@
 import {
   DataTexture,
+  DoubleSide,
   RGBAFormat,
   ShaderMaterial,
   UnsignedByteType,
@@ -66,6 +67,7 @@ export function createShaderMaterial({
   return new ShaderMaterial({
     vertexShader: preset.vertexShader ?? defaultVertexShader,
     fragmentShader: preset.fragmentShader,
+    side: DoubleSide,
     uniforms: createShaderMaterialUniforms({
       preset,
       params,

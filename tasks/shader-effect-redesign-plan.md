@@ -46,7 +46,7 @@ Update `package.json`:
 
 Update `next.config.ts`:
 
-- Add a minimal webpack rule for `.glsl` imports as raw source.
+- Add a minimal `.glsl` source loader and wire it through both Turbopack and webpack so shader imports resolve to JavaScript string exports in dev and build.
 - Preserve existing production `removeConsole` behavior.
 
 Add a TypeScript declaration:
@@ -100,6 +100,7 @@ Old components to retire or replace:
 - Replace `SvgEffectView.tsx` with `ShaderCanvas.tsx` plus `CharacterMesh.tsx`.
 - Replace `EffectPanel.tsx` with `ShaderPanel.tsx`, `MeshPanel.tsx`, and `DisplacementPanel.tsx`.
 - Remove `StylePanel.tsx` as character color controls. Keep a simple canvas/background color setting only if the view needs it.
+- Match the new panel visual treatment to the current Studio panel style instead of introducing an unrelated control design.
 - Retire `app/studio/studio-context.tsx` as the state owner after the Zustand store is wired.
 
 ## Shader Preset Contract
@@ -198,6 +199,8 @@ u_boundsMax
 
 If optional custom vertex shaders are used, they must honor the same global uniform contract and must set `v_uv`.
 
+`u_mouse` represents the preview's screen viewport pointer, not mesh UV. Mesh-local shader sampling should use the shared vertex shader's `v_uv`.
+
 ## Uniform Conversion
 
 Implement helpers:
@@ -293,6 +296,14 @@ Recommended flow:
 6. Render all geometries as a grouped set of meshes sharing one `ShaderMaterial`.
 7. Compute the group bounding box and center the geometries or group.
 8. Provide `u_boundsMin` and `u_boundsMax` uniforms for normalized object-space UV calculation.
+9. Keep shader and displacement sampling aspect-preserving. Use a square mesh-local sampling frame based on the larger XY bounds dimension, padding the shorter axis so shader effects and displacement patterns keep a 1:1 ratio instead of stretching across non-square character bounds.
+
+Loading and failure behavior:
+
+- Keep the previous valid character mesh visible while the next selected character SVG loads or parses.
+- Show a loading indicator at the bottom of the parent div that wraps `<Center>` in `StudioCanvas`, outside `ShaderCanvas`.
+- Show SVG fetch/parse/mesh-build error text at the bottom of the parent div that wraps `<Center>` in `StudioCanvas`, outside `ShaderCanvas`.
+- Do not fall back to `fallbackSvgData()` for mesh errors because SVG `<image>` fallback markup cannot be extruded.
 
 Extrusion defaults:
 
@@ -310,18 +321,20 @@ Known risk:
 
 Use `@react-three/fiber`:
 
-- Render a full-size `<Canvas>` inside the preview area.
+- Render a full-size `<Canvas>` inside the square Studio preview frame.
 - Render `CharacterMesh` as the main scene object.
 - Use `OrbitControls` for inspection.
 - Do not write orbit changes into Zustand.
 - Animate `u_time` with `useFrame`.
-- Track mouse over the canvas and update `u_mouse`.
+- Track the screen viewport pointer over the preview and update `u_mouse`.
 - Update `u_resolution` from canvas size.
+- Show character-mesh loading and error status at the bottom of the parent div that wraps `<Center>` in `StudioCanvas`, outside `ShaderCanvas`.
 - Apply global mesh transform controls to the character group:
   - XYZ rotation
   - uniform scale
   - XY position
   - auto-rotation and speed
+- Apply auto-rotation with render-delta timing so the configured speed stays fixed across different display refresh rates.
 
 Use one unlit `THREE.ShaderMaterial`.
 
@@ -331,6 +344,7 @@ Shader stage behavior:
 - Presets provide `fragment.glsl`.
 - Preserve optional `vertexShader` support in the preset contract for displacement or deformation presets.
 - Default shared vertex shader computes normalized object-space `v_uv`.
+- Default shared vertex shader keeps `v_uv` aspect-preserving so shader effects and displacement map sampling do not stretch.
 - Default shared vertex shader applies global displacement-map geometry displacement.
 - Fragment shaders can opt into image distortion by using the global displacement map uniforms when `usesDisplacementMap` is true.
 
@@ -384,6 +398,8 @@ Studio panels:
 - `Shader`: preset selector, preset name, category, and schema-driven param controls.
 - `Mesh`: extrusion depth, rotation, scale, position, auto-rotate, auto-rotate speed, optional background color.
 - `Displacement`: pattern image selector, strength, bias, and selected-preset image-distortion support status.
+
+New panels should preserve the current Studio panel style while changing the control model.
 
 Dynamic controls:
 
@@ -454,4 +470,4 @@ Stop implementation and re-plan if any of these happen:
 - `ExtrudeGeometry` displacement is too faceted to be useful without a geometry-density strategy.
 - Shader compile errors cannot be detected well enough to show the requested overlay.
 - Zustand persistence causes hydration mismatch or stale state crashes.
-- `.glsl` raw imports work in dev but fail production build.
+- `.glsl` source imports work in dev but fail production build.

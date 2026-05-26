@@ -4,9 +4,9 @@
 
 **Goal:** Implement the shader-based 3D Hanzi character mesh editor described in `tasks/shader-effect-redesign-plan.md` through PM-reviewable phases.
 
-**Architecture:** Replace the current SVG-filter effect surface with a WebGL `ShaderCanvas` that renders selected character SVG paths as grouped extruded meshes. Studio state moves from route-local React Context to a route-local persisted Zustand store, shader presets are typed registry entries backed by raw `.glsl` files, and UI controls are split into Character, Shader, Mesh, and Displacement panels.
+**Architecture:** Replace the current SVG-filter effect surface with a WebGL `ShaderCanvas` that renders selected character SVG paths as grouped extruded meshes. Studio state moves from route-local React Context to a route-local persisted Zustand store, shader presets are typed registry entries backed by `.glsl` source files, and UI controls are split into Character, Shader, Mesh, and Displacement panels.
 
-**Tech Stack:** Next.js 16 App Router, React 19, Mantine, Three.js, `@react-three/fiber`, `@react-three/drei`, Zustand, Vitest, raw `.glsl` imports.
+**Tech Stack:** Next.js 16 App Router, React 19, Mantine, Three.js, `@react-three/fiber`, `@react-three/drei`, Zustand, Vitest, `.glsl` source imports.
 
 ---
 
@@ -55,7 +55,7 @@
    vitest run
    ```
 
-4. Add `.glsl` raw import support in `next.config.ts` while preserving the existing production `removeConsole` compiler option.
+4. Add `.glsl` source import support in `next.config.ts` while preserving the existing production `removeConsole` compiler option. Use one small local loader for both Turbopack and webpack so dev and build resolve shader files to JavaScript string exports consistently.
 
 5. Add `@types/glsl.d.ts`:
 
@@ -163,7 +163,7 @@ Stop after registry verification. PM should verify:
 - Presets are real `.glsl` files, not escaped strings.
 - Preset categories display-ready free strings.
 - Each preset has enough params to prove the dynamic panel works.
-- Build still succeeds with raw shader imports.
+- Build still succeeds with shader source imports.
 
 ## Phase 2: Persisted Studio Store
 
@@ -245,7 +245,7 @@ Stop after store verification. PM should verify:
 
 1. Create `ShaderCanvas` as a client component.
 
-2. Render a full-size `@react-three/fiber` `<Canvas>`.
+2. Render a full-size `@react-three/fiber` `<Canvas>` inside the existing square Studio preview frame.
 
 3. Add a simple placeholder extruded or box-like mesh using the selected shader material.
 
@@ -260,13 +260,15 @@ Stop after store verification. PM should verify:
 
 6. Animate `u_time` with `useFrame`.
 
-7. Track pointer position over the canvas and update `u_mouse`.
+7. Track screen viewport pointer position over the preview and update `u_mouse`. Do not use mesh UV for this uniform; mesh-local shader sampling remains `v_uv`.
 
 8. Apply selected preset switching and schema-driven uniforms to the placeholder mesh.
 
-9. Add preview-area error overlay structure, even if compile-error detection is minimal in this phase.
+9. Apply persisted mesh controls to the placeholder mesh. Auto-rotation must use render-delta timing so speed remains fixed across different display refresh rates.
 
-10. Run:
+10. Add preview-area error overlay structure, even if compile-error detection is minimal in this phase.
+
+11. Run:
 
     ```sh
     pnpm test
@@ -275,7 +277,7 @@ Stop after store verification. PM should verify:
     pnpm build
     ```
 
-11. Start dev server and inspect visually:
+12. Start dev server and inspect visually:
 
     ```sh
     pnpm dev
@@ -287,9 +289,12 @@ Stop after visual verification. PM should verify:
 
 - `/studio` shows a nonblank WebGL canvas.
 - OrbitControls work for inspection.
-- Preset switching visibly changes the placeholder mesh material.
+- The WebGL canvas fills the square preview frame without replacing the Studio layout.
+- Preset switching works through store/material logic and tests; a visible preset selector is not required until Phase 5.
+- The placeholder mesh responds to persisted mesh controls, and auto-rotation speed is frame-rate independent.
 - No hydration crash or SSR break.
 - This phase does not yet need final character SVG mesh rendering.
+- This phase wires neutral displacement uniforms only; real pattern texture loading belongs to the later displacement work.
 
 ## Phase 4: SVG To Extruded Character Mesh
 
@@ -319,7 +324,15 @@ Stop after visual verification. PM should verify:
 
 8. Feed bounds to `u_boundsMin` and `u_boundsMax`.
 
-9. Apply mesh state:
+9. Use aspect-preserving mesh-local shader coordinates so shader effects and displacement patterns keep a 1:1 ratio. Do not stretch sampling independently across X and Y; pad the shorter axis instead.
+
+10. Keep the previous valid character mesh visible while a newly selected character SVG is loading or parsing.
+
+11. Show mesh loading status at the bottom of the parent div that wraps `<Center>` in `StudioCanvas`, outside `ShaderCanvas`.
+
+12. Show mesh loading/parsing error text at the bottom of the parent div that wraps `<Center>` in `StudioCanvas`, outside `ShaderCanvas`. Do not fall back to non-extrudable SVG `<image>` fallback markup.
+
+13. Apply mesh state:
    - extrusion depth
    - XYZ rotation
    - uniform scale
@@ -327,7 +340,7 @@ Stop after visual verification. PM should verify:
    - auto-rotation
    - auto-rotation speed
 
-10. Run:
+14. Run:
 
     ```sh
     pnpm test
@@ -336,7 +349,7 @@ Stop after visual verification. PM should verify:
     pnpm build
     ```
 
-11. Start dev server and inspect multiple characters.
+15. Start dev server and inspect multiple characters.
 
 **Checkpoint 4: PM Visual Review**
 
@@ -345,6 +358,8 @@ Stop after visual verification. PM should verify:
 - Character selection changes the rendered 3D mesh.
 - The mesh is visibly extruded, not a flat mask.
 - Shaders apply to all faces.
+- Shader effects and displacement patterns keep a 1:1 ratio and do not visibly stretch to fit non-square character bounds.
+- Loading and error text appear at the bottom of the parent div that wraps `<Center>` in `StudioCanvas`, not inside the `ShaderCanvas` preview.
 - Orbiting shows real depth.
 - Auto-rotation works and can be disabled.
 - If SVG parsing fails for real character assets, stop and re-plan.
@@ -371,6 +386,7 @@ Stop after visual verification. PM should verify:
    - preset name
    - preset category
    - dynamic param controls from schema
+   - visual treatment that follows the current Studio panel style
 
 3. Implement dynamic controls:
    - number -> slider plus value display
