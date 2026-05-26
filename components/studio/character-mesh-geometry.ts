@@ -1,5 +1,6 @@
 import {
   Box3,
+  BufferAttribute,
   ExtrudeGeometry,
   Vector3,
   type BufferGeometry,
@@ -11,6 +12,7 @@ export const MIN_CHARACTER_EXTRUSION_DEPTH = 0.01
 type CreateCharacterMeshGeometriesOptions = {
   shapes: Shape[]
   extrusionDepth: number
+  thickness?: number
 }
 
 export type CharacterMeshGeometryResult = {
@@ -28,6 +30,7 @@ export function clampCharacterExtrusionDepth(extrusionDepth: number) {
 export function createCharacterMeshGeometries({
   shapes,
   extrusionDepth,
+  thickness = 0,
 }: CreateCharacterMeshGeometriesOptions): CharacterMeshGeometryResult {
   if (shapes.length === 0) {
     throw new Error('Character SVG contains no drawable SVG shapes.')
@@ -56,12 +59,23 @@ export function createCharacterMeshGeometries({
 
     for (const geometry of geometries) {
       normalizeGeometry(geometry, sourceCenter, xyScale, depth)
+      applyCharacterMeshThickness(geometry, thickness)
     }
 
     const normalizedBounds = getCombinedBounds(geometries)
     const boundsMin = roundVector(normalizedBounds.min)
     const boundsMax = roundVector(normalizedBounds.max)
     const shaderBounds = getAspectPreservingShaderBounds(boundsMin, boundsMax)
+
+    for (const geometry of geometries) {
+      assignCharacterMeshUvs(
+        geometry,
+        shaderBounds.min,
+        shaderBounds.max,
+        boundsMin,
+        boundsMax,
+      )
+    }
 
     return {
       geometries,
@@ -74,6 +88,89 @@ export function createCharacterMeshGeometries({
     disposeGeometries(geometries)
     throw error
   }
+}
+
+function applyCharacterMeshThickness(
+  geometry: BufferGeometry,
+  thickness: number,
+) {
+  if (thickness === 0) {
+    return
+  }
+
+  const position = geometry.attributes.position
+  const normal = geometry.attributes.normal
+  const sideNormals = new Map<string, { x: number; y: number; count: number }>()
+
+  for (let index = 0; index < position.count; index += 1) {
+    if (Math.abs(normal.getZ(index)) >= 0.5) {
+      continue
+    }
+
+    const key = xyKey(position.getX(index), position.getY(index))
+    const current = sideNormals.get(key) ?? { x: 0, y: 0, count: 0 }
+    current.x += normal.getX(index)
+    current.y += normal.getY(index)
+    current.count += 1
+    sideNormals.set(key, current)
+  }
+
+  for (let index = 0; index < position.count; index += 1) {
+    const key = xyKey(position.getX(index), position.getY(index))
+    const offset = sideNormals.get(key)
+
+    if (!offset || offset.count === 0) {
+      continue
+    }
+
+    const length = Math.hypot(offset.x, offset.y) || 1
+
+    position.setXY(
+      index,
+      position.getX(index) - (offset.x / length) * thickness,
+      position.getY(index) - (offset.y / length) * thickness,
+    )
+  }
+
+  position.needsUpdate = true
+  geometry.computeVertexNormals()
+  geometry.computeBoundingBox()
+  geometry.computeBoundingSphere()
+}
+
+function assignCharacterMeshUvs(
+  geometry: BufferGeometry,
+  shaderBoundsMin: Vector3,
+  shaderBoundsMax: Vector3,
+  boundsMin: Vector3,
+  boundsMax: Vector3,
+) {
+  const position = geometry.attributes.position
+  const normal = geometry.attributes.normal
+  const boundsSize = shaderBoundsMax.clone().sub(shaderBoundsMin)
+  const zSize = Math.max(boundsMax.z - boundsMin.z, 0.0001)
+  const uvs = new Float32Array(position.count * 2)
+
+  for (let index = 0; index < position.count; index += 1) {
+    const x = position.getX(index)
+    const y = position.getY(index)
+    const z = position.getZ(index)
+    const uvIndex = index * 2
+
+    if (Math.abs(normal.getZ(index)) >= 0.5) {
+      uvs[uvIndex] = normalizeUv(x, shaderBoundsMin.x, boundsSize.x)
+      uvs[uvIndex + 1] = normalizeUv(y, shaderBoundsMin.y, boundsSize.y)
+      continue
+    }
+
+    const followsY = Math.abs(normal.getX(index)) >= Math.abs(normal.getY(index))
+    uvs[uvIndex] = followsY
+      ? normalizeUv(y, shaderBoundsMin.y, boundsSize.y)
+      : normalizeUv(x, shaderBoundsMin.x, boundsSize.x)
+    uvs[uvIndex + 1] = normalizeUv(z, boundsMin.z, zSize)
+  }
+
+  geometry.setAttribute('uv', new BufferAttribute(uvs, 2))
 }
 
 function normalizeGeometry(
@@ -154,4 +251,12 @@ function roundVector(vector: Vector3) {
 
 function roundNumber(value: number) {
   return Math.round(value * 1_000_000) / 1_000_000
+}
+
+function normalizeUv(value: number, min: number, size: number) {
+  return Math.min(1, Math.max(0, (value - min) / Math.max(size, 0.0001)))
+}
+
+function xyKey(x: number, y: number) {
+  return `${roundNumber(x)}:${roundNumber(y)}`
 }

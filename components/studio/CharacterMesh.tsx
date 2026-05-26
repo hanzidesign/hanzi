@@ -29,6 +29,7 @@ type CharacterMeshProps = {
   params: ShaderParamValues
   mesh: {
     extrusionDepth: number
+    thickness: number
     rotation: { x: number; y: number; z: number }
     scale: number
     position: { x: number; y: number }
@@ -137,7 +138,11 @@ export default function CharacterMesh({
     }
 
     try {
-      const nextResult = createGeometryResult(svgText, mesh.extrusionDepth)
+      const nextResult = createGeometryResult(
+        svgText,
+        mesh.extrusionDepth,
+        mesh.thickness,
+      )
       replaceGeometryResult(nextResult, resultRef, setGeometryResult)
       onStatusChange(IDLE_CHARACTER_MESH_STATUS)
     } catch (error) {
@@ -149,7 +154,7 @@ export default function CharacterMesh({
             : 'Unable to build character mesh.',
       })
     }
-  }, [mesh.extrusionDepth, onStatusChange, svgText])
+  }, [mesh.extrusionDepth, mesh.thickness, onStatusChange, svgText])
 
   useEffect(() => {
     return () => {
@@ -212,13 +217,18 @@ export default function CharacterMesh({
   )
 }
 
-function createGeometryResult(svgText: string, extrusionDepth: number) {
+function createGeometryResult(
+  svgText: string,
+  extrusionDepth: number,
+  thickness: number,
+) {
   const svg = new SVGLoader().parse(svgText)
   const shapes = svg.paths.flatMap((path) => SVGLoader.createShapes(path))
 
   return createCharacterMeshGeometries({
     shapes,
     extrusionDepth,
+    thickness,
   })
 }
 

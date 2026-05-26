@@ -2,17 +2,15 @@
 
 import _ from 'lodash'
 import { Box, Button, ScrollArea, SimpleGrid, Switch, Text } from '@mantine/core'
-import { chars, parseCharUrl, sortedChars } from '@/assets/chars'
+import { chars, sortedChars } from '@/assets/chars'
 import { countries } from '@/assets/list'
-import { useStudio } from '@/app/studio/studio-context'
+import { useStudioStore } from '@/app/studio/studio-store'
 import { PanelBox } from '@/components/studio/PanelPrimitives'
 
 export default function CharacterPanel() {
-  const {
-    state: { charUrl, isTc },
-    setCharacter,
-  } = useStudio()
-  const [country, year] = parseCharUrl(charUrl)
+  const character = useStudioStore((store) => store.character)
+  const setCharacter = useStudioStore((store) => store.setCharacter)
+  const { country, year, isTc } = character
   const list = isTc ? sortedChars.tc : sortedChars.sc
 
   const handleChange = (nextCountry: string, nextYear: string, nextIsTc = isTc) => {

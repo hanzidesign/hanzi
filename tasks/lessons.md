@@ -35,3 +35,10 @@
 - When replacing Studio panels, preserve the current panel visual style unless the user explicitly asks for a new design system.
 - For Phase 4 Character Mesh loading, loading and mesh-error text belong at the bottom of the parent div that wraps `<Center>` in `StudioCanvas`, not inside `ShaderCanvas`; keep the last valid mesh visible during transitions.
 - Shader and displacement map sampling should preserve a 1:1 ratio; use aspect-preserving mesh-local UVs instead of stretching effects across non-square character bounds.
+
+## 2026-05-27
+
+- When the user explicitly asks to ask all planning/grill questions at once, batch the unresolved questions in one pass with recommended answers instead of defaulting to one-question-at-a-time pacing.
+- Phase 5 Mesh controls need a separate Character Mesh thickness/weight control in addition to extrusion depth; do not treat z-depth as the only "thickness" dimension.
+- Phase 5 Displacement Map selection must support built-in patterns and uploaded PNG/JPG/JPEG images under 5MB; do not remove upload from the displacement workflow.
+- Studio control panels should allow clicking the active accordion header to collapse it; preserve `null` as the collapsed active-panel state instead of coercing it to another panel.

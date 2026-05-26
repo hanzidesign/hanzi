@@ -4,7 +4,7 @@ import { useState } from 'react'
 import _ from 'lodash'
 import { AspectRatio, Center, Text } from '@mantine/core'
 import { meaning, parseCharUrl } from '@/assets/chars'
-import { useStudio } from '@/app/studio/studio-context'
+import { getCharacterDisplayState, useStudioStore } from '@/app/studio/studio-store'
 import {
   IDLE_CHARACTER_MESH_STATUS,
   type CharacterMeshStatus,
@@ -12,16 +12,17 @@ import {
 import ShaderCanvas from '@/components/studio/ShaderCanvas'
 
 export default function StudioCanvas() {
-  const {
-    state: { bgColor, charUrl, textColor },
-  } = useStudio()
+  const character = useStudioStore((store) => store.character)
+  const bgColor = useStudioStore((store) => store.view.backgroundColor)
   const [meshStatus, setMeshStatus] = useState<CharacterMeshStatus>(
     IDLE_CHARACTER_MESH_STATUS,
   )
+  const { charUrl } = getCharacterDisplayState(character)
   const [country, year] = parseCharUrl(charUrl)
   const translation = _.get(meaning, [country, year])
   const meshStatusText =
     meshStatus.state === 'idle' ? null : meshStatus.message
+  const statusColor = meshStatus.state === 'error' ? 'red.6' : 'dark.7'
 
   return (
     <div
@@ -36,7 +37,7 @@ export default function StudioCanvas() {
           <ShaderCanvas onMeshStatusChange={setMeshStatus} />
         </AspectRatio>
         {translation ? (
-          <Text fz={14} c={textColor} className="absolute-horizontal" top={20}>
+          <Text fz={14} c="dark.7" className="absolute-horizontal" top={20}>
             {translation}
           </Text>
         ) : null}
@@ -44,7 +45,7 @@ export default function StudioCanvas() {
       {meshStatusText ? (
         <Text
           fz={13}
-          c={meshStatus.state === 'error' ? 'red.6' : textColor}
+          c={statusColor}
           ta="center"
           pos="absolute"
           bottom={16}

@@ -25,11 +25,21 @@ export const DEFAULT_EFFECT_STATE = {
 }
 
 export const DEFAULT_VIEW_STATE = {
-  activePanel: 'character' as StudioActivePanel,
+  activePanel: 'character' as StudioActivePanel | null,
   backgroundColor: '#fff',
 }
 
 export type StudioActivePanel = 'character' | 'shader' | 'mesh' | 'displacement'
+
+export const DEFAULT_MESH_STATE = {
+  extrusionDepth: 0.18,
+  thickness: 0,
+  rotation: { x: 0, y: 0, z: 0 },
+  scale: 1,
+  position: { x: 0, y: 0 },
+  autoRotate: false,
+  autoRotateSpeed: 0.5,
+}
 
 export type StudioCharacterState = {
   country: string
@@ -45,6 +55,7 @@ export type StudioStoreState = {
   }
   mesh: {
     extrusionDepth: number
+    thickness: number
     rotation: { x: number; y: number; z: number }
     scale: number
     position: { x: number; y: number }
@@ -57,7 +68,7 @@ export type StudioStoreState = {
     bias: number
   }
   view: {
-    activePanel: StudioActivePanel
+    activePanel: StudioActivePanel | null
     backgroundColor: string
   }
   svgEffect: typeof DEFAULT_EFFECT_STATE
@@ -65,6 +76,7 @@ export type StudioStoreState = {
     svgData: string
     ptnData: string
     patternMode: 'source' | 'upload'
+    uploadedDisplacementImageData: string
   }
 }
 
@@ -74,10 +86,13 @@ export type StudioStoreActions = {
   resetParamsForPreset: (presetId?: string) => void
   updateParam: (paramId: string, value: ShaderParamValue) => void
   setMeshControl: (partial: Partial<StudioStoreState['mesh']>) => void
+  resetMeshControls: () => void
   setDisplacementControl: (
     partial: Partial<StudioStoreState['displacement']>,
   ) => void
-  setActivePanel: (activePanel: StudioActivePanel) => void
+  setUploadedDisplacementImageData: (dataUrl: string) => void
+  clearUploadedDisplacementImageData: () => void
+  setActivePanel: (activePanel: StudioActivePanel | null) => void
   setBackgroundColor: (backgroundColor: string) => void
   setSvgData: (svgData: string) => void
   setPatternSeed: (seed: number) => void
@@ -155,6 +170,9 @@ export function createStudioStore(storage?: StateStorage) {
         setMeshControl: (partial) => {
           set({ mesh: { ...get().mesh, ...partial } })
         },
+        resetMeshControls: () => {
+          set({ mesh: createDefaultMeshState() })
+        },
         setDisplacementControl: (partial) => {
           const nextDisplacement = { ...get().displacement, ...partial }
 
@@ -162,7 +180,29 @@ export function createStudioStore(storage?: StateStorage) {
             nextDisplacement.patternUrl = get().displacement.patternUrl
           }
 
-          set({ displacement: nextDisplacement })
+          set({
+            displacement: nextDisplacement,
+            runtime:
+              typeof partial.patternUrl === 'string'
+                ? { ...get().runtime, uploadedDisplacementImageData: '' }
+                : get().runtime,
+          })
+        },
+        setUploadedDisplacementImageData: (dataUrl) => {
+          set({
+            runtime: {
+              ...get().runtime,
+              uploadedDisplacementImageData: dataUrl,
+            },
+          })
+        },
+        clearUploadedDisplacementImageData: () => {
+          set({
+            runtime: {
+              ...get().runtime,
+              uploadedDisplacementImageData: '',
+            },
+          })
         },
         setActivePanel: (activePanel) => {
           set({
@@ -185,7 +225,12 @@ export function createStudioStore(storage?: StateStorage) {
           set({
             displacement: { ...get().displacement, patternUrl },
             svgEffect: { ...get().svgEffect, seed },
-            runtime: { ...get().runtime, ptnData: '', patternMode: 'source' },
+            runtime: {
+              ...get().runtime,
+              ptnData: '',
+              patternMode: 'source',
+              uploadedDisplacementImageData: '',
+            },
           })
         },
         setPatternUrl: (patternUrl) => {
@@ -202,7 +247,12 @@ export function createStudioStore(storage?: StateStorage) {
 
           set({
             displacement: { ...get().displacement, patternUrl },
-            runtime: { ...get().runtime, ptnData: '', patternMode: 'source' },
+            runtime: {
+              ...get().runtime,
+              ptnData: '',
+              patternMode: 'source',
+              uploadedDisplacementImageData: '',
+            },
           })
         },
         setPatternData: (ptnData) => {
@@ -294,14 +344,7 @@ export function createInitialStudioStoreState(): StudioStoreState {
       selectedPresetId: defaultPreset.id,
       currentParams: createDefaultParams(defaultPreset),
     },
-    mesh: {
-      extrusionDepth: 0.18,
-      rotation: { x: 0, y: 0, z: 0 },
-      scale: 1,
-      position: { x: 0, y: 0 },
-      autoRotate: false,
-      autoRotateSpeed: 0.5,
-    },
+    mesh: createDefaultMeshState(),
     displacement: {
       patternUrl: toPatternUrl(DEFAULT_EFFECT_STATE.seed),
       strength: 0,
@@ -313,6 +356,7 @@ export function createInitialStudioStoreState(): StudioStoreState {
       svgData: '',
       ptnData: '',
       patternMode: 'source',
+      uploadedDisplacementImageData: '',
     },
   }
 }
@@ -435,11 +479,20 @@ function sanitizeMeshState(
 
   return {
     extrusionDepth: readNumber(value.extrusionDepth, fallback.extrusionDepth),
+    thickness: readNumber(value.thickness, fallback.thickness),
     rotation: sanitizeVector3(value.rotation, fallback.rotation),
     scale: readNumber(value.scale, fallback.scale),
     position: sanitizeVector2(value.position, fallback.position),
     autoRotate: readBoolean(value.autoRotate, fallback.autoRotate),
     autoRotateSpeed: readNumber(value.autoRotateSpeed, fallback.autoRotateSpeed),
+  }
+}
+
+function createDefaultMeshState(): StudioStoreState['mesh'] {
+  return {
+    ...DEFAULT_MESH_STATE,
+    rotation: { ...DEFAULT_MESH_STATE.rotation },
+    position: { ...DEFAULT_MESH_STATE.position },
   }
 }
 
@@ -472,9 +525,12 @@ function sanitizeViewState(
   }
 
   return {
-    activePanel: isStudioActivePanel(value.activePanel)
-      ? value.activePanel
-      : fallback.activePanel,
+    activePanel:
+      value.activePanel === null
+        ? null
+        : isStudioActivePanel(value.activePanel)
+          ? value.activePanel
+          : fallback.activePanel,
     backgroundColor:
       typeof value.backgroundColor === 'string'
         ? value.backgroundColor
@@ -536,7 +592,11 @@ function sanitizeVector3(
   }
 }
 
-function activePanelFromPanel(panel: string | null): StudioActivePanel {
+function activePanelFromPanel(panel: string | null): StudioActivePanel | null {
+  if (panel === null) {
+    return null
+  }
+
   if (panel === '0') {
     return 'character'
   }
@@ -548,7 +608,11 @@ function activePanelFromPanel(panel: string | null): StudioActivePanel {
   return 'shader'
 }
 
-function panelFromActivePanel(activePanel: StudioActivePanel) {
+function panelFromActivePanel(activePanel: StudioActivePanel | null) {
+  if (activePanel === null) {
+    return null
+  }
+
   if (activePanel === 'character') {
     return '0'
   }

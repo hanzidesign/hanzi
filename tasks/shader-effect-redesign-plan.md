@@ -8,8 +8,8 @@ Replace the current SVG filter effect playground with a shader-based 3D characte
 
 ## Non-goals
 
-- Do not implement export, download, upload, mint, queue, NFT, auth, backend routes, database storage, or AI prompt generation.
-- Do not reintroduce Web3, OpenAI, DALL-E, upload, or server-side conversion paths.
+- Do not implement export, download, remote upload/storage, mint, queue, NFT, auth, backend routes, database storage, or AI prompt generation.
+- Do not reintroduce Web3, OpenAI, DALL-E, remote upload/storage, or server-side conversion paths.
 - Do not add source/license metadata to shader preset schema in v1.
 - Do not hard-code one control panel per shader.
 - Do not persist runtime objects such as Three.js textures, geometries, materials, compile errors, or loaded SVG text.
@@ -239,6 +239,7 @@ type StudioState = {
   }
   mesh: {
     extrusionDepth: number
+    thickness: number
     rotation: { x: number; y: number; z: number }
     scale: number
     position: { x: number; y: number }
@@ -256,6 +257,8 @@ type StudioState = {
   }
 }
 ```
+
+Uploaded displacement image data is runtime-only and must be excluded from the persisted state payload.
 
 Actions:
 
@@ -308,6 +311,8 @@ Loading and failure behavior:
 Extrusion defaults:
 
 - Expose extrusion depth as a global mesh control.
+- Expose character mesh thickness/weight as a separate global mesh control from extrusion depth.
+- Changing character mesh thickness must regenerate the **Character Mesh** geometry and recompute its UVs, shader bounds, and displacement sampling frame from the updated planar shape. Do not implement thickness as a shader-only scale or post-transform.
 - Use fixed geometry options first. Do not expose geometry-detail controls in v1 unless displacement quality is unacceptable.
 - Use `bevelEnabled: false` initially unless visual QA proves bevel is needed.
 
@@ -330,6 +335,7 @@ Use `@react-three/fiber`:
 - Update `u_resolution` from canvas size.
 - Show character-mesh loading and error status at the bottom of the parent div that wraps `<Center>` in `StudioCanvas`, outside `ShaderCanvas`.
 - Apply global mesh transform controls to the character group:
+  - character mesh thickness/weight
   - XYZ rotation
   - uniform scale
   - XY position
@@ -345,16 +351,17 @@ Shader stage behavior:
 - Preserve optional `vertexShader` support in the preset contract for displacement or deformation presets.
 - Default shared vertex shader computes normalized object-space `v_uv`.
 - Default shared vertex shader keeps `v_uv` aspect-preserving so shader effects and displacement map sampling do not stretch.
+- Character mesh UV generation must update when character mesh thickness changes. Front/back UVs should stay aspect-preserving; side-wall UVs need their own non-stretched mapping instead of reusing the front/back XY projection.
 - Default shared vertex shader applies global displacement-map geometry displacement.
 - Fragment shaders can opt into image distortion by using the global displacement map uniforms when `usesDisplacementMap` is true.
 
 ## Displacement Maps
 
-Reuse existing `public/images/patterns` images.
+Reuse existing `public/images/patterns` images and allow local uploaded PNG/JPG/JPEG images under 5MB.
 
 Controls:
 
-- pattern image
+- built-in pattern image or local uploaded displacement image
 - displacement strength
 - displacement bias
 
@@ -373,6 +380,7 @@ Panel behavior:
 Implementation detail:
 
 - Load public pattern assets directly as Three textures.
+- Convert accepted local uploaded displacement images to runtime texture input only; do not persist uploaded image data in localStorage.
 - Do not reuse the old SVG filter `ptnUrl -> ptnData -> feImage` path for WebGL textures.
 
 ## Error Handling
@@ -396,8 +404,8 @@ Studio panels:
 
 - `Character`: existing character SVG preset selection.
 - `Shader`: preset selector, preset name, category, and schema-driven param controls.
-- `Mesh`: extrusion depth, rotation, scale, position, auto-rotate, auto-rotate speed, optional background color.
-- `Displacement`: pattern image selector, strength, bias, and selected-preset image-distortion support status.
+- `Mesh`: extrusion depth, character mesh thickness/weight, rotation, scale, position, auto-rotate, auto-rotate speed, optional background color.
+- `Displacement`: built-in pattern selector, uploaded PNG/JPG/JPEG image support under 5MB, strength, bias, and selected-preset image-distortion support status.
 
 New panels should preserve the current Studio panel style while changing the control model.
 
@@ -428,12 +436,13 @@ Browser visual verification:
 3. Verify the WebGL preview is nonblank.
 4. Verify character selection changes the 3D mesh.
 5. Verify shader preset switching updates the material and resets only preset params.
-6. Verify mesh controls affect extrusion, rotation, scale, position, and auto-rotation.
+6. Verify mesh controls affect extrusion, character mesh thickness/weight, rotation, scale, position, and auto-rotation.
 7. Verify displacement pattern/strength/bias visibly affects the mesh.
-8. Verify the Displacement panel indicates when the selected shader does not use image distortion.
-9. Verify OrbitControls inspect the mesh without mutating editor state.
-10. Verify refresh preserves safe editor state.
-11. Verify production build still succeeds after `.glsl` import configuration.
+8. Verify uploaded PNG/JPG/JPEG displacement images under 5MB are accepted, larger/unsupported files are rejected, and uploaded image data is not persisted.
+9. Verify the Displacement panel indicates when the selected shader does not use image distortion.
+10. Verify OrbitControls inspect the mesh without mutating editor state.
+11. Verify refresh preserves safe editor state.
+12. Verify production build still succeeds after `.glsl` import configuration.
 
 Focused unit tests:
 
@@ -454,7 +463,7 @@ Focused unit tests:
 6. Build `ShaderCanvas` and basic Three scene with a placeholder mesh.
 7. Implement SVG parsing into grouped extruded meshes.
 8. Add shared material, common uniforms, `useFrame` updates, and preset switching.
-9. Add global mesh controls.
+9. Add global mesh controls, including extrusion depth and character mesh thickness/weight.
 10. Add displacement map texture loading and geometry displacement.
 11. Add schema-driven `ShaderPanel`.
 12. Split controls into Character, Shader, Mesh, and Displacement panels.

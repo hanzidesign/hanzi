@@ -15,7 +15,7 @@
 - Work phase by phase. Do not start the next phase until the checkpoint for the current phase is satisfied.
 - After each checkpoint, report changed files, verification commands, failures, and visual status.
 - Stop and re-plan if a stop trigger from `tasks/shader-effect-redesign-plan.md` occurs.
-- Keep changes scoped to the shader redesign. Do not reintroduce export, upload, mint, queue, NFT, OpenAI, DALL-E, backend routes, auth, or database storage.
+- Keep changes scoped to the shader redesign. Do not reintroduce export, remote upload/storage, mint, queue, NFT, OpenAI, DALL-E, backend routes, auth, or database storage.
 - Use pnpm for all dependency and script commands.
 - Preserve `/` as the introduction page and `/studio` as the editor route.
 - Do not use `any`. Avoid unsafe casts; if one is unavoidable, document why in the checkpoint report.
@@ -181,8 +181,8 @@ Stop after registry verification. PM should verify:
    - selected character
    - selected shader preset id
    - complete current shader params
-   - mesh controls
-   - displacement controls
+   - mesh controls, including extrusion depth and character mesh thickness/weight
+   - displacement controls, including built-in pattern selection and session-only uploaded image data
    - active panel
    - optional view/background color
 
@@ -202,7 +202,7 @@ Stop after registry verification. PM should verify:
    hanzi-studio-shader-editor-v1
    ```
 
-4. Persist only serializable editor state.
+4. Persist only serializable editor choices. Uploaded displacement image data is session-only and must be excluded from localStorage.
 
 5. Add hydration/sanitization behavior:
    - missing preset id resets only shader preset and params
@@ -396,6 +396,8 @@ Stop after visual verification. PM should verify:
 
 4. Add `MeshPanel`:
    - extrusion depth
+   - character mesh thickness/weight
+   - geometry/UV regeneration when character mesh thickness changes
    - rotation x/y/z
    - uniform scale
    - position x/y
@@ -405,6 +407,7 @@ Stop after visual verification. PM should verify:
 
 5. Add `DisplacementPanel`:
    - pattern image selector from `public/images/patterns`
+   - uploaded PNG/JPG/JPEG displacement image support under 5MB
    - displacement strength
    - displacement bias
    - status text or indicator when current shader preset does not use image distortion
@@ -431,7 +434,10 @@ Stop after UI verification. PM should verify:
 - Panels are split into Character, Shader, Mesh, and Displacement.
 - Shader controls are schema-driven, not hard-coded per shader.
 - Switching shader presets resets only preset params.
+- Mesh controls include both extrusion depth and character mesh thickness/weight.
+- Character mesh thickness changes recompute geometry, UVs, shader bounds, and the displacement sampling frame.
 - Mesh and displacement settings persist across preset switches.
+- Uploaded displacement images accept only PNG/JPG/JPEG under 5MB and are not persisted.
 - StylePanel behavior is gone except optional view background color.
 
 ## Phase 6: Displacement Map Behavior
@@ -537,7 +543,9 @@ Stop after visual verification. PM should verify:
     - preset switching
     - schema-driven controls
     - mesh controls
+    - character mesh thickness/weight control
     - displacement controls
+    - uploaded displacement image validation
     - refresh persistence
     - orbit inspection
     - error overlay if a deliberately broken local shader is temporarily introduced and then removed
@@ -550,7 +558,7 @@ Stop after final verification. PM should verify:
 - The implementation follows `tasks/shader-effect-redesign-plan.md`.
 - The old SVG filter playground is no longer the active preview path.
 - There are no hard-coded shader-specific control panels.
-- No out-of-scope export/upload/mint/backend/AI features were added.
+- No out-of-scope export/remote-upload/mint/backend/AI features were added.
 - Final verification commands and browser visual checks are documented in the implementation report.
 
 ## Final Handoff For Dev

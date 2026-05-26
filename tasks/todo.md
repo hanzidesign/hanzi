@@ -187,6 +187,61 @@ Shader redesign phased implementation plan: `tasks/shader-effect-redesign-phased
 - Verification: focused `pnpm vitest run loaders/glsl-source-loader.test.ts components/studio/character-mesh-geometry.test.ts components/studio/shader-material.test.ts components/studio/shader-canvas-math.test.ts` passed with 4 files and 14 tests; `pnpm test` passed with 8 files and 39 tests; `pnpm exec tsc --noEmit` passed; `pnpm lint` passed; `pnpm build` passed with Next 16.2.6 Turbopack.
 - Browser smoke: desktop 1280x720 and mobile 390x844 rendered nonblank WebGL character canvases with visible extruded side depth, changed canvas pixel hashes after drag, showed no loading/error status after successful loads, preserved selection after refresh, and produced no shader `vertexShader`/`fragmentShader` undefined warnings. Remaining warnings were the pre-existing Three clock deprecation and a Next image LCP warning for `/images/logo.svg`.
 
+## Phase 5 Grill Session: Panels And Schema-Driven Controls
+
+- [x] Review current lessons, glossary, Phase 5 plan, and existing Studio panel/store code before asking questions.
+- [x] Resolve panel composition, visual style, dynamic control behavior, displacement boundary, background-color placement, reset behavior, tests, and UI verification.
+- [x] Grill unresolved Phase 5 decisions in one batched pass against `CONTEXT.md` and the current code.
+- [x] Update `CONTEXT.md` inline only if Phase 5 changes domain language or relationships.
+- [x] Add a Phase 5 grill review note with decisions, open questions, and verification expectations.
+
+### Phase 5 Grill Notes
+
+- Resolved: remove user-controlled `textColor` entirely. Keep only `view.backgroundColor` as a compact background control in `MeshPanel`; render the translation label with a fixed readable theme color instead of preserving old character/text styling controls.
+- Resolved: use semantic accordion values directly: `character`, `shader`, `mesh`, and `displacement`.
+- Resolved: new Phase 5 panels should read/write `useStudioStore` directly with narrow selectors instead of going through the old `useStudio()` compatibility wrapper.
+- Resolved: preserve the current accordion and `PanelBox` visual treatment; replace the control model without redesigning the sidebar.
+- Resolved: `ShaderPanel` has one Mantine preset selector at the top, displays category as secondary text, and renders all params from schema.
+- Resolved: preset switching resets only `shader.currentParams`; it preserves character, mesh, displacement, background, and active panel.
+- Resolved: number params use a slider plus compact value display; color params use `ColorInput`; boolean params use `Switch`; select params use `Select`.
+- Resolved: add a separate Character Mesh thickness/weight control in `MeshPanel` in addition to extrusion depth. Treat it as a planar character-shape thickness control unless implementation discovery proves the SVG offset approach needs re-planning.
+- Resolved: changing character mesh thickness must regenerate the Character Mesh geometry and recompute UVs/shader bounds from the updated shape. Do not implement thickness as a shader-only scale or post-transform.
+- Resolved: `MeshPanel` includes a small mesh-only reset and a compact `view.backgroundColor` control under a View subsection.
+- Resolved: `DisplacementPanel` supports built-in patterns and uploaded PNG/JPG/JPEG images under 5MB. Uploaded image data remains session-only and must not be persisted to localStorage.
+- Resolved: keep global displacement controls visible and show a neutral selected-preset image-distortion status line. Phase 5 exposes controls; Phase 6 owns full texture loading and visible displacement behavior.
+- Resolved: remove `EffectPanel.tsx` and `StylePanel.tsx` after replacements are connected. Keep broader compatibility-state cleanup for the later cleanup phase if removing it makes Phase 5 too broad.
+- Resolved: verification should include desktop/mobile browser smoke for all four panels, shader preset visual change, mesh controls, background control, upload validation, displacement persistence across preset switch, and refresh persistence.
+- Open renderer follow-up: current side-wall shader sampling stretches because `v_uv` is derived from object-space XY in the shared vertex shader. Recommended direction is a custom extruded-character UV contract or triplanar shader sampling before Phase 6 displacement QA, not a heavyweight automatic unwrap dependency by default.
+
+## Phase 5 Execution: Panels And Schema-Driven Controls
+
+- [x] Add failing tests for mesh thickness, session-only displacement uploads, upload validation, and geometry/UV updates.
+- [x] Add `ShaderPanel` with preset selector and schema-driven controls.
+- [x] Add `MeshPanel` with extrusion depth, character mesh thickness, transform, auto-rotation, reset, and background controls.
+- [x] Add `DisplacementPanel` with built-in pattern thumbnails, PNG/JPG/JPEG upload validation under 5MB, strength, bias, and image-distortion status.
+- [x] Replace `StudioControls` with semantic Character, Shader, Mesh, and Displacement panels.
+- [x] Remove retired `EffectPanel.tsx` and `StylePanel.tsx`.
+- [x] Remove active user-controlled `textColor` usage from the WebGL Studio view.
+- [x] Run focused tests.
+- [x] Run full verification: `pnpm test`, `pnpm exec tsc --noEmit`, `pnpm lint`, and `pnpm build`.
+- [x] Run browser visual smoke for desktop/mobile panels, shader switch, mesh/background controls, upload validation, refresh persistence, and console errors.
+
+### Phase 5 Review - 2026-05-27
+
+- Added route-local store support for `mesh.thickness`, mesh-only reset, and runtime-only uploaded displacement image data.
+- Added character mesh thickness as a geometry-affecting control; changing thickness regenerates geometry and updates UVs, shader bounds, and displacement sampling bounds.
+- Switched the shared vertex shader to use generated geometry UVs for `v_uv`; front/back UVs are assigned from aspect-preserving planar coordinates, while side-wall UVs use depth-aware side mapping instead of the previous pure XY projection.
+- Replaced the old Effect/Style sidebar with Character, Shader, Mesh, and Displacement panels while preserving the existing accordion/PanelBox visual treatment.
+- Added schema-driven shader controls for number, color, boolean, and select params; preset switching resets only shader params.
+- Added built-in displacement map thumbnails plus local PNG/JPG/JPEG upload validation under 5MB. Uploaded image data stays in runtime state and is excluded from localStorage.
+- Removed active `textColor` control usage from the Studio view; background color now lives in `MeshPanel`.
+- Verification: focused `pnpm vitest run app/studio/studio-store.test.ts components/studio/character-mesh-geometry.test.ts components/studio/displacement-upload.test.ts shaders/registry.test.ts` passed with 4 files and 25 tests; `pnpm test` passed with 9 files and 45 tests; `pnpm exec tsc --noEmit` passed; `pnpm lint` passed; `pnpm build` passed with Next 16.2.6 Turbopack.
+- Browser smoke: desktop and mobile `/studio` rendered a nonblank WebGL canvas; all four panels opened; shader preset switching to Grid Pulse worked; Mesh panel exposed character mesh thickness and persisted background color; Displacement panel rejected GIF uploads, accepted PNG upload without persisting image data, survived refresh, and produced no page console errors. Screenshot pixel sampling on the canvas clip found 41 unique sampled colors and 42 non-white samples out of 400.
+
+### Phase 5 Follow-up - 2026-05-27
+
+- Resolved: clicking the currently open control-panel accordion header collapses the panel. Store and persisted state preserve `view.activePanel: null` for the collapsed state.
+
 ## Phase 0 Execution: Tooling And Shader Source Foundation
 
 - [x] Confirm execution location: work directly on existing `v2` branch checkout.

@@ -52,6 +52,7 @@ describe('studio store', () => {
     })
     expect(state.mesh).toMatchObject({
       extrusionDepth: expect.any(Number),
+      thickness: expect.any(Number),
       autoRotate: false,
     })
     expect(state.displacement.patternUrl).toBe('/images/patterns/000.jpg')
@@ -83,6 +84,54 @@ describe('studio store', () => {
       selectedPresetId: kaleidoscopePreset.id,
       currentParams: createDefaultParams(kaleidoscopePreset),
     })
+  })
+
+  it('allows the active control panel to collapse', () => {
+    const { storage, readPersistedState } = createMemoryStorage()
+    const store = createStudioStore(storage)
+
+    store.getState().setActivePanel('shader')
+    store.getState().setActivePanel(null)
+
+    expect(store.getState().view.activePanel).toBeNull()
+    expect(store.getState().svgEffect.panel).toBeNull()
+    expect(readPersistedState().view.activePanel).toBeNull()
+  })
+
+  it('resets only mesh controls without changing shader, displacement, or view state', () => {
+    const { storage } = createMemoryStorage()
+    const store = createStudioStore(storage)
+    const initial = store.getState()
+
+    store.getState().setMeshControl({
+      extrusionDepth: 0.4,
+      thickness: 0.18,
+      scale: 1.6,
+      autoRotate: true,
+    })
+    store.getState().setDisplacementControl({ strength: 0.35 })
+    store.getState().setBackgroundColor('#202020')
+    store.getState().resetMeshControls()
+
+    expect(store.getState().mesh).toEqual(initial.mesh)
+    expect(store.getState().displacement.strength).toBe(0.35)
+    expect(store.getState().view.backgroundColor).toBe('#202020')
+    expect(store.getState().shader).toEqual(initial.shader)
+  })
+
+  it('keeps uploaded displacement image data in runtime state only', () => {
+    const { storage, readPersistedState } = createMemoryStorage()
+    const store = createStudioStore(storage)
+
+    store
+      .getState()
+      .setUploadedDisplacementImageData('data:image/png;base64,upload')
+
+    expect(store.getState().runtime.uploadedDisplacementImageData).toBe(
+      'data:image/png;base64,upload',
+    )
+    expect(readPersistedState().runtime).toBeUndefined()
+    expect(JSON.stringify(readPersistedState())).not.toContain('upload')
   })
 
   it('sanitizes stale persisted shader params without wiping other editor work', () => {

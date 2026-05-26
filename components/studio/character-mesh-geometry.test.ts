@@ -52,6 +52,45 @@ describe('character mesh geometry helpers', () => {
     expect(result.boundsMax.z).toBeCloseTo(MIN_CHARACTER_EXTRUSION_DEPTH / 2)
   })
 
+  it('applies character mesh thickness as geometry, bounds, and UV-affecting planar weight', () => {
+    const normal = createCharacterMeshGeometries({
+      shapes: [rectangleShape(500, 500)],
+      extrusionDepth: 0.2,
+      thickness: 0,
+    })
+    const thicker = createCharacterMeshGeometries({
+      shapes: [rectangleShape(500, 500)],
+      extrusionDepth: 0.2,
+      thickness: 0.12,
+    })
+    const normalUv = normal.geometries[0].attributes.uv.array
+    const thickerUv = thicker.geometries[0].attributes.uv.array
+
+    expect(thicker.boundsMin.x).toBeLessThan(normal.boundsMin.x)
+    expect(thicker.boundsMax.x).toBeGreaterThan(normal.boundsMax.x)
+    expect(Array.from(thickerUv)).not.toEqual(Array.from(normalUv))
+  })
+
+  it('assigns side-wall UVs with depth variation instead of front-face XY projection', () => {
+    const result = createCharacterMeshGeometries({
+      shapes: [rectangleShape(500, 500)],
+      extrusionDepth: 0.2,
+    })
+    const geometry = result.geometries[0]
+    const position = geometry.attributes.position
+    const normal = geometry.attributes.normal
+    const uv = geometry.attributes.uv
+    const sideDepthUvs = new Set<number>()
+
+    for (let index = 0; index < position.count; index += 1) {
+      if (Math.abs(normal.getZ(index)) < 0.5) {
+        sideDepthUvs.add(Number(uv.getY(index).toFixed(4)))
+      }
+    }
+
+    expect(sideDepthUvs.size).toBeGreaterThan(1)
+  })
+
   it('rejects empty SVG shape input instead of creating a blank mesh', () => {
     expect(() =>
       createCharacterMeshGeometries({
