@@ -91,6 +91,38 @@ describe('character mesh geometry helpers', () => {
     expect(sideDepthUvs.size).toBeGreaterThan(1)
   })
 
+  it('increases geometry density when displacement subdivision is raised', () => {
+    const base = createCharacterMeshGeometries({
+      shapes: [rectangleShape(500, 500)],
+      extrusionDepth: 0.2,
+      displacementSubdivisionLevel: 0,
+    })
+    const subdivided = createCharacterMeshGeometries({
+      shapes: [rectangleShape(500, 500)],
+      extrusionDepth: 0.2,
+      displacementSubdivisionLevel: 2,
+    })
+
+    expect(subdivided.geometries[0].attributes.position.count).toBeGreaterThan(
+      base.geometries[0].attributes.position.count,
+    )
+    expect(subdivided.boundsMin).toEqual(base.boundsMin)
+    expect(subdivided.boundsMax).toEqual(base.boundsMax)
+  })
+
+  it('preserves displacement UV sampling after subdivision', () => {
+    const result = createCharacterMeshGeometries({
+      shapes: [rectangleShape(500, 500)],
+      extrusionDepth: 0.2,
+      displacementSubdivisionLevel: 2,
+    })
+    const geometry = result.geometries[0]
+
+    expect(geometry.attributes.uv.count).toBe(
+      geometry.attributes.position.count,
+    )
+  })
+
   it('rejects empty SVG shape input instead of creating a blank mesh', () => {
     expect(() =>
       createCharacterMeshGeometries({

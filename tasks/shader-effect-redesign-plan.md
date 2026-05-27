@@ -1,6 +1,10 @@
 # Shader Effect Redesign Implementation Plan
 
-Status: planning only. Do not implement application code until explicit implementation approval.
+> **Superseded:** This 3D Character Mesh plan is superseded by `tasks/v2.1/README.md`, which defines the active Character Surface and Morph Stack direction.
+
+> **Do not implement from this file.** Keep it only as historical context for the earlier mesh-based direction.
+
+Status: superseded historical plan. The active implementation source is `tasks/v2.1/README.md`.
 
 ## Goal
 
@@ -23,7 +27,7 @@ Replace the current SVG filter effect playground with a shader-based 3D characte
 - The editor persists safe serializable settings locally so refresh does not discard work.
 - Global mesh controls are separate from shader preset params.
 - Global displacement controls are separate from shader preset params.
-- The same selected displacement map can drive both geometry displacement and shader image distortion when a preset opts in.
+- The selected displacement map drives mesh-shape displacement only; shader color and shader pattern sampling stay unchanged.
 
 ## Dependencies And Tooling
 
@@ -353,7 +357,7 @@ Shader stage behavior:
 - Default shared vertex shader keeps `v_uv` aspect-preserving so shader effects and displacement map sampling do not stretch.
 - Character mesh UV generation must update when character mesh thickness changes. Front/back UVs should stay aspect-preserving; side-wall UVs need their own non-stretched mapping instead of reusing the front/back XY projection.
 - Default shared vertex shader applies global displacement-map geometry displacement.
-- Fragment shaders can opt into image distortion by using the global displacement map uniforms when `usesDisplacementMap` is true.
+- Fragment shaders must not use the displacement map for image/color distortion in v1.
 
 ## Displacement Maps
 
@@ -364,6 +368,7 @@ Controls:
 - built-in pattern image or local uploaded displacement image
 - displacement strength
 - displacement bias
+- displacement subdivision level
 
 Uniforms:
 
@@ -374,14 +379,25 @@ Uniforms:
 Panel behavior:
 
 - Always show global displacement controls.
-- Indicate when the selected shader preset does not use image-based shader distortion.
-- Mesh displacement remains global even when the fragment shader does not use the displacement map.
+- Present displacement controls as mesh-shape controls, not image-distortion controls.
+- Mesh displacement remains global and independent of the selected shader preset.
+- Selecting a different map should not visibly change the **Character Mesh** while Strength is `0`.
+- Uploaded images and built-in patterns must visibly affect mesh shape after Strength is raised.
+- Shader colors and shader pattern sampling stay unchanged by the displacement map.
 
 Implementation detail:
 
 - Load public pattern assets directly as Three textures.
 - Convert accepted local uploaded displacement images to runtime texture input only; do not persist uploaded image data in localStorage.
 - Do not reuse the old SVG filter `ptnUrl -> ptnData -> feImage` path for WebGL textures.
+- Validate persisted built-in pattern URLs against the available pattern asset list and fall back to `000.jpg` when invalid.
+- Derive displacement height from luminance with neutral-centered math, so neutral gray produces no movement before bias is applied.
+- Treat transparent uploaded PNG pixels as neutral height.
+- Fit non-square uploaded maps with center-cover behavior instead of stretching.
+- Do not add v1 map tiling.
+- Apply geometry displacement along front, back, and side normals.
+- Persist subdivision level as a displacement control and rebuild character mesh geometry when it changes.
+- Narrow Bias to `-0.5..0.5` when real texture displacement is wired.
 
 ## Error Handling
 
@@ -405,7 +421,7 @@ Studio panels:
 - `Character`: existing character SVG preset selection.
 - `Shader`: preset selector, preset name, category, and schema-driven param controls.
 - `Mesh`: extrusion depth, character mesh thickness/weight, rotation, scale, position, auto-rotate, auto-rotate speed, optional background color.
-- `Displacement`: built-in pattern selector, uploaded PNG/JPG/JPEG image support under 5MB, strength, bias, and selected-preset image-distortion support status.
+- `Displacement`: built-in pattern selector, uploaded PNG/JPG/JPEG image support under 5MB, strength, bias, subdivision level, and mesh-shape displacement status.
 
 New panels should preserve the current Studio panel style while changing the control model.
 
@@ -439,7 +455,7 @@ Browser visual verification:
 6. Verify mesh controls affect extrusion, character mesh thickness/weight, rotation, scale, position, and auto-rotation.
 7. Verify displacement pattern/strength/bias visibly affects the mesh.
 8. Verify uploaded PNG/JPG/JPEG displacement images under 5MB are accepted, larger/unsupported files are rejected, and uploaded image data is not persisted.
-9. Verify the Displacement panel indicates when the selected shader does not use image distortion.
+9. Verify the Displacement panel does not imply shader image distortion; controls describe mesh-shape displacement.
 10. Verify OrbitControls inspect the mesh without mutating editor state.
 11. Verify refresh preserves safe editor state.
 12. Verify production build still succeeds after `.glsl` import configuration.

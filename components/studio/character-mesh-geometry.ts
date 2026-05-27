@@ -1,22 +1,25 @@
 import {
   Box3,
   BufferAttribute,
+  BufferGeometry,
   ExtrudeGeometry,
   Vector3,
-  type BufferGeometry,
   type Shape,
 } from 'three'
 
 export const MIN_CHARACTER_EXTRUSION_DEPTH = 0.01
+export const MIN_DISPLACEMENT_SUBDIVISION_LEVEL = 0
+export const MAX_DISPLACEMENT_SUBDIVISION_LEVEL = 2
 
 type CreateCharacterMeshGeometriesOptions = {
   shapes: Shape[]
   extrusionDepth: number
   thickness?: number
+  displacementSubdivisionLevel?: number
 }
 
 export type CharacterMeshGeometryResult = {
-  geometries: ExtrudeGeometry[]
+  geometries: BufferGeometry[]
   boundsMin: Vector3
   boundsMax: Vector3
   shaderBoundsMin: Vector3
@@ -31,13 +34,14 @@ export function createCharacterMeshGeometries({
   shapes,
   extrusionDepth,
   thickness = 0,
+  displacementSubdivisionLevel = 0,
 }: CreateCharacterMeshGeometriesOptions): CharacterMeshGeometryResult {
   if (shapes.length === 0) {
     throw new Error('Character SVG contains no drawable SVG shapes.')
   }
 
   const depth = clampCharacterExtrusionDepth(extrusionDepth)
-  const geometries = shapes.map(
+  let geometries: BufferGeometry[] = shapes.map(
     (shape) =>
       new ExtrudeGeometry(shape, {
         depth,
@@ -61,6 +65,13 @@ export function createCharacterMeshGeometries({
       normalizeGeometry(geometry, sourceCenter, xyScale, depth)
       applyCharacterMeshThickness(geometry, thickness)
     }
+
+    geometries = geometries.map((geometry) =>
+      subdivideGeometryTriangles(
+        geometry,
+        sanitizeDisplacementSubdivisionLevel(displacementSubdivisionLevel),
+      ),
+    )
 
     const normalizedBounds = getCombinedBounds(geometries)
     const boundsMin = roundVector(normalizedBounds.min)
@@ -88,6 +99,19 @@ export function createCharacterMeshGeometries({
     disposeGeometries(geometries)
     throw error
   }
+}
+
+export function sanitizeDisplacementSubdivisionLevel(value: number) {
+  if (!Number.isFinite(value)) {
+    return MIN_DISPLACEMENT_SUBDIVISION_LEVEL
+  }
+
+  return Math.trunc(
+    Math.min(
+      MAX_DISPLACEMENT_SUBDIVISION_LEVEL,
+      Math.max(MIN_DISPLACEMENT_SUBDIVISION_LEVEL, value),
+    ),
+  )
 }
 
 function applyCharacterMeshThickness(
@@ -198,6 +222,86 @@ function normalizeGeometry(
   geometry.computeVertexNormals()
   geometry.computeBoundingBox()
   geometry.computeBoundingSphere()
+}
+
+function subdivideGeometryTriangles(
+  geometry: BufferGeometry,
+  subdivisionLevel: number,
+) {
+  if (subdivisionLevel <= 0) {
+    return geometry
+  }
+
+  const sourceGeometry = geometry.index ? geometry.toNonIndexed() : geometry
+  const position = sourceGeometry.attributes.position
+  const vertices: number[] = []
+
+  for (let index = 0; index < position.count; index += 3) {
+    pushSubdividedTriangle(
+      vertices,
+      readPosition(position, index),
+      readPosition(position, index + 1),
+      readPosition(position, index + 2),
+      subdivisionLevel,
+    )
+  }
+
+  const subdividedGeometry = new BufferGeometry()
+  subdividedGeometry.setAttribute(
+    'position',
+    new BufferAttribute(new Float32Array(vertices), 3),
+  )
+  subdividedGeometry.computeVertexNormals()
+  subdividedGeometry.computeBoundingBox()
+  subdividedGeometry.computeBoundingSphere()
+
+  if (sourceGeometry !== geometry) {
+    sourceGeometry.dispose()
+  }
+
+  geometry.dispose()
+
+  return subdividedGeometry
+}
+
+function pushSubdividedTriangle(
+  vertices: number[],
+  a: Vector3,
+  b: Vector3,
+  c: Vector3,
+  depth: number,
+) {
+  if (depth <= 0) {
+    pushTriangle(vertices, a, b, c)
+    return
+  }
+
+  const ab = midpoint(a, b)
+  const bc = midpoint(b, c)
+  const ca = midpoint(c, a)
+
+  pushSubdividedTriangle(vertices, a, ab, ca, depth - 1)
+  pushSubdividedTriangle(vertices, ab, b, bc, depth - 1)
+  pushSubdividedTriangle(vertices, ca, bc, c, depth - 1)
+  pushSubdividedTriangle(vertices, ab, bc, ca, depth - 1)
+}
+
+function pushTriangle(vertices: number[], a: Vector3, b: Vector3, c: Vector3) {
+  vertices.push(a.x, a.y, a.z, b.x, b.y, b.z, c.x, c.y, c.z)
+}
+
+type ReadablePositionAttribute = {
+  getX: (index: number) => number
+  getY: (index: number) => number
+  getZ: (index: number) => number
+}
+
+function readPosition(position: ReadablePositionAttribute, index: number) {
+  return new Vector3(position.getX(index), position.getY(index), position.getZ(index))
+}
+
+function midpoint(a: Vector3, b: Vector3) {
+  return new Vector3((a.x + b.x) / 2, (a.y + b.y) / 2, (a.z + b.z) / 2)
 }
 
 function getCombinedBounds(geometries: BufferGeometry[]) {

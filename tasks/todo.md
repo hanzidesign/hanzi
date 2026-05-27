@@ -1,396 +1,54 @@
-# Hanzi Studio Refactor Planning
+# Hanzi Studio Current Task State
 
-Detailed implementation plan: `tasks/hanzi-studio-refactor-plan.md`.
-Shader redesign implementation plan: `tasks/shader-effect-redesign-plan.md`.
-Shader redesign phased implementation plan: `tasks/shader-effect-redesign-phased-implementation-plan.md`.
+Active implementation package: `tasks/v2.1/README.md`.
+Direct development branch for v2.1 architecture: `v2.1`.
+Current status: v2.1 planning package is complete; implementation has not started.
 
-## Phase 1 Grill Session: Shader Preset Registry
+Keep this file as current-state tracking only. Historical phase logs belong in the superseded task docs or git history, not here.
 
-- [x] Review current lessons, glossary, Phase 1 plan, and existing shader helper code before asking questions.
-- [x] Resolve whether Phase 1 is a design-review checkpoint only or includes immediate implementation.
-- [x] Grill unresolved registry decisions one at a time against `CONTEXT.md` and the current code.
-- [x] Update `CONTEXT.md` inline only when a domain term or relationship is newly resolved.
-- [x] Add a Phase 1 grill review note with decisions, open questions, and verification expectations.
+## Active v2.1 Package
 
-### Phase 1 Grill Notes
+- [x] Lock the v2.1 glossary in `CONTEXT.md`: Character Surface, Morph Stack, Morph Layer Catalogue, Surface Shader Layers, Pattern Layer, Experimental Extension, and Vector Pre-Morph.
+- [x] Create the phased `tasks/v2.1/` implementation package.
+- [x] Include PM-style checkpoints across multiple phases.
+- [x] Add the Morph Layer Catalogue planning artifact.
+- [x] Mark the old Character Mesh shader plans as superseded.
+- [x] Mark v2.1 architecture for direct development on branch `v2.1`.
+- [x] Run docs-only verification for the v2.1 planning package.
+- [x] Clean up old task, lesson, and planning-doc status so active guidance points to v2.1.
+- [ ] Start Phase 0 implementation after explicit implementation approval.
 
-- Resolved: include `shaders/shared/default-vertex.glsl` in Phase 1 so shader source imports and the shared vertex contract are verified before WebGL canvas work; keep built-in presets fragment-shader-only in Phase 1.
-- Resolved: create original built-in GLSL presets in Phase 1 instead of waiting for an external sample set.
-- Resolved: set `usesDisplacementMap: false` for all Phase 1 presets and avoid sampling `u_displacementMap` in fragment shaders until the later Displacement phase.
-- Resolved: `getShaderPresetById` returns `ShaderPreset | undefined`; `getDefaultShaderPreset()` owns the hard fallback behavior.
-- No `CONTEXT.md` update needed: the resolved items refine the existing shader preset implementation contract, not the domain glossary.
+## Current Source Of Truth
 
-## Phase 1 Execution: Shader Preset Registry
+- `CONTEXT.md`
+- `tasks/v2.1/README.md`
+- `tasks/v2.1/checkpoints.md`
+- `tasks/v2.1/morph-layer-catalogue.md`
 
-- [x] Add failing registry tests for built-in preset validation, uniqueness, defaults, and lookup helpers.
-- [x] Add shared default vertex shader.
-- [x] Add three original built-in fragment shader presets and preset modules.
-- [x] Add central shader preset registry helpers.
-- [x] Run focused registry tests.
-- [x] Run full verification: `pnpm test`, `pnpm exec tsc --noEmit`, `pnpm lint`, and `pnpm build`.
+## Superseded / Historical Docs
 
-### Phase 1 Review - 2026-05-25
+- `tasks/shader-effect-redesign-plan.md`: superseded 3D Character Mesh implementation plan.
+- `tasks/shader-effect-redesign-phased-implementation-plan.md`: superseded 3D Character Mesh phased handoff.
+- `tasks/hanzi-studio-refactor-plan.md`: historical initial Hanzi Studio refactor scope; useful only for product-boundary background.
 
-- Added a typed registry with `shaderPresets`, `getShaderPresetById`, `getDefaultShaderPreset`, and exported shared `defaultVertexShader`.
-- Added original built-in presets: `Flowing Noise`, `Kaleidoscope Noise`, and `Grid Pulse`.
-- Added real `.glsl` fragment files for each preset and a shared default vertex shader.
-- Kept Phase 1 presets fragment-only and `usesDisplacementMap: false`; no fragment shader samples `u_displacementMap`.
-- Added a Vitest raw GLSL loader so registry tests exercise shader source imports as strings.
-- Added registry tests for preset ids, validation, defaults, uniforms, categories, lookup fallback, Phase 1 displacement scope, and shared vertex shader contract.
-- No open grill questions remain for Phase 1.
-- Verification: `pnpm test` passed with 3 files and 20 tests; `pnpm exec tsc --noEmit` passed; `pnpm lint` exited 0 with the pre-existing `StudioCanvas.tsx` unused `Box` warning; `pnpm build` passed with Next 16.2.6 Turbopack.
+## Latest Planning Review - 2026-05-27
 
-## Phase 2 Grill Session: Persisted Studio Store
+- Created `tasks/v2.1/README.md` as the active source of truth for the Character Surface redesign.
+- Added phase plans for architecture lock, fullscreen Character Surface foundation, Morph Layer Catalogue, Morph Stack state/randomization, Surface Shader and Pattern Layers, Studio panel UX, Experimental Extensions, and cleanup/verification.
+- Added `tasks/v2.1/checkpoints.md` with PM checkpoint lists for each phase.
+- Added `tasks/v2.1/morph-layer-catalogue.md` with Stable and Experimental deformation families informed by open-source shader/filter/vector morph patterns.
+- Kept product name as Hanzi Studio while renaming the core preview object to Character Surface and control system to Morph Stack.
+- Set default Morph Stack composition to Sequential Warp Chain.
+- Set Randomize to generate a full preset from Stable layers only by default, while honoring layer locks.
+- Defined two Surface Shader Layers: foreground character mask and background canvas.
+- Defined Pattern Layers as UI layers with one selector target each and a maximum of three Pattern Layers.
+- Defined Experimental Extensions as opt-in modules shown inside the same panel system, not separate products, canvases, or required runtime dependencies.
+- Marked v2.1 implementation as direct development on branch `v2.1`.
 
-- [x] Review current lessons, glossary, Phase 2 plan, and existing Studio context consumers before asking questions.
-- [x] Resolve whether Phase 2 wires the current `/studio` UI through the Zustand store or only creates an unused store module.
-- [x] Grill unresolved store decisions one at a time against `CONTEXT.md` and the current code.
-- [x] Update `CONTEXT.md` inline only when a domain term or relationship is newly resolved.
-- [x] Add a Phase 2 grill review note with decisions, open questions, and verification expectations.
+## Cleanup Review - 2026-05-27
 
-### Phase 2 Grill Notes
-
-- Resolved: wire the current `/studio` UI through the Zustand store now, using `studio-context.tsx` as a compatibility wrapper for existing consumers.
-- Resolved: keep compatibility state in the store for the current SVG-filter UI until the renderer swap, while also owning the planned shader, mesh, displacement, and view state fields.
-- Resolved: do not persist uploaded pattern image data URLs because localStorage has size limits; uploaded pattern data stays session-only.
-- No `CONTEXT.md` update needed: the existing refresh-safety and no-backend persistence language already covers the Phase 2 store behavior.
-
-## Phase 2 Execution: Persisted Studio Store
-
-- [x] Add failing store tests for defaults, persistence serialization shape, stale preset hydration, stale param sanitization, and preset switching preservation.
-- [x] Add route-local persisted Zustand store in `app/studio/studio-store.ts`.
-- [x] Wire `studio-context.tsx` to use the Zustand store while preserving the current `useStudio()` consumer API.
-- [x] Preserve current `/studio` SVG-effect behavior until the renderer swap.
-- [x] Run focused store tests.
-- [x] Run full verification: `pnpm test`, `pnpm exec tsc --noEmit`, `pnpm lint`, and `pnpm build`.
-
-### Phase 2 Review - 2026-05-25
-
-- Added route-local persisted Zustand store in `app/studio/studio-store.ts` with character, shader, mesh, displacement, view, compatibility SVG-effect, and runtime-only fields.
-- Wired `studio-context.tsx` to the Zustand store as a compatibility wrapper, preserving the current `useStudio()` API and existing `/studio` panels.
-- Fixed the review finding where subscribing to the whole Zustand state would have retriggered SVG and pattern fetch effects after unrelated store updates; the wrapper now uses narrow store selectors and stable action dependencies.
-- Persisted only compact serializable editor choices. Runtime `svgData`, derived `ptnData`, and uploaded pattern data URLs are excluded from persistence.
-- Added hydration sanitization for stale shader preset ids and stale shader params while preserving valid character, mesh, displacement, and view state.
-- Added store tests for defaults, preset switching, stale persisted shader state, missing preset fallback, and compact persistence payloads.
-- No open grill questions remain for Phase 2.
-- Verification: `pnpm test` passed with 4 files and 25 tests; `pnpm exec tsc --noEmit` passed; `pnpm lint` exited 0 with the pre-existing `StudioCanvas.tsx` unused `Box` warning; `pnpm build` passed with Next 16.2.6 Turbopack; browser smoke opened `/studio`, opened the Effect panel, and found no page console errors.
-
-## Phase 3 Grill Session: WebGL Canvas Skeleton
-
-- [x] Review current lessons, glossary, Phase 3 plan, and existing Studio canvas/store code before asking questions.
-- [x] Resolve whether Phase 3 fully replaces the old SVG-filter preview or keeps it as a fallback beside WebGL.
-- [x] Grill unresolved WebGL skeleton decisions one at a time against `CONTEXT.md` and the current code.
-- [x] Update `CONTEXT.md` inline only when a domain term or relationship is newly resolved.
-- [x] Add a Phase 3 grill review note with decisions, open questions, and verification expectations.
-
-### Phase 3 Grill Notes
-
-- Resolved: fully replace `StudioCanvas` preview content with `ShaderCanvas`; keep `SvgEffectView.tsx` untouched but unused until later cleanup.
-- Resolved: the Phase 3 placeholder mesh should obey persisted mesh controls now, including rotation, scale, XY position, auto-rotation, and auto-rotate speed. Use box depth as the placeholder stand-in for extrusion depth until Phase 4.
-- Resolved: `u_mouse` means screen viewport pointer for the preview, not mesh UV. Mesh-local sampling remains the role of `v_uv`.
-- Resolved: auto-rotation must be frame-rate independent. Detect/use the render delta so rotation speed remains fixed across different display refresh rates.
-- Resolved: keep `ShaderCanvas` inside the existing square `AspectRatio` preview frame. "Full-size canvas" means filling that square frame, not changing the Studio layout to a freeform viewport.
-- Resolved: Phase 3 should not expose the final shader preset selector. Preset switching must work through store/material logic and tests; visible panel-driven preset switching belongs to Phase 5.
-- Resolved: Phase 3 should keep a neutral displacement texture and only wire displacement uniforms. Real pattern texture loading belongs to the later displacement work.
-- Resolved: keep the placeholder as a simple box. The actual extruded **Character Mesh** belongs to Phase 4.
-- Resolved: Phase 3 only needs preview-area error overlay structure plus material creation errors; WebGL program compile fallback and last-valid-material behavior can be handled in the later error-handling cleanup phase.
-- Resolved: keep old panel files through Phase 3. When new panels are introduced in Phase 5, their visual style should follow the current Studio panel style instead of creating an unrelated control surface.
-- No `CONTEXT.md` update needed: the resolved items implement the existing **Shader Effect View** and **Character Mesh** direction without changing domain terms.
-
-## Phase 3 Execution: WebGL Canvas Skeleton
-
-- [x] Add failing tests for shader material/uniform assembly around selected preset params and common uniforms.
-- [x] Create `components/studio/ShaderCanvas.tsx` as a full-size `@react-three/fiber` canvas with placeholder mesh.
-- [x] Create `components/studio/ShaderErrorOverlay.tsx` for preview-area shader errors.
-- [x] Replace the `StudioCanvas` preview content with `ShaderCanvas` while keeping the current shell/control layout.
-- [x] Apply selected preset switching, schema-driven uniforms, `u_time`, `u_mouse`, `u_resolution`, displacement uniforms, and bounds uniforms.
-- [x] Add OrbitControls for inspection without writing orbit changes into Zustand.
-- [x] Run focused tests.
-- [x] Run full verification: `pnpm test`, `pnpm exec tsc --noEmit`, `pnpm lint`, and `pnpm build`.
-- [x] Run browser visual smoke for nonblank WebGL canvas and `/studio` stability.
-
-### Phase 3 Review - 2026-05-25
-
-- Added `ShaderCanvas` as the WebGL preview surface and replaced `StudioCanvas` preview content with it.
-- Added a placeholder box mesh using the selected shader preset material, schema-driven uniforms, common uniforms, animated `u_time`, pointer-backed `u_mouse`, `u_resolution`, bounds uniforms, and displacement uniforms.
-- Applied persisted mesh controls to the placeholder mesh: rotation, scale, XY position, auto-rotation, auto-rotate speed, and box depth as the temporary extrusion-depth stand-in.
-- Added `OrbitControls` for inspection without writing orbit changes into Zustand.
-- Added `ShaderErrorOverlay` structure for preview-area shader errors.
-- Added shader material helper tests for common uniforms, preset param uniforms, canvas values, bounds values, displacement values, and stale preset fallback.
-- No open grill questions remain for Phase 3. The user-facing shader preset selector remains planned for Phase 5, so preset switching is wired through store/material logic but not yet exposed as a final panel.
-- Phase 3 re-grill on 2026-05-26 clarified follow-up constraints: `u_mouse` is screen viewport pointer rather than mesh UV; auto-rotation should use render-delta timing for fixed speed across refresh rates; the canvas remains inside the square `AspectRatio`; and future panels should preserve the current Studio panel style.
-- Verification: `pnpm test` passed with 5 files and 28 tests; `pnpm exec tsc --noEmit` passed; `pnpm lint` passed with no warnings; `pnpm build` passed with Next 16.2.6 Turbopack; browser visual smoke passed on desktop and mobile with nonblank WebGL screenshots and pixel sampling.
-
-## Phase 3 Follow-up Execution: Pointer And Rotation Contract
-
-- [x] Add focused tests for screen viewport pointer normalization and frame-rate-independent auto-rotation math.
-- [x] Replace mesh-UV `u_mouse` updates with preview-level pointer tracking.
-- [x] Replace per-frame auto-rotation increments with render-delta-based rotation.
-- [x] Run focused tests.
-- [x] Run full verification: `pnpm test`, `pnpm exec tsc --noEmit`, `pnpm lint`, and `pnpm build`.
-- [x] Add review notes with results.
-
-### Phase 3 Follow-up Review - 2026-05-26
-
-- Added `components/studio/shader-canvas-math.ts` for preview pointer normalization and render-delta rotation math.
-- Added `components/studio/shader-canvas-math.test.ts` covering viewport pointer normalization, clamping, zero-size fallback, and elapsed-seconds rotation.
-- Updated `ShaderCanvas` so `u_mouse` is driven by pointer movement over the preview frame instead of mesh UV.
-- Updated placeholder auto-rotation to use `useFrame` delta timing instead of fixed per-frame increments.
-- Verification: focused `pnpm vitest run components/studio/shader-canvas-math.test.ts` passed with 4 tests; `pnpm test` passed with 6 files and 32 tests; `pnpm exec tsc --noEmit` passed; `pnpm lint` passed; `pnpm build` passed with Next 16.2.6 Turbopack; browser smoke opened `/studio`, confirmed a nonblank 600x600 WebGL canvas inside the square preview frame, and found no page console errors.
-
-## Phase 4 Grill Session: SVG To Extruded Character Mesh
-
-- [x] Review current lessons, glossary, Phase 4 plan, character SVG assets, and current `ShaderCanvas` placeholder boundary before asking questions.
-- [x] Resolve SVG parsing, geometry construction, centering, bounds, loading, failure, test, and visual review decisions.
-- [x] Update `CONTEXT.md` inline only if Phase 4 changes domain language or relationships.
-- [x] Add a Phase 4 grill review note with decisions, open questions, and verification expectations.
-
-### Phase 4 Grill Notes
-
-- Resolved: normalize SVG geometry into centered object space so the rendered **Character Mesh** stays upright like the source SVG and rotates around its visual center.
-- Resolved: keep the previous valid mesh visible while a newly selected character SVG loads or parses.
-- Resolved: show a loading indicator at the bottom of the parent div that wraps `<Center>` in `StudioCanvas` while the next character mesh is loading, not inside `ShaderCanvas`.
-- Resolved: show mesh loading/parsing error text at the bottom of the parent div that wraps `<Center>` in `StudioCanvas`, not inside `ShaderCanvas`. Do not fall back to `fallbackSvgData()` because SVG `<image>` fallback is not extrudable.
-- Resolved: implement the full multi-path/multi-shape loop even though the current character corpus is one `<path>` per SVG.
-- Resolved: render one mesh per shape/path in v1, sharing one `ShaderMaterial`; do not merge geometries unless performance requires it later.
-- Resolved: recreate `ExtrudeGeometry` when extrusion depth changes, with a tiny positive depth clamp matching the placeholder behavior.
-- Resolved: keep `bevelEnabled: false` and avoid geometry-detail controls in Phase 4 unless visual QA proves the mesh is too crude.
-- Resolved: feed shader bounds from normalized, centered geometry before user transform. Rotation, scale, position, and auto-rotation must not change `u_boundsMin` or `u_boundsMax`.
-- Resolved: preserve a 1:1 shader/displacement sampling ratio by using aspect-preserving mesh-local UVs. Do not stretch shader effects or displacement patterns independently across X and Y; pad the shorter axis instead.
-- Resolved: apply the selected unlit `ShaderMaterial` to front, back, and side faces.
-- Resolved: explicitly dispose replaced `ExtrudeGeometry` instances when character or depth changes.
-- Resolved: add focused tests for SVG/path-to-geometry normalization, bounds calculation, empty-shape failure, depth clamping, and aspect-preserving UV math. Browser smoke remains the real SVGLoader proof.
-- Resolved: visual review must include default `tc/int/2023`, one dense character, one sparse character, one simplified-character selection, and one refresh-preserved state.
-- No `CONTEXT.md` update needed: the resolved items refine implementation of the existing **Character Mesh** contract without changing domain terms or relationships.
-
-## Phase 4 Execution: SVG To Extruded Character Mesh
-
-- [x] Add failing tests for SVG geometry normalization, bounds, empty-shape failure, depth clamping, and aspect-preserving UV bounds.
-- [x] Implement character mesh geometry helpers.
-- [x] Replace the placeholder mesh with selected SVG-derived `CharacterMesh` geometry.
-- [x] Preserve the last valid mesh during character loading and parse failures.
-- [x] Show loading and error text at the bottom of the parent div that wraps `<Center>` in `StudioCanvas`.
-- [x] Keep shader and displacement sampling 1:1 with aspect-preserving mesh-local UVs.
-- [x] Run focused tests.
-- [x] Run full verification: `pnpm test`, `pnpm exec tsc --noEmit`, `pnpm lint`, and `pnpm build`.
-- [x] Run browser visual smoke for multiple character selections, depth, auto-rotation, refresh, and parent-level loading/error placement.
-- [x] Add Phase 4 review notes with results.
-
-### Phase 4 Review - 2026-05-26
-
-- Added `CharacterMesh` to load the selected character SVG, parse it with `SVGLoader`, create one extruded mesh per SVG shape, share the selected `ShaderMaterial`, and dispose replaced geometries/materials.
-- Added `character-mesh-geometry.ts` to normalize SVG y-down coordinates into centered upright object space, clamp extrusion depth to a tiny positive value, compute real geometry bounds, and pad shader bounds to preserve 1:1 shader/displacement sampling.
-- Replaced the placeholder mesh in `ShaderCanvas` with the selected SVG-derived mesh while preserving persisted mesh controls, delta-based auto-rotation, `OrbitControls`, pointer-backed `u_mouse`, and last-valid-mesh behavior during load/parse failures.
-- Moved mesh loading/error status text into the bottom of the parent div that wraps `<Center>` in `StudioCanvas`, outside the `ShaderCanvas` preview wrapper as clarified.
-- Changed `.glsl` source loading to one local loader shared by Turbopack and webpack after browser verification showed Next's direct `type: raw` path emitted `undefined` shader strings in dev.
-- Added tests for character geometry normalization, bounds, empty-shape failure, depth clamping, aspect-preserving shader bounds, all-face `DoubleSide` shader material behavior, and the shared GLSL source loader.
-- Verification: focused `pnpm vitest run loaders/glsl-source-loader.test.ts components/studio/character-mesh-geometry.test.ts components/studio/shader-material.test.ts components/studio/shader-canvas-math.test.ts` passed with 4 files and 14 tests; `pnpm test` passed with 8 files and 39 tests; `pnpm exec tsc --noEmit` passed; `pnpm lint` passed; `pnpm build` passed with Next 16.2.6 Turbopack.
-- Browser smoke: desktop 1280x720 and mobile 390x844 rendered nonblank WebGL character canvases with visible extruded side depth, changed canvas pixel hashes after drag, showed no loading/error status after successful loads, preserved selection after refresh, and produced no shader `vertexShader`/`fragmentShader` undefined warnings. Remaining warnings were the pre-existing Three clock deprecation and a Next image LCP warning for `/images/logo.svg`.
-
-## Phase 5 Grill Session: Panels And Schema-Driven Controls
-
-- [x] Review current lessons, glossary, Phase 5 plan, and existing Studio panel/store code before asking questions.
-- [x] Resolve panel composition, visual style, dynamic control behavior, displacement boundary, background-color placement, reset behavior, tests, and UI verification.
-- [x] Grill unresolved Phase 5 decisions in one batched pass against `CONTEXT.md` and the current code.
-- [x] Update `CONTEXT.md` inline only if Phase 5 changes domain language or relationships.
-- [x] Add a Phase 5 grill review note with decisions, open questions, and verification expectations.
-
-### Phase 5 Grill Notes
-
-- Resolved: remove user-controlled `textColor` entirely. Keep only `view.backgroundColor` as a compact background control in `MeshPanel`; render the translation label with a fixed readable theme color instead of preserving old character/text styling controls.
-- Resolved: use semantic accordion values directly: `character`, `shader`, `mesh`, and `displacement`.
-- Resolved: new Phase 5 panels should read/write `useStudioStore` directly with narrow selectors instead of going through the old `useStudio()` compatibility wrapper.
-- Resolved: preserve the current accordion and `PanelBox` visual treatment; replace the control model without redesigning the sidebar.
-- Resolved: `ShaderPanel` has one Mantine preset selector at the top, displays category as secondary text, and renders all params from schema.
-- Resolved: preset switching resets only `shader.currentParams`; it preserves character, mesh, displacement, background, and active panel.
-- Resolved: number params use a slider plus compact value display; color params use `ColorInput`; boolean params use `Switch`; select params use `Select`.
-- Resolved: add a separate Character Mesh thickness/weight control in `MeshPanel` in addition to extrusion depth. Treat it as a planar character-shape thickness control unless implementation discovery proves the SVG offset approach needs re-planning.
-- Resolved: changing character mesh thickness must regenerate the Character Mesh geometry and recompute UVs/shader bounds from the updated shape. Do not implement thickness as a shader-only scale or post-transform.
-- Resolved: `MeshPanel` includes a small mesh-only reset and a compact `view.backgroundColor` control under a View subsection.
-- Resolved: `DisplacementPanel` supports built-in patterns and uploaded PNG/JPG/JPEG images under 5MB. Uploaded image data remains session-only and must not be persisted to localStorage.
-- Resolved: keep global displacement controls visible and show a neutral selected-preset image-distortion status line. Phase 5 exposes controls; Phase 6 owns full texture loading and visible displacement behavior.
-- Resolved: remove `EffectPanel.tsx` and `StylePanel.tsx` after replacements are connected. Keep broader compatibility-state cleanup for the later cleanup phase if removing it makes Phase 5 too broad.
-- Resolved: verification should include desktop/mobile browser smoke for all four panels, shader preset visual change, mesh controls, background control, upload validation, displacement persistence across preset switch, and refresh persistence.
-- Open renderer follow-up: current side-wall shader sampling stretches because `v_uv` is derived from object-space XY in the shared vertex shader. Recommended direction is a custom extruded-character UV contract or triplanar shader sampling before Phase 6 displacement QA, not a heavyweight automatic unwrap dependency by default.
-
-## Phase 5 Execution: Panels And Schema-Driven Controls
-
-- [x] Add failing tests for mesh thickness, session-only displacement uploads, upload validation, and geometry/UV updates.
-- [x] Add `ShaderPanel` with preset selector and schema-driven controls.
-- [x] Add `MeshPanel` with extrusion depth, character mesh thickness, transform, auto-rotation, reset, and background controls.
-- [x] Add `DisplacementPanel` with built-in pattern thumbnails, PNG/JPG/JPEG upload validation under 5MB, strength, bias, and image-distortion status.
-- [x] Replace `StudioControls` with semantic Character, Shader, Mesh, and Displacement panels.
-- [x] Remove retired `EffectPanel.tsx` and `StylePanel.tsx`.
-- [x] Remove active user-controlled `textColor` usage from the WebGL Studio view.
-- [x] Run focused tests.
-- [x] Run full verification: `pnpm test`, `pnpm exec tsc --noEmit`, `pnpm lint`, and `pnpm build`.
-- [x] Run browser visual smoke for desktop/mobile panels, shader switch, mesh/background controls, upload validation, refresh persistence, and console errors.
-
-### Phase 5 Review - 2026-05-27
-
-- Added route-local store support for `mesh.thickness`, mesh-only reset, and runtime-only uploaded displacement image data.
-- Added character mesh thickness as a geometry-affecting control; changing thickness regenerates geometry and updates UVs, shader bounds, and displacement sampling bounds.
-- Switched the shared vertex shader to use generated geometry UVs for `v_uv`; front/back UVs are assigned from aspect-preserving planar coordinates, while side-wall UVs use depth-aware side mapping instead of the previous pure XY projection.
-- Replaced the old Effect/Style sidebar with Character, Shader, Mesh, and Displacement panels while preserving the existing accordion/PanelBox visual treatment.
-- Added schema-driven shader controls for number, color, boolean, and select params; preset switching resets only shader params.
-- Added built-in displacement map thumbnails plus local PNG/JPG/JPEG upload validation under 5MB. Uploaded image data stays in runtime state and is excluded from localStorage.
-- Removed active `textColor` control usage from the Studio view; background color now lives in `MeshPanel`.
-- Verification: focused `pnpm vitest run app/studio/studio-store.test.ts components/studio/character-mesh-geometry.test.ts components/studio/displacement-upload.test.ts shaders/registry.test.ts` passed with 4 files and 25 tests; `pnpm test` passed with 9 files and 45 tests; `pnpm exec tsc --noEmit` passed; `pnpm lint` passed; `pnpm build` passed with Next 16.2.6 Turbopack.
-- Browser smoke: desktop and mobile `/studio` rendered a nonblank WebGL canvas; all four panels opened; shader preset switching to Grid Pulse worked; Mesh panel exposed character mesh thickness and persisted background color; Displacement panel rejected GIF uploads, accepted PNG upload without persisting image data, survived refresh, and produced no page console errors. Screenshot pixel sampling on the canvas clip found 41 unique sampled colors and 42 non-white samples out of 400.
-
-### Phase 5 Follow-up - 2026-05-27
-
-- Resolved: clicking the currently open control-panel accordion header collapses the panel. Store and persisted state preserve `view.activePanel: null` for the collapsed state.
-
-## Phase 0 Execution: Tooling And Shader Source Foundation
-
-- [x] Confirm execution location: work directly on existing `v2` branch checkout.
-- [x] Install runtime shader dependencies with pnpm.
-- [x] Confirm Vitest dependency is installed with pnpm.
-- [x] Wire `pnpm test` to `vitest run`.
-- [x] Add `.glsl` source import support while preserving production `removeConsole`.
-- [x] Add GLSL module declaration.
-- [x] Add shader preset, param, validation, and uniform helper contracts.
-- [x] Cover default params, uniform conversion, reserved uniforms, and stale params with Vitest.
-- [x] Run `pnpm test`.
-- [x] Run `pnpm exec tsc --noEmit`.
-- [x] Run `pnpm lint`.
-- [x] Run `pnpm build`.
-
-### Phase 0 Review - 2026-05-24
-
-- Added `.glsl` source import support through a shared local loader for webpack and Turbopack while preserving production `removeConsole`.
-- Added `@types/glsl.d.ts`, shader preset/param types, reserved uniform validation, default param creation, hex color conversion, uniform conversion, and stale param sanitization.
-- Added Vitest coverage for number/color/boolean/select defaults, color-to-`THREE.Vector3`, boolean/select uniform conversion, reserved uniform collision rejection, and stale persisted param sanitization.
-- Verification: `pnpm test` passed with 2 files and 10 tests; `pnpm exec tsc --noEmit` passed; `pnpm lint` exited 0 with one pre-existing warning in `components/studio/StudioCanvas.tsx` for unused `Box`; `pnpm build` passed with Next 16.2.6 Turbopack.
-- Simplify pass: reused Three's `IUniform` type, removed duplicated sanitize/convert work in uniform creation, shared hex color validation, and tightened preset/param validation without changing exported helper names.
-- No Studio UI behavior was changed in Phase 0.
-
-## Shader Effect Playground Planning
-
-- [x] Inspect existing product language, planning docs, dependencies, and Studio editor state boundary.
-- [x] Resolve whether shader effects replace the SVG effect view or become an additional preview/effect mode.
-- [x] Resolve state model: move Studio editor state to a route-local Zustand store and retire `app/studio/studio-context.tsx` as state owner.
-- [x] Resolve persistence: use Zustand `persist` with `localStorage`, persisting only serializable editor state.
-- [x] Resolve shader preset ownership and file layout: use one folder per preset plus a central typed registry.
-- [x] Resolve shader preset metadata contract: params use separate UI `id` and GLSL `uniformName`, with common uniforms reserved.
-- [x] Resolve number parameter schema: `label`, `min`, `max`, `step`, `default`, and optional `unit`.
-- [x] Resolve color parameter state: store hex strings in editor state and convert to `THREE.Vector3` only when building uniforms.
-- [x] Resolve select parameter mapping: editor state stores option `id`; uniform conversion uses each option's explicit numeric `value`.
-- [x] Resolve boolean parameter mapping: use `0.0` / `1.0` float uniforms in v1.
-- [x] Resolve rendering target: redesign targets an extruded 3D character mesh derived from SVG paths, with `ShaderMaterial` applied to the mesh.
-- [x] Resolve global mesh controls: extrusion depth, rotation, scale, position, and auto-rotation live outside shader preset params.
-- [x] Resolve mesh transform controls: constrained v1 with XYZ rotation, uniform scale, XY position, auto-rotate toggle, and auto-rotate speed.
-- [x] Resolve dependency scope: add `three`, `@react-three/fiber`, `@react-three/drei`, and `zustand` using pnpm during implementation.
-- [x] Resolve multi-path SVG rendering: render a grouped set of extruded meshes sharing one `ShaderMaterial` in v1.
-- [x] Resolve preview inspection: include `OrbitControls`, but do not write camera orbit changes into editor state.
-- [x] Resolve shader compile error UX: show a blocking preview overlay with preset name/file path, while keeping the last valid material visible if possible.
-- [x] Resolve shader material fallback: optimistically switch in v1, but keep the previous `ShaderMaterial` in a ref until the new material renders without a WebGL program error.
-- [x] Resolve shader stage scope: use one shared vertex shader in v1; presets provide fragment shaders only.
-- [x] Resolve mesh UV contract: shared vertex shader computes normalized object-space `v_uv` from centered mesh coordinates.
-- [x] Resolve extruded face treatment: apply the selected shader to all faces in v1.
-- [x] Resolve material lighting: use unlit `ShaderMaterial` in v1.
-- [x] Resolve shader attribution metadata: do not include source/license metadata in v1 preset schema.
-- [x] Resolve displacement map controls: reuse existing `public/images/patterns` as global displacement maps with pattern image, strength, and bias.
-- [x] Resolve image distortion continuity: the same selected displacement map should also drive image-based shader distortion like the current SVG effect workflow.
-- [x] Resolve displacement uniform availability: provide displacement-map uniforms globally, while presets opt in through metadata.
-- [x] Resolve displacement panel behavior: show global displacement controls all the time and indicate when the selected shader preset does not use image distortion.
-- [x] Resolve schema-driven shader preset contract: `id`, `name`, `category`, `fragmentShader`, optional `vertexShader`, `shaderPath`, `usesDisplacementMap`, and `params`.
-- [x] Resolve uniform collision rule: fail fast if a preset param `uniformName` collides with reserved global uniforms.
-- [x] Resolve preset switching behavior: reset only preset params; preserve character, mesh controls, and displacement controls.
-- [x] Resolve current param state: store a complete param object for the selected preset, created from defaults on preset switch.
-- [x] Resolve param value model and uniform conversion: use `number | string | boolean` values and schema-driven conversion.
-- [x] Resolve persisted state hydration: reset only invalid shader preset/params, preserving character and global mesh/displacement controls.
-- [x] Resolve control panels: split controls into `Character`, `Shader`, `Mesh`, and `Displacement` panels.
-- [x] Resolve old style controls: remove `StylePanel` as character color controls; keep simple canvas/background color as a view-level setting if needed.
-- [x] Resolve initial preset scope: start implementation with 3 curated built-in shader presets.
-- [x] Resolve preset categories: use a free string category instead of a fixed union.
-- [x] Resolve shader source imports: use `.glsl` files with a minimal Next webpack rule and TypeScript module declaration.
-- [x] Resolve verification shape: add focused TypeScript unit tests for helper logic plus browser smoke verification.
-- [x] Resolve unit test runner: add Vitest as a dev dependency and wire `pnpm test` to run it.
-- [x] Resolve browser verification: use Codex/browser visual smoke checks in v1 instead of adding Playwright as a project dependency.
-- [x] Resolve preview canvas behavior, compile-error fallback behavior, and verification plan.
-- [x] Update `CONTEXT.md` as domain terms are resolved.
-- [x] Write detailed shader redesign implementation plan without changing application code.
-- [x] Write PM phased implementation plan with developer checkpoints.
-
-## Shader Redesign Review
-
-- Product target: replace the current SVG filter effect playground with a WebGL **Shader Effect View** on `/studio`.
-- Character selection remains the existing SVG preset workflow.
-- Rendering target: parse selected SVG paths into grouped extruded `ExtrudeGeometry` meshes sharing one unlit `ShaderMaterial`.
-- Shader preset system: one folder per preset plus a central typed registry; start implementation with 3 curated built-in presets.
-- Shader source: use `.glsl` files imported as source strings through a minimal Next loader wired for both Turbopack and webpack.
-- State: retire `app/studio/studio-context.tsx` as state owner and move Studio editor state into a route-local Zustand store.
-- Persistence: use Zustand `persist` with `localStorage`, storing only serializable editor choices.
-- Controls: split panels into `Character`, `Shader`, `Mesh`, and `Displacement`.
-- Mesh controls: extrusion depth, XYZ rotation, uniform scale, XY position, auto-rotate, and auto-rotate speed.
-- Displacement: reuse `public/images/patterns` as global displacement maps with pattern image, strength, and bias.
-- Shader params: schema-driven dynamic UI; no shader-specific hard-coded control panels.
-- Verification: add Vitest helper tests, then run TypeScript, lint, build, and Codex/browser visual smoke checks.
-- Execution handoff: use the phased implementation plan and stop for PM review after each checkpoint.
-- Implementation remains not started. Application code should wait for explicit implementation approval.
-
-## Checklist
-
-- [x] Inspect current repo structure, docs, package dependencies, and Web3/Redux/OpenAI touchpoints.
-- [x] Resolve product boundary: Hanzi Studio is an SVG character editor for viewing SVG effects only.
-- [x] Resolve route and naming boundary for the editor surface.
-- [x] Resolve replacement state model after Redux removal.
-- [x] Resolve exact removal scope for Web3/NFT/OpenAI/hardhat files and dependencies.
-- [x] Resolve verification plan for the eventual implementation.
-- [x] Write detailed implementation plan document without changing application code.
-- [x] Wait for explicit user approval before implementation.
-- [x] Implement Next 16 App Router route split with `/` introduction and `/studio` editor.
-- [x] Replace Redux-owned editor state with route-local React Context.
-- [x] Remove Web3, wallet, mint, queue, NFT metadata, DALL-E/OpenAI, export/conversion, and hardhat code paths.
-- [x] Switch package workflow to pnpm and update dependency lockfile.
-- [x] Modernize `next.config.js` into the Next 16 TypeScript config style.
-- [x] Verify TypeScript, lint, production build, runtime Studio smoke path, and removed-scope grep checks.
-
-## Review
-
-- Current repo already declares `next: 16.2.6` and uses the App Router under `app/`.
-- Current `/mint` surface still carries legacy wallet, queue, NFT storage, minting, DALL-E/OpenAI, and Redux-owned state concepts.
-- Product scope is now narrower than the initial recommendation: no export, no mint, no queue, no upload, no NFT, no DALL-E background image generation, and no OpenAI.
-- Route boundary: keep `/` as the introduction page and move the editor to `/studio`; remove the legacy `/mint` route name.
-- State and routing boundary: replace Redux with React Provider/Context for Studio state, scoped to the Studio editor; use Next App Router route files and navigation conventions instead of React Router-style routing.
-- Studio context boundary: move all surviving editor state into the React Context layer, including character selection, pattern source, SVG effect parameters, style colors, and current panel state.
-- Studio context location: implement the route-local context in `app/studio/studio-context.tsx`.
-- Background/effect boundary: remove the Background panel and all DALL-E/OpenAI background-image generation; keep pattern because it is one of the local SVG effects, along with the related effect controls and parameter editing.
-- Pattern state boundary: keep pattern as SVG effect state managed by Studio React Context, not Redux; pattern is distinct from removed background tooling.
-- Metadata boundary: remove the Metadata panel and NFT metadata fields such as `name`, `description`, and `mintBy`; keep only character selection state needed to render the SVG.
-- Web3 workspace boundary: remove the full `hardhat/` workspace and all contract, chain, wallet, tx, etherscan, account, NFT, IPFS, and minting code paths.
-- Studio UI boundary: remove the bottom `Queue`/`Mint` action area and modal workflow; the sidebar should only expose editor controls: `Character`, SVG effect parameters, and style controls.
-- Panel naming boundary: rename the current `Text` panel to `Character` because it selects a Hanzi SVG character, not free text.
-- Studio component boundary: move Studio-specific UI under `components/studio/`; rename `ToolStack` to `StudioControls`, `CharList` to `CharacterPanel`, `Effect` to `EffectPanel`, `Style` to `StylePanel`, `Img` to `StudioCanvas`, and `SvgItem` to `SvgEffectView`.
-- Deleted component boundary: remove `Preview`, `Queue`, `Metadata`, and `ToolStack/dalle/*` rather than adapting them.
-- Shell boundary: do not keep a global `BasicAppShell` with pathname branching for editor behavior; keep the introduction page simple and implement `/studio` with a dedicated `StudioShell`.
-- Provider boundary: simplify global providers to Mantine/theme only; remove `ReduxProvider`, `EthProvider`, legacy `AppProvider`, notifications, and modal providers unless a remaining non-deleted UI proves it needs them. `/studio` owns `StudioProvider`.
-- App Router boundary: keep `app/layout.tsx` as a server component with metadata; use a small client wrapper for Mantine/theme providers; make `/` a server introduction page using `next/link`; let `/studio/page.tsx` render a client `StudioApp` that owns `StudioProvider`, `StudioShell`, controls, and interactive SVG view.
-- Dependency boundary: remove `@tanstack/react-query` because it is only used by the removed Wagmi/RainbowKit wallet provider.
-- Dependency boundary: remove `axios`; the remaining Studio editor should rely on local assets and native browser/Next primitives if any fetch is needed later.
-- API boundary: remove `app/api/svgToPng/route.ts` and `app/api/compress/route.ts`; the Studio view does not need server conversion, compression, upload, or export endpoints.
-- Library boundary: remove `lib/sharp.ts`, `lib/svgToPng.ts`, and `lib/toFile.ts` because conversion/file/export/upload support is out of scope.
-- Metadata/type boundary: remove NFT metadata builders, sample metadata, and types such as `Metadata`, `NftData`, `Job`, `NftTx`, IPFS, and token-related shapes; keep or recreate only Studio editor/effect state types.
-- Env boundary: clean env code/types down to app UI needs such as `appName`, `webUrl`, `defaultColorScheme`, and `isDev` if still used; remove chain, contract, NFT storage, WalletConnect, and OpenAI env contracts. Do not edit `.env*` secret files unless explicitly requested.
-- Public asset metadata boundary: inspect `site.webmanifest`, `browserconfig`, and public metadata-like assets for stale product naming; update NFT/Web3 copy but keep neutral favicon/logo assets unless they explicitly encode removed concepts.
-- README boundary: rewrite the scaffold README to describe Hanzi Studio, Next 16 App Router usage, `/` introduction, `/studio` editor, and dev/build commands without NFT/Web3/OpenAI references.
-- Package manager boundary: use `pnpm`; remove root `package-lock.json` and generate/update `pnpm-lock.yaml` during implementation.
-- Persistence boundary: do not add state persistence in the first refactor; Studio context state resets to defaults on reload.
-- Verification gate: run `pnpm install`, lint with the available ESLint/Next command, run `pnpm build`, start `pnpm dev`, verify `/` and `/studio` in browser, test Character/Effect/Style controls, confirm SVG effect view is nonblank, and grep for removed Redux/Web3/NFT/OpenAI/upload/mint/queue/DALL-E/hardhat remnants.
-- ADR boundary: do not create an ADR for this refactor; keep decisions in `CONTEXT.md` and this planning file.
-- Introduction CTA: use `Open Studio` and route it to `/studio`.
-- Public metadata copy: replace NFT/Optimism description and keywords with Hanzi SVG character editor language.
-- Plan-only boundary: current work is documentation/planning only. Do not implement application code until the user explicitly approves implementation.
-
-## Implementation Review
-
-- Implemented `/studio` as the Character Editor route with route-local Studio React Context and no persistence.
-- Kept `/` as the introduction page and changed the CTA to `Open Studio` using Next App Router navigation.
-- Removed legacy `/mint`, Redux store/slices/providers, Web3 wallet provider/UI, queue/mint/upload/export/conversion APIs, NFT metadata builders, DALL-E/OpenAI UI, and related helper code.
-- Kept SVG effect pattern as an Effect control, separate from removed background-image generation.
-- Replaced `next.config.js` with typed `next.config.ts` and moved linting to ESLint flat config for the Next 16 toolchain.
-- Runtime verification found and fixed a Framer Motion cleanup crash, a non-scrollable Studio sidebar, and Mantine root hydration warning.
-- Follow-up correction: SVG filter patterns must use data URLs in `feImage`; built-in pattern URLs stay only as preview/loading sources and are converted before the effect renders them. Any editor input that changes `ptnUrl` must clear stale `ptnData` and trigger a fresh conversion.
-- Verification passed: `pnpm exec tsc --noEmit`, `pnpm lint`, `pnpm build`, and a Playwright smoke test for `/` to `/studio` with Character/Effect/Style controls and nonblank SVG effect markup.
+- Replaced historical Phase 1-6 execution logs in this file with current v2.1 tracking only.
+- Removed stale mesh/displacement implementation rules from `tasks/lessons.md`; active lessons now preserve only evergreen guidance.
+- Strengthened superseded/historical guards in old planning docs so future work does not accidentally resume the Character Mesh path.
+- Verification: stale active-rule grep against `tasks/todo.md` and `tasks/lessons.md` returned no matches.
+- Verification: old-doc guard grep confirmed the historical and superseded warnings are present.

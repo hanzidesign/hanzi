@@ -1,6 +1,10 @@
 # Shader Effect Redesign Phased Implementation Plan
 
-> **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
+> **Superseded:** This 3D Character Mesh phased plan is superseded by `tasks/v2.1/README.md`, which defines the active Character Surface and Morph Stack direction.
+
+> **Do not implement from this file.** Keep it only as historical context for the earlier mesh-based handoff.
+
+> **Inactive historical note:** This old handoff originally required `superpowers:executing-plans`. That instruction no longer applies because the active implementation plan is `tasks/v2.1/README.md`.
 
 **Goal:** Implement the shader-based 3D Hanzi character mesh editor described in `tasks/shader-effect-redesign-plan.md` through PM-reviewable phases.
 
@@ -410,7 +414,7 @@ Stop after visual verification. PM should verify:
    - uploaded PNG/JPG/JPEG displacement image support under 5MB
    - displacement strength
    - displacement bias
-   - status text or indicator when current shader preset does not use image distortion
+   - mesh-shape displacement status or helper text that does not imply shader-color distortion
 
 6. Remove old StylePanel as character color controls.
 
@@ -442,21 +446,28 @@ Stop after UI verification. PM should verify:
 
 ## Phase 6: Displacement Map Behavior
 
-**Purpose:** Make the existing pattern images drive geometry displacement and optional shader image distortion.
+**Purpose:** Make the existing pattern images and accepted local uploads drive mesh-shape displacement.
 
 **Files:**
 - Create: `utils/patternAssets.ts`
 - Modify: `components/studio/ShaderCanvas.tsx`
 - Modify: `components/studio/CharacterMesh.tsx`
 - Modify: `components/studio/DisplacementPanel.tsx`
+- Modify: `components/studio/character-mesh-geometry.ts`
+- Modify: `app/studio/studio-store.ts`
 - Modify: `shaders/shared/default-vertex.glsl`
-- Modify relevant preset fragment shaders that opt into image distortion
 
 **Steps:**
 
 1. Add a typed list of available pattern URLs from `public/images/patterns`.
+   - Include all built-in `000.jpg` through `096.jpg` assets.
+   - Validate persisted built-in pattern URLs against this list and fall back to `000.jpg` when invalid.
 
 2. Load selected pattern image as a Three texture.
+   - Use the selected built-in pattern URL or the runtime-only uploaded PNG/JPG/JPEG data URL.
+   - Keep the last valid texture while the next texture is loading or if it fails.
+   - Fall back to the neutral texture only when no valid texture exists.
+   - Do not persist uploaded image data as `patternUrl`.
 
 3. Pass texture to `u_displacementMap`.
 
@@ -464,14 +475,38 @@ Stop after UI verification. PM should verify:
    - `u_displacementStrength`
    - `u_displacementBias`
    - displacement along normals
+   - neutral-centered height math, where neutral gray produces no movement before bias is applied
+   - luminance-based height sampling, with transparent uploaded PNG pixels blended toward neutral height
+   - center-cover map fitting for non-square uploaded images instead of stretching
+   - one fitted map over mesh-local UV space; no v1 tiling
+   - front, back, and side faces all affected along their normals
 
-5. For presets with `usesDisplacementMap: true`, sample the map in fragment shader to distort `v_uv`.
+5. Add a persisted displacement subdivision level control in the Displacement panel.
+   - Treat subdivision as geometry-density support for displacement behavior, not as a shader preset parameter.
+   - Default to no added subdivision so selecting a map alone does not alter the visible mesh.
+   - Rebuild character mesh geometry when the subdivision level changes.
 
-6. Keep displacement strength conservative by default.
+6. Keep shader color and shader pattern sampling unchanged.
+   - Do not sample the displacement map in preset fragment shaders.
+   - Do not distort `v_uv` for color or pattern sampling.
+   - Remove or replace the Displacement panel's image-distortion status so the UI does not imply shader-color distortion.
 
-7. Run visual checks with several patterns and characters.
+7. Keep displacement visually inert by default.
+   - Default Strength remains `0`.
+   - Selecting a different map should not visibly change the **Character Mesh** until the user increases Strength.
+   - Narrow Bias to `-0.5..0.5` when real texture displacement is wired.
 
-8. Run:
+8. Run visual checks with:
+   - default `tc/int/2023`
+   - one dense character
+   - one sparse character
+   - one simplified-character selection
+   - built-in maps `000`, `012`, and `096`
+   - one uploaded non-square PNG
+   - confirmation that uploaded images and built-in patterns change mesh shape when Strength is raised
+   - confirmation that shader colors and shader patterns remain unchanged except for the mesh-shape deformation
+
+9. Run:
 
    ```sh
    pnpm test
@@ -485,9 +520,12 @@ Stop after UI verification. PM should verify:
 Stop after visual verification. PM should verify:
 
 - Pattern selection visibly affects mesh displacement.
+- Pattern selection does not visibly affect the mesh while Strength is `0`.
 - Strength and bias controls have understandable effects.
-- Presets that use image distortion visibly react to the same pattern.
-- Displacement controls remain visible even for presets that do not use image distortion.
+- The subdivision level slider visibly improves displacement smoothness when Strength is raised.
+- Uploaded images visibly affect mesh displacement after Strength is raised.
+- Shader colors and shader pattern sampling stay unchanged by the displacement map.
+- Displacement controls remain visible and are clearly mesh-shape controls, not shader-color controls.
 - If displacement is too faceted to be useful, stop and re-plan geometry density.
 
 ## Phase 7: Error Handling And Cleanup

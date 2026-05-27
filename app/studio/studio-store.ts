@@ -5,6 +5,11 @@ import { countries } from '@/assets/list'
 import { getDefaultShaderPreset, getShaderPresetById } from '@/shaders/registry'
 import type { ShaderParamValue, ShaderParamValues } from '@/shaders/types'
 import { createDefaultParams, sanitizeParamsForPreset } from '@/shaders/uniforms'
+import {
+  DEFAULT_PATTERN_ASSET_URL,
+  sanitizePatternUrl,
+  toPatternUrl,
+} from '@/utils/patternAssets'
 
 export const STUDIO_STORE_STORAGE_KEY = 'hanzi-studio-shader-editor-v1'
 
@@ -41,6 +46,11 @@ export const DEFAULT_MESH_STATE = {
   autoRotateSpeed: 0.5,
 }
 
+export const MIN_DISPLACEMENT_BIAS = -0.5
+export const MAX_DISPLACEMENT_BIAS = 0.5
+export const MIN_DISPLACEMENT_SUBDIVISION_LEVEL = 0
+export const MAX_DISPLACEMENT_SUBDIVISION_LEVEL = 2
+
 export type StudioCharacterState = {
   country: string
   year: string
@@ -66,6 +76,7 @@ export type StudioStoreState = {
     patternUrl: string
     strength: number
     bias: number
+    subdivisionLevel: number
   }
   view: {
     activePanel: StudioActivePanel | null
@@ -174,11 +185,10 @@ export function createStudioStore(storage?: StateStorage) {
           set({ mesh: createDefaultMeshState() })
         },
         setDisplacementControl: (partial) => {
-          const nextDisplacement = { ...get().displacement, ...partial }
-
-          if (isDataUrl(nextDisplacement.patternUrl)) {
-            nextDisplacement.patternUrl = get().displacement.patternUrl
-          }
+          const nextDisplacement = sanitizeDisplacementState(
+            { ...get().displacement, ...partial },
+            get().displacement,
+          )
 
           set({
             displacement: nextDisplacement,
@@ -246,7 +256,10 @@ export function createStudioStore(storage?: StateStorage) {
           }
 
           set({
-            displacement: { ...get().displacement, patternUrl },
+            displacement: {
+              ...get().displacement,
+              patternUrl: sanitizePatternUrl(patternUrl, get().displacement.patternUrl),
+            },
             runtime: {
               ...get().runtime,
               ptnData: '',
@@ -346,9 +359,10 @@ export function createInitialStudioStoreState(): StudioStoreState {
     },
     mesh: createDefaultMeshState(),
     displacement: {
-      patternUrl: toPatternUrl(DEFAULT_EFFECT_STATE.seed),
+      patternUrl: DEFAULT_PATTERN_ASSET_URL,
       strength: 0,
       bias: 0,
+      subdivisionLevel: 0,
     },
     view: DEFAULT_VIEW_STATE,
     svgEffect: DEFAULT_EFFECT_STATE,
@@ -387,10 +401,6 @@ export function fallbackSvgData(url: string) {
   return `<image href="${url}" x="0" y="0" width="100%" height="100%" />`
 }
 
-export function toPatternUrl(seed: number) {
-  return `/images/patterns/${String(seed).padStart(3, '0')}.jpg`
-}
-
 function selectPersistedState(state: StudioStore): PersistedStudioState {
   return {
     character: state.character,
@@ -400,7 +410,7 @@ function selectPersistedState(state: StudioStore): PersistedStudioState {
       ...state.displacement,
       patternUrl: isDataUrl(state.displacement.patternUrl)
         ? toPatternUrl(state.svgEffect.seed)
-        : state.displacement.patternUrl,
+        : sanitizePatternUrl(state.displacement.patternUrl),
     },
     view: state.view,
     svgEffect: state.svgEffect,
@@ -504,15 +514,21 @@ function sanitizeDisplacementState(
     return fallback
   }
 
-  const patternUrl =
-    typeof value.patternUrl === 'string' && !isDataUrl(value.patternUrl)
-      ? value.patternUrl
-      : fallback.patternUrl
-
   return {
-    patternUrl,
+    patternUrl: sanitizePatternUrl(value.patternUrl, fallback.patternUrl),
     strength: readNumber(value.strength, fallback.strength),
-    bias: readNumber(value.bias, fallback.bias),
+    bias: readClampedNumber(
+      value.bias,
+      fallback.bias,
+      MIN_DISPLACEMENT_BIAS,
+      MAX_DISPLACEMENT_BIAS,
+    ),
+    subdivisionLevel: readClampedInteger(
+      value.subdivisionLevel,
+      fallback.subdivisionLevel,
+      MIN_DISPLACEMENT_SUBDIVISION_LEVEL,
+      MAX_DISPLACEMENT_SUBDIVISION_LEVEL,
+    ),
   }
 }
 
@@ -634,6 +650,24 @@ function readRecord(value: unknown) {
 
 function readNumber(value: unknown, fallback: number) {
   return typeof value === 'number' && Number.isFinite(value) ? value : fallback
+}
+
+function readClampedNumber(
+  value: unknown,
+  fallback: number,
+  min: number,
+  max: number,
+) {
+  return Math.min(max, Math.max(min, readNumber(value, fallback)))
+}
+
+function readClampedInteger(
+  value: unknown,
+  fallback: number,
+  min: number,
+  max: number,
+) {
+  return Math.trunc(readClampedNumber(value, fallback, min, max))
 }
 
 function readBoolean(value: unknown, fallback: boolean) {

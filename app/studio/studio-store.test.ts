@@ -56,6 +56,7 @@ describe('studio store', () => {
       autoRotate: false,
     })
     expect(state.displacement.patternUrl).toBe('/images/patterns/000.jpg')
+    expect(state.displacement.subdivisionLevel).toBe(0)
     expect(state.view.activePanel).toBe('character')
   })
 
@@ -152,6 +153,7 @@ describe('studio store', () => {
         ...initial.displacement,
         patternUrl: '/images/patterns/012.jpg',
         strength: 0.4,
+        subdivisionLevel: 2,
       },
     }
     const { storage } = createMemoryStorage(
@@ -173,6 +175,7 @@ describe('studio store', () => {
     expect(store.getState().displacement).toMatchObject({
       patternUrl: '/images/patterns/012.jpg',
       strength: 0.4,
+      subdivisionLevel: 2,
     })
     expect(store.getState().shader).toEqual({
       selectedPresetId: 'grid-pulse',
@@ -228,5 +231,29 @@ describe('studio store', () => {
     expect(JSON.stringify(persisted)).not.toContain('large-upload')
     expect(persisted.displacement.patternUrl).toBe('/images/patterns/012.jpg')
     expect(persisted.view.backgroundColor).toBe('#101010')
+  })
+
+  it('sanitizes invalid persisted displacement controls', () => {
+    const initial = createInitialStudioStoreState()
+    const staleState = {
+      ...initial,
+      displacement: {
+        patternUrl: '/images/patterns/999.jpg',
+        strength: 'strong',
+        bias: 99,
+        subdivisionLevel: 4.8,
+      },
+    }
+    const { storage } = createMemoryStorage(
+      JSON.stringify({ state: staleState, version: 1 }),
+    )
+    const store = createStudioStore(storage)
+
+    expect(store.getState().displacement).toEqual({
+      patternUrl: '/images/patterns/000.jpg',
+      strength: initial.displacement.strength,
+      bias: 0.5,
+      subdivisionLevel: 2,
+    })
   })
 })

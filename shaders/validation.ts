@@ -7,6 +7,7 @@ export const RESERVED_UNIFORMS = [
   'u_mouse',
   'u_resolution',
   'u_displacementMap',
+  'u_displacementMapTransform',
   'u_displacementStrength',
   'u_displacementBias',
   'u_boundsMin',

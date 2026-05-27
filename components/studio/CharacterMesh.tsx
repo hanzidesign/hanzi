@@ -9,7 +9,7 @@ import {
 } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import { SVGLoader } from 'three/addons/loaders/SVGLoader.js'
-import { Group, Vector2, type ShaderMaterial } from 'three'
+import { Group, Vector2, type ShaderMaterial, type Texture, type Vector4 } from 'three'
 import {
   createCharacterMeshGeometries,
   type CharacterMeshGeometryResult,
@@ -38,6 +38,9 @@ type CharacterMeshProps = {
   }
   displacementStrength: number
   displacementBias: number
+  displacementSubdivisionLevel: number
+  displacementMap?: Texture
+  displacementMapTransform: Vector4
   mouse: RefObject<Vector2>
   onError: (error: string | null) => void
   onStatusChange: (status: CharacterMeshStatus) => void
@@ -50,6 +53,9 @@ export default function CharacterMesh({
   mesh,
   displacementStrength,
   displacementBias,
+  displacementSubdivisionLevel,
+  displacementMap,
+  displacementMapTransform,
   mouse,
   onError,
   onStatusChange,
@@ -74,6 +80,8 @@ export default function CharacterMesh({
           params,
           boundsMin: geometryResult.shaderBoundsMin,
           boundsMax: geometryResult.shaderBoundsMax,
+          displacementMap,
+          displacementMapTransform,
           displacementStrength,
           displacementBias,
         }),
@@ -89,6 +97,8 @@ export default function CharacterMesh({
     }
   }, [
     displacementBias,
+    displacementMap,
+    displacementMapTransform,
     displacementStrength,
     geometryResult,
     params,
@@ -142,6 +152,7 @@ export default function CharacterMesh({
         svgText,
         mesh.extrusionDepth,
         mesh.thickness,
+        displacementSubdivisionLevel,
       )
       replaceGeometryResult(nextResult, resultRef, setGeometryResult)
       onStatusChange(IDLE_CHARACTER_MESH_STATUS)
@@ -154,7 +165,13 @@ export default function CharacterMesh({
             : 'Unable to build character mesh.',
       })
     }
-  }, [mesh.extrusionDepth, mesh.thickness, onStatusChange, svgText])
+  }, [
+    displacementSubdivisionLevel,
+    mesh.extrusionDepth,
+    mesh.thickness,
+    onStatusChange,
+    svgText,
+  ])
 
   useEffect(() => {
     return () => {
@@ -189,6 +206,9 @@ export default function CharacterMesh({
     activeMaterial.uniforms.u_boundsMax.value.copy(geometryResult.shaderBoundsMax)
     activeMaterial.uniforms.u_displacementStrength.value = displacementStrength
     activeMaterial.uniforms.u_displacementBias.value = displacementBias
+    activeMaterial.uniforms.u_displacementMapTransform.value.copy(
+      displacementMapTransform,
+    )
 
     if (groupRef.current && mesh.autoRotate) {
       groupRef.current.rotation.y = applyDeltaRotation(
@@ -221,6 +241,7 @@ function createGeometryResult(
   svgText: string,
   extrusionDepth: number,
   thickness: number,
+  displacementSubdivisionLevel: number,
 ) {
   const svg = new SVGLoader().parse(svgText)
   const shapes = svg.paths.flatMap((path) => SVGLoader.createShapes(path))
@@ -229,6 +250,7 @@ function createGeometryResult(
     shapes,
     extrusionDepth,
     thickness,
+    displacementSubdivisionLevel,
   })
 }
 

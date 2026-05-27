@@ -6,6 +6,7 @@ import {
   UnsignedByteType,
   Vector2,
   Vector3,
+  Vector4,
   type IUniform,
   type Texture,
 } from 'three'
@@ -21,9 +22,12 @@ type ShaderMaterialUniformOptions = {
   boundsMin?: Vector3
   boundsMax?: Vector3
   displacementMap?: Texture
+  displacementMapTransform?: Vector4
   displacementStrength?: number
   displacementBias?: number
 }
+
+const DEFAULT_DISPLACEMENT_MAP_TRANSFORM = new Vector4(1, 1, 0, 0)
 
 export function resolveShaderPresetForCanvas(presetId: string) {
   return getShaderPresetById(presetId) ?? getDefaultShaderPreset()
@@ -37,6 +41,7 @@ export function createShaderMaterialUniforms({
   boundsMin = new Vector3(-1, -1, -0.5),
   boundsMax = new Vector3(1, 1, 0.5),
   displacementMap = getNeutralDisplacementTexture(),
+  displacementMapTransform = DEFAULT_DISPLACEMENT_MAP_TRANSFORM,
   displacementStrength = 0,
   displacementBias = 0,
 }: ShaderMaterialUniformOptions): ShaderUniforms {
@@ -45,6 +50,7 @@ export function createShaderMaterialUniforms({
     u_mouse: { value: mouse.clone() },
     u_resolution: { value: resolution.clone() },
     u_displacementMap: { value: displacementMap },
+    u_displacementMapTransform: { value: displacementMapTransform.clone() },
     u_displacementStrength: { value: displacementStrength },
     u_displacementBias: { value: displacementBias },
     u_boundsMin: { value: boundsMin.clone() },
@@ -61,6 +67,7 @@ export function createShaderMaterial({
   boundsMin,
   boundsMax,
   displacementMap,
+  displacementMapTransform,
   displacementStrength,
   displacementBias,
 }: ShaderMaterialUniformOptions) {
@@ -76,6 +83,7 @@ export function createShaderMaterial({
       boundsMin,
       boundsMax,
       displacementMap,
+      displacementMapTransform,
       displacementStrength,
       displacementBias,
     }) as Record<string, IUniform<ShaderUniformValue>>,

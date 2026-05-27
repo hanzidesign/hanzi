@@ -1,6 +1,8 @@
 # Hanzi Studio Refactor Plan
 
-Status: planning only. Do not implement application code until explicitly requested.
+> **Historical:** This original refactor plan is superseded for active `/studio` implementation by `tasks/v2.1/README.md`. Keep it only for product-boundary background.
+
+Status: historical reference. Do not implement from this file unless the user explicitly reopens the initial SVG-effect refactor scope.
 
 ## Goal
 

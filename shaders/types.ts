@@ -1,4 +1,4 @@
-import type { IUniform, Texture, Vector2, Vector3 } from 'three'
+import type { IUniform, Texture, Vector2, Vector3, Vector4 } from 'three'
 
 export type ShaderPreset = {
   id: string
@@ -56,6 +56,6 @@ export type ShaderParamValue = number | string | boolean
 
 export type ShaderParamValues = Record<string, ShaderParamValue>
 
-export type ShaderUniformValue = number | Texture | Vector2 | Vector3
+export type ShaderUniformValue = number | Texture | Vector2 | Vector3 | Vector4
 
 export type ShaderUniforms = Record<string, IUniform<ShaderUniformValue>>

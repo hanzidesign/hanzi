@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   AspectRatio,
   Box,
@@ -16,20 +16,23 @@ import {
   useMantineTheme,
 } from '@mantine/core'
 import { IoMdImage } from 'react-icons/io'
-import { useStudioStore, toPatternUrl } from '@/app/studio/studio-store'
+import {
+  MAX_DISPLACEMENT_BIAS,
+  MAX_DISPLACEMENT_SUBDIVISION_LEVEL,
+  MIN_DISPLACEMENT_BIAS,
+  MIN_DISPLACEMENT_SUBDIVISION_LEVEL,
+  useStudioStore,
+} from '@/app/studio/studio-store'
 import {
   getDisplacementUploadError,
   type DisplacementUploadCandidate,
 } from '@/components/studio/displacement-upload'
 import { PanelBox, PanelLabel } from '@/components/studio/PanelPrimitives'
 import useFileReader from '@/hooks/useFileReader'
-import { getShaderPresetById } from '@/shaders/registry'
-
-const PATTERN_COUNT = 97
+import { builtInPatternAssets } from '@/utils/patternAssets'
 
 export default function DisplacementPanel() {
   const theme = useMantineTheme()
-  const selectedPresetId = useStudioStore((store) => store.shader.selectedPresetId)
   const displacement = useStudioStore((store) => store.displacement)
   const uploadedImageData = useStudioStore(
     (store) => store.runtime.uploadedDisplacementImageData,
@@ -47,11 +50,6 @@ export default function DisplacementPanel() {
   const [file, setFile] = useState<File | null>(null)
   const [uploadError, setUploadError] = useState<string | null>(null)
   const fileData = useFileReader(file)
-  const preset = getShaderPresetById(selectedPresetId)
-  const patternUrls = useMemo(
-    () => Array.from({ length: PATTERN_COUNT }, (_, index) => toPatternUrl(index)),
-    [],
-  )
   const previewImage = uploadedImageData || displacement.patternUrl
 
   useEffect(() => {
@@ -70,6 +68,10 @@ export default function DisplacementPanel() {
     if (error) {
       setFile(null)
       return
+    }
+
+    if (!nextFile) {
+      clearUploadedDisplacementImageData()
     }
 
     setFile(nextFile)
@@ -137,17 +139,18 @@ export default function DisplacementPanel() {
           <PanelLabel mb={8}>Built-in maps</PanelLabel>
           <ScrollArea h={220} type="auto">
             <SimpleGrid cols={4} spacing={8}>
-              {patternUrls.map((url, index) => {
-                const isActive = !uploadedImageData && displacement.patternUrl === url
+              {builtInPatternAssets.map((asset) => {
+                const isActive =
+                  !uploadedImageData && displacement.patternUrl === asset.url
 
                 return (
                   <Box
-                    key={url}
+                    key={asset.url}
                     component="button"
                     type="button"
                     onClick={() => {
                       setFile(null)
-                      setPatternSeed(index)
+                      setPatternSeed(asset.index)
                     }}
                     style={{
                       padding: 0,
@@ -163,7 +166,7 @@ export default function DisplacementPanel() {
                     <AspectRatio ratio={1}>
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
-                        src={url}
+                        src={asset.url}
                         alt=""
                         width="100%"
                         height="100%"
@@ -188,14 +191,26 @@ export default function DisplacementPanel() {
         <SliderControl
           label="Bias"
           value={displacement.bias}
-          min={-1}
-          max={1}
+          min={MIN_DISPLACEMENT_BIAS}
+          max={MAX_DISPLACEMENT_BIAS}
           step={0.01}
           onChange={(bias) => setDisplacementControl({ bias })}
         />
+        <SliderControl
+          label="Subdivision level"
+          value={displacement.subdivisionLevel}
+          min={MIN_DISPLACEMENT_SUBDIVISION_LEVEL}
+          max={MAX_DISPLACEMENT_SUBDIVISION_LEVEL}
+          step={1}
+          onChange={(subdivisionLevel) =>
+            setDisplacementControl({ subdivisionLevel })
+          }
+        />
 
         <Text fz={13} c="dimmed">
-          Image distortion: {preset?.usesDisplacementMap ? 'on' : 'off'}
+          {displacement.strength === 0
+            ? 'Strength is 0; maps are previewed only.'
+            : 'Map affects mesh shape only. Shader colors stay unchanged.'}
         </Text>
       </Stack>
     </PanelBox>

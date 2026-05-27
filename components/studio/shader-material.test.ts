@@ -1,4 +1,4 @@
-import { DoubleSide, Vector2, Vector3 } from 'three'
+import { DataTexture, DoubleSide, Vector2, Vector3, Vector4 } from 'three'
 import { describe, expect, it } from 'vitest'
 
 import {
@@ -33,6 +33,9 @@ describe('shader material helpers', () => {
     expect(uniforms.u_boundsMax.value).toBeInstanceOf(Vector3)
     expect(uniforms.u_displacementStrength.value).toBe(0)
     expect(uniforms.u_displacementBias.value).toBe(0)
+    expect(uniforms.u_displacementMapTransform.value).toEqual(
+      new Vector4(1, 1, 0, 0),
+    )
     expect(uniforms.u_density.value).toBe(24)
     expect(uniforms.u_invertGrid.value).toBe(1)
   })
@@ -48,6 +51,8 @@ describe('shader material helpers', () => {
       boundsMax: new Vector3(2, 1, 0.5),
       displacementStrength: 0.3,
       displacementBias: -0.1,
+      displacementMap: new DataTexture(),
+      displacementMapTransform: new Vector4(0.5, 1, 0.25, 0),
     })
 
     expect(uniforms.u_resolution.value).toEqual(new Vector2(640, 480))
@@ -56,6 +61,22 @@ describe('shader material helpers', () => {
     expect(uniforms.u_boundsMax.value).toEqual(new Vector3(2, 1, 0.5))
     expect(uniforms.u_displacementStrength.value).toBe(0.3)
     expect(uniforms.u_displacementBias.value).toBe(-0.1)
+    expect(uniforms.u_displacementMap.value).toBeInstanceOf(DataTexture)
+    expect(uniforms.u_displacementMapTransform.value).toEqual(
+      new Vector4(0.5, 1, 0.25, 0),
+    )
+  })
+
+  it('keeps displacement map out of fragment shader color sampling', () => {
+    const material = createShaderMaterial({
+      preset: getDefaultShaderPreset(),
+      params: createDefaultParams(getDefaultShaderPreset()),
+    })
+
+    expect(material.fragmentShader).not.toContain('u_displacementMap')
+    expect(material.fragmentShader).not.toContain('u_displacementMapTransform')
+
+    material.dispose()
   })
 
   it('falls back to the default shader preset for stale canvas preset ids', () => {

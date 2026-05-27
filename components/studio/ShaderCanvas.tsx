@@ -7,6 +7,7 @@ import { Vector2 } from 'three'
 import { getCharacterDisplayState, useStudioStore } from '@/app/studio/studio-store'
 import CharacterMesh from '@/components/studio/CharacterMesh'
 import type { CharacterMeshStatus } from '@/components/studio/character-mesh-status'
+import { useDisplacementTexture } from '@/components/studio/displacement-texture'
 import ShaderErrorOverlay from '@/components/studio/ShaderErrorOverlay'
 import { resolveShaderPresetForCanvas } from '@/components/studio/shader-material'
 import { getViewportPointerUniformValue } from '@/components/studio/shader-canvas-math'
@@ -21,11 +22,17 @@ export default function ShaderCanvas({ onMeshStatusChange }: ShaderCanvasProps) 
   const currentParams = useStudioStore((store) => store.shader.currentParams)
   const mesh = useStudioStore((store) => store.mesh)
   const displacement = useStudioStore((store) => store.displacement)
+  const uploadedDisplacementImageData = useStudioStore(
+    (store) => store.runtime.uploadedDisplacementImageData,
+  )
   const backgroundColor = useStudioStore((store) => store.view.backgroundColor)
   const { charUrl } = getCharacterDisplayState(character)
   const preset = resolveShaderPresetForCanvas(selectedPresetId)
   const [previewError, setPreviewError] = useState<string | null>(null)
   const mouse = useRef(new Vector2(0, 0))
+  const displacementTexture = useDisplacementTexture(
+    uploadedDisplacementImageData || displacement.patternUrl,
+  )
 
   const updateViewportPointer = (event: PointerEvent<HTMLDivElement>) => {
     mouse.current.copy(
@@ -65,6 +72,9 @@ export default function ShaderCanvas({ onMeshStatusChange }: ShaderCanvasProps) 
           mesh={mesh}
           displacementStrength={displacement.strength}
           displacementBias={displacement.bias}
+          displacementSubdivisionLevel={displacement.subdivisionLevel}
+          displacementMap={displacementTexture.texture}
+          displacementMapTransform={displacementTexture.transform}
           mouse={mouse}
           onError={setPreviewError}
           onStatusChange={onMeshStatusChange}
