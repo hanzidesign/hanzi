@@ -5,6 +5,7 @@
 ## Scope
 
 - Stable WebGL Character Surface only.
+- Mask-texture rasterization only; defer full SDF generation until morphology or contour effects require it.
 - No Morph Stack UI yet.
 - No WebGPU dependency.
 - Preserve character selection.
@@ -58,12 +59,14 @@
    pnpm build
    ```
 
-8. Browser smoke:
+8. Ask the user to perform manual browser smoke checks:
    - desktop `/studio`
    - mobile `/studio`
    - switch character
    - refresh page
    - confirm no upside-down character
+
+   Do not run automated browser visual checks unless the user explicitly asks for them.
 
 ## Checkpoint 1
 
@@ -72,4 +75,3 @@
 - [ ] Character selection still works.
 - [ ] Character is upright.
 - [ ] No active preview path uses `CharacterMesh` or `ExtrudeGeometry`.
-

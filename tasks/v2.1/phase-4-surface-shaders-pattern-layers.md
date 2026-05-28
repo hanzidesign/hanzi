@@ -27,6 +27,15 @@ Initial selector targets:
 - `foreground-shader`
 - `background-shader`
 
+Invalid Pattern Layer targets sanitize to `foreground-shader`.
+
+## Pattern Sources
+
+- Built-in pattern assets from the existing pattern asset list.
+- Local file input as a session-only runtime source.
+
+Invalid or missing Pattern Layer sources fall back to the first built-in pattern. If a local file fails to load after a previous valid texture exists, keep the last valid runtime texture and surface a non-persisted UI error.
+
 ## Steps
 
 1. Add tests for Pattern Layer target validation:
@@ -36,20 +45,22 @@ Initial selector targets:
 
 2. Add tests for Surface Shader Layer locks and randomization preservation.
 
-3. Implement foreground/background shader composition.
+3. Add tests that randomization may update existing unlocked Pattern Layers, but does not add or remove Pattern Layers by default.
 
-4. Implement Pattern Layer texture loading:
+4. Implement foreground/background shader composition.
+
+5. Implement Pattern Layer texture loading:
    - built-in pattern source
    - uploaded session-only source
    - last valid texture fallback
    - no uploaded data URL persistence
 
-5. Wire Pattern Layer target behavior:
+6. Wire Pattern Layer target behavior:
    - `morph-stack` feeds the whole Morph Stack pipeline
    - `foreground-shader` styles the character mask
    - `background-shader` styles the canvas
 
-6. Run:
+7. Run:
 
    ```sh
    pnpm vitest run components/studio/surface-shader-material.test.ts components/studio/pattern-layer-texture.test.ts app/studio/studio-store.test.ts
@@ -66,4 +77,3 @@ Initial selector targets:
 - [ ] Pattern Layer target is single-select.
 - [ ] Pattern target `morph-stack` affects whole morph pipeline.
 - [ ] Locks preserve shader/pattern settings during randomization.
-

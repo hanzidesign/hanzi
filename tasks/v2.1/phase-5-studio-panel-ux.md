@@ -8,6 +8,8 @@
 - No new visual design system.
 - No export/timeline workflow.
 
+Preserve the current Studio panel visual style: Mantine Accordion structure, `PanelBox`/`PanelLabel`, current spacing and typography rhythm, dark controls, and the existing route layout.
+
 ## Files
 
 - Modify: `components/studio/StudioControls.tsx`
@@ -76,12 +78,14 @@ Recommended panels:
    pnpm build
    ```
 
-8. Browser smoke:
+8. Ask the user to perform manual browser smoke checks:
    - desktop and mobile
    - open each panel
    - add/reorder/lock Morph layer
    - randomize with locked layer
    - add three Pattern Layers and verify fourth is blocked
+
+   Do not run automated browser visual checks unless the user explicitly asks for them.
 
 ## Checkpoint 5
 
@@ -90,4 +94,3 @@ Recommended panels:
 - [ ] Experimental options are visible but labelled.
 - [ ] Pattern Layer UI enforces max three and single target.
 - [ ] No mesh/displacement language remains in active UI.
-

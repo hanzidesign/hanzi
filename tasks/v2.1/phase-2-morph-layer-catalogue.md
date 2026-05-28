@@ -7,6 +7,7 @@
 - Registry and helper logic.
 - Stable and Experimental tier metadata.
 - No user-facing Morph Stack panel yet.
+- No requirement to visually compose every morph in shaders during this phase.
 
 ## Files
 
@@ -45,7 +46,7 @@ type MorphLayerDefinition = {
 
 ## Stable First Set
 
-Implement enough stable entries to prove breadth:
+Implement these stable entries first to prove breadth:
 
 - `sine-bend`
 - `swirl-well`
@@ -78,7 +79,7 @@ Add metadata only if implementation is not ready:
    - default randomization excludes Experimental layers
    - opt-in randomization may include Experimental layers
 
-3. Implement catalogue types and registry helpers.
+3. Implement catalogue types, param definitions, defaults, bounds, and registry helpers.
 
 4. Implement deterministic seeded random helper.
 
@@ -98,4 +99,3 @@ Add metadata only if implementation is not ready:
 - [ ] Stable and Experimental tiers are enforced by tests.
 - [ ] Randomization defaults to Stable-only.
 - [ ] Catalogue can support UI grouping by category.
-

@@ -16,7 +16,7 @@ Keep this file as evergreen guidance only. Historical phase notes, completed tas
 ## Studio State And Persistence
 
 - Do not assume Studio editor state should remain session-only once the user is designing heavier WebGL/shader controls. If refresh safety matters, treat local persistence as part of the product contract.
-- Persist only compact serializable editor choices. Do not persist uploaded data URLs, generated mask/SDF textures, WebGPU availability, transient render errors, Three.js textures, geometries, or materials.
+- Persist only compact serializable editor choices. Do not persist uploaded data URLs, generated mask textures, future generated SDF textures, WebGPU availability, transient render errors, Three.js textures, geometries, or materials.
 - Do not persist uploaded pattern image data URLs in localStorage. Treat uploaded pattern data as session-only because localStorage has practical size limits.
 - Treat `ptnUrl` as the pattern source and `ptnData` as the SVG-filter-ready derived value in legacy SVG-filter code. Any editor path that changes `ptnUrl` must clear stale `ptnData` and trigger a fresh URL-to-data-URL conversion.
 
@@ -25,6 +25,7 @@ Keep this file as evergreen guidance only. Historical phase notes, completed tas
 - When replacing Studio panels, preserve the current Studio panel visual style unless the user explicitly asks for a new design system.
 - Studio control panels should allow clicking the active accordion header to collapse it; preserve `null` as the collapsed active-panel state instead of coercing it to another panel.
 - When the user explicitly asks to ask all planning/grill questions at once, batch the unresolved questions in one pass with recommended answers instead of defaulting to one-question-at-a-time pacing.
+- During v2.1 checkpoint verification, do not automatically run browser visual checks. Give the user a specific `/studio` visual checklist and wait for their report unless they explicitly request automated browser testing.
 
 ## Character Surface v2.1
 
@@ -35,6 +36,7 @@ Keep this file as evergreen guidance only. Historical phase notes, completed tas
 - Morph Stack randomization should draw only from Stable Morph Layer Catalogue entries by default; include Experimental layers only through an explicit opt-in.
 - Morph Stack randomization must honor locked layers. A locked layer should keep its type, relative order, and parameters instead of being replaced, reordered, or mutated.
 - Randomization locks should be scoped: Morph layer locks preserve deformation layers, Surface Shader Layer locks preserve foreground/background shader styling, and Pattern Layer locks preserve pattern source plus layer selector target.
+- v2.1 persisted state starts clean with a new storage key. Do not migrate old mesh/displacement state into the Character Surface store unless the user explicitly reopens that tradeoff.
 
 ## Shaders And Patterns
 

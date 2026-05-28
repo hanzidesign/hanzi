@@ -2,12 +2,14 @@
 
 Use this checklist as the PM review gate for each phase. A phase is not complete until its checkpoint is satisfied and results are recorded in `tasks/todo.md`.
 
+For browser visual checks, provide the user with the relevant `/studio` checklist and wait for their report. Do not automatically run browser visual automation unless the user explicitly requests it.
+
 ## Checkpoint 0: Architecture Lock
 
-- [ ] `CONTEXT.md` uses Character Surface/Morph Stack language.
-- [ ] Old mesh/displacement plans are marked superseded.
-- [ ] `tasks/v2.1/` is the visible active source of truth.
-- [ ] Implementation has not started before the v2.1 plan is approved.
+- [x] `CONTEXT.md` uses Character Surface/Morph Stack language.
+- [x] Old mesh/displacement plans are marked superseded.
+- [x] `tasks/v2.1/` is the visible active source of truth.
+- [x] Implementation has not started before the v2.1 plan is approved.
 
 ## Checkpoint 1: Character Surface Foundation
 
@@ -67,6 +69,5 @@ Use this checklist as the PM review gate for each phase. A phase is not complete
 - [ ] Obsolete mesh/displacement active code is removed or quarantined.
 - [ ] Old compatibility state is removed if no longer used.
 - [ ] Full verification commands pass.
-- [ ] Browser visual smoke passes desktop and mobile.
+- [ ] User-reported browser visual smoke passes desktop and mobile.
 - [ ] `tasks/todo.md` records final changed files, verification, and residual risks.
-

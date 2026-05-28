@@ -13,6 +13,8 @@
 
 ## Stable Candidate Families
 
+Phase 2 implements this first Stable set before expanding the broader catalogue: `sine-bend`, `swirl-well`, `curl-flow`, `band-slice`, `pixelate-grid`, `ink-compression`, and `surface-depth`.
+
 ### Coordinate Warp
 
 Examples:
@@ -141,7 +143,7 @@ Examples:
 - control-point noise
 - shape interpolation
 
-Runtime note: executes before rasterization, then feeds the same mask/SDF pipeline.
+Runtime note: executes before rasterization, then feeds the same Character Surface rasterization pipeline.
 
 ### Pixel Sorting And Run Deformation
 
@@ -182,4 +184,3 @@ Runtime note: renderer-level extension, not a Morph Stack layer. Keep WebGL as S
 - gl-transitions: large GLSL transition catalogue useful for warp, wipe, grid, and kaleidoscope ideas.
 - OpenCV geometric transforms: `remap`, affine, perspective, and polar transformation mental models.
 - Paper.js and SVG morph libraries: vector path smoothing, simplification, interpolation, and control-point deformation references.
-

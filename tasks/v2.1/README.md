@@ -4,7 +4,7 @@
 
 **Status:** Planning package. Do not implement application code until explicit implementation approval.
 
-**Goal:** Replace the current 3D Character Mesh direction with a fullscreen **Character Surface** that rasterizes selected Hanzi SVGs into mask/SDF textures and applies shader-driven deformation through a **Morph Stack**.
+**Goal:** Replace the current 3D Character Mesh direction with a fullscreen **Character Surface** that rasterizes selected Hanzi SVGs into mask textures and applies shader-driven deformation through a **Morph Stack**. SDF support is deferred until morphology or contour effects need it.
 
 **Architecture:** The stable path is a single Three/WebGL fullscreen Character Surface. SVG selection remains the entry point, but the preview no longer uses `AspectRatio`, `ExtrudeGeometry`, mesh controls, or displacement-map-only semantics. Morph, shader color, pattern, randomization, locks, and experimental extensions are registry-driven editor controls that persist only serializable choices.
 
@@ -50,20 +50,25 @@ Supporting docs:
 - Preserve current Studio panel visual style unless the user explicitly asks for a new design system.
 - Do not reintroduce export, mint, queue, NFT, wallet, AI-generation, backend storage, or remote upload workflows.
 - Use `pnpm` for all commands.
-- Treat local uploads as session-only. Do not persist uploaded data URLs, generated mask/SDF textures, WebGPU availability, or transient render errors.
+- Treat local uploads as session-only. Do not persist uploaded data URLs, generated mask textures, future generated SDF textures, WebGPU availability, or transient render errors.
+- During checkpoint visual QA, do not automatically run browser automation. Tell the user which `/studio` checks to perform and wait for their report unless they explicitly request automated browser verification.
 
 ## Stable Product Contract
 
 - Canvas preview becomes fullscreen within the right-side preview area; remove the square `AspectRatio` wrapper.
-- Selected Hanzi SVG is rasterized to a mask texture, with SDF support when needed for morphology and contour effects.
+- Selected Hanzi SVG is rasterized to a mask texture first. SDF support is deferred until morphology and contour effects require it.
 - **Morph Stack** is a sequential warp chain with reorderable layers.
 - **Morph Layer Catalogue** contains Stable and Experimental entries.
+- The first Stable implementation set is `sine-bend`, `swirl-well`, `curl-flow`, `band-slice`, `pixelate-grid`, `ink-compression`, and `surface-depth`.
 - Randomize creates a complete Morph Stack preset from a seed.
 - Randomize defaults to Stable layers only and can explicitly include Experimental entries.
 - Randomization respects locks on Morph layers, Surface Shader Layers, and Pattern Layers.
+- Randomization may update existing unlocked Pattern Layers, but it does not add or remove Pattern Layers by default.
 - **Surface Shader Layers** are separate foreground character and background canvas layers.
 - **Pattern Layers** are UI layers, not a global pattern picker. There are at most three; each targets exactly one selector.
 - Pattern Layer target `Morph Stack` applies to the entire morph pipeline, not an individual morph layer.
+- Persisted v2.1 editor state starts from a clean storage key rather than migrating old mesh/displacement state.
+- Renderer selection persists as `webgl` or `webgpu-experimental`, defaulting to `webgl`; WebGPU is a renderer capability, not a Morph Layer.
 
 ## Verification Baseline
 
@@ -76,7 +81,7 @@ pnpm lint
 pnpm build
 ```
 
-Browser visual verification must cover:
+Manual browser visual verification must cover:
 
 - desktop `/studio`
 - mobile `/studio`

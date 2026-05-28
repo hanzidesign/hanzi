@@ -45,7 +45,7 @@
    pnpm build
    ```
 
-4. Browser visual smoke:
+4. Ask the user to perform manual browser visual smoke checks:
    - desktop `/studio`
    - mobile `/studio`
    - character switching
@@ -54,6 +54,8 @@
    - Pattern Layer max/target/lock
    - refresh persistence
    - no page console errors
+
+   Do not run automated browser visual checks unless the user explicitly asks for them.
 
 5. Record final report in `tasks/todo.md`:
    - changed files
@@ -65,7 +67,6 @@
 ## Checkpoint 7
 
 - [ ] Full test/build/lint verification passes.
-- [ ] Browser smoke passes on desktop and mobile.
+- [ ] User-reported browser smoke passes on desktop and mobile.
 - [ ] Obsolete mesh/displacement active paths are removed or clearly superseded.
 - [ ] `tasks/todo.md` contains implementation report.
-

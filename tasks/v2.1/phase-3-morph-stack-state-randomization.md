@@ -24,13 +24,13 @@ Persist:
 - Surface Shader Layers and locks
 - Pattern Layers, sources, targets, locks
 - random seed
-- renderer mode selection
+- renderer mode selection: `webgl` or `webgpu-experimental`, defaulting to `webgl`
 - active panel
 
 Do not persist:
 
 - uploaded image binaries or data URLs
-- generated mask/SDF textures
+- generated mask textures or future generated SDF textures
 - WebGPU availability
 - transient render errors
 
@@ -67,7 +67,7 @@ Do not persist:
    - `updatePatternLayer`
    - `setPatternLayerLocked`
 
-6. Add migration from old persisted key or use a new storage key if migration would be risky.
+6. Use a new v2.1 storage key and start clean. Do not migrate old mesh/displacement state.
 
 7. Run:
 
@@ -86,4 +86,3 @@ Do not persist:
 - [ ] Randomize is deterministic.
 - [ ] Locks are scoped and honored.
 - [ ] Runtime/binary data is excluded from persistence.
-

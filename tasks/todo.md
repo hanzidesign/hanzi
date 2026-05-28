@@ -2,7 +2,7 @@
 
 Active implementation package: `tasks/v2.1/README.md`.
 Direct development branch for v2.1 architecture: `v2.1`.
-Current status: v2.1 planning package is complete; implementation has not started.
+Current status: v2.1 planning package and Phase 0 architecture lock are complete; Phase 1 implementation has not started.
 
 Keep this file as current-state tracking only. Historical phase logs belong in the superseded task docs or git history, not here.
 
@@ -16,7 +16,8 @@ Keep this file as current-state tracking only. Historical phase logs belong in t
 - [x] Mark v2.1 architecture for direct development on branch `v2.1`.
 - [x] Run docs-only verification for the v2.1 planning package.
 - [x] Clean up old task, lesson, and planning-doc status so active guidance points to v2.1.
-- [ ] Start Phase 0 implementation after explicit implementation approval.
+- [x] Complete Phase 0 architecture lock grill and record resolved decisions.
+- [ ] Start Phase 1 Character Surface implementation after explicit implementation approval.
 
 ## Current Source Of Truth
 
@@ -44,6 +45,16 @@ Keep this file as current-state tracking only. Historical phase logs belong in t
 - Defined Pattern Layers as UI layers with one selector target each and a maximum of three Pattern Layers.
 - Defined Experimental Extensions as opt-in modules shown inside the same panel system, not separate products, canvases, or required runtime dependencies.
 - Marked v2.1 implementation as direct development on branch `v2.1`.
+
+## Phase 0 Architecture Lock Review - 2026-05-28
+
+- Treated the user grill response as the final Phase 0 approval gate for the v2.1 planning package.
+- Locked clean v2.1 persistence: use a new storage key and do not migrate old mesh/displacement state.
+- Locked Phase 1 rasterization scope to mask texture first; defer full SDF generation until morphology or contour effects need it.
+- Locked the first Stable Morph Layer implementation set: `sine-bend`, `swirl-well`, `curl-flow`, `band-slice`, `pixelate-grid`, `ink-compression`, and `surface-depth`.
+- Locked renderer vocabulary: persist `webgl` or `webgpu-experimental`; WebGPU is a renderer capability, not a Morph Layer.
+- Locked manual browser visual verification: provide a `/studio` checklist and wait for the user's report instead of automatically running browser visual checks.
+- No application code changed in Phase 0.
 
 ## Cleanup Review - 2026-05-27
 
