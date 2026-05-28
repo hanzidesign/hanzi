@@ -11,7 +11,7 @@ import {
   toPatternUrl,
 } from '@/utils/patternAssets'
 
-export const STUDIO_STORE_STORAGE_KEY = 'hanzi-studio-shader-editor-v1'
+export const STUDIO_STORE_STORAGE_KEY = 'hanzi-studio-character-surface-v2_1'
 
 const DEFAULT_COUNTRY = 'int'
 const DEFAULT_YEAR = '2023'
@@ -85,6 +85,8 @@ export type StudioStoreState = {
   svgEffect: typeof DEFAULT_EFFECT_STATE
   runtime: {
     svgData: string
+    svgCharacterUrl: string
+    svgLoadError: string | null
     ptnData: string
     patternMode: 'source' | 'upload'
     uploadedDisplacementImageData: string
@@ -106,6 +108,9 @@ export type StudioStoreActions = {
   setActivePanel: (activePanel: StudioActivePanel | null) => void
   setBackgroundColor: (backgroundColor: string) => void
   setSvgData: (svgData: string) => void
+  setCharacterSvgLoading: (characterUrl: string) => void
+  setCharacterSvgData: (characterUrl: string, svgData: string) => void
+  setCharacterSvgError: (characterUrl: string, error: string) => void
   setPatternSeed: (seed: number) => void
   setPatternUrl: (patternUrl: string) => void
   setPatternData: (ptnData: string) => void
@@ -119,7 +124,7 @@ export type StudioStoreActions = {
 
 export type StudioStore = StudioStoreState & StudioStoreActions
 
-type PersistedStudioState = Omit<StudioStoreState, 'runtime'>
+type PersistedStudioState = Pick<StudioStoreState, 'character' | 'shader' | 'view'>
 
 export const useStudioStore = createStudioStore()
 
@@ -227,7 +232,47 @@ export function createStudioStore(storage?: StateStorage) {
           set({ view: { ...get().view, backgroundColor } })
         },
         setSvgData: (svgData) => {
-          set({ runtime: { ...get().runtime, svgData } })
+          set({ runtime: { ...get().runtime, svgData, svgLoadError: null } })
+        },
+        setCharacterSvgLoading: (characterUrl) => {
+          set({
+            runtime: {
+              ...get().runtime,
+              svgData: '',
+              svgCharacterUrl: characterUrl,
+              svgLoadError: null,
+            },
+          })
+        },
+        setCharacterSvgData: (characterUrl, svgData) => {
+          const runtime = get().runtime
+
+          if (runtime.svgCharacterUrl !== characterUrl) {
+            return
+          }
+
+          set({
+            runtime: {
+              ...runtime,
+              svgData,
+              svgLoadError: null,
+            },
+          })
+        },
+        setCharacterSvgError: (characterUrl, error) => {
+          const runtime = get().runtime
+
+          if (runtime.svgCharacterUrl !== characterUrl) {
+            return
+          }
+
+          set({
+            runtime: {
+              ...runtime,
+              svgData: '',
+              svgLoadError: error,
+            },
+          })
         },
         setPatternSeed: (seed) => {
           const patternUrl = toPatternUrl(seed)
@@ -368,6 +413,8 @@ export function createInitialStudioStoreState(): StudioStoreState {
     svgEffect: DEFAULT_EFFECT_STATE,
     runtime: {
       svgData: '',
+      svgCharacterUrl: '',
+      svgLoadError: null,
       ptnData: '',
       patternMode: 'source',
       uploadedDisplacementImageData: '',
@@ -405,15 +452,7 @@ function selectPersistedState(state: StudioStore): PersistedStudioState {
   return {
     character: state.character,
     shader: state.shader,
-    mesh: state.mesh,
-    displacement: {
-      ...state.displacement,
-      patternUrl: isDataUrl(state.displacement.patternUrl)
-        ? toPatternUrl(state.svgEffect.seed)
-        : sanitizePatternUrl(state.displacement.patternUrl),
-    },
     view: state.view,
-    svgEffect: state.svgEffect,
   }
 }
 
@@ -426,13 +465,7 @@ function sanitizePersistedState(value: unknown): PersistedStudioState {
   return {
     character,
     shader,
-    mesh: sanitizeMeshState(persisted.mesh, base.mesh),
-    displacement: sanitizeDisplacementState(
-      persisted.displacement,
-      base.displacement,
-    ),
     view: sanitizeViewState(persisted.view, base.view),
-    svgEffect: sanitizeSvgEffectState(persisted.svgEffect, base.svgEffect),
   }
 }
 
@@ -476,25 +509,6 @@ function sanitizeShaderState(
   return {
     selectedPresetId: preset.id,
     currentParams: sanitizeParamsForPreset(preset, readRecord(value.currentParams)),
-  }
-}
-
-function sanitizeMeshState(
-  value: unknown,
-  fallback: StudioStoreState['mesh'],
-) {
-  if (!isRecord(value)) {
-    return fallback
-  }
-
-  return {
-    extrusionDepth: readNumber(value.extrusionDepth, fallback.extrusionDepth),
-    thickness: readNumber(value.thickness, fallback.thickness),
-    rotation: sanitizeVector3(value.rotation, fallback.rotation),
-    scale: readNumber(value.scale, fallback.scale),
-    position: sanitizeVector2(value.position, fallback.position),
-    autoRotate: readBoolean(value.autoRotate, fallback.autoRotate),
-    autoRotateSpeed: readNumber(value.autoRotateSpeed, fallback.autoRotateSpeed),
   }
 }
 
@@ -551,60 +565,6 @@ function sanitizeViewState(
       typeof value.backgroundColor === 'string'
         ? value.backgroundColor
         : fallback.backgroundColor,
-  }
-}
-
-function sanitizeSvgEffectState(
-  value: unknown,
-  fallback: StudioStoreState['svgEffect'],
-) {
-  if (!isRecord(value)) {
-    return fallback
-  }
-
-  return {
-    seed: readNumber(value.seed, fallback.seed),
-    distortion: readNumber(value.distortion, fallback.distortion),
-    blur: readNumber(value.blur, fallback.blur),
-    width: readNumber(value.width, fallback.width),
-    x: readNumber(value.x, fallback.x),
-    y: readNumber(value.y, fallback.y),
-    rotation: readNumber(value.rotation, fallback.rotation),
-    textColor:
-      typeof value.textColor === 'string' ? value.textColor : fallback.textColor,
-    panel:
-      typeof value.panel === 'string' || value.panel === null
-        ? value.panel
-        : fallback.panel,
-  }
-}
-
-function sanitizeVector2(
-  value: unknown,
-  fallback: { x: number; y: number },
-) {
-  if (!isRecord(value)) {
-    return fallback
-  }
-
-  return {
-    x: readNumber(value.x, fallback.x),
-    y: readNumber(value.y, fallback.y),
-  }
-}
-
-function sanitizeVector3(
-  value: unknown,
-  fallback: { x: number; y: number; z: number },
-) {
-  if (!isRecord(value)) {
-    return fallback
-  }
-
-  return {
-    x: readNumber(value.x, fallback.x),
-    y: readNumber(value.y, fallback.y),
-    z: readNumber(value.z, fallback.z),
   }
 }
 
@@ -668,10 +628,6 @@ function readClampedInteger(
   max: number,
 ) {
   return Math.trunc(readClampedNumber(value, fallback, min, max))
-}
-
-function readBoolean(value: unknown, fallback: boolean) {
-  return typeof value === 'boolean' ? value : fallback
 }
 
 function isStudioActivePanel(value: unknown): value is StudioActivePanel {

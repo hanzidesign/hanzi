@@ -63,6 +63,7 @@ _Avoid_: background image, AI background, DALL-E image
 - A **Character Editor** includes a **Character Panel** for selecting the Hanzi character SVG.
 - A **Character Editor** produces one live **Character Surface**.
 - A **Character Editor** derives the **Character Surface** from the selected character SVG by rasterizing the SVG into a mask texture, with distance-field support added only when morphology or contour effects need it.
+- A **Character Surface** keeps the selected Hanzi character fully visible, centered, upright, and aspect-ratio preserving; moving to a fullscreen surface must not shrink, enlarge, crop, stretch, or otherwise change the default visual scale of the character from the current preview baseline.
 - A **Character Editor** applies one **Morph Stack** to the **Character Surface**.
 - A **Morph Stack** draws its layer types from a **Morph Layer Catalogue**.
 - A **Morph Layer Catalogue** can include Experimental options when they still fit the Character Surface pipeline and are clearly marked as heavier, rougher, or less predictable than Stable options.

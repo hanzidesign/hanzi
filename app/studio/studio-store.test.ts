@@ -9,11 +9,16 @@ import {
 import { createDefaultParams } from '@/shaders/uniforms'
 import { getDefaultShaderPreset, getShaderPresetById } from '@/shaders/registry'
 
-function createMemoryStorage(initialValue?: string) {
+const OLD_STUDIO_STORE_STORAGE_KEY = 'hanzi-studio-shader-editor-v1'
+
+function createMemoryStorage(
+  initialValue?: string,
+  key = STUDIO_STORE_STORAGE_KEY,
+) {
   const values = new Map<string, string>()
 
   if (initialValue) {
-    values.set(STUDIO_STORE_STORAGE_KEY, initialValue)
+    values.set(key, initialValue)
   }
 
   const storage: StateStorage = {
@@ -28,8 +33,8 @@ function createMemoryStorage(initialValue?: string) {
 
   return {
     storage,
-    readPersistedState: () => {
-      const value = values.get(STUDIO_STORE_STORAGE_KEY)
+    readPersistedState: (name = STUDIO_STORE_STORAGE_KEY) => {
+      const value = values.get(name)
       return value ? JSON.parse(value).state : null
     },
   }
@@ -58,6 +63,30 @@ describe('studio store', () => {
     expect(state.displacement.patternUrl).toBe('/images/patterns/000.jpg')
     expect(state.displacement.subdivisionLevel).toBe(0)
     expect(state.view.activePanel).toBe('character')
+  })
+
+  it('uses a clean v2.1 storage key without reading old mesh or displacement state', () => {
+    const initial = createInitialStudioStoreState()
+    const oldState = {
+      ...initial,
+      character: { country: 'jp', year: '2024', isTc: true },
+      mesh: { ...initial.mesh, scale: 1.7 },
+      displacement: {
+        ...initial.displacement,
+        patternUrl: '/images/patterns/012.jpg',
+        strength: 0.4,
+      },
+    }
+    const { storage } = createMemoryStorage(
+      JSON.stringify({ state: oldState, version: 1 }),
+      OLD_STUDIO_STORE_STORAGE_KEY,
+    )
+    const store = createStudioStore(storage)
+
+    expect(STUDIO_STORE_STORAGE_KEY).toBe('hanzi-studio-character-surface-v2_1')
+    expect(store.getState().character).toEqual(initial.character)
+    expect(store.getState().mesh).toEqual(initial.mesh)
+    expect(store.getState().displacement).toEqual(initial.displacement)
   })
 
   it('switches shader presets by resetting only shader params', () => {
@@ -135,7 +164,41 @@ describe('studio store', () => {
     expect(JSON.stringify(readPersistedState())).not.toContain('upload')
   })
 
-  it('sanitizes stale persisted shader params without wiping other editor work', () => {
+  it('keeps loaded character SVG text in runtime state only', () => {
+    const { storage, readPersistedState } = createMemoryStorage()
+    const store = createStudioStore(storage)
+
+    store.getState().setCharacterSvgLoading('/chars/tc/int/2023.svg')
+    store
+      .getState()
+      .setCharacterSvgData('/chars/tc/int/2023.svg', '<svg>loaded</svg>')
+
+    expect(store.getState().runtime.svgCharacterUrl).toBe(
+      '/chars/tc/int/2023.svg',
+    )
+    expect(store.getState().runtime.svgData).toBe('<svg>loaded</svg>')
+    expect(readPersistedState().runtime).toBeUndefined()
+    expect(JSON.stringify(readPersistedState())).not.toContain('loaded')
+  })
+
+  it('clears stale loaded SVG runtime data when a new character starts loading', () => {
+    const { storage } = createMemoryStorage()
+    const store = createStudioStore(storage)
+
+    store.getState().setCharacterSvgLoading('/chars/tc/int/2023.svg')
+    store
+      .getState()
+      .setCharacterSvgData('/chars/tc/int/2023.svg', '<svg>old</svg>')
+    store.getState().setCharacterSvgLoading('/chars/tc/jp/2024.svg')
+
+    expect(store.getState().runtime.svgCharacterUrl).toBe(
+      '/chars/tc/jp/2024.svg',
+    )
+    expect(store.getState().runtime.svgData).toBe('')
+    expect(store.getState().runtime.svgLoadError).toBeNull()
+  })
+
+  it('sanitizes stale persisted shader params without reviving old mesh or displacement state', () => {
     const initial = createInitialStudioStoreState()
     const staleState = {
       ...initial,
@@ -171,12 +234,8 @@ describe('studio store', () => {
       year: '2024',
       isTc: true,
     })
-    expect(store.getState().mesh.scale).toBe(1.7)
-    expect(store.getState().displacement).toMatchObject({
-      patternUrl: '/images/patterns/012.jpg',
-      strength: 0.4,
-      subdivisionLevel: 2,
-    })
+    expect(store.getState().mesh).toEqual(initial.mesh)
+    expect(store.getState().displacement).toEqual(initial.displacement)
     expect(store.getState().shader).toEqual({
       selectedPresetId: 'grid-pulse',
       currentParams: {
@@ -207,7 +266,7 @@ describe('studio store', () => {
       year: '2024',
       isTc: true,
     })
-    expect(store.getState().mesh.autoRotate).toBe(true)
+    expect(store.getState().mesh).toEqual(initial.mesh)
     expect(store.getState().shader).toEqual({
       selectedPresetId: getDefaultShaderPreset().id,
       currentParams: createDefaultParams(getDefaultShaderPreset()),
@@ -225,15 +284,15 @@ describe('studio store', () => {
 
     const persisted = readPersistedState()
 
-    expect(persisted).not.toHaveProperty('svgData')
-    expect(persisted).not.toHaveProperty('ptnData')
+    expect(persisted).not.toHaveProperty('mesh')
+    expect(persisted).not.toHaveProperty('displacement')
+    expect(persisted).not.toHaveProperty('svgEffect')
     expect(persisted).not.toHaveProperty('runtime')
     expect(JSON.stringify(persisted)).not.toContain('large-upload')
-    expect(persisted.displacement.patternUrl).toBe('/images/patterns/012.jpg')
     expect(persisted.view.backgroundColor).toBe('#101010')
   })
 
-  it('sanitizes invalid persisted displacement controls', () => {
+  it('ignores persisted displacement controls', () => {
     const initial = createInitialStudioStoreState()
     const staleState = {
       ...initial,
@@ -249,11 +308,6 @@ describe('studio store', () => {
     )
     const store = createStudioStore(storage)
 
-    expect(store.getState().displacement).toEqual({
-      patternUrl: '/images/patterns/000.jpg',
-      strength: initial.displacement.strength,
-      bias: 0.5,
-      subdivisionLevel: 2,
-    })
+    expect(store.getState().displacement).toEqual(initial.displacement)
   })
 })

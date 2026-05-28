@@ -1,28 +1,69 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import _ from 'lodash'
-import { AspectRatio, Center, Text } from '@mantine/core'
+import { Text } from '@mantine/core'
 import { meaning, parseCharUrl } from '@/assets/chars'
 import { getCharacterDisplayState, useStudioStore } from '@/app/studio/studio-store'
-import {
-  IDLE_CHARACTER_MESH_STATUS,
-  type CharacterMeshStatus,
-} from '@/components/studio/character-mesh-status'
-import ShaderCanvas from '@/components/studio/ShaderCanvas'
+import CharacterSurfaceCanvas, {
+  IDLE_CHARACTER_SURFACE_STATUS,
+  type CharacterSurfaceStatus,
+} from '@/components/studio/CharacterSurfaceCanvas'
+import { isAbortError } from '@/utils/dataUrl'
 
 export default function StudioCanvas() {
   const character = useStudioStore((store) => store.character)
   const bgColor = useStudioStore((store) => store.view.backgroundColor)
-  const [meshStatus, setMeshStatus] = useState<CharacterMeshStatus>(
-    IDLE_CHARACTER_MESH_STATUS,
+  const setCharacterSvgLoading = useStudioStore(
+    (store) => store.setCharacterSvgLoading,
+  )
+  const setCharacterSvgData = useStudioStore(
+    (store) => store.setCharacterSvgData,
+  )
+  const setCharacterSvgError = useStudioStore(
+    (store) => store.setCharacterSvgError,
+  )
+  const [surfaceStatus, setSurfaceStatus] = useState<CharacterSurfaceStatus>(
+    IDLE_CHARACTER_SURFACE_STATUS,
   )
   const { charUrl } = getCharacterDisplayState(character)
   const [country, year] = parseCharUrl(charUrl)
   const translation = _.get(meaning, [country, year])
-  const meshStatusText =
-    meshStatus.state === 'idle' ? null : meshStatus.message
-  const statusColor = meshStatus.state === 'error' ? 'red.6' : 'dark.7'
+  const statusText =
+    surfaceStatus.state === 'idle' ? null : surfaceStatus.message
+  const statusColor = surfaceStatus.state === 'error' ? 'red.6' : 'dark.7'
+
+  useEffect(() => {
+    const controller = new AbortController()
+
+    setCharacterSvgLoading(charUrl)
+
+    readText(charUrl, controller.signal)
+      .then((svgData) => {
+        setCharacterSvgData(charUrl, svgData)
+      })
+      .catch((error) => {
+        if (isAbortError(error)) {
+          return
+        }
+
+        setCharacterSvgError(
+          charUrl,
+          error instanceof Error
+            ? error.message
+            : 'Unable to load character SVG.',
+        )
+      })
+
+    return () => {
+      controller.abort()
+    }
+  }, [
+    charUrl,
+    setCharacterSvgData,
+    setCharacterSvgError,
+    setCharacterSvgLoading,
+  ])
 
   return (
     <div
@@ -32,17 +73,22 @@ export default function StudioCanvas() {
         background: bgColor,
       }}
     >
-      <Center pos="relative" h="100%" bg={bgColor}>
-        <AspectRatio pos="relative" ratio={1} w="100%" maw="calc(100dvh - 120px)">
-          <ShaderCanvas onMeshStatusChange={setMeshStatus} />
-        </AspectRatio>
-        {translation ? (
-          <Text fz={14} c="dark.7" className="absolute-horizontal" top={20}>
-            {translation}
-          </Text>
-        ) : null}
-      </Center>
-      {meshStatusText ? (
+      <CharacterSurfaceCanvas onSurfaceStatusChange={setSurfaceStatus} />
+      {translation ? (
+        <Text
+          fz={14}
+          c="dark.7"
+          ta="center"
+          pos="absolute"
+          top={20}
+          left={16}
+          right={16}
+          style={{ pointerEvents: 'none' }}
+        >
+          {translation}
+        </Text>
+      ) : null}
+      {statusText ? (
         <Text
           fz={13}
           c={statusColor}
@@ -56,9 +102,19 @@ export default function StudioCanvas() {
             textWrap: 'balance',
           }}
         >
-          {meshStatusText}
+          {statusText}
         </Text>
       ) : null}
     </div>
   )
+}
+
+async function readText(url: string, signal?: AbortSignal) {
+  const response = await fetch(url, { signal })
+
+  if (!response.ok) {
+    throw new Error(`Failed to load ${url}`)
+  }
+
+  return response.text()
 }

@@ -2,7 +2,7 @@
 
 Active implementation package: `tasks/v2.1/README.md`.
 Direct development branch for v2.1 architecture: `v2.1`.
-Current status: v2.1 planning package and Phase 0 architecture lock are complete; Phase 1 implementation has not started.
+Current status: Phase 1 Character Surface implementation has passed automated verification; manual browser smoke is pending user report.
 
 Keep this file as current-state tracking only. Historical phase logs belong in the superseded task docs or git history, not here.
 
@@ -17,7 +17,19 @@ Keep this file as current-state tracking only. Historical phase logs belong in t
 - [x] Run docs-only verification for the v2.1 planning package.
 - [x] Clean up old task, lesson, and planning-doc status so active guidance points to v2.1.
 - [x] Complete Phase 0 architecture lock grill and record resolved decisions.
-- [ ] Start Phase 1 Character Surface implementation after explicit implementation approval.
+- [x] Complete Phase 1 Character Surface foundation grill and record resolved implementation decisions.
+- [x] Start Phase 1 Character Surface implementation after explicit implementation approval.
+
+## Phase 1 Implementation Checklist
+
+- [x] Add failing Node-safe raster helper tests for empty SVG rejection, metadata extraction, bounded mask dimensions, fit transform, and current-scale preservation.
+- [x] Add failing store tests for clean v2.1 storage key, non-persisted loaded SVG text, and stale SVG runtime clearing on character change.
+- [x] Implement `character-surface-rasterize.ts` pure helpers and browser rasterization entry point.
+- [x] Update Studio store runtime state, storage key, persistence partialization, and actions for selected SVG loading.
+- [x] Replace the active `ShaderCanvas`/`CharacterMesh` preview chain with `CharacterSurfaceCanvas`.
+- [x] Remove `AspectRatio`, mesh status wording, `OrbitControls`, displacement texture loading, and active `CharacterMesh`/`ExtrudeGeometry` preview use.
+- [x] Run Phase 1 focused tests, full repo verification, and record results.
+- [x] Provide manual `/studio` browser smoke checklist for the user.
 
 ## Current Source Of Truth
 
@@ -55,6 +67,27 @@ Keep this file as current-state tracking only. Historical phase logs belong in t
 - Locked renderer vocabulary: persist `webgl` or `webgpu-experimental`; WebGPU is a renderer capability, not a Morph Layer.
 - Locked manual browser visual verification: provide a `/studio` checklist and wait for the user's report instead of automatically running browser visual checks.
 - No application code changed in Phase 0.
+
+## Phase 1 Character Surface Foundation Grill - 2026-05-28
+
+- Locked Phase 1 to replace the active `ShaderCanvas`/`CharacterMesh` preview chain with `CharacterSurfaceCanvas`; do not keep two active WebGL preview stacks.
+- Locked active preview removal of `CharacterMesh`, `ExtrudeGeometry`, `OrbitControls`, mesh loading status, displacement texture loading, and displacement-primary semantics.
+- Locked selected SVG loading into active non-persisted Studio runtime state keyed by `characterUrl`, rather than making the canvas component the long-term owner of SVG fetching.
+- Locked clean v2.1 storage key introduction during Phase 1; do not migrate old mesh/displacement state.
+- Locked Phase 1 test strategy: keep Node Vitest focused on pure parsing, bounds, sizing/orientation, and empty-input rejection; browser decode/draw/upload/uprightness stays in the manual `/studio` smoke checklist unless the user explicitly asks for automated browser visual testing.
+- Locked first render path to one `u_characterMask` texture with foreground/background defaults; full Morph Stack composition and Surface Shader Layer controls remain later phases.
+- Locked Character Surface fit behavior: selected character must remain fully visible, centered, upright, aspect-ratio preserving, and at the current preview's default visual scale.
+- Updated `CONTEXT.md`, `tasks/v2.1/phase-1-character-surface-foundation.md`, and `tasks/lessons.md` only. No application code changed.
+
+## Phase 1 Implementation Review - 2026-05-28
+
+- Added `components/studio/character-surface-rasterize.ts` with Node-safe SVG metadata/fit planning and browser Canvas 2D rasterization for a fullscreen mask texture.
+- Added `components/studio/CharacterSurfaceCanvas.tsx` as the active fullscreen WebGL Character Surface. It samples one `u_characterMask` texture and renders Phase 1 foreground/background defaults.
+- Updated `components/studio/StudioCanvas.tsx` to remove the square preview wrapper, active `ShaderCanvas` path, mesh status wording, and active mesh/displacement preview coupling.
+- Updated `app/studio/studio-store.ts` to use a clean `hanzi-studio-character-surface-v2_1` storage key, keep loaded SVG text in non-persisted runtime state, and persist only compact character/shader/view choices.
+- Added tests for raster planning, clean v2.1 persistence, loaded-SVG runtime behavior, and active preview contract.
+- Verification passed: `pnpm vitest run components/studio/character-surface-rasterize.test.ts app/studio/studio-store.test.ts components/studio/character-surface-preview-contract.test.ts`, `pnpm test`, `pnpm exec tsc --noEmit`, `pnpm lint`, and `pnpm build`. One earlier build attempt hit a transient Google font fetch failure; subsequent builds passed.
+- Manual browser smoke is still pending user report by v2.1 rule. Checklist: desktop `/studio`, mobile `/studio`, switch character, refresh page, confirm nonblank fullscreen Character Surface, confirm no upside-down character, and confirm the character remains fully visible, centered, aspect-ratio preserving, and at the current default visual scale.
 
 ## Cleanup Review - 2026-05-27
 

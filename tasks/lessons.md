@@ -32,6 +32,7 @@ Keep this file as evergreen guidance only. Historical phase notes, completed tas
 - When the Studio direction is rasterized SVG mask plus shader deformation, do not force the prior Character Mesh/ExtrudeGeometry plan back into scope. Treat mesh/displacement docs as superseded unless the user explicitly reopens that architecture.
 - The active v2.1 preview object is Character Surface, not Character Mesh. The active control system is Morph Stack, not Mesh/Displacement panels.
 - "3D" in v2.1 means surface-depth illusion, z-axis deformation controls, lighting, normals, parallax, and heightfield-like effects on the Character Surface. It does not mean returning to extruded geometry as the primary preview.
+- When replacing the square preview with the fullscreen Character Surface, keep the selected Hanzi character fully visible, centered, upright, aspect-ratio preserving, and at the current preview's default visual scale. Do not treat fullscreen as permission to crop, stretch, shrink, or enlarge the character.
 - Morph Stack layer order is a creative control in the Sequential Warp Chain, so the UI should support drag reorder rather than treating order as a fixed implementation detail.
 - Morph Stack randomization should draw only from Stable Morph Layer Catalogue entries by default; include Experimental layers only through an explicit opt-in.
 - Morph Stack randomization must honor locked layers. A locked layer should keep its type, relative order, and parameters instead of being replaced, reordered, or mutated.
