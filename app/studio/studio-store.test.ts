@@ -83,7 +83,9 @@ describe('studio store', () => {
     )
     const store = createStudioStore(storage)
 
-    expect(STUDIO_STORE_STORAGE_KEY).toBe('hanzi-studio-character-surface-v2_1')
+    expect(STUDIO_STORE_STORAGE_KEY).toBe(
+      'hanzi-studio-character-surface-v2_1_phase3',
+    )
     expect(store.getState().character).toEqual(initial.character)
     expect(store.getState().mesh).toEqual(initial.mesh)
     expect(store.getState().displacement).toEqual(initial.displacement)
@@ -198,7 +200,7 @@ describe('studio store', () => {
     expect(store.getState().runtime.svgLoadError).toBeNull()
   })
 
-  it('sanitizes stale persisted shader params without reviving old mesh or displacement state', () => {
+  it('ignores stale persisted shader params without reviving old mesh or displacement state', () => {
     const initial = createInitialStudioStoreState()
     const staleState = {
       ...initial,
@@ -223,11 +225,6 @@ describe('studio store', () => {
       JSON.stringify({ state: staleState, version: 1 }),
     )
     const store = createStudioStore(storage)
-    const gridPreset = getShaderPresetById('grid-pulse')
-
-    if (!gridPreset) {
-      throw new Error('Expected grid-pulse preset')
-    }
 
     expect(store.getState().character).toEqual({
       country: 'jp',
@@ -236,13 +233,7 @@ describe('studio store', () => {
     })
     expect(store.getState().mesh).toEqual(initial.mesh)
     expect(store.getState().displacement).toEqual(initial.displacement)
-    expect(store.getState().shader).toEqual({
-      selectedPresetId: 'grid-pulse',
-      currentParams: {
-        ...createDefaultParams(gridPreset),
-        pulseSpeed: 2,
-      },
-    })
+    expect(store.getState().shader).toEqual(initial.shader)
   })
 
   it('falls back only shader state when the persisted preset id is missing', () => {

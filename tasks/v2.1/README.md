@@ -39,6 +39,7 @@ Those older plans target **Character Mesh**, `ExtrudeGeometry`, square `AspectRa
 Supporting docs:
 
 - [Morph Layer Catalogue](./morph-layer-catalogue.md)
+- [Phase 5 Layer Compositing Guidelines](./phase-5-layer-compositing-guidelines.md)
 - [Checkpoint List](./checkpoints.md)
 
 ## PM Execution Rules
@@ -58,6 +59,7 @@ Supporting docs:
 - Canvas preview becomes fullscreen within the right-side preview area; remove the square `AspectRatio` wrapper.
 - Selected Hanzi SVG is rasterized to a mask texture first. SDF support is deferred until morphology and contour effects require it.
 - **Morph Stack** is a sequential warp chain with reorderable layers.
+- Morph, Surface Shader, Pattern, and Post effect layers use a shared stack control language: visibility, order where meaningful, strength/intensity, blend mode where meaningful, lock, params, and tier.
 - **Morph Layer Catalogue** contains Stable and Experimental entries.
 - The first Stable implementation set is `sine-bend`, `swirl-well`, `curl-flow`, `band-slice`, `pixelate-grid`, `ink-compression`, and `surface-depth`.
 - Randomize creates a complete Morph Stack preset from a seed.
@@ -66,6 +68,7 @@ Supporting docs:
 - Randomization may update existing unlocked Pattern Layers, but it does not add or remove Pattern Layers by default.
 - **Surface Shader Layers** are separate foreground character and background canvas layers.
 - **Pattern Layers** are UI layers, not a global pattern picker. There are at most three; each targets exactly one selector.
+- Pattern Layers must visually accumulate within their target instead of only the first valid texture applying.
 - Pattern Layer target `Morph Stack` applies to the entire morph pipeline, not an individual morph layer.
 - Persisted v2.1 editor state starts from a clean storage key rather than migrating old mesh/displacement state.
 - Renderer selection persists as `webgl` or `webgpu-experimental`, defaulting to `webgl`; WebGPU is a renderer capability, not a Morph Layer.

@@ -8,6 +8,8 @@
 - Stable and Experimental tier metadata.
 - No user-facing Morph Stack panel yet.
 - No requirement to visually compose every morph in shaders during this phase.
+- Do not modify Studio store, panel UI, or Character Surface shader composition in this phase.
+- WebGPU remains a renderer capability, not a Morph Layer.
 
 ## Files
 
@@ -40,9 +42,23 @@ type MorphLayerDefinition = {
   name: string
   category: MorphLayerCategory
   tier: MorphLayerTier
+  pipelinePhase: MorphLayerPipelinePhase
   params: MorphParamDefinition[]
 }
 ```
+
+Phase 2 may add implementation-only pipeline phase metadata:
+
+```ts
+type MorphLayerPipelinePhase =
+  | 'pre-raster'
+  | 'coordinate'
+  | 'mask'
+  | 'surface'
+  | 'post'
+```
+
+The user-facing model remains one ordered **Morph Stack**.
 
 ## Stable First Set
 
@@ -56,6 +72,16 @@ Implement these stable entries first to prove breadth:
 - `ink-compression`
 - `surface-depth`
 
+Category mapping:
+
+- `sine-bend`: `coordinate`
+- `swirl-well`: `lens`
+- `curl-flow`: `field`
+- `band-slice`: `slice`
+- `pixelate-grid`: `pixel`
+- `ink-compression`: `morphology`
+- `surface-depth`: `surface-depth`
+
 ## Experimental First Set
 
 Add metadata only if implementation is not ready:
@@ -64,6 +90,21 @@ Add metadata only if implementation is not ready:
 - `pixel-sort-heavy`
 - `feedback-advection`
 - `webgpu-renderer` as renderer capability, not stack layer
+
+## Resolved Grill Decisions - 2026-06-17
+
+- Keep Phase 2 limited to `morph/` schema, registry, params, randomization, and tests.
+- Add `pipelinePhase` as implementation metadata only; do not create a second user-facing stack.
+- Implement only the seven Stable entries listed above for the first catalogue breadth proof.
+- Keep Experimental Morph Layer entries in the same catalogue with explicit badge metadata: label, reason, and risk note.
+- Keep `webgpu-renderer` out of the Morph Layer registry; cover the boundary with tests.
+- Model params like shader params, but do not bind Morph params to GLSL `uniformName` in Phase 2.
+- Add randomization bounds to params separately from UI min/max bounds.
+- Default deterministic randomization to three layers, with an option to pass a different layer count.
+- Normalize numeric seeds to unsigned 32-bit values and use an internal deterministic PRNG.
+- Return a `MorphStackPresetDraft` with `seed` and enabled layer drafts; Phase 3 store code will add instance ids, locks, and collapsed state.
+- Validate the registry at import time, matching the existing shader registry style.
+- No ADR is needed for these Phase 2 implementation-contract decisions.
 
 ## Steps
 

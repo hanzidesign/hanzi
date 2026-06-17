@@ -23,37 +23,48 @@ For browser visual checks, provide the user with the relevant `/studio` checklis
 
 ## Checkpoint 2: Morph Layer Catalogue
 
-- [ ] Catalogue registry exists with Stable and Experimental tiers.
-- [ ] Stable entries cover more than fluid/ink effects.
-- [ ] Experimental entries are explicit and labelled.
-- [ ] Each layer has schema-driven params and randomization bounds.
-- [ ] Catalogue tests cover ids, duplicate detection, params, tier labels, and defaults.
+- [x] Catalogue registry exists with Stable and Experimental tiers.
+- [x] Stable entries cover more than fluid/ink effects.
+- [x] Experimental entries are explicit and labelled.
+- [x] Each layer has schema-driven params and randomization bounds.
+- [x] Catalogue tests cover ids, duplicate detection, params, tier labels, and defaults.
 
 ## Checkpoint 3: Morph Stack State And Randomization
 
-- [ ] Morph Stack layers are persisted as serializable editor state.
-- [ ] Layer order is persisted and reorderable.
-- [ ] Locked layers are preserved by randomization.
-- [ ] Randomization defaults to Stable entries only.
-- [ ] Random seed can reproduce a generated preset.
-- [ ] Uploaded data URLs and runtime textures are not persisted.
+- [x] Morph Stack layers are persisted as serializable editor state.
+- [x] Layer order is persisted and reorderable.
+- [x] Locked layers are preserved by randomization.
+- [x] Randomization defaults to Stable entries only.
+- [x] Random seed can reproduce a generated preset.
+- [x] Uploaded data URLs and runtime textures are not persisted.
 
 ## Checkpoint 4: Surface Shader And Pattern Layers
 
-- [ ] Foreground character shader layer and background canvas shader layer are separate.
-- [ ] Shader layer locks are honored by randomization.
-- [ ] Pattern Layer UI supports at most three layers.
-- [ ] Each Pattern Layer has exactly one target selector.
-- [ ] Pattern Layer target `Morph Stack` applies to the whole morph pipeline.
-- [ ] Pattern Layer locks preserve source and target.
+- [x] Foreground character shader layer and background canvas shader layer are separate.
+- [x] Shader layer locks are honored by randomization.
+- [x] Pattern Layer state supports at most three layers.
+- [x] Each Pattern Layer has exactly one target selector.
+- [x] Pattern Layer target `Morph Stack` applies to the whole morph pipeline.
+- [x] Pattern Layer locks preserve source and target.
 
 ## Checkpoint 5: Studio Panel UX
 
+- [x] Phase 5A package capability research is recorded before production implementation.
 - [ ] UI preserves current Studio panel visual style.
 - [ ] Morph Stack panel supports add, duplicate, delete, enable/disable, collapse/expand, lock, and drag reorder.
 - [ ] Add Layer UI groups effects by category.
 - [ ] Experimental entries display an Experimental badge.
 - [ ] Randomize controls expose seed, Stable default, Include Experimental opt-in, and lock behavior.
+- [ ] Morph Stack controls visibly affect the active Character Surface.
+- [ ] Morph, Surface Shader, and Pattern layers expose per-layer strength/intensity controls.
+- [ ] Surface Shader and Pattern layers support blend modes where meaningful.
+- [ ] Pattern Layers visually accumulate within the same target instead of only the first target texture applying.
+- [ ] Layer caps are explicit, tested, and visible when the user reaches a cap.
+- [ ] Character shade and shape variation is maximized within the stable Character Surface pipeline.
+- [ ] Phase 5 includes character shape, character shade, pattern/material, and background effect families without creating a separate package-driven workflow.
+- [ ] Custom and package-backed effects share one catalogue, control, lock, and randomization model.
+- [ ] LYGIA/glslify/postprocessing integration is active and tested where adopted, or explicitly documented with a tested fallback.
+- [ ] Pattern Layer controls support built-in sources, session-only local file sources, single target selection, locks, and max-three enforcement.
 - [ ] Text does not overflow controls on desktop or mobile.
 
 ## Checkpoint 6: Experimental Extensions

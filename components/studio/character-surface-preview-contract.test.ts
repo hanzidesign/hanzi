@@ -21,10 +21,17 @@ describe('Character Surface active preview contract', () => {
       join(studioDir, 'CharacterSurfaceCanvas.tsx'),
       'utf8',
     )
+    const materialSource = await readFile(
+      join(studioDir, 'surface-shader-material.ts'),
+      'utf8',
+    )
 
     expect(source).not.toContain('CharacterMesh')
     expect(source).not.toContain('OrbitControls')
     expect(source).not.toContain('useDisplacementTexture')
-    expect(source).toContain('u_characterMask')
+    expect(source).toContain('createCharacterSurfaceMaterial')
+    expect(source).toContain('usePatternLayerTextures')
+    expect(source).toContain('surfaceShaders.background.color')
+    expect(materialSource).toContain('u_characterMask')
   })
 })

@@ -6,12 +6,12 @@ import {
   CanvasTexture,
   ClampToEdgeWrapping,
   LinearFilter,
-  ShaderMaterial,
   type Texture,
 } from 'three'
 import { useStudioStore } from '@/app/studio/studio-store'
 import { rasterizeCharacterSurfaceMask } from '@/components/studio/character-surface-rasterize'
-import { hexToVector3 } from '@/shaders/uniforms'
+import { usePatternLayerTextures } from '@/components/studio/pattern-layer-texture'
+import { createCharacterSurfaceMaterial } from '@/components/studio/surface-shader-material'
 
 export type CharacterSurfaceStatus = {
   state: 'idle' | 'loading' | 'error'
@@ -30,38 +30,16 @@ type CharacterSurfaceCanvasProps = {
 type CharacterSurfaceSceneProps = CharacterSurfaceCanvasProps & {
   svgData: string
   svgLoadError: string | null
-  backgroundColor: string
 }
-
-const VERTEX_SHADER = `
-  varying vec2 v_uv;
-
-  void main() {
-    v_uv = uv;
-    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-  }
-`
-
-const FRAGMENT_SHADER = `
-  uniform sampler2D u_characterMask;
-  uniform vec3 u_foregroundColor;
-  uniform vec3 u_backgroundColor;
-
-  varying vec2 v_uv;
-
-  void main() {
-    float mask = texture2D(u_characterMask, v_uv).a;
-    vec3 color = mix(u_backgroundColor, u_foregroundColor, smoothstep(0.01, 0.99, mask));
-    gl_FragColor = vec4(color, 1.0);
-  }
-`
 
 export default function CharacterSurfaceCanvas({
   onSurfaceStatusChange,
 }: CharacterSurfaceCanvasProps) {
   const svgData = useStudioStore((store) => store.runtime.svgData)
   const svgLoadError = useStudioStore((store) => store.runtime.svgLoadError)
-  const backgroundColor = useStudioStore((store) => store.view.backgroundColor)
+  const backgroundColor = useStudioStore(
+    (store) => store.surfaceShaders.background.color,
+  )
 
   return (
     <div
@@ -83,7 +61,6 @@ export default function CharacterSurfaceCanvas({
         <CharacterSurfaceScene
           svgData={svgData}
           svgLoadError={svgLoadError}
-          backgroundColor={backgroundColor}
           onSurfaceStatusChange={onSurfaceStatusChange}
         />
       </Canvas>
@@ -94,10 +71,19 @@ export default function CharacterSurfaceCanvas({
 function CharacterSurfaceScene({
   svgData,
   svgLoadError,
-  backgroundColor,
   onSurfaceStatusChange,
 }: CharacterSurfaceSceneProps) {
   const { size, viewport } = useThree()
+  const foregroundShader = useStudioStore((store) => store.surfaceShaders.foreground)
+  const backgroundShader = useStudioStore((store) => store.surfaceShaders.background)
+  const patternLayers = useStudioStore((store) => store.patternLayers)
+  const uploadedPatternLayerDataById = useStudioStore(
+    (store) => store.runtime.uploadedPatternLayerDataById,
+  )
+  const patternTextures = usePatternLayerTextures(
+    patternLayers,
+    uploadedPatternLayerDataById,
+  )
   const [maskTexture, setMaskTexture] = useState<Texture | null>(null)
   const maskTextureRef = useRef<Texture | null>(null)
 
@@ -178,16 +164,13 @@ function CharacterSurfaceScene({
       return null
     }
 
-    return new ShaderMaterial({
-      vertexShader: VERTEX_SHADER,
-      fragmentShader: FRAGMENT_SHADER,
-      uniforms: {
-        u_characterMask: { value: maskTexture },
-        u_foregroundColor: { value: hexToVector3('#000000') },
-        u_backgroundColor: { value: readBackgroundColor(backgroundColor) },
-      },
+    return createCharacterSurfaceMaterial({
+      maskTexture,
+      foreground: foregroundShader,
+      background: backgroundShader,
+      patterns: patternTextures.textures,
     })
-  }, [backgroundColor, maskTexture])
+  }, [backgroundShader, foregroundShader, maskTexture, patternTextures.textures])
 
   useEffect(() => {
     return () => {
@@ -217,13 +200,5 @@ function replaceMaskTexture(
 
   if (previousTexture && previousTexture !== nextTexture) {
     previousTexture.dispose()
-  }
-}
-
-function readBackgroundColor(backgroundColor: string) {
-  try {
-    return hexToVector3(backgroundColor)
-  } catch {
-    return hexToVector3('#ffffff')
   }
 }

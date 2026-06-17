@@ -5,8 +5,6 @@ import { IoAddOutline } from 'react-icons/io5'
 import type { ReactNode } from 'react'
 import { useStudioStore, type StudioActivePanel } from '@/app/studio/studio-store'
 import CharacterPanel from '@/components/studio/CharacterPanel'
-import DisplacementPanel from '@/components/studio/DisplacementPanel'
-import MeshPanel from '@/components/studio/MeshPanel'
 import ShaderPanel from '@/components/studio/ShaderPanel'
 import classes from './StudioControls.module.css'
 
@@ -16,9 +14,9 @@ const panels: Array<{
   content: ReactNode
 }> = [
   { value: 'character', title: 'Character', content: <CharacterPanel /> },
+  { value: 'morph', title: 'Morph Stack', content: null },
   { value: 'shader', title: 'Shader', content: <ShaderPanel /> },
-  { value: 'mesh', title: 'Mesh', content: <MeshPanel /> },
-  { value: 'displacement', title: 'Displacement', content: <DisplacementPanel /> },
+  { value: 'pattern', title: 'Pattern Layers', content: null },
 ]
 
 export default function StudioControls() {

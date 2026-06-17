@@ -8,6 +8,8 @@
 - Pattern Layer state and rendering.
 - Keep Pattern Layer cap at three.
 - Each Pattern Layer has exactly one target.
+- Keep full controls UI for Phase 5.
+- Treat Phase 4 as the first real rendering baseline for Surface Shader Layers, not the final user-control surface.
 
 ## Files
 
@@ -35,6 +37,25 @@ Invalid Pattern Layer targets sanitize to `foreground-shader`.
 - Local file input as a session-only runtime source.
 
 Invalid or missing Pattern Layer sources fall back to the first built-in pattern. If a local file fails to load after a previous valid texture exists, keep the last valid runtime texture and surface a non-persisted UI error.
+
+## Resolved Grill Decisions - 2026-06-17
+
+- Phase 4 wires real rendering for Surface Shader Layers and Pattern Layers, but does not build the full controls UI.
+- Surface Shader Layer capability matures in three stages:
+  - Phase 4: rendering-complete baseline with `solid`, `soft-gradient`, and `depth-lit`.
+  - Phase 5: user-control-complete Studio panel UX.
+  - Phase 6: heavier Experimental renderer/shader capabilities.
+- Foreground shader styling applies only inside the rasterized character mask.
+- Background shader styling applies to the canvas outside the character mask and remains visually separate from the foreground layer.
+- Pattern target `foreground-shader` modulates only the foreground character styling; it does not change mask alpha or geometry.
+- Pattern target `background-shader` modulates only the background canvas styling.
+- Pattern target `morph-stack` is a pipeline-level texture input in Phase 4. It may provide global modulation but must not become a per-morph-layer target.
+- Create `pattern-layer-texture.ts`; reuse cover-transform ideas where useful, but do not depend on displacement naming.
+- Do not add a local file picker in Phase 4. Support local-file runtime data when present; keep uploaded data URLs out of persistence.
+- Pattern load failures keep the last valid texture when one exists; otherwise they fall back to the first built-in pattern and expose only non-persisted error state.
+- Phase 4 should keep Phase 3 lock/randomization behavior intact and covered by tests.
+- `CharacterSurfaceCanvas` should prefer `surfaceShaders.background.color` over legacy `view.backgroundColor` for shader output. `view.backgroundColor` remains only a legacy/CSS fallback.
+- No ADR is needed for these phase-level rendering contracts.
 
 ## Steps
 
@@ -72,8 +93,8 @@ Invalid or missing Pattern Layer sources fall back to the first built-in pattern
 
 ## Checkpoint 4
 
-- [ ] Foreground and background shader layers are visibly separate.
-- [ ] Pattern Layer max of three is enforced.
-- [ ] Pattern Layer target is single-select.
-- [ ] Pattern target `morph-stack` affects whole morph pipeline.
-- [ ] Locks preserve shader/pattern settings during randomization.
+- [x] Foreground and background shader layers are visibly separate in the shader composition path.
+- [x] Pattern Layer max of three is enforced.
+- [x] Pattern Layer target is single-select.
+- [x] Pattern target `morph-stack` affects the whole renderer pipeline as global texture modulation.
+- [x] Locks preserve shader/pattern settings during randomization.

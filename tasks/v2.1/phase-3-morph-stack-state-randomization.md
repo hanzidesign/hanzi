@@ -7,6 +7,8 @@
 - Zustand state and tests.
 - No full UI rewrite yet.
 - No shader implementation for every morph yet.
+- Quarantine old mesh/displacement state so it is no longer active primary state or persisted; do not delete old components in this phase.
+- Add only minimal panel enum/wiring changes needed for v2.1 state. Full Morph Stack UI lands in Phase 5.
 
 ## Files
 
@@ -33,6 +35,20 @@ Do not persist:
 - generated mask textures or future generated SDF textures
 - WebGPU availability
 - transient render errors
+
+## Resolved Grill Decisions - 2026-06-17
+
+- Phase 3 implements store state, actions, persistence, and randomization only; it does not implement the full Morph Stack panel UI or Character Surface shader rendering.
+- Active panels become `character`, `morph`, `shader`, and `pattern`; `mesh` and `displacement` stop being active v2.1 panels.
+- The default Morph Stack starts from a three-layer Stable preset generated from seed `0`.
+- Morph layer instances use `id`, `definitionId`, `params`, `enabled`, `collapsed`, and `locked`.
+- Manual reorder can move locked Morph layers, but randomization preserves locked Morph layers in their existing index with the same instance id, definition, params, enabled state, collapsed state, and lock state.
+- Surface Shader Layer state is persisted now but rendered in Phase 4. The store uses fixed `foreground` and `background` layers with `color`, `stylePresetId`, `params`, and `locked`.
+- Pattern Layer state is persisted as metadata only: `id`, `source`, `target`, and `locked`. Uploaded local file data and data URLs remain runtime-only and are not persisted.
+- Pattern Layers are capped at three in store actions.
+- Randomization updates the Morph Stack and unlocked Surface Shader Layers. It may update existing unlocked Pattern Layers, but it does not add or remove Pattern Layers.
+- Renderer mode is persisted as `webgl` or `webgpu-experimental`, defaulting to `webgl`; WebGPU availability remains runtime-only and is not persisted.
+- Use a new storage key, `hanzi-studio-character-surface-v2_1_phase3`, and start clean instead of merging old shader-only state.
 
 ## Steps
 

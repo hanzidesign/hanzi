@@ -2,16 +2,26 @@ import { create } from 'zustand'
 import { createJSONStorage, persist, type StateStorage } from 'zustand/middleware'
 import { chars, toCharUrl, type CharScript } from '@/assets/chars'
 import { countries } from '@/assets/list'
+import { getMorphLayerDefinitionById } from '@/morph/catalogue'
+import { createDefaultMorphParams, sanitizeMorphParams } from '@/morph/params'
+import { randomizeMorphStackPreset } from '@/morph/randomize'
+import type { MorphParamValues, MorphStackPresetLayerDraft } from '@/morph/types'
 import { getDefaultShaderPreset, getShaderPresetById } from '@/shaders/registry'
 import type { ShaderParamValue, ShaderParamValues } from '@/shaders/types'
 import { createDefaultParams, sanitizeParamsForPreset } from '@/shaders/uniforms'
+import { DEFAULT_PATTERN_ASSET_URL, sanitizePatternUrl, toPatternUrl } from '@/utils/patternAssets'
 import {
-  DEFAULT_PATTERN_ASSET_URL,
-  sanitizePatternUrl,
-  toPatternUrl,
-} from '@/utils/patternAssets'
+  DEFAULT_GRADIENT_SETTINGS,
+  DEFAULT_GRADIENT_STOPS,
+  readGradientAngle,
+  readGradientType,
+  normalizeGradientStops,
+  type GradientType,
+  type GradientColorStop,
+} from '@/components/studio/gradient-stops'
 
-export const STUDIO_STORE_STORAGE_KEY = 'hanzi-studio-character-surface-v2_1'
+export const STUDIO_STORE_STORAGE_KEY = 'hanzi-studio-character-surface-v2_1_phase3'
+export const MAX_PATTERN_LAYERS = 3
 
 const DEFAULT_COUNTRY = 'int'
 const DEFAULT_YEAR = '2023'
@@ -34,7 +44,53 @@ export const DEFAULT_VIEW_STATE = {
   backgroundColor: '#fff',
 }
 
-export type StudioActivePanel = 'character' | 'shader' | 'mesh' | 'displacement'
+export type StudioActivePanel = 'character' | 'morph' | 'shader' | 'pattern'
+
+export type StudioRendererMode = 'webgl' | 'webgpu-experimental'
+
+export type StudioMorphLayer = {
+  id: string
+  definitionId: string
+  params: MorphParamValues
+  enabled: boolean
+  collapsed: boolean
+  locked: boolean
+}
+
+export type StudioSurfaceShaderLayerId = 'foreground' | 'background'
+
+export type StudioSurfaceShaderLayer = {
+  color: string
+  stylePresetId: string
+  params: StudioSurfaceShaderParams
+  locked: boolean
+}
+
+export type StudioSurfaceShaderParams = {
+  gradientStops?: GradientColorStop[]
+  gradientType?: GradientType
+  gradientAngle?: number
+  opacity?: number
+} & Record<string, string | number | boolean | GradientColorStop[] | undefined>
+
+export type StudioPatternLayerTarget = 'morph-stack' | 'foreground-shader' | 'background-shader'
+
+export type StudioPatternLayerSource =
+  | {
+      type: 'built-in'
+      patternUrl: string
+    }
+  | {
+      type: 'local-file'
+      fileName: string
+    }
+
+export type StudioPatternLayer = {
+  id: string
+  source: StudioPatternLayerSource
+  target: StudioPatternLayerTarget
+  locked: boolean
+}
 
 export const DEFAULT_MESH_STATE = {
   extrusionDepth: 0.18,
@@ -63,6 +119,13 @@ export type StudioStoreState = {
     selectedPresetId: string
     currentParams: ShaderParamValues
   }
+  morphStack: {
+    layers: StudioMorphLayer[]
+  }
+  surfaceShaders: Record<StudioSurfaceShaderLayerId, StudioSurfaceShaderLayer>
+  patternLayers: StudioPatternLayer[]
+  randomSeed: number
+  rendererMode: StudioRendererMode
   mesh: {
     extrusionDepth: number
     thickness: number
@@ -90,6 +153,7 @@ export type StudioStoreState = {
     ptnData: string
     patternMode: 'source' | 'upload'
     uploadedDisplacementImageData: string
+    uploadedPatternLayerDataById: Record<string, string>
   }
 }
 
@@ -100,9 +164,7 @@ export type StudioStoreActions = {
   updateParam: (paramId: string, value: ShaderParamValue) => void
   setMeshControl: (partial: Partial<StudioStoreState['mesh']>) => void
   resetMeshControls: () => void
-  setDisplacementControl: (
-    partial: Partial<StudioStoreState['displacement']>,
-  ) => void
+  setDisplacementControl: (partial: Partial<StudioStoreState['displacement']>) => void
   setUploadedDisplacementImageData: (dataUrl: string) => void
   clearUploadedDisplacementImageData: () => void
   setActivePanel: (activePanel: StudioActivePanel | null) => void
@@ -120,11 +182,30 @@ export type StudioStoreActions = {
   setCompatibilityPanel: (panel: string | null) => void
   resetSvgEffect: () => void
   resetStyle: () => void
+  replaceMorphStackLayers: (layers: StudioMorphLayer[]) => void
+  addMorphLayer: (definitionId?: string) => void
+  duplicateMorphLayer: (layerId: string) => void
+  removeMorphLayer: (layerId: string) => void
+  reorderMorphLayer: (fromIndex: number, toIndex: number) => void
+  updateMorphLayerParam: (layerId: string, paramId: string, value: string | number | boolean) => void
+  setMorphLayerLocked: (layerId: string, locked: boolean) => void
+  randomizeMorphPreset: (options?: { seed?: number; includeExperimental?: boolean }) => void
+  setSurfaceShaderLayer: (layerId: StudioSurfaceShaderLayerId, partial: Partial<StudioSurfaceShaderLayer>) => void
+  setSurfaceShaderLayerLocked: (layerId: StudioSurfaceShaderLayerId, locked: boolean) => void
+  addPatternLayer: (partial?: Partial<StudioPatternLayer>) => void
+  removePatternLayer: (layerId: string) => void
+  updatePatternLayer: (layerId: string, partial: Partial<StudioPatternLayer>) => void
+  setPatternLayerLocked: (layerId: string, locked: boolean) => void
+  setUploadedPatternLayerData: (layerId: string, dataUrl: string) => void
+  setRendererMode: (rendererMode: StudioRendererMode) => void
 }
 
 export type StudioStore = StudioStoreState & StudioStoreActions
 
-type PersistedStudioState = Pick<StudioStoreState, 'character' | 'shader' | 'view'>
+type PersistedStudioState = Pick<
+  StudioStoreState,
+  'character' | 'morphStack' | 'surfaceShaders' | 'patternLayers' | 'randomSeed' | 'rendererMode' | 'view'
+>
 
 export const useStudioStore = createStudioStore()
 
@@ -136,7 +217,7 @@ export function createStudioStore(storage?: StateStorage) {
         setCharacter: (country, year, isTc) => {
           const nextCharacter = sanitizeCharacter(
             { country, year, isTc: isTc ?? get().character.isTc },
-            get().character,
+            get().character
           )
 
           set({ character: nextCharacter })
@@ -165,9 +246,7 @@ export function createStudioStore(storage?: StateStorage) {
           })
         },
         updateParam: (paramId, value) => {
-          const preset =
-            getShaderPresetById(get().shader.selectedPresetId) ??
-            getDefaultShaderPreset()
+          const preset = getShaderPresetById(get().shader.selectedPresetId) ?? getDefaultShaderPreset()
 
           if (!preset.params.some((param) => param.id === paramId)) {
             return
@@ -190,10 +269,7 @@ export function createStudioStore(storage?: StateStorage) {
           set({ mesh: createDefaultMeshState() })
         },
         setDisplacementControl: (partial) => {
-          const nextDisplacement = sanitizeDisplacementState(
-            { ...get().displacement, ...partial },
-            get().displacement,
-          )
+          const nextDisplacement = sanitizeDisplacementState({ ...get().displacement, ...partial }, get().displacement)
 
           set({
             displacement: nextDisplacement,
@@ -325,10 +401,7 @@ export function createStudioStore(storage?: StateStorage) {
         setPatternDataForSource: (patternUrl, ptnData) => {
           const state = get()
 
-          if (
-            state.runtime.patternMode !== 'source' ||
-            state.displacement.patternUrl !== patternUrl
-          ) {
+          if (state.runtime.patternMode !== 'source' || state.displacement.patternUrl !== patternUrl) {
             return
           }
 
@@ -348,6 +421,187 @@ export function createStudioStore(storage?: StateStorage) {
               activePanel: activePanelFromPanel(panel),
             },
           })
+        },
+        replaceMorphStackLayers: (layers) => {
+          set({ morphStack: { layers } })
+        },
+        addMorphLayer: (definitionId) => {
+          const state = get()
+          const definition =
+            (definitionId ? getMorphLayerDefinitionById(definitionId) : undefined) ?? getDefaultMorphLayerDefinition()
+
+          set({
+            morphStack: {
+              layers: [
+                ...state.morphStack.layers,
+                createMorphLayerFromDefinition(definition.id, state.morphStack.layers.length),
+              ],
+            },
+          })
+        },
+        duplicateMorphLayer: (layerId) => {
+          const state = get()
+          const sourceLayer = state.morphStack.layers.find((layer) => layer.id === layerId)
+
+          if (!sourceLayer) {
+            return
+          }
+
+          set({
+            morphStack: {
+              layers: [
+                ...state.morphStack.layers,
+                {
+                  ...sourceLayer,
+                  id: createMorphLayerId(state.morphStack.layers.length),
+                  locked: false,
+                },
+              ],
+            },
+          })
+        },
+        removeMorphLayer: (layerId) => {
+          set({
+            morphStack: {
+              layers: get().morphStack.layers.filter((layer) => layer.id !== layerId),
+            },
+          })
+        },
+        reorderMorphLayer: (fromIndex, toIndex) => {
+          const layers = [...get().morphStack.layers]
+
+          if (fromIndex < 0 || fromIndex >= layers.length || toIndex < 0 || toIndex >= layers.length) {
+            return
+          }
+
+          const [layer] = layers.splice(fromIndex, 1)
+
+          if (!layer) {
+            return
+          }
+
+          layers.splice(toIndex, 0, layer)
+          set({ morphStack: { layers } })
+        },
+        updateMorphLayerParam: (layerId, paramId, value) => {
+          set({
+            morphStack: {
+              layers: get().morphStack.layers.map((layer) => {
+                if (layer.id !== layerId) {
+                  return layer
+                }
+
+                const definition = getMorphLayerDefinitionById(layer.definitionId)
+
+                if (!definition) {
+                  return layer
+                }
+
+                return {
+                  ...layer,
+                  params: sanitizeMorphParams(definition, {
+                    ...layer.params,
+                    [paramId]: value,
+                  }),
+                }
+              }),
+            },
+          })
+        },
+        setMorphLayerLocked: (layerId, locked) => {
+          set({
+            morphStack: {
+              layers: get().morphStack.layers.map((layer) => (layer.id === layerId ? { ...layer, locked } : layer)),
+            },
+          })
+        },
+        randomizeMorphPreset: (options = {}) => {
+          const state = get()
+          const seed = options.seed ?? state.randomSeed
+          const layers = randomizeMorphLayers(state.morphStack.layers, seed, options.includeExperimental)
+
+          set({
+            randomSeed: seed,
+            morphStack: { layers },
+            surfaceShaders: randomizeSurfaceShaderLayers(state.surfaceShaders, seed),
+            patternLayers: randomizePatternLayers(state.patternLayers, seed),
+          })
+        },
+        setSurfaceShaderLayer: (layerId, partial) => {
+          set({
+            surfaceShaders: {
+              ...get().surfaceShaders,
+              [layerId]: {
+                ...get().surfaceShaders[layerId],
+                ...sanitizeSurfaceShaderLayerPartial(partial, layerId),
+              },
+            },
+          })
+        },
+        setSurfaceShaderLayerLocked: (layerId, locked) => {
+          set({
+            surfaceShaders: {
+              ...get().surfaceShaders,
+              [layerId]: {
+                ...get().surfaceShaders[layerId],
+                locked,
+              },
+            },
+          })
+        },
+        addPatternLayer: (partial = {}) => {
+          const patternLayers = get().patternLayers
+
+          if (patternLayers.length >= MAX_PATTERN_LAYERS) {
+            return
+          }
+
+          set({
+            patternLayers: [
+              ...patternLayers,
+              sanitizePatternLayer(
+                {
+                  id: createPatternLayerId(patternLayers.length),
+                  source: { type: 'built-in', patternUrl: DEFAULT_PATTERN_ASSET_URL },
+                  target: 'foreground-shader',
+                  locked: false,
+                  ...partial,
+                },
+                patternLayers.length
+              ),
+            ],
+          })
+        },
+        removePatternLayer: (layerId) => {
+          set({
+            patternLayers: get().patternLayers.filter((layer) => layer.id !== layerId),
+          })
+        },
+        updatePatternLayer: (layerId, partial) => {
+          set({
+            patternLayers: get().patternLayers.map((layer, index) =>
+              layer.id === layerId ? sanitizePatternLayer({ ...layer, ...partial }, index) : layer
+            ),
+          })
+        },
+        setPatternLayerLocked: (layerId, locked) => {
+          set({
+            patternLayers: get().patternLayers.map((layer) => (layer.id === layerId ? { ...layer, locked } : layer)),
+          })
+        },
+        setUploadedPatternLayerData: (layerId, dataUrl) => {
+          set({
+            runtime: {
+              ...get().runtime,
+              uploadedPatternLayerDataById: {
+                ...get().runtime.uploadedPatternLayerDataById,
+                [layerId]: dataUrl,
+              },
+            },
+          })
+        },
+        setRendererMode: (rendererMode) => {
+          set({ rendererMode })
         },
         resetSvgEffect: () => {
           set({
@@ -384,8 +638,8 @@ export function createStudioStore(storage?: StateStorage) {
           ...currentState,
           ...sanitizePersistedState(persistedState),
         }),
-      },
-    ),
+      }
+    )
   )
 }
 
@@ -402,6 +656,11 @@ export function createInitialStudioStoreState(): StudioStoreState {
       selectedPresetId: defaultPreset.id,
       currentParams: createDefaultParams(defaultPreset),
     },
+    morphStack: createDefaultMorphStack(0),
+    surfaceShaders: createDefaultSurfaceShaders(),
+    patternLayers: [],
+    randomSeed: 0,
+    rendererMode: 'webgl',
     mesh: createDefaultMeshState(),
     displacement: {
       patternUrl: DEFAULT_PATTERN_ASSET_URL,
@@ -418,22 +677,16 @@ export function createInitialStudioStoreState(): StudioStoreState {
       ptnData: '',
       patternMode: 'source',
       uploadedDisplacementImageData: '',
+      uploadedPatternLayerDataById: {},
     },
   }
 }
 
 export function getCharacterDisplayState(character: StudioCharacterState) {
-  const sanitizedCharacter = sanitizeCharacter(
-    character,
-    createInitialStudioStoreState().character,
-  )
+  const sanitizedCharacter = sanitizeCharacter(character, createInitialStudioStoreState().character)
   const script = toScript(sanitizedCharacter.isTc)
   const ch = chars[script][sanitizedCharacter.country][sanitizedCharacter.year]
-  const charUrl = toCharUrl(
-    script,
-    sanitizedCharacter.country,
-    sanitizedCharacter.year,
-  )
+  const charUrl = toCharUrl(script, sanitizedCharacter.country, sanitizedCharacter.year)
 
   return {
     charUrl,
@@ -448,10 +701,156 @@ export function fallbackSvgData(url: string) {
   return `<image href="${url}" x="0" y="0" width="100%" height="100%" />`
 }
 
+function createDefaultMorphStack(seed: number): StudioStoreState['morphStack'] {
+  return {
+    layers: randomizeMorphStackPreset({ seed }).layers.map((layer, index) => createMorphLayerFromDraft(layer, index)),
+  }
+}
+
+function createDefaultSurfaceShaders(): StudioStoreState['surfaceShaders'] {
+  return {
+    foreground: {
+      color: '#000000',
+      stylePresetId: 'solid',
+      params: {
+        gradientStops: DEFAULT_GRADIENT_STOPS,
+        gradientType: DEFAULT_GRADIENT_SETTINGS.gradientType,
+        gradientAngle: DEFAULT_GRADIENT_SETTINGS.gradientAngle,
+        opacity: 1,
+      },
+      locked: false,
+    },
+    background: {
+      color: '#ffffff',
+      stylePresetId: 'solid',
+      params: {
+        opacity: 1,
+      },
+      locked: false,
+    },
+  }
+}
+
+function createMorphLayerFromDraft(
+  layer: MorphStackPresetLayerDraft,
+  index: number,
+  id = createMorphLayerId(index)
+): StudioMorphLayer {
+  return {
+    id,
+    definitionId: layer.definitionId,
+    params: layer.params,
+    enabled: layer.enabled,
+    collapsed: false,
+    locked: false,
+  }
+}
+
+function createMorphLayerFromDefinition(definitionId: string, index: number): StudioMorphLayer {
+  const definition = getMorphLayerDefinitionById(definitionId) ?? getDefaultMorphLayerDefinition()
+
+  return {
+    id: createMorphLayerId(index),
+    definitionId: definition.id,
+    params: createDefaultMorphParams(definition),
+    enabled: true,
+    collapsed: false,
+    locked: false,
+  }
+}
+
+function getDefaultMorphLayerDefinition() {
+  const definition = getMorphLayerDefinitionById('sine-bend')
+
+  if (!definition) {
+    throw new Error('Expected the sine-bend Morph Layer definition.')
+  }
+
+  return definition
+}
+
+function createMorphLayerId(index: number) {
+  return `morph-layer-${index + 1}`
+}
+
+function createPatternLayerId(index: number) {
+  return `pattern-layer-${index + 1}`
+}
+
+function randomizeMorphLayers(currentLayers: StudioMorphLayer[], seed: number, includeExperimental = false) {
+  const layerCount = currentLayers.length > 0 ? currentLayers.length : createDefaultMorphStack(seed).layers.length
+  const draft = randomizeMorphStackPreset({
+    seed,
+    layerCount,
+    includeExperimental,
+  })
+  let draftIndex = 0
+  const layers = currentLayers.length > 0 ? currentLayers : createDefaultMorphStack(seed).layers
+
+  return layers.map((layer, index) => {
+    if (layer.locked) {
+      return layer
+    }
+
+    const draftLayer = draft.layers[draftIndex]
+    draftIndex += 1
+
+    if (!draftLayer) {
+      return layer
+    }
+
+    return createMorphLayerFromDraft(draftLayer, index, layer.id)
+  })
+}
+
+function randomizeSurfaceShaderLayers(surfaceShaders: StudioStoreState['surfaceShaders'], seed: number) {
+  return {
+    foreground: surfaceShaders.foreground.locked
+      ? surfaceShaders.foreground
+      : {
+          ...surfaceShaders.foreground,
+          color: readRandomColor(seed, 0),
+        },
+    background: surfaceShaders.background.locked
+      ? surfaceShaders.background
+      : {
+          ...surfaceShaders.background,
+          color: readRandomColor(seed, 1),
+        },
+  }
+}
+
+function randomizePatternLayers(patternLayers: StudioPatternLayer[], seed: number) {
+  return patternLayers.map((layer, index) => {
+    if (layer.locked) {
+      return layer
+    }
+
+    return {
+      ...layer,
+      source: {
+        type: 'built-in' as const,
+        patternUrl: toPatternUrl(seed + index),
+      },
+    }
+  })
+}
+
+function readRandomColor(seed: number, offset: number) {
+  const colors = ['#111111', '#f7f7f2', '#264653', '#8f2d2d', '#2a6f62']
+  const index = Math.abs(Math.trunc(seed + offset)) % colors.length
+
+  return colors[index] ?? colors[0]
+}
+
 function selectPersistedState(state: StudioStore): PersistedStudioState {
   return {
     character: state.character,
-    shader: state.shader,
+    morphStack: state.morphStack,
+    surfaceShaders: state.surfaceShaders,
+    patternLayers: state.patternLayers,
+    randomSeed: state.randomSeed,
+    rendererMode: state.rendererMode,
     view: state.view,
   }
 }
@@ -460,25 +859,24 @@ function sanitizePersistedState(value: unknown): PersistedStudioState {
   const base = createInitialStudioStoreState()
   const persisted = isRecord(value) ? value : {}
   const character = sanitizeCharacter(persisted.character, base.character)
-  const shader = sanitizeShaderState(persisted.shader, base.shader)
 
   return {
     character,
-    shader,
+    morphStack: sanitizeMorphStackState(persisted.morphStack, base.morphStack),
+    surfaceShaders: sanitizeSurfaceShadersState(persisted.surfaceShaders, base.surfaceShaders),
+    patternLayers: sanitizePatternLayersState(persisted.patternLayers, base.patternLayers),
+    randomSeed: readNumber(persisted.randomSeed, base.randomSeed),
+    rendererMode: sanitizeRendererMode(persisted.rendererMode, base.rendererMode),
     view: sanitizeViewState(persisted.view, base.view),
   }
 }
 
-function sanitizeCharacter(
-  value: unknown,
-  fallback: StudioCharacterState,
-): StudioCharacterState {
+function sanitizeCharacter(value: unknown, fallback: StudioCharacterState): StudioCharacterState {
   if (!isRecord(value) || typeof value.country !== 'string' || typeof value.year !== 'string') {
     return fallback
   }
 
-  const isTc =
-    typeof value.isTc === 'boolean' ? value.isTc : fallback.isTc
+  const isTc = typeof value.isTc === 'boolean' ? value.isTc : fallback.isTc
   const script = toScript(isTc)
 
   if (!chars[script][value.country]?.[value.year]) {
@@ -492,24 +890,198 @@ function sanitizeCharacter(
   }
 }
 
-function sanitizeShaderState(
+function sanitizeMorphStackState(
   value: unknown,
-  fallback: StudioStoreState['shader'],
-) {
-  if (!isRecord(value) || typeof value.selectedPresetId !== 'string') {
+  fallback: StudioStoreState['morphStack']
+): StudioStoreState['morphStack'] {
+  if (!isRecord(value) || !Array.isArray(value.layers)) {
     return fallback
   }
 
-  const preset = getShaderPresetById(value.selectedPresetId)
+  const layers = value.layers
+    .map((layer, index) => sanitizeMorphLayer(layer, index))
+    .filter((layer): layer is StudioMorphLayer => Boolean(layer))
 
-  if (!preset) {
+  return {
+    layers: layers.length > 0 ? layers : fallback.layers,
+  }
+}
+
+function sanitizeMorphLayer(value: unknown, index: number): StudioMorphLayer | null {
+  if (!isRecord(value) || typeof value.definitionId !== 'string') {
+    return null
+  }
+
+  const definition = getMorphLayerDefinitionById(value.definitionId)
+
+  if (!definition) {
+    return null
+  }
+
+  return {
+    id: typeof value.id === 'string' ? value.id : createMorphLayerId(index),
+    definitionId: definition.id,
+    params: sanitizeMorphParams(definition, readRecord(value.params)),
+    enabled: typeof value.enabled === 'boolean' ? value.enabled : true,
+    collapsed: typeof value.collapsed === 'boolean' ? value.collapsed : false,
+    locked: typeof value.locked === 'boolean' ? value.locked : false,
+  }
+}
+
+function sanitizeSurfaceShadersState(
+  value: unknown,
+  fallback: StudioStoreState['surfaceShaders']
+): StudioStoreState['surfaceShaders'] {
+  if (!isRecord(value)) {
     return fallback
   }
 
   return {
-    selectedPresetId: preset.id,
-    currentParams: sanitizeParamsForPreset(preset, readRecord(value.currentParams)),
+    foreground: sanitizeSurfaceShaderLayer(value.foreground, fallback.foreground, 'foreground'),
+    background: sanitizeSurfaceShaderLayer(value.background, fallback.background, 'background'),
   }
+}
+
+function sanitizeSurfaceShaderLayer(
+  value: unknown,
+  fallback: StudioSurfaceShaderLayer,
+  layerId?: StudioSurfaceShaderLayerId
+): StudioSurfaceShaderLayer {
+  if (!isRecord(value)) {
+    return fallback
+  }
+
+  return {
+    color: typeof value.color === 'string' ? value.color : fallback.color,
+    stylePresetId: readSurfaceShaderStylePresetId(
+      typeof value.stylePresetId === 'string' ? value.stylePresetId : fallback.stylePresetId,
+      fallback.stylePresetId,
+      layerId
+    ),
+    params: readSurfaceShaderParams(value.params, fallback.params, layerId),
+    locked: typeof value.locked === 'boolean' ? value.locked : fallback.locked,
+  }
+}
+
+function sanitizeSurfaceShaderLayerPartial(
+  value: Partial<StudioSurfaceShaderLayer>,
+  layerId?: StudioSurfaceShaderLayerId
+): Partial<StudioSurfaceShaderLayer> {
+  return {
+    ...(typeof value.color === 'string' ? { color: value.color } : {}),
+    ...(typeof value.stylePresetId === 'string'
+      ? {
+          stylePresetId: readSurfaceShaderStylePresetId(value.stylePresetId, 'solid', layerId),
+        }
+      : {}),
+    ...(isRecord(value.params) ? { params: readSurfaceShaderParams(value.params, {}, layerId) } : {}),
+    ...(typeof value.locked === 'boolean' ? { locked: value.locked } : {}),
+  }
+}
+
+function readSurfaceShaderStylePresetId(value: string, fallback: string, layerId?: StudioSurfaceShaderLayerId) {
+  if (layerId === 'background') {
+    return 'solid'
+  }
+
+  if (value === 'soft-gradient') {
+    return 'gradient'
+  }
+
+  return value === 'solid' || value === 'depth-lit' || value === 'gradient' ? value : fallback
+}
+
+function readSurfaceShaderParams(
+  value: unknown,
+  fallback: StudioSurfaceShaderLayer['params'],
+  layerId?: StudioSurfaceShaderLayerId
+) {
+  if (!isRecord(value)) {
+    return fallback
+  }
+
+  const scalarParams = Object.fromEntries(
+    Object.entries(value).filter((entry): entry is [string, string | number | boolean] => {
+      const [, paramValue] = entry
+
+      return typeof paramValue === 'string' || typeof paramValue === 'number' || typeof paramValue === 'boolean'
+    })
+  )
+
+  const params: StudioSurfaceShaderLayer['params'] = {
+    ...scalarParams,
+    opacity: readSurfaceOpacity(value.opacity, fallback.opacity),
+  }
+
+  if (layerId !== 'background') {
+    params.gradientStops = normalizeGradientStops(value.gradientStops)
+    params.gradientType = readGradientType(value.gradientType, readGradientType(fallback.gradientType))
+    params.gradientAngle = readGradientAngle(value.gradientAngle, readGradientAngle(fallback.gradientAngle))
+  }
+
+  return params
+}
+
+function readSurfaceOpacity(value: unknown, fallback = 1) {
+  if (typeof value !== 'number' || !Number.isFinite(value)) {
+    return fallback
+  }
+
+  return Math.max(0, Math.min(1, value))
+}
+
+function sanitizePatternLayersState(value: unknown, fallback: StudioPatternLayer[]): StudioPatternLayer[] {
+  if (!Array.isArray(value)) {
+    return fallback
+  }
+
+  return value.slice(0, MAX_PATTERN_LAYERS).map((layer, index) => sanitizePatternLayer(layer, index))
+}
+
+function sanitizePatternLayer(value: unknown, index: number): StudioPatternLayer {
+  const record = readRecord(value)
+
+  return {
+    id: typeof record.id === 'string' ? record.id : createPatternLayerId(index),
+    source: sanitizePatternLayerSource(record.source),
+    target: sanitizePatternLayerTarget(record.target),
+    locked: typeof record.locked === 'boolean' ? record.locked : false,
+  }
+}
+
+function sanitizePatternLayerSource(value: unknown): StudioPatternLayerSource {
+  if (isRecord(value)) {
+    if (value.type === 'local-file' && typeof value.fileName === 'string') {
+      return {
+        type: 'local-file',
+        fileName: value.fileName,
+      }
+    }
+
+    if (value.type === 'built-in') {
+      return {
+        type: 'built-in',
+        patternUrl: sanitizePatternUrl(value.patternUrl, DEFAULT_PATTERN_ASSET_URL),
+      }
+    }
+  }
+
+  return {
+    type: 'built-in',
+    patternUrl: DEFAULT_PATTERN_ASSET_URL,
+  }
+}
+
+function sanitizePatternLayerTarget(value: unknown): StudioPatternLayerTarget {
+  if (value === 'morph-stack' || value === 'foreground-shader' || value === 'background-shader') {
+    return value
+  }
+
+  return 'foreground-shader'
+}
+
+function sanitizeRendererMode(value: unknown, fallback: StudioRendererMode): StudioRendererMode {
+  return value === 'webgl' || value === 'webgpu-experimental' ? value : fallback
 }
 
 function createDefaultMeshState(): StudioStoreState['mesh'] {
@@ -520,10 +1092,7 @@ function createDefaultMeshState(): StudioStoreState['mesh'] {
   }
 }
 
-function sanitizeDisplacementState(
-  value: unknown,
-  fallback: StudioStoreState['displacement'],
-) {
+function sanitizeDisplacementState(value: unknown, fallback: StudioStoreState['displacement']) {
   if (!isRecord(value)) {
     return fallback
   }
@@ -531,25 +1100,17 @@ function sanitizeDisplacementState(
   return {
     patternUrl: sanitizePatternUrl(value.patternUrl, fallback.patternUrl),
     strength: readNumber(value.strength, fallback.strength),
-    bias: readClampedNumber(
-      value.bias,
-      fallback.bias,
-      MIN_DISPLACEMENT_BIAS,
-      MAX_DISPLACEMENT_BIAS,
-    ),
+    bias: readClampedNumber(value.bias, fallback.bias, MIN_DISPLACEMENT_BIAS, MAX_DISPLACEMENT_BIAS),
     subdivisionLevel: readClampedInteger(
       value.subdivisionLevel,
       fallback.subdivisionLevel,
       MIN_DISPLACEMENT_SUBDIVISION_LEVEL,
-      MAX_DISPLACEMENT_SUBDIVISION_LEVEL,
+      MAX_DISPLACEMENT_SUBDIVISION_LEVEL
     ),
   }
 }
 
-function sanitizeViewState(
-  value: unknown,
-  fallback: StudioStoreState['view'],
-) {
+function sanitizeViewState(value: unknown, fallback: StudioStoreState['view']) {
   if (!isRecord(value)) {
     return fallback
   }
@@ -561,10 +1122,7 @@ function sanitizeViewState(
         : isStudioActivePanel(value.activePanel)
           ? value.activePanel
           : fallback.activePanel,
-    backgroundColor:
-      typeof value.backgroundColor === 'string'
-        ? value.backgroundColor
-        : fallback.backgroundColor,
+    backgroundColor: typeof value.backgroundColor === 'string' ? value.backgroundColor : fallback.backgroundColor,
   }
 }
 
@@ -578,7 +1136,7 @@ function activePanelFromPanel(panel: string | null): StudioActivePanel | null {
   }
 
   if (panel === '1') {
-    return 'displacement'
+    return 'pattern'
   }
 
   return 'shader'
@@ -593,7 +1151,7 @@ function panelFromActivePanel(activePanel: StudioActivePanel | null) {
     return '0'
   }
 
-  if (activePanel === 'displacement' || activePanel === 'mesh') {
+  if (activePanel === 'pattern') {
     return '1'
   }
 
@@ -612,31 +1170,16 @@ function readNumber(value: unknown, fallback: number) {
   return typeof value === 'number' && Number.isFinite(value) ? value : fallback
 }
 
-function readClampedNumber(
-  value: unknown,
-  fallback: number,
-  min: number,
-  max: number,
-) {
+function readClampedNumber(value: unknown, fallback: number, min: number, max: number) {
   return Math.min(max, Math.max(min, readNumber(value, fallback)))
 }
 
-function readClampedInteger(
-  value: unknown,
-  fallback: number,
-  min: number,
-  max: number,
-) {
+function readClampedInteger(value: unknown, fallback: number, min: number, max: number) {
   return Math.trunc(readClampedNumber(value, fallback, min, max))
 }
 
 function isStudioActivePanel(value: unknown): value is StudioActivePanel {
-  return (
-    value === 'character' ||
-    value === 'shader' ||
-    value === 'mesh' ||
-    value === 'displacement'
-  )
+  return value === 'character' || value === 'morph' || value === 'shader' || value === 'pattern'
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
