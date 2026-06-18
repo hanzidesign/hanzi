@@ -58,14 +58,14 @@ describe('studio store', () => {
     expect(state.mesh).toMatchObject({
       extrusionDepth: expect.any(Number),
       thickness: expect.any(Number),
-      autoRotate: false,
+      autoRotate: true,
     })
     expect(state.displacement.patternUrl).toBe('/images/patterns/000.jpg')
     expect(state.displacement.subdivisionLevel).toBe(0)
     expect(state.view.activePanel).toBe('character')
   })
 
-  it('uses a clean v2.1 storage key without reading old mesh or displacement state', () => {
+  it('uses a clean Grainrad ASCII storage key without reading old mesh or displacement state', () => {
     const initial = createInitialStudioStoreState()
     const oldState = {
       ...initial,
@@ -83,9 +83,7 @@ describe('studio store', () => {
     )
     const store = createStudioStore(storage)
 
-    expect(STUDIO_STORE_STORAGE_KEY).toBe(
-      'hanzi-studio-character-surface-v2_1_phase3',
-    )
+    expect(STUDIO_STORE_STORAGE_KEY).toBe('hanzi-studio-grainrad-ascii-v1')
     expect(store.getState().character).toEqual(initial.character)
     expect(store.getState().mesh).toEqual(initial.mesh)
     expect(store.getState().displacement).toEqual(initial.displacement)
@@ -200,7 +198,7 @@ describe('studio store', () => {
     expect(store.getState().runtime.svgLoadError).toBeNull()
   })
 
-  it('ignores stale persisted shader params without reviving old mesh or displacement state', () => {
+  it('ignores stale persisted shader params while preserving active mesh choices', () => {
     const initial = createInitialStudioStoreState()
     const staleState = {
       ...initial,
@@ -231,7 +229,10 @@ describe('studio store', () => {
       year: '2024',
       isTc: true,
     })
-    expect(store.getState().mesh).toEqual(initial.mesh)
+    expect(store.getState().mesh).toEqual({
+      ...initial.mesh,
+      scale: 1.7,
+    })
     expect(store.getState().displacement).toEqual(initial.displacement)
     expect(store.getState().shader).toEqual(initial.shader)
   })
@@ -275,8 +276,15 @@ describe('studio store', () => {
 
     const persisted = readPersistedState()
 
-    expect(persisted).not.toHaveProperty('mesh')
+    expect(persisted).toHaveProperty('mesh')
     expect(persisted).not.toHaveProperty('displacement')
+    expect(persisted).not.toHaveProperty('shader')
+    expect(persisted).not.toHaveProperty('morphStack')
+    expect(persisted).not.toHaveProperty('surfaceShaders')
+    expect(persisted).not.toHaveProperty('shaderLayers')
+    expect(persisted).not.toHaveProperty('patternLayers')
+    expect(persisted).not.toHaveProperty('postFx')
+    expect(persisted).not.toHaveProperty('randomSeed')
     expect(persisted).not.toHaveProperty('svgEffect')
     expect(persisted).not.toHaveProperty('runtime')
     expect(JSON.stringify(persisted)).not.toContain('large-upload')
@@ -300,5 +308,58 @@ describe('studio store', () => {
     const store = createStudioStore(storage)
 
     expect(store.getState().displacement).toEqual(initial.displacement)
+  })
+
+  it('stores stackable Shader Layer rows with lock, order, params, and target', () => {
+    const { storage, readPersistedState } = createMemoryStorage()
+    const store = createStudioStore(storage)
+
+    expect(store.getState().shaderLayers.layers[0]).toMatchObject({
+      target: 'foreground-shader',
+      effectId: 'ink-graphite',
+      enabled: true,
+      intensity: expect.any(Number),
+      blendMode: 'normal',
+      locked: false,
+    })
+
+    store.getState().addShaderLayer({
+      target: 'background-shader',
+      effectId: 'watercolor-paper',
+      intensity: 0.42,
+    })
+
+    const addedLayer = store.getState().shaderLayers.layers.at(-1)
+    expect(addedLayer).toMatchObject({
+      id: 'shader-layer-3',
+      target: 'background-shader',
+      effectId: 'watercolor-paper',
+      intensity: 0.42,
+      enabled: true,
+      blendMode: 'normal',
+    })
+
+    if (!addedLayer) {
+      throw new Error('Expected added Shader Layer')
+    }
+
+    store.getState().updateShaderLayer(addedLayer.id, {
+      params: {
+        wash: 0.25,
+        grain: 0.4,
+      },
+    })
+    store.getState().setShaderLayerLocked(addedLayer.id, true)
+    store.getState().reorderShaderLayer(2, 0)
+
+    expect(store.getState().shaderLayers.layers[0]).toMatchObject({
+      id: addedLayer.id,
+      locked: true,
+      params: {
+        wash: 0.25,
+        grain: 0.4,
+      },
+    })
+    expect(readPersistedState()).not.toHaveProperty('shaderLayers')
   })
 })

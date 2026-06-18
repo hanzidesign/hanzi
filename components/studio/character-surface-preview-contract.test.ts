@@ -5,11 +5,13 @@ import { describe, expect, it } from 'vitest'
 
 const studioDir = join(process.cwd(), 'components/studio')
 
-describe('Character Surface active preview contract', () => {
-  it('routes StudioCanvas through CharacterSurfaceCanvas without the square mesh preview', async () => {
+describe('Phase 5C active preview contract', () => {
+  it('routes StudioCanvas through CharacterAsciiCanvas without the old square preview', async () => {
     const source = await readFile(join(studioDir, 'StudioCanvas.tsx'), 'utf8')
 
-    expect(source).toContain('CharacterSurfaceCanvas')
+    expect(source).toContain('CharacterAsciiCanvas')
+    expect(source).toContain('onAsciiStatusChange')
+    expect(source).not.toContain('CharacterSurfaceCanvas')
     expect(source).not.toContain('AspectRatio')
     expect(source).not.toContain('ShaderCanvas')
     expect(source).not.toContain('character-mesh-status')

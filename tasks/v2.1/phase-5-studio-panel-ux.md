@@ -93,7 +93,8 @@ This keeps maximum flexibility while preventing package-driven drift. Adding a n
 Use the Phase 5 layer compositing guideline as the implementation boundary:
 
 - Keep separate visible stacks for Morph, Surface Shader, and Pattern layers.
-- Use one shared row grammar across stacks: visibility, order where meaningful, name, thumbnail/icon, intensity, blend mode where meaningful, lock, and collapsed params.
+- Use one shared compact row grammar across stacks: visibility, order where meaningful, name, thumbnail/icon, intensity, blend mode where meaningful, lock, and a detail/edit affordance for params.
+- Do not use expanded row cards as the default Effect Layer UI. Morph, Shader, Pattern, and Post stacks should stay compact while params are edited in an inspector, modal, popover, or side detail surface.
 - Add global `intensity` to Morph layers so every row has a strength control even when the effect-specific params differ.
 - Turn Surface Shader into a real layer stack, or add stackable child layers under fixed foreground/background roots. Do not keep it as only one foreground color and one background color.
 - Add `enabled`, `intensity`, `blendMode`, and reorder behavior to Pattern Layers.
@@ -220,7 +221,7 @@ Recommended panels:
 - Delete layer
 - Enable/disable layer
 - Lock layer
-- Collapse/expand layer controls
+- Open params in a detail editor without expanding the layer row
 - Drag reorder
 - Stable/Experimental badge
 - Category-based Add Layer picker
@@ -233,8 +234,8 @@ Recommended panels:
   - number params use slider plus numeric input where space allows
   - select params use a select control
   - boolean params use a switch
-- Layer cards must show layer name, category, Stable/Experimental tier, enable state, lock state, collapse state, and drag handle.
-- Layer cards must include a global intensity control.
+- Compact layer rows must show layer name, category, Stable/Experimental tier, enable state, lock state, detail/edit affordance, and drag handle.
+- Compact layer rows must include a global intensity control.
 - Experimental entries remain visible and labelled. Include Experimental opt-in controls whether they can be added by randomization.
 
 ## Visible Morph Runtime Requirements
@@ -286,7 +287,7 @@ Recommended panels:
 
 7. Replace panel list in `StudioControls.tsx`.
 
-8. Implement shared stack row controls with stable dimensions and no text overflow.
+8. Implement shared compact stack row controls with stable dimensions and no text overflow.
 
 9. Implement `MorphStackPanel` using current accordion/PanelBox visual style.
 

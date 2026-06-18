@@ -9,16 +9,24 @@ import {
 } from 'three'
 import type { StudioPatternLayer } from '@/app/studio/studio-store'
 import { DEFAULT_PATTERN_ASSET_URL } from '@/utils/patternAssets'
+import { clampLayerIntensity, sanitizeLayerBlendMode, type LayerBlendMode } from './layer-compositing'
 
 export type PatternLayerTextureTargets = {
-  foreground?: Texture
-  background?: Texture
-  morphStack?: Texture
+  foreground: PatternLayerTextureTarget[]
+  background: PatternLayerTextureTarget[]
+  morphStack: PatternLayerTextureTarget[]
 }
 
 type LoadedPatternLayerTexture = {
   source: string
   texture: Texture
+}
+
+export type PatternLayerTextureTarget = {
+  id: string
+  texture: Texture
+  intensity: number
+  blendMode: LayerBlendMode
 }
 
 export function getPatternLayerTextureSource(
@@ -150,31 +158,49 @@ export function usePatternLayerTextures(
     }
   }, [])
 
-  const groupedLayers = groupPatternLayersByTarget(layers)
-
   return {
-    textures: {
-      foreground: getFirstTexture(groupedLayers.foreground, loadedTexturesByLayerId),
-      background: getFirstTexture(groupedLayers.background, loadedTexturesByLayerId),
-      morphStack: getFirstTexture(groupedLayers.morphStack, loadedTexturesByLayerId),
-    } satisfies PatternLayerTextureTargets,
+    textures: getPatternLayerTextureTargets(layers, loadedTexturesByLayerId),
     errorByLayerId,
   }
 }
 
-function getFirstTexture(
+export function getPatternLayerTextureTargets(
+  layers: StudioPatternLayer[],
+  loadedTexturesByLayerId: Record<string, LoadedPatternLayerTexture>,
+): PatternLayerTextureTargets {
+  const groupedLayers = groupPatternLayersByTarget(layers)
+
+  return {
+    foreground: getActiveTextureTargets(groupedLayers.foreground, loadedTexturesByLayerId),
+    background: getActiveTextureTargets(groupedLayers.background, loadedTexturesByLayerId),
+    morphStack: getActiveTextureTargets(groupedLayers.morphStack, loadedTexturesByLayerId),
+  }
+}
+
+function getActiveTextureTargets(
   layers: StudioPatternLayer[],
   loadedTexturesByLayerId: Record<string, LoadedPatternLayerTexture>,
 ) {
+  const targets: PatternLayerTextureTarget[] = []
+
   for (const layer of layers) {
+    if (!layer.enabled || clampLayerIntensity(layer.intensity) <= 0) {
+      continue
+    }
+
     const loadedTexture = loadedTexturesByLayerId[layer.id]
 
     if (loadedTexture) {
-      return loadedTexture.texture
+      targets.push({
+        id: layer.id,
+        texture: loadedTexture.texture,
+        intensity: clampLayerIntensity(layer.intensity),
+        blendMode: sanitizeLayerBlendMode(layer.blendMode),
+      })
     }
   }
 
-  return undefined
+  return targets
 }
 
 function preparePatternTexture(texture: Texture) {

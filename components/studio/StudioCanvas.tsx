@@ -1,37 +1,32 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import _ from 'lodash'
-import { Text } from '@mantine/core'
-import { meaning, parseCharUrl } from '@/assets/chars'
 import { getCharacterDisplayState, useStudioStore } from '@/app/studio/studio-store'
-import CharacterSurfaceCanvas, {
-  IDLE_CHARACTER_SURFACE_STATUS,
-  type CharacterSurfaceStatus,
-} from '@/components/studio/CharacterSurfaceCanvas'
+import CharacterAsciiCanvas, {
+  IDLE_CHARACTER_ASCII_STATUS,
+  type CharacterAsciiStatus,
+} from '@/components/studio/CharacterAsciiCanvas'
+import { getGrainradEffectById } from '@/components/studio/grainrad-effects'
 import { isAbortError } from '@/utils/dataUrl'
+import classes from './StudioShell.module.css'
 
 export default function StudioCanvas() {
   const character = useStudioStore((store) => store.character)
-  const bgColor = useStudioStore((store) => store.view.backgroundColor)
-  const setCharacterSvgLoading = useStudioStore(
-    (store) => store.setCharacterSvgLoading,
-  )
-  const setCharacterSvgData = useStudioStore(
-    (store) => store.setCharacterSvgData,
-  )
-  const setCharacterSvgError = useStudioStore(
-    (store) => store.setCharacterSvgError,
-  )
-  const [surfaceStatus, setSurfaceStatus] = useState<CharacterSurfaceStatus>(
-    IDLE_CHARACTER_SURFACE_STATUS,
+  const rendererMode = useStudioStore((store) => store.rendererMode)
+  const selectedEffectId = useStudioStore((store) => store.grainradEffect.selectedEffectId)
+  const backgroundColor = useStudioStore((store) => store.ascii.backgroundColor)
+  const previewZoom = useStudioStore((store) => store.view.previewZoom)
+  const setPreviewZoom = useStudioStore((store) => store.setPreviewZoom)
+  const resetPreviewView = useStudioStore((store) => store.resetPreviewView)
+  const setCharacterSvgLoading = useStudioStore((store) => store.setCharacterSvgLoading)
+  const setCharacterSvgData = useStudioStore((store) => store.setCharacterSvgData)
+  const setCharacterSvgError = useStudioStore((store) => store.setCharacterSvgError)
+  const [asciiStatus, setAsciiStatus] = useState<CharacterAsciiStatus>(
+    IDLE_CHARACTER_ASCII_STATUS,
   )
   const { charUrl } = getCharacterDisplayState(character)
-  const [country, year] = parseCharUrl(charUrl)
-  const translation = _.get(meaning, [country, year])
-  const statusText =
-    surfaceStatus.state === 'idle' ? null : surfaceStatus.message
-  const statusColor = surfaceStatus.state === 'error' ? 'red.6' : 'dark.7'
+  const statusText = asciiStatus.state === 'idle' ? null : asciiStatus.message
+  const selectedEffect = getGrainradEffectById(selectedEffectId)
 
   useEffect(() => {
     const controller = new AbortController()
@@ -67,44 +62,50 @@ export default function StudioCanvas() {
 
   return (
     <div
-      style={{
-        position: 'relative',
-        height: 'calc(100dvh - 72px)',
-        background: bgColor,
-      }}
+      className={classes.previewRoot}
+      style={{ background: backgroundColor }}
     >
-      <CharacterSurfaceCanvas onSurfaceStatusChange={setSurfaceStatus} />
-      {translation ? (
-        <Text
-          fz={14}
-          c="dark.7"
-          ta="center"
-          pos="absolute"
-          top={20}
-          left={16}
-          right={16}
-          style={{ pointerEvents: 'none' }}
-        >
-          {translation}
-        </Text>
-      ) : null}
+      <div className={classes.rendererStatus}>
+        <span className={classes.statusDot} />
+        <span>{selectedEffect.label}</span>
+        <span className={classes.statusEngine}>[{rendererMode.toUpperCase()}]</span>
+      </div>
+      <div
+        className={classes.previewCanvasFrame}
+        style={{ transform: `scale(${previewZoom})` }}
+      >
+        <CharacterAsciiCanvas onAsciiStatusChange={setAsciiStatus} />
+      </div>
       {statusText ? (
-        <Text
-          fz={13}
-          c={statusColor}
-          ta="center"
-          pos="absolute"
-          bottom={16}
-          left={16}
-          right={16}
-          style={{
-            pointerEvents: 'none',
-            textWrap: 'balance',
-          }}
-        >
-          {statusText}
-        </Text>
+        <div className={classes.previewMessage} data-state={asciiStatus.state}>
+          <div className={classes.previewMessageTitle}>{statusText}</div>
+        </div>
       ) : null}
+      <div className={classes.zoomHud} aria-label="Preview zoom controls">
+        <button
+          type="button"
+          aria-label="Zoom out"
+          onClick={() => setPreviewZoom(previewZoom - 0.1)}
+        >
+          -
+        </button>
+        <span className={classes.zoomValue}>{Math.round(previewZoom * 100)}%</span>
+        <button
+          type="button"
+          aria-label="Zoom in"
+          onClick={() => setPreviewZoom(previewZoom + 0.1)}
+        >
+          +
+        </button>
+        <span className={classes.zoomDivider} />
+        <button
+          type="button"
+          aria-label="Reset preview zoom"
+          onClick={resetPreviewView}
+        >
+          Reset
+        </button>
+      </div>
     </div>
   )
 }

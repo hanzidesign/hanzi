@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState, type MutableRefObject } from 'react'
-import { Canvas, useThree } from '@react-three/fiber'
+import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import {
   CanvasTexture,
   ClampToEdgeWrapping,
@@ -9,7 +9,13 @@ import {
   type Texture,
 } from 'three'
 import { useStudioStore } from '@/app/studio/studio-store'
+import { computeEffectiveAnimationTime } from '@/components/studio/animation-time'
 import { rasterizeCharacterSurfaceMask } from '@/components/studio/character-surface-rasterize'
+import {
+  deriveGlyphDistancePackFromCanvas,
+  disposeGlyphDistancePack,
+  type GlyphDistancePack,
+} from '@/components/studio/glyph-derived-buffers'
 import { usePatternLayerTextures } from '@/components/studio/pattern-layer-texture'
 import { createCharacterSurfaceMaterial } from '@/components/studio/surface-shader-material'
 
@@ -76,6 +82,9 @@ function CharacterSurfaceScene({
   const { size, viewport } = useThree()
   const foregroundShader = useStudioStore((store) => store.surfaceShaders.foreground)
   const backgroundShader = useStudioStore((store) => store.surfaceShaders.background)
+  const shaderLayers = useStudioStore((store) => store.shaderLayers.layers)
+  const animation = useStudioStore((store) => store.animation)
+  const morphLayers = useStudioStore((store) => store.morphStack.layers)
   const patternLayers = useStudioStore((store) => store.patternLayers)
   const uploadedPatternLayerDataById = useStudioStore(
     (store) => store.runtime.uploadedPatternLayerDataById,
@@ -85,11 +94,15 @@ function CharacterSurfaceScene({
     uploadedPatternLayerDataById,
   )
   const [maskTexture, setMaskTexture] = useState<Texture | null>(null)
+  const [glyphDistancePack, setGlyphDistancePack] = useState<GlyphDistancePack | null>(null)
   const maskTextureRef = useRef<Texture | null>(null)
+  const glyphDistancePackRef = useRef<GlyphDistancePack | null>(null)
+  const materialRef = useRef<ReturnType<typeof createCharacterSurfaceMaterial> | null>(null)
 
   useEffect(() => {
     if (svgLoadError) {
       replaceMaskTexture(null, maskTextureRef, setMaskTexture)
+      replaceGlyphDistancePack(null, glyphDistancePackRef, setGlyphDistancePack)
       onSurfaceStatusChange({
         state: 'error',
         message: svgLoadError,
@@ -99,6 +112,7 @@ function CharacterSurfaceScene({
 
     if (!svgData) {
       replaceMaskTexture(null, maskTextureRef, setMaskTexture)
+      replaceGlyphDistancePack(null, glyphDistancePackRef, setGlyphDistancePack)
       onSurfaceStatusChange({
         state: 'loading',
         message: 'Loading character SVG...',
@@ -129,7 +143,10 @@ function CharacterSurfaceScene({
         texture.magFilter = LinearFilter
         texture.needsUpdate = true
 
+        const derivedPack = deriveGlyphDistancePackFromCanvas(canvas)
+
         replaceMaskTexture(texture, maskTextureRef, setMaskTexture)
+        replaceGlyphDistancePack(derivedPack, glyphDistancePackRef, setGlyphDistancePack)
         onSurfaceStatusChange(IDLE_CHARACTER_SURFACE_STATUS)
       })
       .catch((error) => {
@@ -138,6 +155,7 @@ function CharacterSurfaceScene({
         }
 
         replaceMaskTexture(null, maskTextureRef, setMaskTexture)
+        replaceGlyphDistancePack(null, glyphDistancePackRef, setGlyphDistancePack)
         onSurfaceStatusChange({
           state: 'error',
           message:
@@ -156,6 +174,10 @@ function CharacterSurfaceScene({
     return () => {
       maskTextureRef.current?.dispose()
       maskTextureRef.current = null
+      if (glyphDistancePackRef.current) {
+        disposeGlyphDistancePack(glyphDistancePackRef.current)
+        glyphDistancePackRef.current = null
+      }
     }
   }, [])
 
@@ -166,14 +188,44 @@ function CharacterSurfaceScene({
 
     return createCharacterSurfaceMaterial({
       maskTexture,
+      glyphDistancePack: glyphDistancePack ?? undefined,
       foreground: foregroundShader,
       background: backgroundShader,
       patterns: patternTextures.textures,
+      morphLayers,
+      shaderLayers,
+      timeSeconds: computeEffectiveAnimationTime({
+        elapsedSeconds: 0,
+        speed: animation.speed,
+        timeOffset: animation.timeOffset,
+        playing: animation.playing,
+      }),
     })
-  }, [backgroundShader, foregroundShader, maskTexture, patternTextures.textures])
+  }, [animation.playing, animation.speed, animation.timeOffset, backgroundShader, foregroundShader, glyphDistancePack, maskTexture, morphLayers, patternTextures.textures, shaderLayers])
+
+  useFrame(({ clock }) => {
+    const activeMaterial = materialRef.current
+
+    if (!activeMaterial) {
+      return
+    }
+
+    activeMaterial.uniforms.u_timeEffective.value = computeEffectiveAnimationTime({
+      elapsedSeconds: clock.getElapsedTime(),
+      speed: animation.animateShaders ? animation.speed : 0,
+      timeOffset: animation.timeOffset,
+      playing: animation.playing,
+    })
+  })
 
   useEffect(() => {
+    materialRef.current = material
+
     return () => {
+      if (materialRef.current === material) {
+        materialRef.current = null
+      }
+
       material?.dispose()
     }
   }, [material])
@@ -200,5 +252,19 @@ function replaceMaskTexture(
 
   if (previousTexture && previousTexture !== nextTexture) {
     previousTexture.dispose()
+  }
+}
+
+function replaceGlyphDistancePack(
+  nextPack: GlyphDistancePack | null,
+  glyphDistancePackRef: MutableRefObject<GlyphDistancePack | null>,
+  setGlyphDistancePack: (pack: GlyphDistancePack | null) => void,
+) {
+  const previousPack = glyphDistancePackRef.current
+  glyphDistancePackRef.current = nextPack
+  setGlyphDistancePack(nextPack)
+
+  if (previousPack && previousPack !== nextPack) {
+    disposeGlyphDistancePack(previousPack)
   }
 }

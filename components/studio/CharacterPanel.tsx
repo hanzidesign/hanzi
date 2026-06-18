@@ -1,11 +1,9 @@
 'use client'
 
-import _ from 'lodash'
-import { Box, Button, ScrollArea, SimpleGrid, Switch, Text } from '@mantine/core'
 import { chars, sortedChars } from '@/assets/chars'
 import { countries } from '@/assets/list'
 import { useStudioStore } from '@/app/studio/studio-store'
-import { PanelBox } from '@/components/studio/PanelPrimitives'
+import classes from './StudioShell.module.css'
 
 export default function CharacterPanel() {
   const character = useStudioStore((store) => store.character)
@@ -15,87 +13,81 @@ export default function CharacterPanel() {
 
   const handleChange = (nextCountry: string, nextYear: string, nextIsTc = isTc) => {
     const nextList = nextIsTc ? chars.tc : chars.sc
+
     if (nextList[nextCountry]?.[nextYear]) {
       setCharacter(nextCountry, nextYear, nextIsTc)
     }
   }
 
-  return (
-    <PanelBox>
-      <SimpleGrid cols={2}>
-        <Box>
-          <Text fw={700} fz="lg">
-            Country
-          </Text>
-        </Box>
-        <Box pos="relative">
-          <Text fw={700} fz="lg" pl={10}>
-            Year
-          </Text>
+  const handleScriptChange = (nextIsTc: boolean) => {
+    const nextList = nextIsTc ? chars.tc : chars.sc
 
-          <Switch
-            className="absolute-vertical"
-            size="md"
-            onLabel="TC"
-            offLabel="SC"
-            color="dark"
-            right={0}
-            checked={isTc}
-            onChange={(event) => {
-              const { checked } = event.currentTarget
-              handleChange(country, year, checked)
-            }}
-          />
-        </Box>
-        <Box>
-          {_.map(countries, (label, key) => (
-            <Button
+    if (nextList[country]?.[year]) {
+      handleChange(country, year, nextIsTc)
+      return
+    }
+
+    const firstCountry = Object.keys(nextList)[0] ?? country
+    const firstYear = Object.keys(nextList[firstCountry] ?? {})[0] ?? year
+    handleChange(firstCountry, firstYear, nextIsTc)
+  }
+
+  return (
+    <div className={classes.characterSelector} data-studio-character-selector>
+      <div>
+        <div className={classes.characterColumnTitle}>Country</div>
+        <div className={classes.characterList}>
+          {Object.entries(countries).map(([key, label]) => (
+            <button
               key={key}
-              radius="md"
-              color="dark"
-              variant={key === country ? 'filled' : 'subtle'}
-              display="block"
-              m="0 0 4px -8px"
-              p="2px 10px"
-              fw={400}
+              type="button"
+              className={classes.characterButton}
+              data-active={key === country}
               onClick={() => {
                 const [{ year: nextYear }] = list[key]
                 handleChange(key, nextYear)
               }}
             >
               {label}
-            </Button>
+            </button>
           ))}
-        </Box>
-        <Box>
-          <ScrollArea type="auto" h={552}>
-            {_.map(list[country], ({ year: optionYear, ch }) => (
-              <Button
-                key={optionYear}
-                radius="md"
-                color="dark"
-                variant={optionYear === year ? 'filled' : 'subtle'}
-                display="block"
-                m="0 0 4px"
-                p="2px 10px"
-                fw={400}
-                styles={{
-                  label: {
-                    width: 72,
-                    justifyContent: 'space-between',
-                  },
-                }}
-                onClick={() => {
-                  handleChange(country, optionYear)
-                }}
-              >
-                {optionYear}
-                <Text ff="var(--font-noto)">({ch})</Text>
-              </Button>
-            ))}
-          </ScrollArea>
-        </Box>
-      </SimpleGrid>
-    </PanelBox>
+        </div>
+      </div>
+      <div>
+        <div className={classes.characterColumnTitle}>
+          <span>Year</span>
+          <span className={classes.scriptToggle} aria-label="Character script">
+            <button
+              type="button"
+              data-active={isTc}
+              onClick={() => handleScriptChange(true)}
+            >
+              TC
+            </button>
+            <button
+              type="button"
+              data-active={!isTc}
+              onClick={() => handleScriptChange(false)}
+            >
+              SC
+            </button>
+          </span>
+        </div>
+        <div className={classes.characterList}>
+          {list[country].map(({ year: optionYear, ch }) => (
+            <button
+              key={optionYear}
+              type="button"
+              className={`${classes.characterButton} ${classes.yearButton}`}
+              data-active={optionYear === year}
+              onClick={() => handleChange(country, optionYear)}
+            >
+              <span>{optionYear}</span>
+              <span className={classes.hanziGlyph}>({ch})</span>
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
   )
 }

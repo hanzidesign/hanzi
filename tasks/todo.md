@@ -1,10 +1,1016 @@
 # Hanzi Studio Current Task State
 
-Active implementation package: `tasks/v2.1/README.md`.
+Active implementation package: `tasks/v2.1/phase-5d-grainrad-studio-refactor-plan.md`.
 Direct development branch for v2.1 architecture: `v2.1`.
-Current status: Phase 4 Surface Shader And Pattern Layers implementation has passed automated verification. Phase 1 and Phase 4 manual browser smoke remain pending user report.
+Current status: Phase 5D Grainrad `/studio` refactor implementation is complete and verified. Phase 5E Grainrad effect dynamics correction is complete and verified. Phase 5F runtime effect parity is complete and verified so every visible Grainrad setting maps into active renderer behavior. Phase 5G setting-effect contract analysis is captured so future implementation checks must prove each visible row changes the renderer in the intended way. Phase 5H real ASCII Character Set rendering is complete and verified with actual glyph atlas text for each set. Phase 5I ASCII Scale/Spacing/Output Width semantics correction is complete and verified. Phase 5J ASCII Foreground Color correction is complete and verified. Phase 5K ASCII Output Width range correction is complete and verified. Phase 5L ASCII Color Mode default/reset correction is complete and verified. Scope stays route-local to `/studio`; homepage `/` is not redesigned. The current Hanzi Studio font configuration and current character selector input stay preserved; the rest of `/studio` is rebuilt around Grainrad's editor architecture, compact effect-controller UI, ASCII-only active effect surface, and route-local light/dark themes with light as default.
 
 Keep this file as current-state tracking only. Historical phase logs belong in the superseded task docs or git history, not here.
+
+## Phase 5L ASCII Color Mode Default / Reset Correction - 2026-06-18
+
+User correction:
+
+- ASCII `Color / Mode` should default to `mono`.
+- The right Settings `Reset` should also switch `Color / Mode` back to `mono`.
+
+Implementation direction:
+
+- Change only ASCII `color-mode`; keep other effects' color-mode defaults unchanged.
+- Make the effect catalogue default `mono` so initial state and `resetSelectedEffectControls()` share the same behavior.
+- Make the right Settings panel fallback `mono` so missing/stale controls do not display `original`.
+- Migrate the v1 persisted old default from `original` to `mono` once, without preventing users from choosing `Original` again later.
+
+Implementation checklist:
+
+- [x] Record the correction in `tasks/lessons.md`.
+- [x] Add failing tests for catalogue/runtime default, store initial/reset, and UI fallback.
+- [x] Implement ASCII `color-mode` default/fallback as `mono`.
+- [x] Verify focused tests, full tests, type/build checks, and browser default behavior.
+
+Review result:
+
+- ASCII `Color / Mode` now defaults to `mono` in the Grainrad effect catalogue, so fresh initial state and `resetSelectedEffectControls()` both restore `mono`.
+- `StudioRightPanel` now falls back to `mono` if ASCII `color-mode` is missing.
+- Store persistence version moved to `2`; v1 persisted ASCII `color-mode: original` is migrated to `mono` once so old default state does not override the corrected default.
+- Verification passed: focused red/green tests, full Vitest (`43` files, `191` tests), `pnpm exec tsc --noEmit --pretty false`, `git diff --check`, and `pnpm build`.
+- Browser check passed on `http://localhost:3002/studio`: hydrated UI shows `Mode` as `Mono`, and browser console errors are empty. Direct click automation for the dropdown/reset was blocked by the in-app browser wrapper, so reset behavior is covered by the store action test.
+
+## Phase 5K ASCII Output Width Range Correction - 2026-06-18
+
+User correction:
+
+- `Output Width` values above `600` no longer create a useful visible change, so the control range should be `0..600`.
+
+Implementation direction:
+
+- Keep `Output Width` semantics as output columns, not pixels.
+- Keep `0` as automatic/manual `Scale`.
+- Clamp all direct entry points to `0..600`: effect catalogue metadata, right Settings slider, persisted store sanitization, runtime compiler output, and shader fallback.
+
+Implementation checklist:
+
+- [x] Record the correction in `tasks/lessons.md`.
+- [x] Add failing tests for store clamping, runtime clamping, effect metadata, and shader fallback.
+- [x] Implement the `0..600` range across UI/catalogue/runtime/shader.
+- [x] Verify focused tests, full tests, type/build checks, and browser slider range.
+
+Review result:
+
+- `Output Width` now uses a shared `ASCII_OUTPUT_WIDTH_MAX = 600` for the Grainrad effect catalogue and right Settings slider.
+- Store sanitization clamps persisted/direct `output-width` values to `0..600`; `0` still means automatic/manual `Scale`.
+- Runtime compile output clamps `effectValues[2]` to `0..600`, and the ASCII shader also clamps `u_effectC` as a fallback before computing `canvasWidth / outputColumnCount`.
+- Verification passed: focused red/green tests, full Vitest (`43` files, `188` tests), `pnpm exec tsc --noEmit --pretty false`, `git diff --check`, and `pnpm build`.
+- Browser check passed on `http://localhost:3002/studio`: `Output Width` slider reports `min=0`, `max=600`, `step=1`, `value=0`; browser console errors are empty.
+
+## Phase 5J ASCII Foreground Color Correction - 2026-06-18
+
+User correction:
+
+- ASCII `Color` needs a `Foreground` control in addition to `Mode`, `Background`, and `Intensity`.
+
+Implementation direction:
+
+- Add `Foreground` to the ASCII `Color` group in the Grainrad effect catalogue and the right Settings panel.
+- Map `Foreground` into the ASCII runtime as `effectColorA`.
+- Use `Foreground` as the glyph/ink color in mono-style ASCII output while preserving `Mode: original` behavior.
+
+Implementation checklist:
+
+- [x] Record the correction in `tasks/lessons.md`.
+- [x] Add failing tests for the visible `Foreground` row, catalogue control, runtime color mapping, and shader color path.
+- [x] Implement UI/catalogue/runtime/shader changes.
+- [x] Verify focused tests, full tests, type/build checks, and browser load state.
+
+Review result:
+
+- ASCII `Color` now includes `Foreground` between `Mode` and `Background` in the right Settings panel.
+- The Grainrad ASCII effect catalogue now includes a `foreground` color control, and the runtime maps it to `effectColorA`; `background` remains mapped to `effectColorB`.
+- The ASCII shader now uses `effectColorA/effectColorB` for mono-style glyph/background output while preserving `Mode: original` with the existing source/palette color path.
+- Verification passed: focused Foreground tests, full Vitest (`43` files, `187` tests), `pnpm exec tsc --noEmit --pretty false`, `git diff --check`, and `pnpm build`.
+- Browser load check passed on `http://localhost:3002/studio`: the `Color` group shows `Mode`, `Foreground`, `Background`, and `Intensity`; browser console errors are empty.
+
+## Phase 5I ASCII Scale / Spacing / Output Width Semantics - 2026-06-18
+
+User correction:
+
+- `Scale` means ASCII cell/space size from `1` to `20`; `1` is the smallest cell and `20` should approach roughly `64px`.
+- `Spacing` changes the glyph size inside each ASCII cell; `0` fills the cell, `1` shrinks the glyph to one quarter of the cell.
+- `Output Width` should have a real rendering meaning instead of duplicating `Scale`.
+
+Implementation direction:
+
+- Define `Scale` as the UI-facing cell-size control. Map it linearly to renderer `cellSize` so `1 -> 1px` and `20 -> 64px`, then remove the shader's extra `u_effectA` scale multiplication.
+- Define `Spacing` as glyph inset. In shader, remap cell UV around center using `glyphScale = mix(1.0, 0.25, spacing)`, clip outside the shrunken glyph box, and keep alpha/intensity independent from spacing.
+- Define `Output Width` as ASCII output column count. `0` means automatic/manual `Scale`; any value `>= 1` computes `cellSize = canvasWidth / outputWidth`, matching image-to-ASCII terminology and avoiding another pixel-size slider.
+
+Implementation checklist:
+
+- [x] Record the correction in `tasks/lessons.md`.
+- [x] Add failing tests for the corrected shader contract and UI/range metadata.
+- [x] Update ASCII UI scale conversion, control ranges, runtime defaults, persisted cell-size clamp, and shader sampling.
+- [x] Verify focused tests, type/build checks, and browser smoke for Scale, Spacing, and Output Width.
+
+Review result:
+
+- `Scale` now uses a shared conversion helper: UI `1..20` maps to renderer cell size `1..64px`, and persisted `cellSize: 12` displays as `4.3` to match the `0.1` slider step.
+- `Spacing` now means glyph size inside each cell: shader UVs shrink from full-cell at `0` to quarter-cell at `1`, without using spacing as an alpha multiplier.
+- `Output Width` now means output columns: `0` keeps manual Scale; values `>= 1` compute cell size from `canvasWidth / outputColumnCount`.
+- Verification passed: focused red/green tests, full Vitest (`43` files, `186` tests), `pnpm exec tsc --noEmit --pretty false`, `git diff --check`, and `pnpm build`.
+- Browser check passed on `http://localhost:3002/studio`: page loads from the latest production build, ASCII controls show `Scale 4.3`, `Spacing 0`, `Output Width 0`, and browser console errors are empty. The in-app browser automation could not reliably drag native range inputs, so the final effect proof is from shader/runtime tests plus successful page load and control-state inspection.
+
+## Phase 5H Real ASCII Character Set Rendering - 2026-06-18
+
+User correction:
+
+- `Character Set` must visibly change to the corresponding ASCII text characters, not only switch procedural placeholder glyph shapes.
+- Required sets:
+  - `standard`: `@%#*+=-:. `
+  - `blocks`: `█▓▒░`
+  - `binary`: `01`
+  - `detailed`: ``$@B%8&WM#*oahkbdpqwmZO0QLCJUYXzcvunxrjft/\|()1{}[]?-_+~<>i!lI;:,"^`'. ``
+  - `minimal`: `#.`
+  - `alphabetic`: `ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz`
+  - `numeric`: `0123456789`
+  - `math`: `+-*/=<>^%()[]{}|~`
+  - `symbols`: ``!@#$%^&*()_+-=[]{}|;':",./<>?`~``
+  - `custom`: default `█▓▒░@#%*+=-:. `, overridden by typed `Custom Chars`.
+
+Root cause:
+
+- The previous shader treated `Character Set` as a numeric mode that selected procedural 5x7 placeholder shapes. It did not render the actual selected text characters, so the visual result could change hash without showing the expected ASCII letter/symbol vocabulary.
+
+Implementation checklist:
+
+- [x] Record the correction in `tasks/lessons.md`.
+- [x] Add failing tests for concrete character-set strings and glyph-atlas shader sampling.
+- [x] Preserve `Custom Chars` text in the Grainrad runtime so the material can build a real custom glyph atlas.
+- [x] Generate an ASCII glyph atlas texture from the selected character string using the current site font variables, with a fallback texture for non-browser tests.
+- [x] Update the fragment shader to sample the atlas by brightness, preserving dark-to-light density order and treating trailing spaces as empty glyph cells.
+- [x] Browser-smoke `standard`, `blocks`, `binary`, `numeric`, and `custom=01` to prove visible output changes with the selected character vocabulary.
+
+Review result:
+
+- `ASCII_CHARACTER_SETS` now holds the concrete strings above, and `resolveAsciiCharacterSet()` returns the custom text only when `Character Set: custom` has a non-empty value.
+- `createAsciiShaderMaterial()` now builds `u_asciiGlyphAtlas`, `u_asciiGlyphCount`, and `u_asciiGlyphColumns`; the shader samples `sampleAsciiGlyphAtlas()` for the active ASCII branch instead of relying on procedural placeholders.
+- The atlas canvas uses the existing CSS font variables (`--font-body`, `--font-noto`) with monospace fallback, so this does not change the site's configured typography.
+- Verification passed: focused material/runtime tests, full Vitest (`42` files, `182` tests), `pnpm exec tsc --noEmit --pretty false`, `git diff --check`, and `pnpm build`.
+- Browser smoke passed on local `/studio`: canvas hashes were distinct for `STANDARD`, `BLOCKS`, `BINARY`, `NUMERIC`, and `CUSTOM` with `01`; browser console errors were empty.
+
+## Phase 5G Grainrad Setting-Effect Contract Audit - 2026-06-18
+
+User correction:
+
+- Before implementation or rework, the plan must list settings in the same grouped style as Grainrad and explain the expected effect of every setting.
+- A setting is not complete if changing it only updates state, labels, metadata, or uniforms without a visible/runtime effect.
+- For each row below, validation must use at least one of: runtime signature change, shader uniform assertion, representative pixel-hash smoke, export-dimension check, or dynamic-row DOM check.
+
+Audit rules:
+
+- Every visible control id from `components/studio/grainrad-effects.ts` must appear in this contract.
+- Every select option must change either the runtime numeric mode, glyph set, color mode, algorithm branch, or export behavior.
+- Dynamic rows must be validated by both UI state and runtime behavior. Example: `Character Set: custom` must show `Custom Chars` and the typed characters must change the glyph hash/count used by the renderer.
+- Controls with non-pixel outcomes must have a direct validation target. Example: `Output Width` should affect sampling/export width or be renamed/removed if it cannot honestly do so.
+- Shared `Processing` runs after the selected effect. Shared `Post-Processing` runs last. Left `Animation` remains separate and must not be mixed into `Processing`.
+
+Effect: ASCII
+
+Settings:
+
+- `Scale`: changes ASCII glyph/cell size; higher values produce larger blockier characters and lower sampling detail.
+- `Spacing`: changes distance between ASCII cells; higher values create a looser grid with more background visible.
+- `Output Width`: changes output/sample resolution target; higher values should produce denser output or larger export width, and must be verified by sampling/export behavior rather than label-only state.
+- `Character Set`: changes the glyph family used for luminance mapping.
+  - `standard`: general ASCII ramp for balanced image detail.
+  - `blocks`: block glyphs produce heavier filled-cell shapes.
+  - `binary`: restricts glyphs to binary-style marks, producing a two-symbol computer-text texture.
+  - `detailed`: uses a longer glyph ramp for finer luminance gradation.
+  - `minimal`: uses fewer glyphs for simplified posterized output.
+  - `alphabetic`: uses letters as the visible mark vocabulary.
+  - `numeric`: uses numbers as the visible mark vocabulary.
+  - `math`: uses mathematical symbols as the visible mark vocabulary.
+  - `symbols`: uses punctuation/symbol glyphs as the visible mark vocabulary.
+  - `custom`: reveals `Custom Chars`; typed characters become the glyph vocabulary and must affect glyph hash/count.
+
+Adjustments:
+
+- `Brightness`: offsets sampled luminance before glyph/color selection.
+- `Contrast`: expands or compresses luminance range before glyph/color selection.
+- `Saturation`: changes source color saturation when `Mode: original` is active; mono output should not rely on it for color.
+- `Hue Rotation`: rotates source hue when original color is preserved.
+- `Sharpness`: increases local edge/detail contrast before ASCII sampling.
+- `Gamma`: remaps midtones before glyph selection; lower/higher values should visibly alter character density distribution.
+
+Color:
+
+- `Mode: mono`: renders ASCII with a controlled foreground/background treatment instead of preserving source color.
+- `Mode: original`: preserves sampled character/source color through the ASCII marks.
+- `Background`: changes the background fill behind ASCII marks.
+- `Intensity`: blends ASCII effect strength against the underlying shaded character.
+
+Effect: Dithering
+
+Settings:
+
+- `Algorithm`: switches the dither pattern/threshold family and must alter the ordered/error pattern signature.
+  - `floyd-steinberg`: fine diffusion-like diagonal noise.
+  - `atkinson`: softer diffusion with reduced spread.
+  - `jarvis-judice-ninke`: wider diffusion footprint.
+  - `stucki`: wide diffusion with stronger local structure.
+  - `burkes`: medium-wide diffusion.
+  - `sierra`: broad Sierra-style diffusion.
+  - `sierra-two-row`: shorter Sierra footprint.
+  - `sierra-lite`: compact Sierra footprint.
+  - `bayer-2x2`: coarse ordered checker threshold.
+  - `bayer-4x4`: medium ordered matrix.
+  - `bayer-8x8`: finer ordered matrix.
+  - `bayer-16x16`: very fine ordered matrix.
+  - `clustered-dot`: clustered print-like dots.
+  - `blue-noise`: irregular high-frequency noise pattern.
+  - `interleaved-gradient`: screen-door gradient pattern.
+  - `crosshatch`: hatch-like threshold texture.
+- `Intensity`: blends the dithered result over the source/effect result.
+- `Matrix Size`: changes ordered matrix scale; `2x2` is coarse, `4x4` medium, `8x8` fine, `16x16` very fine.
+- `Modulation`: changes threshold modulation strength, making the dither pattern more or less aggressive.
+
+Adjustments:
+
+- `Brightness`: shifts luminance before thresholding.
+- `Contrast`: changes threshold separation before dithering.
+- `Gamma`: changes midtone threshold response.
+- `Sharpen`: boosts source detail before thresholding.
+
+Color:
+
+- `Mode: mono`: maps dither to foreground/background colors.
+- `Mode: tonal`: keeps tonal steps while retaining dither structure.
+- `Mode: palette`: quantizes into a limited palette.
+- `Mode: rgb`: dithers channels with RGB-aware treatment.
+- `Mode: original`: preserves original color behind the dither pattern.
+- `Foreground`: sets high/ink color for mono or palette-like output.
+- `Background`: sets low/paper color for mono or palette-like output.
+
+Chromatic Effects:
+
+- `Enabled`: toggles per-channel displacement.
+- `Max Displace`: caps channel offset distance.
+- `Red Channel`: controls red-channel displacement weight.
+- `Green Channel`: controls green-channel displacement weight.
+- `Blue Channel`: controls blue-channel displacement weight.
+
+Effect: Halftone
+
+Settings:
+
+- `Shape`: changes screen primitive; `circle`, `square`, `diamond`, and `line` must produce distinct dot/line masks.
+- `Dot Scale`: changes primitive size inside each halftone cell.
+- `Spacing`: changes distance between halftone cells.
+- `Angle`: rotates the screen grid/line pattern.
+- `Invert`: flips dot-fill relationship so dark/light regions swap density behavior.
+
+Adjustments:
+
+- `Brightness`: shifts tonal input before dot size calculation.
+- `Contrast`: expands/compresses tonal range before dot size calculation.
+
+Color:
+
+- `Mode: mono`: uses foreground/background halftone colors.
+- `Mode: original`: preserves sampled source color through halftone primitives.
+- `Foreground`: ink color for mono halftone marks.
+- `Background`: paper/background color for mono halftone.
+
+Effect: Matrix Rain
+
+Settings:
+
+- `Character Set`: chooses rain glyph vocabulary; supports the same ASCII set options including `custom`.
+- `Cell Size`: changes rain glyph cell size and column/row density.
+- `Spacing`: changes distance between rain cells.
+- `Speed`: changes animated rain travel speed.
+- `Trail Length`: changes fade length behind the leading glyph.
+- `Direction`: changes travel direction: `down`, `up`, `left`, or `right`.
+- `Glow`: increases bloom-like brightness around rain marks.
+- `BG Opacity`: changes darkness/visibility of the background layer behind rain.
+
+Adjustments:
+
+- `Brightness`: shifts mask/source brightness before rain visibility is calculated.
+- `Contrast`: changes source contrast before rain masking.
+- `Threshold`: controls where rain appears based on luminance/mask strength.
+
+Color:
+
+- `Rain Color`: sets the visible rain glyph color.
+
+Effect: Dots
+
+Settings:
+
+- `Shape`: changes dot primitive: `circle`, `square`, or `diamond`.
+- `Grid Type`: changes placement lattice; `square-grid` is orthogonal, `hexagonal-grid` offsets alternating rows.
+- `Size`: changes dot size inside each grid cell.
+- `Spacing`: changes distance between dot cells.
+- `Invert`: flips density/visibility relationship between dark and light source regions.
+
+Adjustments:
+
+- `Brightness`: shifts source brightness before dot sizing.
+- `Contrast`: changes source contrast before dot sizing.
+
+Color:
+
+- `Mode: mono`: renders dots with controlled mono colors.
+- `Mode: original`: preserves sampled source color through dots.
+
+Effect: Contour
+
+Settings:
+
+- `Fill Mode`: `filled-bands` renders tonal bands; `lines-only` renders only band boundaries.
+- `Levels`: changes number of contour bands.
+- `Line Thickness`: changes boundary thickness in line mode or band edge emphasis.
+- `Invert`: reverses contour light/dark mapping.
+
+Adjustments:
+
+- `Brightness`: shifts source values before banding.
+- `Contrast`: expands/compresses values before banding.
+
+Color:
+
+- `Mode: mono`: maps bands/lines to mono colors.
+- `Mode: original`: preserves sampled source color through contour output.
+
+Effect: Pixel Sort
+
+Settings:
+
+- `Direction`: changes streak direction: `horizontal`, `vertical`, or `diagonal`.
+- `Sort Mode`: chooses the sorting key: `brightness`, `hue`, or `saturation`.
+- `Threshold`: controls which pixels/cells enter the sorted streak.
+- `Streak Length`: changes maximum streak distance.
+- `Intensity`: blends sorted streaks against the source/effect result.
+- `Randomness`: adds irregular breaks/jitter to streaks.
+- `Reverse`: flips sorting direction/order.
+
+Adjustments:
+
+- `Brightness`: shifts source brightness before sort eligibility.
+- `Contrast`: changes source contrast before sort eligibility.
+
+Effect: Blockify
+
+Settings:
+
+- `Style`: `full-blocks` makes solid averaged blocks, `shaded` keeps tonal shading per block, `outline` emphasizes block borders.
+- `Block Size`: changes pixel/block quantization size.
+- `Border Width`: changes outline thickness for border-capable styles.
+
+Adjustments:
+
+- `Brightness`: shifts block color/luminance.
+- `Contrast`: changes block contrast.
+
+Color:
+
+- `Mode: preserve-colors`: keeps sampled source colors in blocks.
+- `Mode: grayscale`: converts block output to grayscale.
+- `Border Color`: sets outline/border color when visible.
+
+Effect: Threshold
+
+Settings:
+
+- `Levels`: changes number of threshold bands.
+- `Threshold Point`: shifts the cutoff point between low/high values.
+- `Dither`: adds threshold texture instead of hard flat cutoff.
+- `Invert`: swaps low/high output sides.
+
+Adjustments:
+
+- `Brightness`: shifts values before thresholding.
+- `Contrast`: changes separation before thresholding.
+
+Color:
+
+- `Mode: mono`: uses foreground/background threshold colors.
+- `Mode: original`: preserves original color within thresholded regions.
+- `Foreground`: high/ink color.
+- `Background`: low/paper color.
+
+Effect: Edge Detection
+
+Settings:
+
+- `Algorithm`: changes edge kernel behavior: `sobel`, `prewitt`, or `laplacian`.
+- `Threshold`: controls edge visibility cutoff.
+- `Line Width`: changes apparent edge thickness.
+- `Invert`: swaps edge/background polarity.
+
+Adjustments:
+
+- `Brightness`: shifts source brightness before edge calculation.
+- `Contrast`: boosts/reduces edge contrast before calculation.
+
+Color:
+
+- `Mode: mono`: renders edges/background with controlled colors.
+- `Mode: original`: preserves source color where edge output allows.
+- `Edge Color`: sets edge stroke color.
+- `Background`: sets non-edge background color.
+
+Effect: Crosshatch
+
+Settings:
+
+- `Density`: changes hatch line frequency.
+- `Layers`: changes number of angled hatch layers used for tonal buildup.
+- `Angle`: rotates the hatch base angle.
+- `Line Width`: changes hatch stroke thickness.
+- `Randomness`: jitters hatch spacing/visibility.
+- `Invert`: reverses hatch density over light/dark regions.
+
+Adjustments:
+
+- `Brightness`: shifts tonal input before hatch density.
+- `Contrast`: changes tonal separation before hatch density.
+
+Color:
+
+- `Line Color`: sets hatch stroke color.
+- `Background`: sets paper/background color.
+
+Effect: Wave Lines
+
+Settings:
+
+- `Line Count`: changes number of waves/scan lines.
+- `Amplitude`: changes wave displacement height.
+- `Frequency`: changes wave oscillation frequency.
+- `Line Thickness`: changes stroke thickness.
+- `Direction`: switches line orientation between `horizontal` and `vertical`.
+- `Animate`: toggles time-driven wave movement.
+
+Adjustments:
+
+- `Brightness`: shifts source brightness before wave masking.
+- `Contrast`: changes source contrast before wave masking.
+
+Color:
+
+- `Mode: mono`: uses mono wave/background treatment.
+- `Mode: original`: preserves sampled source color through wave lines.
+
+Effect: Noise Field
+
+Settings:
+
+- `Noise Type`: changes procedural field shape: `perlin`, `simplex`, or `worley`.
+- `Scale`: changes noise feature size.
+- `Intensity`: changes noise blend/displacement strength.
+- `Octaves`: changes layered noise detail count.
+- `Speed`: changes animated noise evolution speed.
+- `Animate`: toggles time-driven noise movement.
+- `Distort Only`: applies noise as distortion without replacing the color/effect result.
+
+Adjustments:
+
+- `Brightness`: shifts source brightness before noise blend.
+- `Contrast`: changes source contrast before noise blend.
+
+Effect: Voronoi
+
+Settings:
+
+- `Cell Size`: changes Voronoi cell scale.
+- `Edge Width`: changes cell boundary thickness.
+- `Edge Color`: changes boundary treatment: `black`, `white`, or `darkened`.
+- `Color Mode`: changes cell fill strategy: `cell-average`, `center-sample`, or `gradient`.
+- `Randomize`: changes cell seed/layout.
+
+Adjustments:
+
+- `Brightness`: shifts cell/source brightness.
+- `Contrast`: changes cell/source contrast.
+
+Effect: VHS
+
+Settings:
+
+- `Distortion`: changes horizontal/vertical signal warping.
+- `Noise`: changes analog static/grain amount.
+- `Color Bleed`: changes RGB/channel smear amount.
+- `Scanlines`: changes horizontal scanline visibility.
+- `Tracking Error`: changes rolling offset/glitch band strength.
+
+Adjustments:
+
+- `Brightness`: shifts final VHS brightness.
+- `Contrast`: changes final VHS contrast.
+
+Shared Processing:
+
+- `Invert`: flips luminance/color polarity after the selected effect branch.
+- `Brightness Map`: remaps brightness through an effect-specific response curve.
+- `Edge Enhance`: increases local edge contrast after the selected effect branch.
+- `Blur`: softens the selected effect result.
+- `Quantize Colors`: reduces color/tonal steps after the selected effect branch.
+- `Shape Matching`: biases the processed result back toward the selected Hanzi character mask silhouette.
+
+Shared Post-Processing:
+
+- `Bloom`: adds glow around bright output regions.
+- `Grain / Intensity`: controls final film/noise grain visibility.
+- `Grain / Size`: controls final grain scale.
+- `Grain / Speed`: controls animated grain movement speed.
+- `Chromatic`: adds final RGB split/channel offset.
+- `Scanlines`: adds final display scanlines independent of VHS effect selection.
+- `Vignette`: darkens or focuses screen edges.
+- `CRT Curve`: bends/warps final screen coordinates like a CRT display.
+- `Phosphor`: adds phosphor/display mask coloration or glow.
+
+Implementation checklist:
+
+- [x] Record the setting-list correction in `tasks/lessons.md`.
+- [x] Add this grouped setting-effect contract to `tasks/todo.md`.
+- [x] Re-audit `grainrad-effect-runtime.ts` against every row above before the next shader/UI change.
+- [x] Add or tighten tests for settings whose validation was indirect: ASCII `Output Width`, ASCII `Character Set`, ASCII UI uniform wiring, shared `Processing / Blur`, `Pixel Sort / Streak Length`, and MP4 export label.
+- [x] Browser-smoke representative controls for ASCII `Character Set`, ASCII `Output Width`, shared `Processing / Blur`, `Pixel Sort / Streak Length`, GIF export gating, and MP4 export gating.
+
+Review result:
+
+- Tightened the runtime contract so ASCII `Output Width` is preserved as a column-count target instead of a pre-divided scalar. The shader now uses it to alter ASCII sampling density.
+- Reworked the Grainrad ASCII shader branch so `Scale`, `Output Width`, and `Character Set` affect the actual glyph sampling path. The branch now has distinct glyph families for `standard`, `blocks`, `binary`, `detailed`, `minimal`, `alphabetic`, `numeric`, `math`, `symbols`, and `custom`.
+- Corrected ASCII UI/runtime wiring: the active branch reads the existing ASCII uniforms that the UI actually updates for `Character Set`, `Background`, and `Intensity`, while keeping `Custom Chars` wired through the Grainrad runtime glyph hash/count.
+- Corrected shared `Processing / Blur` from a grayscale replacement into a softening pass, and corrected `Pixel Sort / Streak Length` so larger values produce longer streaks.
+- Export wording now shows `MP4` instead of `Video` while keeping GIF/MP4 gated behind active animation.
+- Verification passed: focused Grainrad runtime/material/export tests, full Vitest (`42` files, `181` tests), `pnpm exec tsc --noEmit --pretty false`, `git diff --check`, and `pnpm build`.
+- Browser smoke passed on local `/studio`: playing export formats were `PNG/GIF/MP4`, paused export formats were `PNG` only, and canvas hashes were distinct for baseline ASCII, `BLOCKS`, `Output Width = 512`, `Processing Blur = 12`, Pixel Sort default, and `Streak Length = 300`; browser console errors were empty.
+
+## Phase 5F Grainrad Runtime Effect Parity - 2026-06-18
+
+User correction:
+
+- Every visible `Settings`, `Processing`, and `Post-Processing` option must have a real visual effect, matching Grainrad's behavior model as closely as possible inside Hanzi's current 3D ASCII character renderer.
+- Effect parity is not just UI parity. If a row exists, changing it must alter shader/runtime output or be removed.
+
+Implementation direction:
+
+- Add a runtime compiler module that takes `grainradEffect.selectedEffectId` and `grainradEffect.controls[selectedEffectId]`, plus shared Processing/Post-Processing controls, and produces stable shader uniforms.
+- Keep the current 3D ASCII mesh renderer as the active preview. Grainrad's source is image/video, but Hanzi's intentional input difference remains the selected character mesh.
+- Add one shader branch per Grainrad effect:
+  - `ASCII`: current cell/glyph shader, with `Scale`, `Spacing`, `Output Width`, `Character Set`, `Custom Chars`, adjustments, and `Mode`.
+  - `Dithering`: ordered/error-style threshold patterns, matrix size, algorithm seed/style, modulation, mono/tonal/palette/RGB/original coloring, chromatic channel displacement.
+  - `Halftone`: circle/square/diamond/line masks driven by dot scale, spacing, angle, invert, mono/original color.
+  - `Matrix Rain`: directional animated glyph columns, speed, trail length, glow, background opacity, rain color, threshold.
+  - `Dots`: circle/square/diamond dot grids, square/hex grid spacing, size, invert, mono/original color.
+  - `Contour`: luminance bands/line-only mode, levels, line thickness, invert.
+  - `Pixel Sort`: streak bands by direction/sort-mode/threshold/streak length/intensity/randomness/reverse.
+  - `Blockify`: block quantization, full/shaded/outline styles, border width/color, preserve-colors/grayscale.
+  - `Threshold`: level quantization, threshold point, dither, invert, mono/original color.
+  - `Edge Detection`: sobel/prewitt/laplacian-style edge intensity approximation, threshold, line width, invert, edge/background colors.
+  - `Crosshatch`: layered angled hatch lines, density, layers, line width, randomness, invert, line/background colors.
+  - `Wave Lines`: horizontal/vertical sine line field, amplitude, frequency, line thickness, optional animation.
+  - `Noise Field`: Perlin/Simplex/Worley-style procedural noise variants, scale, intensity, octaves, speed, animate, distort-only.
+  - `Voronoi`: cell field, edge width/color, cell-average/center-sample/gradient coloring, randomize.
+  - `VHS`: distortion, noise, color bleed, scanlines, tracking error.
+- Apply shared `Processing` after the selected-effect branch: invert, brightness map, edge enhance, blur/softening approximation, quantize colors, shape matching.
+- Apply shared `Post-Processing` last: bloom, grain intensity/size/speed, chromatic offset, scanlines, vignette, CRT curve, phosphor.
+
+Testing strategy:
+
+- Add unit tests for a new `grainrad-effect-runtime.ts` compiler:
+  - every registered effect id maps to a unique numeric shader id;
+  - every visible control id from selected effect + shared Processing/Post-Processing is consumed by runtime mapping;
+  - every select option changes the runtime numeric value;
+  - `Custom Chars` changes a custom glyph hash/count uniform;
+  - shared Processing/Post-Processing controls map to dedicated uniforms.
+- Add material tests that require all new uniforms to exist and shader source to contain all effect branch function names.
+- Add renderer wiring tests that `CharacterAsciiCanvas` reads `grainradEffect` and updates uniforms every frame.
+- Browser smoke representative interactions:
+  - switching `ASCII -> Dithering -> Halftone -> VHS` changes canvas pixel hash;
+  - changing a representative setting inside each family changes canvas pixel hash;
+  - Processing/Post-Processing toggles change canvas pixel hash;
+  - browser console has no WebGL compile errors.
+
+Implementation checklist:
+
+- [x] Record this correction in `tasks/lessons.md`.
+- [x] Write this Phase 5F plan into `tasks/todo.md`.
+- [x] Add failing runtime compiler/material/renderer tests.
+- [x] Implement `components/studio/grainrad-effect-runtime.ts`.
+- [x] Extend `character-ascii-material.ts` uniforms and shader branches for all 15 effects.
+- [x] Wire `CharacterAsciiCanvas` to compile/update Grainrad runtime uniforms from store state.
+- [x] Re-run focused tests, full Vitest, TypeScript, `git diff --check`, and production build.
+- [x] Run browser pixel smoke against local `/studio`.
+- [x] Update review result in this section.
+
+Review result:
+
+- Added `grainrad-effect-runtime.ts` as the contract layer between the Grainrad UI and shader runtime. It assigns unique shader ids for all 15 effects, maps selected-effect controls, maps shared Processing/Post-Processing controls, converts select options to numeric uniforms, parses colors, and turns `Custom Chars` into glyph hash/count uniforms.
+- Added runtime tests proving every visible Settings/Processing/Post-Processing control changes the runtime signature, every select option changes the runtime signature, every effect has a unique shader id, and no visible control is unmapped.
+- Added material tests requiring Grainrad uniforms and all 15 shader branch function names: ASCII, Dithering, Halftone, Matrix Rain, Dots, Contour, Pixel Sort, Blockify, Threshold, Edge Detection, Crosshatch, Wave Lines, Noise Field, Voronoi, and VHS.
+- Added renderer wiring contract so `CharacterAsciiCanvas` must read `grainradEffect`, compile the selected effect controls, pass `grainradRuntime` into `createAsciiShaderMaterial`, and update uniforms via `applyGrainradRuntimeUniforms`.
+- The active shader now applies the selected effect branch first, then shared Processing (`Invert`, `Brightness Map`, `Edge Enhance`, `Blur`, `Quantize Colors`, `Shape Matching`), then shared Post-Processing (`Bloom`, `Grain`, `Chromatic`, `Scanlines`, `Vignette`, `CRT Curve`, `Phosphor`).
+- Verification passed: focused Grainrad runtime/material/renderer tests, full Vitest (`42` files, `177` tests), `pnpm exec tsc --noEmit --pretty false`, `git diff --check`, and `pnpm build`.
+- Browser pixel smoke passed on local `/studio`: ASCII, Dithering, VHS, and Processing Invert produced four distinct canvas hashes, the canvas was nonblank, and console/WebGL/shader errors were empty. A representative Dithering `Intensity` change also produced a distinct pixel hash.
+
+## Phase 5E Grainrad Effect Dynamics Correction - 2026-06-18
+
+Live Grainrad analysis source: `https://grainrad.com/` desktop DOM inspected on 2026-06-18 before implementation.
+
+User correction:
+
+- Original Hanzi `Processing` rows named `Motion` or `Transform` are animation/mesh controls, not Grainrad `Processing`.
+- Grainrad `Processing` is the shared image/effect pipeline: `Invert`, `Brightness Map`, `Edge Enhance`, `Blur`, `Quantize Colors`, `Shape Matching`.
+- Motion and transform controls belong in the left `Animation` section. They must not appear in the right `Processing` section.
+
+Effect UI/UX model to match:
+
+- Left sidebar owns `Input`, `Effects`, and `Animation`; Hanzi keeps the existing character selector as the only intentional input difference.
+- Left `Effects` is a catalogue of 15 selectable effects: `ASCII`, `Dithering`, `Halftone`, `Matrix Rain`, `Dots`, `Contour`, `Pixel Sort`, `Blockify`, `Threshold`, `Edge Detection`, `Crosshatch`, `Wave Lines`, `Noise Field`, `Voronoi`, `VHS`.
+- Right `Settings` changes dynamically with the selected effect and has a section-level `Reset`.
+- Right `Processing` and `Post-Processing` are common collapsible sections shown after `Settings`, not places for motion/transform controls.
+- Right `Export` wording stays simple. Hanzi supports `PNG`; `GIF` and `MP4` are available only when animation is enabled/playing, because they capture an animation loop.
+- Theme remains route-local light/dark, with light as default.
+
+Dynamic Settings reference:
+
+| Effect | Settings groups and rows | Dropdown options / dynamic rows |
+| --- | --- | --- |
+| ASCII | `ASCII`: `Scale`, `Spacing`, `Output Width`, `Character Set`; `Adjustments`: `Brightness`, `Contrast`, `Saturation`, `Hue Rotation`, `Sharpness`, `Gamma`; `Color`: `Mode`, `Foreground`, `Background`, `Intensity` | `Character Set`: `STANDARD`, `BLOCKS`, `BINARY`, `DETAILED`, `MINIMAL`, `ALPHABETIC`, `NUMERIC`, `MATH`, `SYMBOLS`, `CUSTOM`; selecting `CUSTOM` adds `Custom Chars`. `Mode`: `Mono`, `Original`. |
+| Dithering | `Dithering`: `Algorithm`, `Intensity`, `Matrix Size`, `Modulation`; `Adjustments`: `Brightness`, `Contrast`, `Gamma`, `Sharpen`; `Color`: `Mode`, `Foreground`, `Background`; `Chromatic Effects`: `Enabled`, `Max Displace`, `Red Channel`, `Green Channel`, `Blue Channel`, `Reset` | `Algorithm`: `Floyd-Steinberg`, `Atkinson`, `Jarvis-Judice-Ninke`, `Stucki`, `Burkes`, `Sierra`, `Sierra Two-Row`, `Sierra Lite`, `Bayer 2x2`, `Bayer 4x4`, `Bayer 8x8`, `Bayer 16x16`, `Clustered Dot`, `Blue Noise`, `Interleaved Gradient`, `Crosshatch`; `Matrix Size`: `2x2 (Coarse)`, `4x4 (Medium)`, `8x8 (Fine)`, `16x16 (Very Fine)`; `Mode`: `Mono`, `Tonal`, `Palette`, `RGB`, `Original`. |
+| Halftone | `Halftone`: `Shape`, `Dot Scale`, `Spacing`, `Angle`, `Invert`; `Adjustments`: `Brightness`, `Contrast`; `Color`: `Mode`, `Foreground`, `Background` | `Shape`: `Circle`, `Square`, `Diamond`, `Line`; `Mode`: `Mono`, `Original`. |
+| Matrix Rain | `Matrix Rain`: `Character Set`, `Cell Size`, `Spacing`, `Speed`, `Trail Length`, `Direction`, `Glow`, `BG Opacity`; `Adjustments`: `Brightness`, `Contrast`, `Threshold`; `Color`: `Rain Color` | `Character Set` uses the full ASCII set list including `CUSTOM`; `Direction`: `Down`, `Up`, `Left`, `Right`. |
+| Dots | `Dots`: `Shape`, `Grid Type`, `Size`, `Spacing`, `Invert`; `Adjustments`: `Brightness`, `Contrast`; `Color`: `Mode` | `Shape`: `Circle`, `Square`, `Diamond`; `Grid Type`: `Square Grid`, `Hexagonal Grid`; `Mode`: `Mono`, `Original`. |
+| Contour | `Contour`: `Fill Mode`, `Levels`, `Line Thickness`, `Invert`; `Adjustments`: `Brightness`, `Contrast`; `Color`: `Mode` | `Fill Mode`: `Filled Bands`, `Lines Only`; `Mode`: `Mono`, `Original`. |
+| Pixel Sort | `Pixel Sort`: `Direction`, `Sort Mode`, `Threshold`, `Streak Length`, `Intensity`, `Randomness`, `Reverse`; `Adjustments`: `Brightness`, `Contrast` | `Direction`: `Horizontal`, `Vertical`, `Diagonal`; `Sort Mode`: `Brightness`, `Hue`, `Saturation`. |
+| Blockify | `Blockify`: `Style`, `Block Size`, `Border Width`; `Adjustments`: `Brightness`, `Contrast`; `Color`: `Mode`, `Border Color` | `Style`: `Full Blocks`, `Shaded`, `Outline`; `Mode`: `Preserve Colors`, `Grayscale`. |
+| Threshold | `Threshold`: `Levels`, `Threshold Point`, `Dither`, `Invert`; `Adjustments`: `Brightness`, `Contrast`; `Color`: `Mode`, `Foreground`, `Background` | `Mode`: `Mono`, `Original`. |
+| Edge Detection | `Edge Detection`: `Algorithm`, `Threshold`, `Line Width`, `Invert`; `Adjustments`: `Brightness`, `Contrast`; `Color`: `Mode`, `Edge Color`, `Background` | `Algorithm`: `Sobel`, `Prewitt`, `Laplacian`; `Mode`: `Mono`, `Original`. |
+| Crosshatch | `Crosshatch`: `Density`, `Layers`, `Angle`, `Line Width`, `Randomness`, `Invert`; `Adjustments`: `Brightness`, `Contrast`; `Color`: `Line Color`, `Background` | No select controls in live reference. |
+| Wave Lines | `Wave Lines`: `Line Count`, `Amplitude`, `Frequency`, `Line Thickness`, `Direction`, `Animate`; `Adjustments`: `Brightness`, `Contrast`; `Color`: `Mode` | `Direction`: `Horizontal`, `Vertical`; `Mode`: `Mono`, `Original`. |
+| Noise Field | `Noise Field`: `Noise Type`, `Scale`, `Intensity`, `Octaves`, `Speed`, `Animate`, `Distort Only`; `Adjustments`: `Brightness`, `Contrast` | `Noise Type`: `Perlin`, `Simplex`, `Worley`. |
+| Voronoi | `Voronoi`: `Cell Size`, `Edge Width`, `Edge Color`, `Color Mode`, `Randomize`; `Adjustments`: `Brightness`, `Contrast` | `Edge Color`: `Black`, `White`, `Darkened`; `Color Mode`: `Cell Average`, `Center Sample`, `Gradient`. |
+| VHS | `VHS`: `Distortion`, `Noise`, `Color Bleed`, `Scanlines`, `Tracking Error`; `Adjustments`: `Brightness`, `Contrast` | No select controls in live reference. |
+
+Shared sections reference:
+
+- `Processing`: `Invert`, `Brightness Map`, `Edge Enhance`, `Blur`, `Quantize Colors`, `Shape Matching`.
+- `Post-Processing`: `Bloom`, `Grain` group with `Intensity`, `Size`, `Speed`, then `Chromatic`, `Scanlines`, `Vignette`, `CRT Curve`, `Phosphor`.
+
+Implementation checklist:
+
+- [x] Record the Processing-vs-Animation correction in `tasks/lessons.md`.
+- [x] Re-analyze live Grainrad effect settings, dropdown options, and dynamic rows before implementation.
+- [x] Write this plan into `tasks/todo.md` before implementation.
+- [x] Add failing contracts that `Motion`/`Transform` controls live under left `Animation` and do not appear in right `Processing`.
+- [x] Add failing contracts for live Grainrad setting names/options: ASCII `CUSTOM`, dynamic `Custom Chars`, `Color` -> `Mode`, and richer per-effect dropdown options.
+- [x] Implement left `Animation` transform rows: `Y Rotate`, `X Rotate`, `Depth`, `Scale`, plus a grouped transform reset.
+- [x] Implement `CUSTOM` Character Set and `Custom Chars` dynamic row while preserving current font stack and existing character selector input.
+- [x] Update effect catalogue metadata to match live Grainrad option lists and labels.
+- [x] Verify with focused tests, full Vitest, TypeScript, `git diff --check`, production build, and browser operation checks against Grainrad.
+
+Review result:
+
+- Reconfirmed live Grainrad Settings behavior before implementation: per-effect dynamic rows, full dropdown option lists, ASCII `CUSTOM -> Custom Chars`, and shared Processing/Post-Processing sections.
+- Corrected ownership: `Motion` and `Transform` are now left `Animation` groups. `Y Rotate`, `X Rotate`, `Depth`, `Scale`, and `Reset Transform` are visible there on desktop and mobile; right `Processing` has no animation/mesh controls.
+- ASCII controls now match the live reference labels: `Character Set` includes `CUSTOM`, selecting it shows `Custom Chars`, and the `Color` group uses `Mode` instead of `Color Mode`.
+- Effect metadata now includes the live Grainrad dropdown options, including Dithering algorithms, Matrix Size variants, Halftone `Line`, Dots `Hexagonal Grid`, Pixel Sort `Diagonal`, Blockify `Shaded/Grayscale`, Noise Field `Worley`, and Voronoi `Darkened/Center Sample/Gradient`.
+- Common `Processing` remains `Invert`, `Brightness Map`, `Edge Enhance`, `Blur`, `Quantize Colors`, `Shape Matching`. Common `Post-Processing` now exposes `Bloom`, `Grain` with `Intensity/Size/Speed`, then `Chromatic`, `Scanlines`, `Vignette`, `CRT Curve`, and `Phosphor`.
+- Verification passed: focused Grainrad follow-up contract, adjacent ASCII material/state tests, full Vitest (`41` files, `171` tests), `pnpm exec tsc --noEmit --pretty false`, `git diff --check`, and `pnpm build`.
+- Browser smoke passed on local `/studio`: desktop and mobile canvases rendered nonblank, `CUSTOM` dropdown produced `Custom Chars`, Dithering dynamic options opened with live option names, Post-Processing showed `Grain`, and browser console errors were empty.
+
+## Phase 5D Follow-Up Grainrad Parity - 2026-06-18
+
+- [x] Inspect Grainrad effect catalogue settings and Character Set dropdown behavior.
+- [x] Add failing contracts for the full left Effects catalogue, left Animation panel, removed Presets panel, right Settings reset, Grainrad ASCII labels, Processing/Post-Processing parity, and gated export formats.
+- [x] Implement left `Effects` catalogue with Grainrad names and active markers.
+- [x] Move animation controls to the left as `Animation`; remove left `Presets`.
+- [x] Replace native Character Set select with Grainrad-style dropdown and option set: `STANDARD`, `BLOCKS`, `BINARY`, `DETAILED`, `MINIMAL`, `ALPHABETIC`, `NUMERIC`, `MATH`, `SYMBOLS`.
+- [x] Add right-side whole-section `Reset` and match ASCII control names to Grainrad.
+- [x] Match Processing and Post-Processing settings content/structure to Grainrad for the selected effect.
+- [x] Add GIF and MP4 export options when animation is enabled; keep only PNG when animation is disabled.
+- [x] Simplify export wording.
+- [x] Verify with focused tests, full tests, typecheck, build, and browser comparison.
+
+Review result:
+
+- Grainrad Character Set dropdown now matches the reference option set and menu behavior: `STANDARD`, `BLOCKS`, `BINARY`, `DETAILED`, `MINIMAL`, `ALPHABETIC`, `NUMERIC`, `MATH`, `SYMBOLS`; Escape/outside click closes the menu.
+- `/studio` left panel now uses `Input`, `Effects`, and `Animation`; left `Presets` was removed.
+- Right `Settings` has a section-level `Reset`, Grainrad ASCII labels, selected-effect setting rows, and the live Grainrad Processing/Post-Processing rows.
+- Export now shows PNG/GIF/Video only while animation is playing and falls back to PNG-only when animation is paused; export wording is `High quality image`.
+- GIF export uses `gifenc` to capture an animated canvas loop; MP4 export uses browser `MediaRecorder` when `video/mp4` is available. Both were live-smoked through browser downloads.
+- Verified with full Vitest (`41` files, `170` tests), `tsc --noEmit`, `git diff --check`, `pnpm build`, and Playwright smoke checks on desktop and mobile.
+
+## Phase 5D Grainrad Studio Refactor Planning - 2026-06-18
+
+- [x] Inspect current `/studio` architecture and dirty worktree without touching implementation files.
+- [x] Analyze Grainrad desktop layout, mobile layout, dark terminal tokens, panels, and interaction model.
+- [x] Capture user correction: do not copy Grainrad fonts; preserve the current configured font stack.
+- [x] Capture user correction: only `/studio` is in scope; do not redesign `/`.
+- [x] Capture user correction: effect controller UI should follow Grainrad's design and support both light/dark themes.
+- [x] Capture user correction: `/studio` theme default should be light, with dark still supported.
+- [x] Add detailed plan: `tasks/v2.1/phase-5d-grainrad-studio-refactor-plan.md`.
+- [x] User approval checkpoint before implementation.
+- [x] Phase 5D implementation in progress: execute all plan items, compare `/studio` operation against Grainrad, and keep iterating until aligned except for Character selector input.
+
+Review result:
+
+- Grainrad desktop target verified live on 2026-06-18: `100dvh` editor with left 18rem sidebar, center preview, right 22rem settings/export sidebar, compact `+`/`-` sections, row-based controls, and a terminal-style light/dark color system.
+- Grainrad mobile target verified live on 2026-06-18: brand header, center preview, bottom tabs for Input/Effects/Presets/Export, floating settings button, and settings bottom sheet.
+- Hanzi adaptation: Input uses the existing `CharacterPanel`/character selector instead of Grainrad file upload.
+- Hanzi adaptation: active effect surface is ASCII-only; remove old non-ASCII Morph/Pattern/Shader Layer/Randomize UI from active `/studio`.
+- Hanzi adaptation: preserve `theme/font.ts` current fonts; no IBM Plex Mono / JetBrains Mono import.
+- Hanzi adaptation: effect controllers use Grainrad-like compact sections/rows/ranges/selects/grids, with route-local light default plus dark theme support.
+- Implementation added the route-local terminal shell, desktop left/preview/right layout, mobile bottom tabs, mobile settings sheet, light/dark theme toggle, compact controller primitives, ASCII-only presets/effects, right-side Settings/Processing/Post-Processing/Export panels, canvas fill fix, and clean `hanzi-studio-grainrad-ascii-v1` active persistence.
+- Browser operation comparison passed against Grainrad's live layout except for the intended Hanzi character selector input: desktop dimensions matched 288px/flex/352px, theme toggle changed light/dark, presets expanded and applied, charset select changed to `matrix`, export panel was visible, canvas filled the center preview, mobile tabs worked, and settings sheet opened.
+- Verification passed: Phase 5D focused tests, full `pnpm test` (40 files / 165 tests), `pnpm exec tsc --noEmit`, and `pnpm run build`.
+
+## Phase 5C True 3D Shader Art Engine Re-Plan - 2026-06-18
+
+- [x] Stop treating the Phase 5B fullscreen Character Surface as the primary solution.
+- [x] Research online architecture references for SVG-to-3D geometry, shader uniforms, offscreen render targets, ASCII shader/post-processing, and CRT finishing effects.
+- [x] Inspect the repo for reusable true-3D seams: `CharacterMesh`, `character-mesh-geometry`, and mesh `shader-material`.
+- [x] Capture the correction in `tasks/lessons.md`.
+- [x] Add Phase 5C research/design package: `tasks/v2.1/phase-5c-true-3d-shader-art-engine.md`.
+- [x] User correction: narrow Phase 5C's first visible effect to 3D ASCII Effect, using Efecto as the target reference.
+- [x] User correction: adopt the Efecto UI layout: left panel for selected text/color/material/interaction, center canvas, right panel for effect/ASCII/style settings/post process.
+- [x] User checkpoint: approved starting implementation with Taste Skill for frontend design.
+- [x] Add Phase 5C Slice 1 implementation plan: `tasks/v2.1/phase-5c-slice-1-workbench-layout.md`.
+- [x] Slice 1 Task 1: add failing workbench layout contract test.
+- [x] Slice 1 Task 2: implement three-column `/studio` shell.
+- [x] Slice 1 Task 3: split existing controls into left/right ownership groups.
+- [x] Slice 1 Task 4: verify focused test, TypeScript, full tests, lint, build, and diff check.
+- [x] Add Phase 5C Slices 2-6 implementation plan: `tasks/v2.1/phase-5c-slices-2-6-3d-ascii-renderer.md`.
+- [x] Slices 2-6 Task 1: add ASCII store contract and default mesh auto-spin.
+- [x] Slices 2-6 Task 2: implement procedural ASCII shader material.
+- [x] Slices 2-6 Task 3: replace active center canvas with 3D ASCII mesh renderer.
+- [x] Slices 2-6 Task 4: add right-panel ASCII and ASCII Style controls.
+- [x] Slices 2-6 Task 5: verify ASCII effect and mesh auto-spin by tests plus manual QA checklist.
+
+Review result:
+
+- Existing Phase 5B work produced a stronger flat surface pipeline but does not satisfy the requested 3D art direction.
+- Online research supports a true Three.js scene graph approach: `SVGLoader` -> `Shape[]`/stroke geometry -> `ExtrudeGeometry` -> `useFrame` time/rotation updates -> offscreen color/depth render -> ASCII shader/post effect.
+- Efecto's relevant model is 3D input rendered through real-time ASCII shader/post-processing: cell grid, luminance sampling, procedural 5x7 glyphs, ASCII style sets, palette/bloom/CRT finishing.
+- Efecto's relevant UI model is a workbench with the canvas in the center and controls split by ownership: source/object controls on the left, effect/ASCII/post controls on the right.
+- The repo already has dormant useful seams for SVG extrusion, Y-axis rotation, `u_time`, `u_mouse`, and displacement-aware mesh shaders; these should be salvaged, not restored blindly.
+- Slice 1 implementation added the three-column `/studio` workbench shell, split current controls into left/right ownership groups, and kept the current Character Surface renderer active until the 3D ASCII prototype slice.
+- Slices 2-6 implementation replaced the active center canvas with `CharacterAsciiCanvas`, added procedural ASCII shader material, persisted ASCII controls, enabled default Y-axis mesh auto-spin, and added right-panel ASCII/ASCII Style controls.
+- ASCII verification is code-backed: `StudioCanvas` now mounts `CharacterAsciiCanvas`; `CharacterAsciiCanvas` parses selected SVG with `SVGLoader`, uses `createCharacterMeshGeometries`, applies `createAsciiShaderMaterial`, and updates `groupRef.current.rotation.y` when `mesh.autoRotate` and animation playback are active.
+- Verification passed: new ASCII state/material/renderer/panel tests, focused workbench/panel contract tests, `pnpm exec tsc --noEmit`, full `pnpm test`, `pnpm lint` with two existing warnings, `pnpm build`, and `git diff --check`.
+- Manual QA next step: open `/studio` and confirm visible ASCII glyph/cell rendering plus Y-axis auto-spin.
+
+## Phase 5B Remaining Slices Execution - 2026-06-18
+
+- [x] Slice 3: Shader Layer stack state with compact row UI and detail surface.
+- [x] Slice 4: SDF Relief character effects from derived glyph buffers.
+- [x] Slice 5: Print damage effects only through enabled controller-backed rows.
+- [x] Slice 6: Chrome/glass/material effects while preserving readability.
+- [x] Slice 7: Animation panel with freeze-safe effective time.
+- [x] Slice 8: Pattern modulation and Post FX foundation.
+- [x] Slice 9: Feedback simulation contract with safe disabled/fallback behavior.
+- [x] Slice 10: Coherent seeded Randomize presets and final manual QA checklist.
+- [x] Final verification: focused tests, TypeScript, full tests, lint, diff check, and `/studio` browser smoke.
+
+Review result:
+
+- Added persisted `shaderLayers` with enabled/order/intensity/blend/lock/target/effect params and compact Shader panel rows backed by `effect-registry.ts`.
+- Added Shader Layer detail surface so params are edited outside compact rows.
+- Added SDF relief shader branches for `ink-graphite`, `stone-relief`, `paper-emboss`, `black-lacquer`, `edge-wear`, and `contour-topography`.
+- Added print-damage shader branches for `halftone-ink`, `dithered-reveal`, `damaged-sensor`, `scratch-field`, `scanline-mask`, and `technical-hatch`; disabled rows do not compile into active shader uniforms.
+- Added chrome/glass/material shader branches for `fluid-chrome`, `frosted-fluted-glass`, `holofoil`, and `watercolor-paper`.
+- Added Animation panel and freeze-safe `u_timeEffective`; speed `0` or paused playback freezes time-driven shader branches.
+- Added compact Post FX stack foundation with stable and experimental rows. These remain controller-backed data rows, not hidden global effects.
+- Added feedback simulation contract module with disabled/fallback/reset/freeze semantics. Heavy render-target simulation remains gated behind explicit experimental contract paths.
+- Added coherent seeded Randomize presets: Graphite Relief, Wet Ink Bloom, Carved Lacquer, Digital Slice, Oxidized Metal, Chrome Glass, and Watercolor Paper.
+- Verification passed: focused tests, `pnpm exec tsc --noEmit`, full `pnpm test`, `git diff --check`, and `pnpm lint` with warnings only in existing Phase 5 files.
+- Browser smoke passed on `https://localhost:3000/studio`: canvas host and canvas were present, Shader/Animation/Post FX/Randomize controls were present, and browser error logs were empty. Existing Three.js Clock deprecation warning remains.
+- Manual QA checklist: confirm Shader Layer intensity `0/50/100` changes the character, Randomize same seed reproduces unlocked rows, Animation speed `0` freezes visible animated effects, Post FX rows stay compact, and no print/grid/scanline/hatch marks appear unless an enabled row controls them.
+
+## Phase 5B Slice 2 - Derived Glyph Buffers - 2026-06-18
+
+Implementation plan:
+
+- [x] Add failing tests for deriving a glyph distance pack from mask alpha data: mask, SDF, edge, inside/outside distance, gradient, height, normal, flow, and scatter.
+- [x] Add failing tests for runtime resolution caps and fallback behavior when source data is invalid or unavailable.
+- [x] Add failing material tests that derived glyph textures bind to stable uniforms with availability and resolution metadata.
+- [x] Implement `components/studio/glyph-derived-buffers.ts` with CPU-derived textures and a neutral fallback pack.
+- [x] Wire `CharacterSurfaceCanvas` so the current rasterized SVG mask produces a derived glyph pack for the active material.
+- [x] Keep visual output unchanged in this slice; derived buffers are data for later tracer effects.
+- [x] Verify with focused derived-buffer and surface-material tests, `pnpm exec tsc --noEmit`, `pnpm test`, `pnpm lint`, and `git diff --check`.
+- [x] Start the dev server and hand off a manual `/studio` smoke checklist.
+
+Review result:
+
+- Added `components/studio/glyph-derived-buffers.ts` with CPU-derived SDF/edge/height/normal/flow/scatter textures from the current rasterized SVG mask alpha.
+- Added runtime resolution capping at 512px on the longest side, aspect-ratio-preserving downsampling, and neutral fallback packs for invalid or unreadable mask data.
+- Added `components/studio/glyph-derived-buffers.test.ts` for derived sample semantics, texture dimensions, resolution caps, fallback metadata, and disposal.
+- `CharacterSurfaceCanvas` now derives a glyph distance pack from the same mask canvas used for the active selected SVG and disposes old derived textures when the mask changes.
+- `surface-shader-material.ts` now binds derived glyph textures to stable uniforms: `u_glyphMask`, `u_glyphSdf`, `u_glyphEdge`, `u_glyphHeight`, `u_glyphNormal`, `u_glyphFlow`, `u_glyphScatter`, `u_glyphBufferAvailable`, and `u_glyphBufferResolution`.
+- Visual output is intentionally unchanged in this slice; tracer effects consume these buffers in later slices.
+- Verification passed: focused derived-buffer tests, focused surface-material tests, `pnpm exec tsc --noEmit`, full `pnpm test`, `git diff --check`, and `pnpm lint` with warnings only in existing Phase 5 files.
+- Browser smoke passed on `https://localhost:3000/studio`: Studio canvas host and canvas were present, browser error logs were empty, and the only warning was the existing Three.js Clock deprecation warning.
+- Next step: implement Phase 5B Slice 3, Shader Layer Stack State And Compact Detail Surface.
+
+## Phase 5B Slice 1 - Effect Registry And Catalogue Tests - 2026-06-18
+
+Implementation plan:
+
+- [x] Add failing registry contract tests for required effect fields, UI param schemas, defaults, randomize bounds, ports, implementation metadata, animation flags, and component graph semantics.
+- [x] Add failing tests for the locked shared GLSL primitive set and Shader Layer primitive declarations.
+- [x] Add failing tests for the required Phase 5B candidate effects: `fluid-chrome`, `frosted-fluted-glass`, `watercolor-paper`, `holofoil`, `damaged-sensor`, `dithered-reveal`, `raymarched-interior`, and `shadergpt-sketch`.
+- [x] Add failing tests that Experimental and development-only effects are excluded from default randomization.
+- [x] Implement `components/studio/effect-registry.ts` as an additive contract registry for Morph, Shader, Pattern, Post, and Animation-capable effects.
+- [x] Keep this slice contract-only: do not modify renderer output or Studio panel behavior.
+- [x] Verify with focused registry tests, `pnpm exec tsc --noEmit`, `pnpm test`, and `git diff --check`.
+- [x] Record the review result and next concrete step.
+
+Review result:
+
+- Added `components/studio/effect-registry.ts` with the Phase 5B effect contract, locked Shader Layer primitive set, candidate effects, component graph metadata, reactivity flags, implementation metadata, and registry validation.
+- Added `components/studio/effect-registry.test.ts` covering registry validation, primitive declarations, required Phase 5B candidates, visible-effect UI params/defaults, component graph metadata, and default randomization exclusions.
+- Confirmed `shadergpt-sketch` is development-only and registered as `feedback-simulation` because it consumes previous-frame data.
+- This slice does not change renderer output, Studio panel state, or persisted store shape.
+- Verification passed: focused registry test, `pnpm exec tsc --noEmit`, full `pnpm test`, `git diff --check`, and `pnpm lint` with warnings only in existing Phase 5 files.
+- Next step: implement Phase 5B Slice 2, Derived Glyph Buffers.
+
+## Phase 5B Shader-First Effect Engine Planning - 2026-06-17
+
+- [x] Research broader shader/effect engine references beyond the current Phase 5 categories.
+- [x] Compare external patterns from ISF, Hydra, Material Maker, LYGIA, glslify, postprocessing, SDF/MSDF tools, and WebGL simulation examples.
+- [x] Research ShaderGPT and Shaders.com for additional shader implementation patterns, component graph structure, dynamic params, masking, and preset taxonomy.
+- [x] Research additional art-effect confidence references: SDF gradients/bevels, MSDF/TinySDF glyph buffers, ordered/blue-noise dithering, fluid/advection, reaction-diffusion, raymarching, refraction/dispersion, ISF multipass, Hydra function roles, and procedural material node graphs.
+- [x] Record the core correction: more isolated shader presets are not enough; the engine needs derived glyph buffers, a catalogue registry, and a fixed render graph.
+- [x] Define controller-backed effect rules so no grid, paper, scanline, shadow, feedback, or background mark can render without a panel row.
+- [x] Define an Animation panel direction where `Speed = 0` freezes all time-based output.
+- [x] Define visible numeric-seed Randomize behavior with family amounts and lock preservation.
+- [x] Lock Phase 5B requirements: shared GLSL primitive layer for all Shader Layers, expanded shader catalogue, and component-graph architecture with stacking/nesting/blend/mask/reactive/dynamic/SDF semantics.
+- [x] Lock Effect Layer panel UX to compact row UI instead of expanded row UI.
+- [x] Add the Phase 5B plan to the v2.1 planning package.
+- [x] Update the v2.1 README so Phase 5B was listed as the next overlay at that time and SDF is treated as a derived glyph buffer, not a deferred side topic.
+- [x] Rewrite Phase 5B implementation slices around registry-first, derived-buffer-second, and four tracer bullets before broad catalogue expansion.
+
+Review result:
+
+- Added `tasks/v2.1/phase-5b-shader-first-effect-engine-plan.md`.
+- The next implementation order is Effect Registry -> Derived Glyph Buffers -> Shader Layer Stack -> Tracer A SDF Relief -> Tracer B Print Damage -> Tracer C Chrome/Glass -> Animation -> Pattern/Post foundation -> Tracer D Experimental Feedback -> coherent Randomize presets.
+- Shader expansion should include material, SDF/edge, depth/light, procedural texture, energy/distortion, simulation/feedback, post/screen, and background shade families.
+- ShaderGPT research added reusable primitive targets: `u_time`, `u_mouse`, `u_resolution`, FBM/noise, palette, dither, scanline, channel offset, UV refraction, smoke/fire/aurora fields, and raymarching as reference-only.
+- Shaders.com research added registry fields: `effectRole`, `inputPorts`, `outputPorts`, `maskSource`, dynamic param drivers, and universal blend/opacity/visibility semantics.
+- Additional confidence research narrowed the visual strategy to four tracer bullets: SDF Relief Character, Print Damage Character, Chrome/Glass Character, and Experimental Feedback Character.
+- The plan now separates architecture confidence from reference-level visual fidelity risk: direction confidence is 90%, exact one-pass reference match is 78%, and the four tracer bullets should raise practical art-engine confidence to 86% before broad catalogue expansion.
+- Phase 5B became tracer-bullet-first instead of broad-catalogue-first. Broad shader expansion waits until SDF relief, print damage, chrome/glass, and experimental feedback paths are inspectable.
+- Additional shader candidates added: Fluid Chrome, Frosted/Fluted Glass, Watercolor Paper, Holofoil, Damaged Sensor, Dithered Reveal, Raymarched Interior, and development-only ShaderGPT Sketch.
+- User locked the implementation direction: every Shader Layer must compile against the shared GLSL primitive layer, the new shader candidates must be in the registry, and the engine must use component graph metadata for stacking, nesting, blend/mask, reactive props, dynamic props, and SDF/custom SVG shape support.
+- User corrected the Effect Layer panel UX: Morph, Shader, Pattern, and Post stacks must use compact rows; advanced params open in a separate detail surface instead of expanding rows.
+- LYGIA, glslify, and postprocessing remain implementation helpers. Hanzi Studio's product model remains the selected SVG-driven Character Surface with Morph Stack, Shader Layers, Pattern Layers, Animation, and Randomize controls.
+- Next step: implement Phase 5B Slice 1, the Effect Registry and Catalogue Tests, before changing the renderer.
+
+## Phase 5 Finish - Strong Visible Layered Art Runtime - 2026-06-17
+
+- [x] Add failing tests that the default Studio state opens with a complete visible art stack: Morph layers, foreground depth/gradient ink, background paper color, and three Pattern Layers mapped to foreground, background, and Morph Stack.
+- [x] Add failing tests that randomizing from an empty Pattern Layer state creates a complete lock-aware art stack instead of leaving Pattern Layers empty.
+- [x] Add failing shader contract tests that forbid hidden shader effects without matching Studio panel controllers.
+- [x] Implement strong default Morph intensities, Surface Shader styles, and Pattern Layer defaults.
+- [x] Implement Randomize art preset generation for Morph/Shaders/Patterns while preserving existing locked-layer behavior.
+- [x] Strengthen `CharacterSurfaceMaterial` using only controller-backed effects: foreground depth lighting, Morph Stack deformation, and Pattern Layer blending.
+- [x] Verify focused tests, TypeScript, full tests, `git diff --check`, and fresh browser console/UI state.
+
+Review result:
+
+- Default Studio state now opens with a stronger art stack: depth-lit black ink, warm paper background, three Pattern Layers, and non-uniform Morph intensities.
+- Randomize now fills an empty Pattern Layer stack and varies shader colors, gradient settings, pattern targets, blend modes, and intensities while preserving locks.
+- `CharacterSurfaceMaterial` now uses only controller-backed shader effects. Hidden procedural grid/paper/shadow/trail effects were removed because they did not have matching panel controls.
+- Shader panel now includes foreground effect controls for Depth Strength, Highlight, Rim Light, and Edge Softness, wired to material uniforms.
+- Browser verification: `/studio` reloads without console errors, and opening the Shader panel shows Depth Strength, Highlight, Rim Light, and Edge Softness controls.
+- Automated verification passed: focused tests, TypeScript, and full Vitest suite.
+
+## Phase 5 Runtime Bug Fix - Morph Uniform Vector Shape - 2026-06-17
+
+- [x] Reproduce the browser runtime error from `/studio`: `firstElem.toArray is not a function`.
+- [x] Trace root cause to `u_morphLayerParams`, a GLSL `vec4[]` uniform receiving plain nested arrays.
+- [x] Add a regression test requiring `u_morphLayerParams` entries to expose `toArray()`.
+- [x] Convert Morph runtime params to `Vector4[]` at the `CharacterSurfaceMaterial` uniform boundary.
+- [x] Verify focused tests, TypeScript, full tests, `git diff --check`, and dev server browser logs.
+
+Review result:
+
+- Root cause: Three.js flattens `vec4[]` uniform values by calling `firstElem.toArray()`. The Phase 5 Morph runtime compiler correctly produced plain numeric tuples, but `CharacterSurfaceMaterial` passed those tuples directly to the shader uniform.
+- Fix: keep the compiler pure, and convert the tuples to `Vector4` objects inside `surface-shader-material.ts`.
+- Added a lesson to prevent future `vec4[]` uniforms from using plain nested number arrays.
+- Browser verification: a fresh `https://localhost:3000/studio` load produced no console errors and the dev server logged `GET /studio 200`; only the existing Three.js Clock deprecation warning remains.
+
+## Phase 5 Implementation Slice 4 - Reorder And Randomize Family Controls - 2026-06-17
+
+- [x] Add failing tests for family-scoped randomization: Morph, Shaders, Patterns, and Include Experimental.
+- [x] Add failing tests for Pattern Layer reorder state.
+- [x] Implement `randomizeMorphPreset` family options and `reorderPatternLayer`.
+- [x] Add failing tests that Morph and Pattern rows expose reorder controls.
+- [x] Add failing tests that a Randomize panel controls seed and family toggles.
+- [x] Implement Morph/Pattern row up/down reorder buttons.
+- [x] Implement `RandomizePanel` and wire it into Studio controls without creating a new design system.
+- [x] Verify with focused tests, TypeScript, full tests, and `git diff --check`.
+- [x] Record review result and next implementation slice.
+
+Implementation boundary:
+
+- Reorder uses explicit up/down buttons for this slice. Drag reorder can follow after behavior is proven.
+- Randomize family controls scope the existing deterministic generator. Coherent named art presets remain a later refinement.
+- Locks continue to protect locked Morph, Shader, and Pattern rows.
+
+Review result:
+
+- `randomizeMorphPreset` now accepts family scopes for Morph, Shaders, and Patterns while preserving the old default of randomizing all families.
+- Added `reorderPatternLayer` to match existing Morph reorder behavior.
+- Morph and Pattern rows now expose up/down reorder buttons with lock and boundary disabling.
+- Added `RandomizePanel` with seed, Next seed, Include Experimental, and Morph/Shaders/Patterns toggles.
+- Added `randomize` to the active Studio panel set and wired it into `StudioControls`.
+- Verification passed: focused Phase 5 Slice 4 Vitest files, `pnpm exec tsc --noEmit`, `pnpm test`, and `git diff --check`.
+- Next step: start manual `/studio` visual QA, then fix any UI overlap, non-visible shader effect, or interaction defects before closing Phase 5.
+
+## Phase 5 Implementation Slice 3 - Morph Stack Runtime And Row Controls - 2026-06-17
+
+- [x] Add failing tests for stable Morph Stack runtime compilation: layer kind, intensity, params, enabled filtering, and cap.
+- [x] Bind compiled Morph Stack layers into `CharacterSurfaceMaterial` uniforms.
+- [x] Implement shader-side stable Morph effects for coordinate warp, mask compression, pixel grid, and surface-depth lighting.
+- [x] Add failing tests that Morph Stack panel is no longer empty and controls active Morph Stack state.
+- [x] Implement `MorphStackPanel` with add, enable, intensity, lock, delete, layer type, and visible number/select params.
+- [x] Wire `MorphStackPanel` into `StudioControls`.
+- [x] Verify with focused tests, TypeScript, full tests, and `git diff --check`.
+- [x] Record review result and next implementation slice.
+
+Implementation boundary:
+
+- Stable layer runtime covers `sine-bend`, `swirl-well`, `curl-flow`, `band-slice`, `pixelate-grid`, `ink-compression`, and `surface-depth`.
+- Experimental `vector-pre-morph`, `pixel-sort-heavy`, and `feedback-advection` stay deferred until the stable visible runtime is inspectable.
+- This slice does not add drag reorder UI yet; existing store reorder remains available for a later row interaction pass.
+
+Review result:
+
+- Added `morph-layer-runtime` compiler with fixed eight-layer cap, stable Morph kind mapping, intensity clamping, params packing, disabled-layer filtering, and experimental-layer exclusion.
+- `CharacterSurfaceMaterial` now receives `morphLayers`, binds Morph runtime uniforms, and applies stable Morph Stack effects in the active shader.
+- Coordinate runtime now covers sine bend, swirl well, curl flow, band slice, and pixelate grid sampling.
+- Mask runtime now applies ink compression before alpha composition.
+- Surface runtime now applies surface-depth lighting on the foreground layer.
+- Added `MorphStackPanel` and wired it into `StudioControls`, replacing the empty Morph Stack panel.
+- Morph rows now expose Add, Enabled, Layer type, Intensity, Lock, Delete, and visible number/select params.
+- Verification passed: focused Phase 5 Slice 3 Vitest files, `pnpm exec tsc --noEmit`, `pnpm test`, and `git diff --check`.
+- Next slice: add reorder controls and Randomize family controls for Morph/Shaders/Patterns, then run manual `/studio` visual QA checklist.
+
+## Phase 5 Implementation Slice 2 - Multi-Pattern Blending And Pattern Panel Rows - 2026-06-17
+
+- [x] Add failing tests for fixed-cap multi-pattern shader uniforms and blend functions.
+- [x] Replace the `CharacterSurfaceMaterial` Pattern compatibility adapter with real three-slot foreground/background/morph pattern accumulation.
+- [x] Add failing tests that Pattern Layers panel is no longer empty and controls active Pattern Layer state.
+- [x] Implement `PatternLayerPanel` with add, enable, target, intensity, blend mode, lock, and delete controls.
+- [x] Wire `PatternLayerPanel` into `StudioControls`.
+- [x] Verify with focused tests, TypeScript, full tests, and `git diff --check`.
+- [x] Record review result and next implementation slice.
+
+Implementation boundary:
+
+- This slice makes multiple Pattern Layers visibly stack in the active Character Surface shader.
+- Built-in/local-file source picking remains basic; richer swatch/source browser can follow after row controls are visible.
+- Morph Stack runtime deformation controls are not part of this slice.
+
+Review result:
+
+- `CharacterSurfaceMaterial` now binds fixed three-slot Pattern Layer uniforms for foreground, background, and Morph Stack targets.
+- Foreground and background Pattern Layers apply ordered blend modes: normal, multiply, screen, overlay, and soft-light.
+- Morph Stack Pattern Layers accumulate UV offsets from up to three active pattern textures, scaled by each layer intensity.
+- Added `PatternLayerPanel` and wired it into `StudioControls`, replacing the empty Pattern Layers panel.
+- Pattern rows now expose Add, Enabled, Target, Blend, Intensity, Lock, Delete, and a compact built-in pattern swatch selector.
+- Verification passed: focused Phase 5 Slice 2 Vitest files, `pnpm exec tsc --noEmit`, `pnpm test`, and `git diff --check`.
+- Next slice: add Morph Stack visible runtime controls and row intensity UI, then connect Morph layer params to the Character Surface shader.
+
+## Phase 5 Implementation Slice 1 - Layer Contract And Stackable State - 2026-06-17
+
+- [x] Add tests for a shared layer compositing contract: blend modes, phase order, intensity clamping, and active layer caps.
+- [x] Implement `components/studio/layer-compositing.ts` as the common contract helper for Morph, Surface Shader, Pattern, and Post Surface rows.
+- [x] Add Morph Stack layer `intensity` state with sanitization and lock-aware randomization behavior.
+- [x] Add Pattern Layer `enabled`, `intensity`, and `blendMode` state with sanitization.
+- [x] Change Pattern Layer texture resolution from first-valid-per-target to ordered active layer accumulation per target.
+- [x] Verify with focused tests, TypeScript, and `git diff --check`.
+- [x] Record review result and next implementation slice.
+
+Implementation boundary:
+
+- This slice creates the shared behavior foundation for the visible layer-stack UI.
+- It does not yet convert Surface Shader into a fully stackable UI panel.
+- It does not yet add postprocessing controls to the canvas.
+- It does not remove `glslify` yet; decide after the first shader/include implementation slice proves whether it is actually needed.
+
+Review result:
+
+- Added a shared layer compositing helper with the Phase 5 stack caps, blend mode whitelist, intensity clamping, and fixed render phase ordering.
+- Added `intensity` to Morph Stack layers with persisted-state sanitization.
+- Added `enabled`, `intensity`, and `blendMode` to Pattern Layers with persisted-state sanitization and lock-aware randomization preserving locked rows.
+- Pattern texture resolution now returns ordered active texture targets per foreground/background/morph target instead of only the first valid texture.
+- `CharacterSurfaceMaterial` now accepts the new Pattern texture target arrays through a compatibility adapter. Full multi-pattern shader blending is the next implementation slice.
+- Verification passed: focused Phase 5 Slice 1 Vitest files, `pnpm exec tsc --noEmit`, `pnpm test`, and `git diff --check`.
+- Next slice: replace the compatibility adapter with real fixed-cap multi-pattern blending in the Character Surface shader, then expose row controls in the Pattern Layer panel.
 
 ## Phase 5 Layer Compositing Feasibility - 2026-06-17
 
@@ -20,7 +1026,7 @@ Review result:
 - Current Morph Stack state is closest to the target. It needs a global `intensity` field and visible runtime mapping.
 - Current Surface Shader state is not yet stackable. Phase 5 should convert it into stackable foreground/background shader layers, or add stackable child layers under fixed foreground/background roots.
 - Current Pattern Layers are metadata stacks, but runtime uses the first valid texture per target. Phase 5 must blend all valid Pattern Layers for a target so stacked rows visually accumulate.
-- The user-facing model should match the image: separate Morph Stack, Surface Shader Layers, and Pattern Layers panels, each with row controls for visibility, order where meaningful, intensity, blend mode where meaningful, lock, and expanded params.
+- The user-facing model should match the image: separate Morph Stack, Surface Shader Layers, and Pattern Layers panels, each with compact row controls for visibility, order where meaningful, intensity, blend mode where meaningful, lock, and a detail affordance for params.
 - The runtime model should remain phase-compiled: pre-raster -> raster mask -> coordinate morph -> mask/morphology -> surface shader stacks -> pattern modulation -> final composite -> optional post surface.
 - Keep Pattern Layer max at three for Phase 5 unless texture-slot tests prove a higher cap is safe. The immediate requirement is real stacking/blending of the three layers.
 - Added `tasks/v2.1/phase-5-layer-compositing-guidelines.md` as the plan guideline for this correction.

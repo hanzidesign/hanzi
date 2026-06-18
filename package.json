@@ -21,6 +21,7 @@
     "@react-three/fiber": "^9.6.1",
     "@react-three/postprocessing": "^3.0.4",
     "framer-motion": "12.40.0",
+    "gifenc": "^1.0.3",
     "glslify": "^7.1.1",
     "lodash": "^4.18.1",
     "lygia": "^1.4.1",

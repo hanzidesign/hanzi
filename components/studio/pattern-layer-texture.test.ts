@@ -1,8 +1,10 @@
+import { DataTexture } from 'three'
 import { describe, expect, it } from 'vitest'
 
 import type { StudioPatternLayer } from '@/app/studio/studio-store'
 import { DEFAULT_PATTERN_ASSET_URL } from '@/utils/patternAssets'
 import {
+  getPatternLayerTextureTargets,
   getPatternLayerTextureSource,
   groupPatternLayersByTarget,
   resolvePatternLayerTextureFailure,
@@ -13,6 +15,9 @@ const builtInLayer: StudioPatternLayer = {
   source: { type: 'built-in', patternUrl: '/images/patterns/004.jpg' },
   target: 'foreground-shader',
   locked: false,
+  enabled: true,
+  intensity: 1,
+  blendMode: 'normal',
 }
 
 describe('pattern layer texture helpers', () => {
@@ -28,6 +33,9 @@ describe('pattern layer texture helpers', () => {
       source: { type: 'local-file', fileName: 'local.png' },
       target: 'background-shader',
       locked: false,
+      enabled: true,
+      intensity: 1,
+      blendMode: 'normal',
     }
 
     expect(
@@ -58,6 +66,46 @@ describe('pattern layer texture helpers', () => {
     expect(groups.foreground).toEqual([builtInLayer])
     expect(groups.background).toHaveLength(1)
     expect(groups.morphStack).toHaveLength(1)
+  })
+
+  it('returns all active textures for a target in layer order instead of first-valid only', () => {
+    const textureA = new DataTexture()
+    const textureB = new DataTexture()
+    const targets = getPatternLayerTextureTargets(
+      [
+        {
+          ...builtInLayer,
+          id: 'pattern-layer-disabled',
+          enabled: false,
+        },
+        builtInLayer,
+        {
+          ...builtInLayer,
+          id: 'pattern-layer-2',
+          intensity: 0.35,
+          blendMode: 'overlay',
+        },
+      ],
+      {
+        'pattern-layer-1': { source: '/images/patterns/004.jpg', texture: textureA },
+        'pattern-layer-2': { source: '/images/patterns/005.jpg', texture: textureB },
+      },
+    )
+
+    expect(targets.foreground).toEqual([
+      {
+        id: 'pattern-layer-1',
+        texture: textureA,
+        intensity: 1,
+        blendMode: 'normal',
+      },
+      {
+        id: 'pattern-layer-2',
+        texture: textureB,
+        intensity: 0.35,
+        blendMode: 'overlay',
+      },
+    ])
   })
 
   it('keeps the last valid texture source after a load failure when possible', () => {

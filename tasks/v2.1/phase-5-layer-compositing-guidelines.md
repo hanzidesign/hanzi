@@ -9,7 +9,7 @@ The requested direction is feasible if "stackable" means user-visible layer stac
 Recommended model:
 
 - Keep separate visible panels for **Morph Stack**, **Surface Shader Layers**, **Pattern Layers**, **Randomize**, constraints, and Experimental controls.
-- Give every layer family the same control language: visibility, order where meaningful, strength/intensity, lock, label, tier, and params.
+- Give every layer family the same compact row control language: visibility, order where meaningful, strength/intensity, lock, label, tier, target/source, blend where meaningful, and a separate detail editor for params.
 - Compile those visible layers into a deterministic Character Surface render pipeline.
 - Let users feel that effects are layered and blended, while the renderer keeps phase boundaries strict enough to avoid blank surfaces, broken masks, or unreadable glyphs.
 
@@ -120,7 +120,7 @@ Phase rules:
 The UI can follow the reference image closely without changing the design system:
 
 - Keep the current dark Studio panel style.
-- Each stack row should have:
+- Each stack row should be compact, with stable height and no row expansion. It should have:
   - drag handle when reorderable
   - visibility toggle
   - row number
@@ -129,10 +129,11 @@ The UI can follow the reference image closely without changing the design system
   - blend mode select where applicable
   - strength slider with numeric percent
   - lock toggle
-  - collapse/expand affordance for params
+  - detail/edit affordance that opens params outside the row
 - Morph Stack rows show effect category and Stable/Experimental state.
 - Surface Shader rows show target scope: foreground, background, or both when a layer supports both.
 - Pattern rows show source thumbnail, target, blend mode, and intensity.
+- Effect-specific params should open in an inspector, modal, popover, or side detail area. Do not use expanded row cards as the default layer editing model.
 - Randomize controls should expose family amounts: Morph, Shaders, Patterns, Background, Jitter, and Experimental.
 - Locks And Constraints should remain separate from per-layer locks: they constrain the generator and runtime globally.
 
@@ -215,13 +216,14 @@ Phase 5 should start with the compositing contract before UI polish:
 6. Implement reusable blend functions in shader chunks and unit tests for generated shader source.
 7. Implement Morph runtime compile output for active layers, caps, and fallback behavior.
 8. Implement Surface Shader stack compile output for foreground/background.
-9. Wire UI rows using one shared layer-row component style across Morph, Shader, and Pattern panels.
+9. Wire UI rows using one shared compact layer-row component style across Morph, Shader, and Pattern panels, with params edited through a separate detail surface.
 10. Extend Randomize with family amount controls and lock-aware coherent presets.
 11. Add manual `/studio` QA checklist for stacked layers: add, reorder, set intensity to 0/50/100, change blend mode, lock, randomize, verify layer still affects the visible Character Surface.
 
 ## Acceptance Criteria
 
 - Users can stack multiple Morph, Surface Shader, and Pattern layers in separate panels that share the same interaction language.
+- Effect Layer panels use compact rows, not expanded rows, and parameter editing does not resize the layer list.
 - Every visible layer has a strength/intensity control that visibly affects output.
 - Surface Shader Layers and Pattern Layers support blend modes where blending is meaningful.
 - Layer order changes output when the selected family is order-sensitive.

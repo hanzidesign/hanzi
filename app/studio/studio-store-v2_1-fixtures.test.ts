@@ -35,17 +35,46 @@ function createMemoryStorage(initialValue?: string) {
   }
 }
 
-describe('studio store v2.1 Character Surface fixtures', () => {
-  it('starts from the Phase 3 storage key and v2.1 active panels', () => {
+describe('studio store Phase 5D Grainrad ASCII fixtures', () => {
+  it('starts from the Phase 5D storage key, light theme, and ASCII terminal defaults', () => {
     const initial = createInitialStudioStoreState()
 
-    expect(STUDIO_STORE_STORAGE_KEY).toBe('hanzi-studio-character-surface-v2_1_phase3')
+    expect(STUDIO_STORE_STORAGE_KEY).toBe('hanzi-studio-grainrad-ascii-v1')
     expect(initial.view.activePanel).toBe('character')
+    expect(initial.view.theme).toBe('light')
+    expect(initial.view.mobileTab).toBe('input')
+    expect(initial.view.settingsOpen).toBe(false)
+    expect(initial.export.selectedFormat).toBe('png')
+    expect(initial.ascii.palette).toBe('custom')
     expect(initial.morphStack.layers).toHaveLength(DEFAULT_RANDOM_MORPH_LAYER_COUNT)
+    expect(initial.morphStack.layers.every((layer) => layer.intensity > 0.7)).toBe(true)
     expect(initial.randomSeed).toBe(0)
     expect(initial.rendererMode).toBe('webgl')
-    expect(initial.surfaceShaders.foreground.stylePresetId).toBe('solid')
+    expect(initial.surfaceShaders.foreground.stylePresetId).toBe('depth-lit')
+    expect(initial.surfaceShaders.foreground.color).toBe('#080706')
+    expect(initial.surfaceShaders.foreground.params.opacity).toBe(0.96)
     expect(initial.surfaceShaders.background.stylePresetId).toBe('solid')
+    expect(initial.surfaceShaders.background.color).toBe('#ebe7dc')
+    expect(initial.patternLayers).toEqual([
+      expect.objectContaining({
+        source: { type: 'built-in', patternUrl: '/images/patterns/033.jpg' },
+        target: 'background-shader',
+        intensity: 0.36,
+        blendMode: 'multiply',
+      }),
+      expect.objectContaining({
+        source: { type: 'built-in', patternUrl: '/images/patterns/087.jpg' },
+        target: 'foreground-shader',
+        intensity: 0.62,
+        blendMode: 'soft-light',
+      }),
+      expect.objectContaining({
+        source: { type: 'built-in', patternUrl: '/images/patterns/014.jpg' },
+        target: 'morph-stack',
+        intensity: 0.7,
+        blendMode: 'normal',
+      }),
+    ])
   })
 
   it('keeps background Surface Shader styling solid even when stale state asks for gradients', () => {
@@ -111,7 +140,7 @@ describe('studio store v2.1 Character Surface fixtures', () => {
     })
   })
 
-  it('persists Morph Stack, shader layers, pattern metadata, random seed, renderer mode, and active panel', () => {
+  it('persists only active terminal choices while keeping legacy surfaces runtime-only', () => {
     const { storage, readPersistedState } = createMemoryStorage()
     const store = createStudioStore(storage)
 
@@ -126,37 +155,35 @@ describe('studio store v2.1 Character Surface fixtures', () => {
       },
       locked: true,
     })
-    store.getState().addPatternLayer({
+    store.getState().updatePatternLayer('pattern-layer-3', {
       source: { type: 'built-in', patternUrl: '/images/patterns/003.jpg' },
       target: 'morph-stack',
       locked: true,
+      enabled: false,
+      intensity: 0.42,
+      blendMode: 'overlay',
     })
     store.getState().randomizeMorphPreset({ seed: 88 })
 
     const persisted = readPersistedState()
 
-    expect(persisted.morphStack.layers.length).toBeGreaterThan(0)
-    expect(persisted.surfaceShaders.foreground).toMatchObject({
-      color: '#112233',
-      params: {
-        gradientType: 'linear',
-        gradientAngle: 315,
-        opacity: 0.6,
-      },
-      locked: true,
+    expect(persisted).toMatchObject({
+      character: store.getState().character,
+      ascii: store.getState().ascii,
+      mesh: store.getState().mesh,
+      rendererMode: 'webgpu-experimental',
+      view: store.getState().view,
+      export: store.getState().export,
     })
-    expect(persisted.patternLayers).toEqual([
-      expect.objectContaining({
-        source: { type: 'built-in', patternUrl: '/images/patterns/003.jpg' },
-        target: 'morph-stack',
-        locked: true,
-      }),
-    ])
-    expect(persisted.randomSeed).toBe(88)
     expect(persisted.rendererMode).toBe('webgpu-experimental')
     expect(persisted.view.activePanel).toBe('morph')
+    expect(persisted).not.toHaveProperty('morphStack')
+    expect(persisted).not.toHaveProperty('surfaceShaders')
+    expect(persisted).not.toHaveProperty('shaderLayers')
+    expect(persisted).not.toHaveProperty('patternLayers')
+    expect(persisted).not.toHaveProperty('randomSeed')
+    expect(persisted).not.toHaveProperty('postFx')
     expect(persisted).not.toHaveProperty('runtime')
-    expect(persisted).not.toHaveProperty('mesh')
     expect(persisted).not.toHaveProperty('displacement')
     expect(persisted).not.toHaveProperty('svgEffect')
   })
@@ -170,6 +197,7 @@ describe('studio store v2.1 Character Surface fixtures', () => {
       enabled: false,
       collapsed: true,
       locked: true,
+      intensity: 0.31,
     }
 
     store
@@ -182,6 +210,50 @@ describe('studio store v2.1 Character Surface fixtures', () => {
     store.getState().randomizeMorphPreset({ seed: 22 })
 
     expect(store.getState().morphStack.layers[1]).toEqual(lockedLayer)
+  })
+
+  it('ignores stale persisted Morph and Pattern layer fields under the terminal storage key', () => {
+    const initial = createInitialStudioStoreState()
+    const staleState = {
+      ...initial,
+      morphStack: {
+        layers: [
+          {
+            ...initial.morphStack.layers[0],
+            intensity: 1.8,
+          },
+          {
+            ...initial.morphStack.layers[1],
+            intensity: -0.2,
+          },
+        ],
+      },
+      patternLayers: [
+        {
+          id: 'pattern-layer-custom',
+          source: { type: 'built-in', patternUrl: '/images/patterns/001.jpg' },
+          target: 'foreground-shader',
+          enabled: false,
+          intensity: 2,
+          blendMode: 'screen',
+          locked: false,
+        },
+        {
+          id: 'pattern-layer-fallback',
+          source: { type: 'built-in', patternUrl: '/images/patterns/002.jpg' },
+          target: 'background-shader',
+          enabled: 'bad',
+          intensity: Number.NaN,
+          blendMode: 'erase',
+          locked: false,
+        },
+      ],
+    }
+    const { storage } = createMemoryStorage(JSON.stringify({ state: staleState, version: 1 }))
+    const store = createStudioStore(storage)
+
+    expect(store.getState().morphStack).toEqual(initial.morphStack)
+    expect(store.getState().patternLayers).toEqual(initial.patternLayers)
   })
 
   it('reproduces unlocked Morph Stack slots from the same seed', () => {
@@ -208,14 +280,7 @@ describe('studio store v2.1 Character Surface fixtures', () => {
       color: '#020202',
       locked: false,
     })
-    store.getState().addPatternLayer({
-      source: { type: 'built-in', patternUrl: '/images/patterns/001.jpg' },
-      target: 'foreground-shader',
-      locked: false,
-    })
-    store.getState().addPatternLayer({
-      source: { type: 'built-in', patternUrl: '/images/patterns/002.jpg' },
-      target: 'background-shader',
+    store.getState().updatePatternLayer('pattern-layer-2', {
       locked: true,
     })
 
@@ -226,6 +291,98 @@ describe('studio store v2.1 Character Surface fixtures', () => {
     expect(store.getState().surfaceShaders.background.color).not.toBe('#020202')
     expect(store.getState().patternLayers).toHaveLength(before.length)
     expect(store.getState().patternLayers[1]).toEqual(before[1])
+    expect(store.getState().patternLayers[0].intensity).not.toBe(before[0].intensity)
+  })
+
+  it('creates a complete Pattern Layer art stack when randomizing from an empty Pattern Layer state', () => {
+    const { storage } = createMemoryStorage()
+    const store = createStudioStore(storage)
+
+    store.getState().randomizeMorphPreset({
+      seed: 404,
+      families: {
+        morph: false,
+        shaders: false,
+        patterns: true,
+      },
+    })
+
+    expect(store.getState().patternLayers).toHaveLength(MAX_PATTERN_LAYERS)
+    expect(store.getState().patternLayers.map((layer) => layer.target)).toEqual([
+      'background-shader',
+      'foreground-shader',
+      'morph-stack',
+    ])
+    expect(store.getState().patternLayers.every((layer) => layer.enabled)).toBe(true)
+    expect(store.getState().patternLayers.every((layer) => layer.intensity > 0.25)).toBe(true)
+  })
+
+  it('randomizes only selected effect families when family options are provided', () => {
+    const { storage } = createMemoryStorage()
+    const store = createStudioStore(storage)
+
+    store.getState().addPatternLayer({
+      source: { type: 'built-in', patternUrl: '/images/patterns/001.jpg' },
+      target: 'foreground-shader',
+      intensity: 0.2,
+    })
+
+    const initialMorphLayers = store.getState().morphStack.layers
+    const initialShaders = store.getState().surfaceShaders
+    const initialPatternLayers = store.getState().patternLayers
+
+    store.getState().randomizeMorphPreset({
+      seed: 202,
+      families: {
+        morph: false,
+        shaders: true,
+        patterns: false,
+      },
+    })
+
+    expect(store.getState().morphStack.layers).toEqual(initialMorphLayers)
+    expect(store.getState().surfaceShaders).not.toEqual(initialShaders)
+    expect(store.getState().patternLayers).toEqual(initialPatternLayers)
+
+    store.getState().randomizeMorphPreset({
+      seed: 203,
+      families: {
+        morph: false,
+        shaders: false,
+        patterns: true,
+      },
+    })
+
+    expect(store.getState().morphStack.layers).toEqual(initialMorphLayers)
+    expect(store.getState().patternLayers).not.toEqual(initialPatternLayers)
+  })
+
+  it('reorders Pattern Layers without changing layer payloads', () => {
+    const { storage } = createMemoryStorage()
+    const store = createStudioStore(storage)
+
+    store.getState().addPatternLayer({
+      source: { type: 'built-in', patternUrl: '/images/patterns/001.jpg' },
+      target: 'foreground-shader',
+    })
+    store.getState().addPatternLayer({
+      source: { type: 'built-in', patternUrl: '/images/patterns/002.jpg' },
+      target: 'background-shader',
+    })
+    store.getState().addPatternLayer({
+      source: { type: 'built-in', patternUrl: '/images/patterns/003.jpg' },
+      target: 'morph-stack',
+    })
+    const before = store.getState().patternLayers
+
+    store.getState().reorderPatternLayer(2, 0)
+
+    expect(store.getState().patternLayers).toEqual([before[2], before[0], before[1]])
+
+    store.getState().reorderPatternLayer(-1, 1)
+    store.getState().reorderPatternLayer(0, 3)
+
+    expect(store.getState().patternLayers).toEqual([before[2], before[0], before[1]])
   })
 
   it('caps Pattern Layers and never persists local file data urls', () => {

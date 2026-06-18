@@ -33,9 +33,27 @@ Keep this file as evergreen guidance only. Historical phase notes, completed tas
 - Do not hand-roll complex gradient/color picker interactions unless explicitly requested. Use a proven picker library for draggable stops, color models, and gradient editing.
 - When adapting a third-party controlled gradient picker, do not recreate its value from normalized persisted stops on every render. Preserve the picker draft string so selected stop state is not reset while editing.
 - If a third-party picker already provides Solid/Gradient switching, do not duplicate that choice with a separate Studio style tab.
+- When the user points to Efecto's layout for 3D ASCII, use a three-column workbench: left panel for selected text/character, color, material, and interaction; center canvas as the primary workspace; right panel for effect, ASCII, ASCII style, style settings, and post process. Do not keep all Phase 5C controls in one old left accordion.
+- Do not add hidden visual effects that lack a corresponding Studio panel/controller. Effects such as grid, paper grain, shadow, trail, or edge treatment must either be controlled by Morph Stack, Shader, Pattern Layer, or Randomize UI, or not exist in the active renderer.
+- Shader panel must control shader effects, not only color. If a shader preset changes depth, edge, lighting, blur, distortion, pattern response, or any visual algorithm, expose the corresponding parameters in the Shader panel before treating it as implemented.
+- Effect Layer panels should use compact row UI, not expanded row cards. Keep Morph, Shader, Pattern, and Post stacks dense and stable-height; open advanced params in a separate inspector, modal, popover, or side detail surface.
+- When matching an external reference site's structure and UI layout, do not copy its font stack unless the user explicitly asks for typography migration. Preserve Hanzi Studio's configured fonts as the default typography contract.
+- When the user asks to redesign Hanzi Studio, keep the scope route-local to `/studio` unless they explicitly include the homepage. Do not redesign `/` as part of Studio-only work.
+- When adapting Grainrad-like Studio UI, make effect/controller panels use the reference's compact section/row/range/select/grid language, but implement route-local light and dark theme tokens and follow the user's current requested default theme instead of assuming the reference site's dark default.
+- Grainrad-matched Character Set must use the reference dropdown pattern, not a native select: uppercase trigger, dark floating option list, selected checkmark, and the option set `STANDARD / BLOCKS / BINARY / DETAILED / MINIMAL / ALPHABETIC / NUMERIC / MATH / SYMBOLS`.
+- When the user asks for Grainrad effect settings, match the reference site's per-effect settings panels and catalogue behavior. Do not only render the left effect names without controller-backed settings and visible renderer behavior.
+- In Grainrad parity work, do not confuse Processing with Animation. Grainrad `Processing` is a shared image/effect pipeline (`Invert`, `Brightness Map`, `Edge Enhance`, `Blur`, `Quantize Colors`, `Shape Matching`); motion/transform rows belong in the left `Animation` panel, not the right `Processing` section.
+- Grainrad setting parity is not complete until every visible setting and option changes active renderer behavior. UI metadata, dropdown lists, and persisted values are insufficient without a runtime compiler, shader uniforms, tests that catch unmapped controls, and browser pixel smoke for representative effects.
+- When planning Grainrad setting parity, list every effect in the grouped `Settings` / `Adjustments` / `Color` style before implementation, and write the expected visible/runtime behavior for every row and option. Do not replace this with a generic "all controls map to uniforms" statement.
+- ASCII `Character Set` parity requires rendering from the actual selected character strings, such as `@%#*+=-:. `, `█▓▒░`, `01`, and the detailed ASCII density ramp. Procedural placeholder glyph shapes are not enough because the user expects visible text-character changes.
+- Grainrad ASCII `Scale` is the ASCII cell/space size control from `1` to `20`, mapping from the smallest cell to roughly `64px`; it should not be multiplied again by a second shader scale. ASCII `Spacing` is glyph size inside the cell: `0` fills the cell, `1` shrinks the glyph to one quarter of the cell. Treat `Output Width` as output column count when present, or remove it if it cannot honestly affect ASCII resolution.
+- Grainrad ASCII `Output Width` should stay in the visible useful range `0..600`: `0` means automatic/manual Scale, and values above `600` should be clamped in UI metadata, store sanitization, runtime compile output, and shader fallback because they collapse below meaningful glyph/canvas resolution.
+- Grainrad ASCII `Color` must include `Mode`, `Foreground`, `Background`, and `Intensity`. Do not omit `Foreground`; it controls the glyph/ink color for mono-style ASCII output and should map into the active renderer, not only the UI.
+- Grainrad ASCII `Color / Mode` should default to `mono`, and the right Settings `Reset` must restore `mono`. Keep the catalogue default, store initial state, reset path, runtime default, and UI fallback aligned so stale or missing controls do not silently return to `original`.
 
 ## Character Surface v2.1
 
+- When the user says the current Character Surface shader framework failed, stop extending the fullscreen-plane/fake-3D path and re-plan around true 3D SVG geometry, mesh rotation, mesh-attached shader materials, time/mouse uniforms, particles, and feedback passes before touching renderer code again.
 - When the Studio direction is rasterized SVG mask plus shader deformation, do not force the prior Character Mesh/ExtrudeGeometry plan back into scope. Treat mesh/displacement docs as superseded unless the user explicitly reopens that architecture.
 - The active v2.1 preview object is Character Surface, not Character Mesh. The active control system is Morph Stack, not Mesh/Displacement panels.
 - "3D" in v2.1 means surface-depth illusion, z-axis deformation controls, lighting, normals, parallax, and heightfield-like effects on the Character Surface. It does not mean returning to extruded geometry as the primary preview.
@@ -48,6 +66,7 @@ Keep this file as evergreen guidance only. Historical phase notes, completed tas
 
 ## Shaders And Patterns
 
+- When the user points to Efecto and says to focus on 3D ASCII Effect, make ASCII the first-class visual target. Do not dilute the next implementation slice with generic metal/glass/flow/particle effects before the rotating 3D ASCII character is proven.
 - Shader styles must be visibly different for the default colors. Do not implement dark foreground effects as pure color multiplication, because black multiplied by lighting remains visually black.
 - Pattern is not background in Hanzi Studio. Keep pattern controls/assets when removing background tooling because pattern is part of the effect system.
 - Morph Stack randomization should include shader colors by default, with separate Surface Shader Layers for foreground character mask and background canvas. Do not reduce the new direction to shape-only randomization or one global color.
@@ -59,6 +78,8 @@ Keep this file as evergreen guidance only. Historical phase notes, completed tas
 - Treat shader libraries as implementation helpers, not product direction. For Hanzi art-effect phases, keep custom character-specific effects first-class and use LYGIA, glslify, and postprocessing only to extend the effect vocabulary or reduce low-level shader code.
 - When planning font/character visual effects, explicitly cover character shape effects, character shade effects, pattern/material effects, background effects, randomization behavior, and shared control semantics before implementation.
 - When the user expects shader, morph, and pattern effects to stack like design-tool layers, define the shared layer contract first: enabled, order where meaningful, intensity, blend mode where meaningful, lock, target, params, caps, and runtime compile phase. Do not jump directly into disconnected panels.
+- For Three.js `ShaderMaterial` uniforms, GLSL `vec2`/`vec3`/`vec4` array uniforms must receive Three vector objects or another shape with `toArray()`. Do not pass plain nested number arrays to `vec4[]`; it will fail at runtime with `firstElem.toArray is not a function`.
+- When adding GLSL helper functions for `ShaderMaterial`, place helpers in the shader string that calls them. A helper accidentally added to the vertex shader is not visible to the fragment shader and will only surface during browser WebGL compilation.
 
 ## Experimental Extensions
 
