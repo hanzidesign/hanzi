@@ -13,6 +13,7 @@ import {
 import {
   applyGrainradRuntimeUniforms,
   createAsciiShaderMaterial,
+  disposeAsciiShaderMaterial,
 } from '@/components/studio/character-ascii-material'
 import { compileGrainradEffectRuntime } from '@/components/studio/grainrad-effect-runtime'
 import { applyDeltaRotation } from '@/components/studio/shader-canvas-math'
@@ -168,7 +169,7 @@ function CharacterAsciiScene({
         materialRef.current = null
       }
 
-      material.dispose()
+      disposeAsciiShaderMaterial(material)
     }
   }, [material])
 

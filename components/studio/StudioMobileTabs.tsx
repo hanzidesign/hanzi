@@ -29,11 +29,7 @@ const mobileTabs: MobileTabDefinition[] = [
   { id: 'export', label: 'Export', Icon: IoDownloadOutline },
 ]
 
-export default function StudioMobileTabs({
-  marker = 'data-studio-mobile-tabs',
-}: {
-  marker?: string
-}) {
+export default function StudioMobileTabs() {
   const mobileTab = useStudioStore((store) => store.view.mobileTab)
   const setMobileTab = useStudioStore((store) => store.setMobileTab)
 
@@ -52,7 +48,7 @@ export default function StudioMobileTabs({
       </div>
       <nav
         className={classes.mobileTabs}
-        data-studio-mobile-tabs={marker === 'data-studio-mobile-tabs' ? true : undefined}
+        data-studio-mobile-tabs
       >
         {mobileTabs.map(({ id, label, Icon }) => (
           <button

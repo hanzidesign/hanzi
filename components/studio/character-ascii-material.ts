@@ -753,6 +753,15 @@ export function createAsciiShaderMaterial({
   })
 }
 
+export function disposeAsciiShaderMaterial(material: ShaderMaterial) {
+  const glyphAtlas = material.uniforms.u_asciiGlyphAtlas?.value as
+    | { dispose?: () => void }
+    | undefined
+
+  glyphAtlas?.dispose?.()
+  material.dispose()
+}
+
 function createAsciiShaderUniforms({
   ascii,
   grainradRuntime,

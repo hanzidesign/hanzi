@@ -57,5 +57,11 @@ export function compileLayerRenderPlan(layers: LayerRenderPlanInput[]) {
     }))
     .filter((layer) => layer.enabled && layer.intensity > 0)
     .sort((a, b) => PHASE_ORDER[a.phase] - PHASE_ORDER[b.phase] || a.sourceIndex - b.sourceIndex)
-    .map(({ sourceIndex: _sourceIndex, ...layer }) => layer satisfies LayerRenderPlanItem)
+    .map((layer) => ({
+      id: layer.id,
+      family: layer.family,
+      phase: layer.phase,
+      enabled: layer.enabled,
+      intensity: layer.intensity,
+    }) satisfies LayerRenderPlanItem)
 }

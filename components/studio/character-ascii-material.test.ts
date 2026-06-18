@@ -1,10 +1,12 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 
+import { createInitialStudioStoreState } from '@/app/studio/studio-store'
 import {
   ASCII_CHARACTER_SETS,
   ASCII_FRAGMENT_SHADER,
   ASCII_VERTEX_SHADER,
   createAsciiShaderMaterial,
+  disposeAsciiShaderMaterial,
   resolveAsciiCharacterSet,
 } from './character-ascii-material'
 import { compileGrainradEffectRuntime } from './grainrad-effect-runtime'
@@ -80,6 +82,26 @@ describe('Phase 5C ASCII shader material', () => {
     expect(material.uniforms).toHaveProperty('u_asciiGlyphAtlas')
     expect(material.uniforms.u_asciiGlyphCount.value).toBe(ASCII_CHARACTER_SETS.detailed.length)
     expect(material.uniforms.u_asciiGlyphColumns.value).toBeGreaterThan(0)
+  })
+
+  it('disposes the generated glyph atlas texture with the material', () => {
+    const initialState = createInitialStudioStoreState()
+    const material = createAsciiShaderMaterial({
+      ascii: initialState.ascii,
+      grainradRuntime: compileGrainradEffectRuntime({
+        selectedEffectId: 'ascii',
+        controls: {},
+      }),
+      foregroundColor: initialState.ascii.foregroundColor,
+      backgroundColor: initialState.ascii.backgroundColor,
+    })
+    const textureDispose = vi.spyOn(material.uniforms.u_asciiGlyphAtlas.value, 'dispose')
+    const materialDispose = vi.spyOn(material, 'dispose')
+
+    disposeAsciiShaderMaterial(material)
+
+    expect(textureDispose).toHaveBeenCalledTimes(1)
+    expect(materialDispose).toHaveBeenCalledTimes(1)
   })
 
   it('contains procedural glyph, cell, depth, normal, Grainrad effects, and post-process shader logic', () => {

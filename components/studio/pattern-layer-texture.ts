@@ -83,6 +83,27 @@ export function usePatternLayerTextures(
   )
 
   useEffect(() => {
+    const activeLayerIds = new Set(layers.map((layer) => layer.id))
+    const nextLoadedTextures = disposeStalePatternLayerTextures(
+      loadedTexturesRef.current,
+      activeLayerIds,
+    )
+
+    if (nextLoadedTextures !== loadedTexturesRef.current) {
+      loadedTexturesRef.current = nextLoadedTextures
+      setLoadedTexturesByLayerId(nextLoadedTextures)
+    }
+
+    setErrorByLayerId((current) => {
+      const next = Object.fromEntries(
+        Object.entries(current).filter(([layerId]) => activeLayerIds.has(layerId)),
+      )
+
+      return Object.keys(next).length === Object.keys(current).length ? current : next
+    })
+  }, [layers])
+
+  useEffect(() => {
     let cancelled = false
     const loader = new TextureLoader()
 
@@ -201,6 +222,28 @@ function getActiveTextureTargets(
   }
 
   return targets
+}
+
+export function disposeStalePatternLayerTextures(
+  loadedTexturesByLayerId: Record<string, LoadedPatternLayerTexture>,
+  activeLayerIds: ReadonlySet<string>,
+) {
+  let nextTextures = loadedTexturesByLayerId
+
+  for (const [layerId, loadedTexture] of Object.entries(loadedTexturesByLayerId)) {
+    if (activeLayerIds.has(layerId)) {
+      continue
+    }
+
+    if (nextTextures === loadedTexturesByLayerId) {
+      nextTextures = { ...loadedTexturesByLayerId }
+    }
+
+    loadedTexture.texture.dispose()
+    delete nextTextures[layerId]
+  }
+
+  return nextTextures
 }
 
 function preparePatternTexture(texture: Texture) {

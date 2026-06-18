@@ -1,9 +1,10 @@
 import { DataTexture } from 'three'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 
 import type { StudioPatternLayer } from '@/app/studio/studio-store'
 import { DEFAULT_PATTERN_ASSET_URL } from '@/utils/patternAssets'
 import {
+  disposeStalePatternLayerTextures,
   getPatternLayerTextureTargets,
   getPatternLayerTextureSource,
   groupPatternLayersByTarget,
@@ -106,6 +107,30 @@ describe('pattern layer texture helpers', () => {
         blendMode: 'overlay',
       },
     ])
+  })
+
+  it('disposes loaded textures for removed Pattern Layers', () => {
+    const activeTexture = new DataTexture()
+    const removedTexture = new DataTexture()
+    const activeDispose = vi.spyOn(activeTexture, 'dispose')
+    const removedDispose = vi.spyOn(removedTexture, 'dispose')
+    const loadedTextures = {
+      'pattern-layer-1': { source: '/images/patterns/004.jpg', texture: activeTexture },
+      'pattern-layer-removed': { source: '/images/patterns/005.jpg', texture: removedTexture },
+    }
+
+    const nextTextures = disposeStalePatternLayerTextures(
+      loadedTextures,
+      new Set(['pattern-layer-1']),
+    )
+
+    expect(nextTextures).toEqual({
+      'pattern-layer-1': loadedTextures['pattern-layer-1'],
+    })
+    expect(nextTextures).not.toBe(loadedTextures)
+    expect(activeDispose).not.toHaveBeenCalled()
+    expect(removedDispose).toHaveBeenCalledTimes(1)
+    expect(disposeStalePatternLayerTextures(nextTextures, new Set(['pattern-layer-1']))).toBe(nextTextures)
   })
 
   it('keeps the last valid texture source after a load failure when possible', () => {

@@ -4,7 +4,6 @@ import {
   GRAINRAD_COMMON_PROCESSING_GROUPS,
   GRAINRAD_EFFECTS,
   type GrainradControlValue,
-  type GrainradEffectControl,
   type GrainradEffectId,
   type GrainradSelectOption,
 } from './grainrad-effects'

@@ -291,6 +291,23 @@ describe('studio store', () => {
     expect(persisted.view.backgroundColor).toBe('#101010')
   })
 
+  it('clears session-only uploaded Pattern Layer data when removing the layer', () => {
+    const { storage } = createMemoryStorage()
+    const store = createStudioStore(storage)
+    const layerId = store.getState().patternLayers[0]?.id
+
+    expect(layerId).toBeDefined()
+
+    store.getState().setUploadedPatternLayerData(layerId!, 'data:image/png;base64,large-upload')
+
+    expect(store.getState().runtime.uploadedPatternLayerDataById).toHaveProperty(layerId!, 'data:image/png;base64,large-upload')
+
+    store.getState().removePatternLayer(layerId!)
+
+    expect(store.getState().patternLayers.some((layer) => layer.id === layerId)).toBe(false)
+    expect(store.getState().runtime.uploadedPatternLayerDataById).not.toHaveProperty(layerId!)
+  })
+
   it('ignores persisted displacement controls', () => {
     const initial = createInitialStudioStoreState()
     const staleState = {

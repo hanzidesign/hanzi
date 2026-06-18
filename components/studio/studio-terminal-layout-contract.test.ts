@@ -9,13 +9,14 @@ describe('Phase 5D Grainrad terminal Studio layout contract', () => {
   it('uses a route-local terminal shell instead of the old AppShell workbench', async () => {
     const shellSource = await readFile(join(studioDir, 'StudioShell.tsx'), 'utf8')
     const shellStyles = await readFile(join(studioDir, 'StudioShell.module.css'), 'utf8')
+    const mobileTabs = await readFile(join(studioDir, 'StudioMobileTabs.tsx'), 'utf8')
 
     expect(shellSource).toContain('data-studio-terminal-shell')
     expect(shellSource).toContain('data-studio-theme')
     expect(shellSource).toContain('data-studio-left-panel')
     expect(shellSource).toContain('data-studio-preview')
     expect(shellSource).toContain('data-studio-right-panel')
-    expect(shellSource).toContain('data-studio-mobile-tabs')
+    expect(mobileTabs).toContain('data-studio-mobile-tabs')
     expect(shellSource).toContain('StudioThemeToggle')
     expect(shellSource).not.toContain('AppShell')
     expect(shellSource).not.toContain('Burger')
@@ -47,6 +48,7 @@ describe('Phase 5D Grainrad terminal Studio layout contract', () => {
     expect(mobileTabs).toContain('Animation')
     expect(mobileTabs).not.toContain('Presets')
     expect(mobileTabs).toContain('Export')
+    expect(mobileTabs).toContain('data-studio-mobile-tabs')
     expect(settingsSheet).toContain('data-studio-settings-sheet')
     expect(settingsSheet).toContain('Settings')
   })

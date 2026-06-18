@@ -6,6 +6,29 @@ Current status: Phase 5D Grainrad `/studio` refactor implementation is complete 
 
 Keep this file as current-state tracking only. Historical phase logs belong in the superseded task docs or git history, not here.
 
+## Simplify Commit 462878dff484a3122 - 2026-06-18
+
+Scope:
+
+- Review commit `462878dff484a3122` for local simplifications without changing the `/studio` public behavior.
+- Keep the active Grainrad `/studio` UI and current typography intact.
+- Prefer small, testable cleanup over deleting broad legacy code in this pass.
+
+Implementation checklist:
+
+- [x] Remove the single-use mobile tabs marker prop and keep the mobile layout contract explicit.
+- [x] Dispose ASCII glyph atlas textures together with their `ShaderMaterial`.
+- [x] Clear removed Pattern Layer runtime data and stale loaded textures.
+- [x] Run focused tests, full tests/type/build checks, and record the result.
+
+Review result:
+
+- `StudioMobileTabs` now owns its `data-studio-mobile-tabs` marker directly, and `StudioShell` no longer carries a one-off marker prop.
+- ASCII shader materials now use `disposeAsciiShaderMaterial()` so the generated glyph atlas texture is released with the material.
+- Removing a Pattern Layer now clears its session-only uploaded data, and stale loaded Pattern Layer textures are disposed when the layer list changes.
+- Removed dead persisted-state sanitizer wrappers and unused imports exposed by lint, while keeping the active layer sanitizers used by current actions.
+- Verification passed: focused Vitest (`5` files, `32` tests), full Vitest (`43` files, `194` tests), `pnpm exec tsc --noEmit --pretty false`, `pnpm run lint`, `git diff --check`, and `pnpm build`.
+
 ## Phase 5L ASCII Color Mode Default / Reset Correction - 2026-06-18
 
 User correction:

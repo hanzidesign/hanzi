@@ -18,7 +18,6 @@ export default function StudioShell() {
   const theme = useStudioStore((store) => store.view.theme)
   const playing = useStudioStore((store) => store.animation.playing)
   const setAnimationControl = useStudioStore((store) => store.setAnimationControl)
-  const mobileTabsMarker = 'data-studio-mobile-tabs'
 
   const handleFullscreen = () => {
     const preview = document.querySelector<HTMLElement>('[data-studio-preview]')
@@ -75,7 +74,7 @@ export default function StudioShell() {
       <aside className={classes.rightPanel} data-studio-right-panel>
         <StudioRightPanel />
       </aside>
-      <StudioMobileTabs marker={mobileTabsMarker} />
+      <StudioMobileTabs />
       <StudioSettingsSheet />
     </div>
   )

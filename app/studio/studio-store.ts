@@ -12,7 +12,6 @@ import { createDefaultParams, sanitizeParamsForPreset } from '@/shaders/uniforms
 import { DEFAULT_PATTERN_ASSET_URL, sanitizePatternUrl, toPatternUrl } from '@/utils/patternAssets'
 import {
   DEFAULT_GRADIENT_SETTINGS,
-  DEFAULT_GRADIENT_STOPS,
   readGradientAngle,
   readGradientType,
   normalizeGradientStops,
@@ -1060,8 +1059,18 @@ export function createStudioStore(storage?: StateStorage) {
           })
         },
         removePatternLayer: (layerId) => {
+          const state = get()
+          const uploadedPatternLayerDataById = {
+            ...state.runtime.uploadedPatternLayerDataById,
+          }
+          delete uploadedPatternLayerDataById[layerId]
+
           set({
-            patternLayers: get().patternLayers.filter((layer) => layer.id !== layerId),
+            patternLayers: state.patternLayers.filter((layer) => layer.id !== layerId),
+            runtime: {
+              ...state.runtime,
+              uploadedPatternLayerDataById,
+            },
           })
         },
         reorderPatternLayer: (fromIndex, toIndex) => {
@@ -1659,80 +1668,6 @@ function sanitizeCharacter(value: unknown, fallback: StudioCharacterState): Stud
   }
 }
 
-function sanitizeMorphStackState(
-  value: unknown,
-  fallback: StudioStoreState['morphStack']
-): StudioStoreState['morphStack'] {
-  if (!isRecord(value) || !Array.isArray(value.layers)) {
-    return fallback
-  }
-
-  const layers = value.layers
-    .map((layer, index) => sanitizeMorphLayer(layer, index))
-    .filter((layer): layer is StudioMorphLayer => Boolean(layer))
-
-  return {
-    layers: layers.length > 0 ? layers : fallback.layers,
-  }
-}
-
-function sanitizeMorphLayer(value: unknown, index: number): StudioMorphLayer | null {
-  if (!isRecord(value) || typeof value.definitionId !== 'string') {
-    return null
-  }
-
-  const definition = getMorphLayerDefinitionById(value.definitionId)
-
-  if (!definition) {
-    return null
-  }
-
-  return {
-    id: typeof value.id === 'string' ? value.id : createMorphLayerId(index),
-    definitionId: definition.id,
-    params: sanitizeMorphParams(definition, readRecord(value.params)),
-    enabled: typeof value.enabled === 'boolean' ? value.enabled : true,
-    intensity: clampLayerIntensity(value.intensity),
-    collapsed: typeof value.collapsed === 'boolean' ? value.collapsed : false,
-    locked: typeof value.locked === 'boolean' ? value.locked : false,
-  }
-}
-
-function sanitizeSurfaceShadersState(
-  value: unknown,
-  fallback: StudioStoreState['surfaceShaders']
-): StudioStoreState['surfaceShaders'] {
-  if (!isRecord(value)) {
-    return fallback
-  }
-
-  return {
-    foreground: sanitizeSurfaceShaderLayer(value.foreground, fallback.foreground, 'foreground'),
-    background: sanitizeSurfaceShaderLayer(value.background, fallback.background, 'background'),
-  }
-}
-
-function sanitizeSurfaceShaderLayer(
-  value: unknown,
-  fallback: StudioSurfaceShaderLayer,
-  layerId?: StudioSurfaceShaderLayerId
-): StudioSurfaceShaderLayer {
-  if (!isRecord(value)) {
-    return fallback
-  }
-
-  return {
-    color: typeof value.color === 'string' ? value.color : fallback.color,
-    stylePresetId: readSurfaceShaderStylePresetId(
-      typeof value.stylePresetId === 'string' ? value.stylePresetId : fallback.stylePresetId,
-      fallback.stylePresetId,
-      layerId
-    ),
-    params: readSurfaceShaderParams(value.params, fallback.params, layerId),
-    locked: typeof value.locked === 'boolean' ? value.locked : fallback.locked,
-  }
-}
-
 function sanitizeSurfaceShaderLayerPartial(
   value: Partial<StudioSurfaceShaderLayer>,
   layerId?: StudioSurfaceShaderLayerId
@@ -1798,29 +1733,6 @@ function readSurfaceOpacity(value: unknown, fallback = 1) {
   }
 
   return Math.max(0, Math.min(1, value))
-}
-
-function sanitizeShaderLayersState(
-  value: unknown,
-  fallback: StudioStoreState['shaderLayers']
-): StudioStoreState['shaderLayers'] {
-  if (!isRecord(value) || !Array.isArray(value.layers)) {
-    return fallback
-  }
-
-  const layers = value.layers
-    .map((layer, index) => sanitizeShaderLayer(layer, index))
-    .filter((layer): layer is StudioShaderLayer => Boolean(layer))
-  const selectedShaderLayerId =
-    typeof value.selectedShaderLayerId === 'string' &&
-    layers.some((layer) => layer.id === value.selectedShaderLayerId)
-      ? value.selectedShaderLayerId
-      : layers[0]?.id ?? null
-
-  return {
-    layers: layers.length > 0 ? layers : fallback.layers,
-    selectedShaderLayerId,
-  }
 }
 
 function sanitizeShaderLayer(value: unknown, index: number): StudioShaderLayer {
@@ -2035,19 +1947,6 @@ function sanitizeAsciiPalette(
     : fallback
 }
 
-function sanitizePostFxState(
-  value: unknown,
-  fallback: StudioStoreState['postFx']
-): StudioStoreState['postFx'] {
-  if (!isRecord(value) || !Array.isArray(value.layers)) {
-    return fallback
-  }
-
-  return {
-    layers: value.layers.map((layer, index) => sanitizePostFxLayer(layer, index)),
-  }
-}
-
 function sanitizePostFxLayer(value: unknown, index: number): StudioPostFxLayer {
   const record = readRecord(value)
 
@@ -2077,14 +1976,6 @@ function sanitizePostFxEffectId(value: unknown): StudioPostFxLayer['effectId'] {
   }
 
   return 'noise'
-}
-
-function sanitizePatternLayersState(value: unknown, fallback: StudioPatternLayer[]): StudioPatternLayer[] {
-  if (!Array.isArray(value)) {
-    return fallback
-  }
-
-  return value.slice(0, MAX_PATTERN_LAYERS).map((layer, index) => sanitizePatternLayer(layer, index))
 }
 
 function sanitizePatternLayer(value: unknown, index: number): StudioPatternLayer {
