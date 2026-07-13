@@ -56,6 +56,10 @@ describe('Grainrad effect renderer routing contract', () => {
       join(studioDir, 'CharacterNoiseFieldCanvas.tsx'),
       'utf8',
     )
+    const voronoiCanvasSource = await readFile(
+      join(studioDir, 'CharacterVoronoiCanvas.tsx'),
+      'utf8',
+    )
 
     expect(studioCanvasSource).toContain("selectedEffectId === 'ascii'")
     expect(studioCanvasSource).toContain('<CharacterAsciiCanvas')
@@ -83,6 +87,8 @@ describe('Grainrad effect renderer routing contract', () => {
     expect(studioCanvasSource).toContain('<CharacterWaveLinesCanvas')
     expect(studioCanvasSource).toContain("selectedEffectId === 'noise-field'")
     expect(studioCanvasSource).toContain('<CharacterNoiseFieldCanvas')
+    expect(studioCanvasSource).toContain("selectedEffectId === 'voronoi'")
+    expect(studioCanvasSource).toContain('<CharacterVoronoiCanvas')
     expect(studioCanvasSource).toContain('data-testid="effect-renderer-not-implemented"')
     expect(studioCanvasSource).toContain('effectControls.background')
 
@@ -505,5 +511,49 @@ describe('Grainrad effect renderer routing contract', () => {
     expect(noiseFieldCanvasSource).toContain('computeEffectiveAnimationTime')
     expect(noiseFieldCanvasSource).toContain('animation.playing')
     expect(noiseFieldCanvasSource).toContain('animation.speed')
+
+    for (const forbiddenImport of [
+      'character-ascii-material',
+      'dithering-material',
+      'halftone-material',
+      'matrix-rain-material',
+      'dots-material',
+      'contour-material',
+      'pixel-sort-material',
+      'blockify-material',
+      'threshold-material',
+      'edge-detection-material',
+      'crosshatch-material',
+      'wave-lines-material',
+      'noise-field-material',
+      'grainrad-effect-runtime',
+    ]) {
+      expect(voronoiCanvasSource).not.toContain(forbiddenImport)
+    }
+    expect(voronoiCanvasSource).toContain('runtime.svgData')
+    expect(voronoiCanvasSource).toContain('<Canvas')
+    expect(voronoiCanvasSource).toContain('SVGLoader')
+    expect(voronoiCanvasSource).toContain('createVoronoiShaderMaterial')
+    expect(voronoiCanvasSource).toContain('applyVoronoiUniforms')
+    expect(voronoiCanvasSource).toContain('disposeVoronoiShaderMaterial')
+    expect(voronoiCanvasSource).toContain('data-testid="character-voronoi-canvas"')
+    for (const meshParam of [
+      'extrusionDepth',
+      'thickness',
+      'bevel',
+      'twist',
+      'taper',
+      'bend',
+      'position',
+      'rotation',
+      'scale',
+      'autoRotate',
+      'autoRotateSpeed',
+    ]) {
+      expect(voronoiCanvasSource).toContain(`meshSettings.${meshParam}`)
+    }
+    expect(voronoiCanvasSource).toContain('computeEffectiveAnimationTime')
+    expect(voronoiCanvasSource).toContain('animation.playing')
+    expect(voronoiCanvasSource).toContain('animation.speed')
   })
 })

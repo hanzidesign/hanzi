@@ -422,6 +422,12 @@ const NOISE_FIELD_TYPE_IDS: Record<string, number> = {
   worley: 2,
 }
 
+const VORONOI_ENUM_IDS: Record<string, number> = {
+  '0': 0,
+  '1': 1,
+  '2': 2,
+}
+
 export function compileGrainradEffectRuntime({
   selectedEffectId,
   controls,
@@ -616,13 +622,13 @@ export function compileGrainradEffectRuntime({
       effectValues[8] = read.boolean('distort-only')
       break
     case 'voronoi':
-      effectValues[0] = read.number('cell-size', 30) / 120
+      effectValues[0] = read.number('cell-size', 30)
       effectValues[1] = read.number('edge-width', 0.3)
-      effectValues[2] = read.select('edge-color')
-      effectValues[3] = read.select('color-mode')
+      effectValues[2] = VORONOI_ENUM_IDS[read.text('edge-color', '0')] ?? 0
+      effectValues[3] = VORONOI_ENUM_IDS[read.text('color-mode', '0')] ?? 0
       effectValues[4] = read.number('randomize', 0.8)
-      effectValues[5] = read.number('brightness', 0)
-      effectValues[6] = read.number('contrast', 0)
+      effectValues[5] = read.number('brightness', 0) / 100
+      effectValues[6] = read.number('contrast', 0) / 100
       break
     case 'vhs':
       effectValues[0] = read.number('distortion', 0.5)

@@ -98,6 +98,7 @@ export type GrainradEffectRenderer =
   | 'crosshatch'
   | 'wave-lines'
   | 'noise-field'
+  | 'voronoi'
   | 'unimplemented'
 
 export const GRAINRAD_CHARACTER_SETS = [
@@ -830,27 +831,33 @@ export const GRAINRAD_EFFECTS: GrainradEffectDefinition[] = [
   {
     id: 'voronoi',
     label: 'Voronoi',
-    renderer: 'unimplemented',
+    renderer: 'voronoi',
     settingGroups: [
       {
         title: 'Voronoi',
         controls: [
-          rangeControl('cell-size', 'Cell Size', 30, 4, 120, 1),
-          rangeControl('edge-width', 'Edge Width', 0.3, 0, 3, 0.01),
-          selectControl('edge-color', 'Edge Color', 'black', [
-            { value: 'black', label: 'Black' },
-            { value: 'white', label: 'White' },
-            { value: 'darkened', label: 'Darkened' },
+          rangeControl('cell-size', 'Cell Size', 30, 10, 100, 5),
+          rangeControl('edge-width', 'Edge Width', 0.3, 0, 1, 0.05),
+          selectControl('edge-color', 'Edge Color', '0', [
+            { value: '0', label: 'Black' },
+            { value: '1', label: 'White' },
+            { value: '2', label: 'Darkened' },
           ]),
-          selectControl('color-mode', 'Color Mode', 'cell-average', [
-            { value: 'cell-average', label: 'Cell Average' },
-            { value: 'center-sample', label: 'Center Sample' },
-            { value: 'gradient', label: 'Gradient' },
+          selectControl('color-mode', 'Color Mode', '0', [
+            { value: '0', label: 'Cell Average' },
+            { value: '1', label: 'Center Sample' },
+            { value: '2', label: 'Gradient' },
           ]),
-          rangeControl('randomize', 'Randomize', 0.8, 0, 1, 0.01),
+          rangeControl('randomize', 'Randomize', 0.8, 0, 1, 0.05),
         ],
       },
-      adjustmentGroup(['Brightness', 'Contrast']),
+      {
+        title: 'Adjustments',
+        controls: [
+          rangeControl('brightness', 'Brightness', 0, -100, 100, 1),
+          rangeControl('contrast', 'Contrast', 0, -100, 100, 1),
+        ],
+      },
     ],
   },
   {

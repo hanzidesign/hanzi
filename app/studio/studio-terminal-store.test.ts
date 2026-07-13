@@ -828,6 +828,49 @@ describe('Phase 5D Grainrad terminal Studio store', () => {
     expect(store.getState().mesh.twist).toBe(0.2)
   })
 
+  it('sanitizes persisted Voronoi controls and resets only Voronoi', () => {
+    const base = createInitialStudioStoreState()
+    const persistedState = {
+      ...base,
+      mesh: { ...base.mesh, taper: 0.2 },
+      grainradEffect: {
+        ...base.grainradEffect,
+        selectedEffectId: 'voronoi' as const,
+        controls: {
+          ...base.grainradEffect.controls,
+          threshold: { ...base.grainradEffect.controls.threshold, levels: 6 },
+          voronoi: {
+            ...base.grainradEffect.controls.voronoi,
+            'cell-size': 999,
+            'edge-width': -1,
+            'edge-color': 'black',
+            'color-mode': 'unknown',
+            randomize: 9,
+            brightness: 999,
+            contrast: -999,
+          },
+        },
+      },
+    }
+    const { storage } = createMemoryStorage(JSON.stringify({ state: persistedState, version: 2 }))
+    const store = createStudioStore(storage)
+
+    expect(store.getState().grainradEffect.controls.voronoi).toMatchObject({
+      'cell-size': 100, 'edge-width': 0, 'edge-color': '0', 'color-mode': '0',
+      randomize: 1, brightness: 100, contrast: -100,
+    })
+
+    store.getState().setGrainradEffectControl('voronoi', 'color-mode', '2')
+    store.getState().resetSelectedEffectControls()
+
+    expect(store.getState().grainradEffect.controls.voronoi).toMatchObject({
+      'cell-size': 30, 'edge-width': 0.3, 'edge-color': '0', 'color-mode': '0',
+      randomize: 0.8, brightness: 0, contrast: 0,
+    })
+    expect(store.getState().grainradEffect.controls.threshold.levels).toBe(6)
+    expect(store.getState().mesh.taper).toBe(0.2)
+  })
+
   it('migrates the old persisted ASCII Color Mode default from original to mono', () => {
     const base = createInitialStudioStoreState()
     const staleState = {

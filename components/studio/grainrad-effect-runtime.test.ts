@@ -554,6 +554,27 @@ describe('Phase 5F Grainrad runtime effect compiler', () => {
       85, 2.4, 1.7, 7, 0, 0.4, -0.25, 2, 1,
     ])
   })
+
+  it('packs Voronoi controls in exact production units and numeric ids', () => {
+    const defaults = createDefaultGrainradEffectControls().voronoi
+    const runtime = compileGrainradEffectRuntime({
+      selectedEffectId: 'voronoi',
+      controls: {
+        ...defaults,
+        'cell-size': 85,
+        'edge-width': 0.65,
+        'edge-color': '2',
+        'color-mode': '1',
+        randomize: 0.35,
+        brightness: 40,
+        contrast: -25,
+      },
+    })
+
+    expect(runtime.effectValues.slice(0, 7)).toEqual([
+      85, 0.65, 2, 1, 0.35, 0.4, -0.25,
+    ])
+  })
 })
 
 function signatureFor(

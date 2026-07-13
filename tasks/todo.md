@@ -238,12 +238,56 @@ Wave Lines review — 2026-07-14:
 
 - [x] Audit the Noise Field placeholder and verify current Grainrad UI, defaults, uniform ABI, shader equations, Processing/Post behavior, WebGL fallback, and quirks.
 - [x] Write the detailed Noise Field specification before application-code implementation.
-- [ ] RED→GREEN: correct Noise Field schema, renderer discriminator, exact controls, runtime units, reset, persistence, and sanitization.
-- [ ] Add a deterministic Noise Field CPU oracle proving all functional settings and contextual no-ops.
-- [ ] Add an independent Noise Field material and `CharacterNoiseFieldCanvas` using the shared 3D Character Model source.
+- [x] RED→GREEN: correct Noise Field schema, renderer discriminator, exact controls, runtime units, reset, persistence, and sanitization.
+- [x] Add a deterministic Noise Field CPU oracle proving all functional settings and contextual no-ops.
+- [x] Add an independent Noise Field material and `CharacterNoiseFieldCanvas` using the shared 3D Character Model source.
+- [x] Prove explicit routing with no prior-effect fallback and full Model/animation/resource lifecycle.
+- [x] Browser-test Noise Field controls, representative output, Model wiring, and console/WebGL errors.
+- [x] Run full verification and record the remaining 2-effect queue.
+
+Noise Field review — 2026-07-14:
+
+- Noise Field now has an explicit independent renderer route, deterministic CPU oracle, exact production value-noise/Simplex-approximation/Worley branches, unnormalized FBM, and its own 3D Character canvas/material lifecycle. It does not import or fall through any prior renderer.
+- Settings match current production: exact groups/order, Noise Type IDs, defaults, ranges, steps, raw Scale/Intensity/Speed/Octaves units, `/100` adjustments, selected-only reset, persistence, sanitization, and shared Model/global animation clock wiring.
+- Production behavior is locked: Distort Only skips only the overlay while retaining displacement; Animate OFF freezes local time but Speed remains visible and becomes a contextual no-op; the second displacement axis is the same FBM offset by `[100,100]`; B/C run after displaced clamp sampling and before positive-only overlay; UV edges clamp; Processing is ignored and Post runs last.
+- Browser verification rendered the selected extruded Character with the dedicated Noise Field canvas, exposed the exact nine rows/defaults, switched Perlin to Worley, disabled Animate, enabled Distort Only, and found no console/page/shader errors. Numeric controls and every formula branch are covered by schema/core/material/store tests.
+- Verification passed: focused Noise Field integration `6` files / `68` tests, full Vitest `83` files / `524` tests, TypeScript, ESLint, production build, and `git diff --check`. The only environment warning is Node 24.18.0 while the repository requests Node 22.x.
+- Remaining independent-effect queue: Voronoi and VHS.
+
+Detailed specification: `tasks/v2.1/phase-5x-noise-field.md`.
+
+### Voronoi vertical slice
+
+- [x] Audit the Voronoi placeholder and verify current Grainrad UI, defaults, uniform ABI, shader equations, Processing/Post behavior, WebGL fallback, and quirks.
+- [x] Write the detailed Voronoi specification before application-code implementation.
+- [x] RED→GREEN: correct Voronoi schema, renderer discriminator, exact controls, runtime units, reset, persistence, and sanitization.
+- [x] Add a deterministic Voronoi CPU oracle proving all functional settings and contextual no-ops.
+- [x] Add an independent Voronoi material and `CharacterVoronoiCanvas` using the shared 3D Character Model source.
+- [x] Prove explicit routing with no prior-effect fallback and full Model/animation/resource lifecycle.
+- [x] Browser-test Voronoi controls, representative output, Model wiring, and console/WebGL errors.
+- [x] Run full verification and record the remaining VHS queue.
+
+Voronoi review — 2026-07-14:
+
+- Voronoi now has an explicit independent renderer route, deterministic CPU oracle, exact correlated hash, 3×3 closest/second-closest ownership search, and its own 3D Character canvas/material lifecycle. It does not import or fall through any prior renderer.
+- Settings match current production: exact groups/order, defaults, ranges, `.05` steps, explicit `"0".."2"` control-boundary enum IDs, raw Cell Size/Edge Width/Randomize packing, `/100` adjustments, selected-only reset, persistence, sanitization, and shared Model wiring.
+- Production quirks are locked: Cell Average is a fixed 25-sample square stencil rather than a polygon average; Center and Gradient sample nominal unrandomized lattice centers; Gradient caps current-source contribution at 50%; Darkened is `cellColor*.3`; Edge Width is cell-space; B/C runs after edge composition; Processing is ignored and Post runs last.
+- Browser verification rendered the selected extruded Character with the dedicated Voronoi canvas, exposed the exact seven rows/defaults, switched Edge Color to Darkened and Color Mode to Gradient, and found no console/page/shader errors. Range semantics and all geometry/color branches are covered by schema/core/material/store tests.
+- Verification passed: focused Voronoi integration `6` files / `66` tests, full Vitest `86` files / `549` tests, TypeScript, ESLint, production build, and `git diff --check`. The only environment warning is Node 24.18.0 while the repository requests Node 22.x.
+- Remaining independent-effect queue: VHS.
+
+Detailed specification: `tasks/v2.1/phase-5y-voronoi.md`.
+
+### VHS vertical slice
+
+- [ ] Audit the VHS placeholder and verify current Grainrad UI, defaults, uniform ABI, shader equations, time behavior, Processing/Post, WebGL fallback, and quirks.
+- [ ] Write the detailed VHS specification before application-code implementation.
+- [ ] RED→GREEN: correct VHS schema, renderer discriminator, exact controls, runtime units, reset, persistence, and sanitization.
+- [ ] Add a deterministic VHS CPU oracle proving all functional settings, temporal branches, and unconditional VHS grading.
+- [ ] Add an independent VHS material and `CharacterVhsCanvas` using the shared 3D Character Model source.
 - [ ] Prove explicit routing with no prior-effect fallback and full Model/animation/resource lifecycle.
-- [ ] Browser-test Noise Field controls, representative output, Model wiring, and console/WebGL errors.
-- [ ] Run full verification and record the remaining 2-effect queue.
+- [ ] Browser-test VHS controls, representative output, Model wiring, and console/WebGL errors.
+- [ ] Run full verification and the final all-effects completion audit.
 
 User correction:
 
