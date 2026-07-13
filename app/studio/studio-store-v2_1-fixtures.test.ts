@@ -39,7 +39,7 @@ describe('studio store Phase 5D Grainrad ASCII fixtures', () => {
   it('starts from the Phase 5D storage key, light theme, and ASCII terminal defaults', () => {
     const initial = createInitialStudioStoreState()
 
-    expect(STUDIO_STORE_STORAGE_KEY).toBe('hanzi-studio-grainrad-ascii-v1')
+    expect(STUDIO_STORE_STORAGE_KEY).toBe('hanzi-studio-grainrad-effects-v1')
     expect(initial.view.activePanel).toBe('character')
     expect(initial.view.theme).toBe('light')
     expect(initial.view.mobileTab).toBe('input')

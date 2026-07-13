@@ -52,6 +52,82 @@ describe('character mesh geometry helpers', () => {
     expect(result.boundsMax.z).toBeCloseTo(MIN_CHARACTER_EXTRUSION_DEPTH / 2)
   })
 
+  it('adds real SVG extrusion bevel geometry when Model Bevel is raised', () => {
+    const flat = createCharacterMeshGeometries({
+      shapes: [rectangleShape(500, 500)],
+      extrusionDepth: 0.2,
+      bevel: 0,
+    })
+    const beveled = createCharacterMeshGeometries({
+      shapes: [rectangleShape(500, 500)],
+      extrusionDepth: 0.2,
+      bevel: 0.08,
+    })
+
+    expect(beveled.geometries[0].attributes.position.count).toBeGreaterThan(
+      flat.geometries[0].attributes.position.count,
+    )
+  })
+
+  it('twists the extruded SVG through its depth without changing the source Character', () => {
+    const straight = createCharacterMeshGeometries({
+      shapes: [rectangleShape(500, 250)],
+      extrusionDepth: 0.4,
+      twist: 0,
+    })
+    const twisted = createCharacterMeshGeometries({
+      shapes: [rectangleShape(500, 250)],
+      extrusionDepth: 0.4,
+      twist: 90,
+    })
+
+    expect(Array.from(twisted.geometries[0].attributes.position.array)).not.toEqual(
+      Array.from(straight.geometries[0].attributes.position.array),
+    )
+    expect(twisted.boundsMin.z).toBeCloseTo(straight.boundsMin.z)
+    expect(twisted.boundsMax.z).toBeCloseTo(straight.boundsMax.z)
+  })
+
+  it('tapers the SVG model so its front and back faces have different spans', () => {
+    const tapered = createCharacterMeshGeometries({
+      shapes: [rectangleShape(500, 500)],
+      extrusionDepth: 0.4,
+      taper: 0.6,
+    })
+    const position = tapered.geometries[0].attributes.position
+    const frontX: number[] = []
+    const backX: number[] = []
+
+    for (let index = 0; index < position.count; index += 1) {
+      const target = position.getZ(index) > 0 ? frontX : backX
+      target.push(position.getX(index))
+    }
+
+    expect(Math.max(...frontX) - Math.min(...frontX)).toBeGreaterThan(
+      Math.max(...backX) - Math.min(...backX),
+    )
+  })
+
+  it('bends the SVG face into depth instead of applying a flat transform', () => {
+    const flat = createCharacterMeshGeometries({
+      shapes: [rectangleShape(500, 500)],
+      extrusionDepth: 0.2,
+      bend: 0,
+    })
+    const bent = createCharacterMeshGeometries({
+      shapes: [rectangleShape(500, 500)],
+      extrusionDepth: 0.2,
+      bend: 70,
+    })
+
+    expect(Array.from(bent.geometries[0].attributes.position.array)).not.toEqual(
+      Array.from(flat.geometries[0].attributes.position.array),
+    )
+    expect(bent.boundsMax.z - bent.boundsMin.z).toBeGreaterThan(
+      flat.boundsMax.z - flat.boundsMin.z,
+    )
+  })
+
   it('applies character mesh thickness as geometry, bounds, and UV-affecting planar weight', () => {
     const normal = createCharacterMeshGeometries({
       shapes: [rectangleShape(500, 500)],

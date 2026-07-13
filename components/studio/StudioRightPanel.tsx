@@ -27,6 +27,7 @@ import {
   GRAINRAD_COMMON_POST_PROCESSING_GROUPS,
   GRAINRAD_COMMON_PROCESSING_GROUPS,
   getGrainradEffectById,
+  isGrainradControlVisible,
   type GrainradControlValue,
   type GrainradEffectControl,
   type GrainradEffectId,
@@ -287,12 +288,14 @@ function renderEffectSettings({
     <>
       {groups.map((group, groupIndex) => (
         <TerminalRowGroup key={group.title ?? `group-${groupIndex}`} title={group.title}>
-          {group.controls.map((control) => renderEffectControl({
-            selectedEffectId,
-            control,
-            controls,
-            onChange,
-          }))}
+          {group.controls
+            .filter((control) => isGrainradControlVisible(control, controls))
+            .map((control) => renderEffectControl({
+              selectedEffectId,
+              control,
+              controls,
+              onChange,
+            }))}
         </TerminalRowGroup>
       ))}
     </>

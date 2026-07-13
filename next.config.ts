@@ -7,6 +7,7 @@ const glslSourceLoader = path.resolve('./loaders/glsl-source-loader.cjs')
 const nextConfig: NextConfig = {
   compiler: isProd ? { removeConsole: true } : undefined,
   turbopack: {
+    root: process.cwd(),
     rules: {
       '*.glsl': {
         loaders: [glslSourceLoader],

@@ -25,8 +25,8 @@ function TerminalRowShell({
   return (
     <div className={classes.controlRow}>
       <span className={classes.controlLabel}>{label}</span>
-      <span className={classes.controlValue}>{value}</span>
       {children}
+      <span className={classes.controlValue}>{value}</span>
       <button
         type="button"
         className={classes.resetButton}
@@ -48,7 +48,12 @@ export function TerminalRowGroup({
 }) {
   return (
     <div className={classes.rowGroup}>
-      {title ? <h3 className={classes.groupTitle}>{title}</h3> : null}
+      {title ? (
+        <h3 className={classes.groupTitle}>
+          <span className={classes.groupChevron} aria-hidden>⌄</span>
+          {title}
+        </h3>
+      ) : null}
       {children}
     </div>
   )
@@ -80,6 +85,7 @@ export function TerminalRangeRow({
       onReset={onReset}
     >
       <input
+        aria-label={label}
         className={classes.rangeInput}
         type="range"
         min={min}
@@ -106,6 +112,7 @@ export function TerminalSelectRow<T extends string>({
   return (
     <TerminalRowShell label={label} value="" >
       <select
+        aria-label={label}
         className={classes.selectInput}
         value={value}
         onChange={(event) => onChange(event.currentTarget.value as T)}
@@ -166,6 +173,7 @@ export function TerminalDropdownRow<T extends string>({
         <button
           type="button"
           className={classes.dropdownTrigger}
+          aria-label={label}
           aria-expanded={open}
           aria-haspopup="listbox"
           onClick={() => setOpen((nextOpen) => !nextOpen)}
@@ -246,6 +254,7 @@ export function TerminalTextRow({
   return (
     <TerminalRowShell label={label} value="" onReset={onReset}>
       <input
+        aria-label={label}
         className={classes.textInput}
         value={value}
         placeholder={placeholder}
@@ -267,6 +276,7 @@ export function TerminalToggleRow({
   return (
     <TerminalRowShell label={label} value={checked ? 'ON' : 'OFF'}>
       <input
+        aria-label={label}
         className={classes.toggleInput}
         type="checkbox"
         checked={checked}

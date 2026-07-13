@@ -83,7 +83,7 @@ describe('studio store', () => {
     )
     const store = createStudioStore(storage)
 
-    expect(STUDIO_STORE_STORAGE_KEY).toBe('hanzi-studio-grainrad-ascii-v1')
+    expect(STUDIO_STORE_STORAGE_KEY).toBe('hanzi-studio-grainrad-effects-v1')
     expect(store.getState().character).toEqual(initial.character)
     expect(store.getState().mesh).toEqual(initial.mesh)
     expect(store.getState().displacement).toEqual(initial.displacement)
@@ -136,6 +136,10 @@ describe('studio store', () => {
     store.getState().setMeshControl({
       extrusionDepth: 0.4,
       thickness: 0.18,
+      bevel: 0.08,
+      twist: 90,
+      taper: 0.6,
+      bend: -45,
       scale: 1.6,
       autoRotate: true,
     })
@@ -144,6 +148,14 @@ describe('studio store', () => {
     store.getState().resetMeshControls()
 
     expect(store.getState().mesh).toEqual(initial.mesh)
+    expect(store.getState().mesh).toMatchObject({
+      extrusionDepth: 0.18,
+      thickness: 0,
+      bevel: 0,
+      twist: 0,
+      taper: 0,
+      bend: 0,
+    })
     expect(store.getState().displacement.strength).toBe(0.35)
     expect(store.getState().view.backgroundColor).toBe('#202020')
     expect(store.getState().shader).toEqual(initial.shader)

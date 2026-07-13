@@ -26,7 +26,8 @@ describe('Phase 5D Grainrad terminal workbench layout contract', () => {
 
     expect(leftPanel).toContain('CharacterPanel')
     expect(leftPanel).toContain('StudioEffectsPanel')
-    expect(leftPanel).toContain('StudioAnimationPanel')
+    expect(leftPanel).toContain('StudioMotionPanel')
+    expect(leftPanel).toContain('id="presets"')
     expect(leftPanel).not.toContain('StudioPresetsPanel')
     expect(rightPanel).toContain('Settings')
     expect(rightPanel).toContain('Processing')

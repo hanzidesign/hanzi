@@ -62,7 +62,7 @@ const liveDropdownOptionLabels = [
 ]
 
 describe('Phase 5D Grainrad follow-up parity contract', () => {
-  it('matches Grainrad left panel catalogue and replaces Presets with Animation', async () => {
+  it('matches the generated-image Input, Effects, and Presets catalogue', async () => {
     const leftPanel = await readFile(join(studioDir, 'StudioLeftPanel.tsx'), 'utf8')
     const mobileTabs = await readFile(join(studioDir, 'StudioMobileTabs.tsx'), 'utf8')
     const effects = await readFile(join(studioDir, 'grainrad-effects.ts'), 'utf8')
@@ -71,12 +71,11 @@ describe('Phase 5D Grainrad follow-up parity contract', () => {
       expect(effects).toContain(effect)
     }
 
-    expect(leftPanel).toContain('StudioAnimationPanel')
-    expect(leftPanel).toContain('Animation')
-    expect(leftPanel).not.toContain('Presets')
+    expect(leftPanel).toContain('StudioMotionPanel')
+    expect(leftPanel).toContain('3D Motion')
+    expect(leftPanel).toContain('Presets')
     expect(leftPanel).not.toContain('StudioPresetsPanel')
-    expect(mobileTabs).toContain('Animation')
-    expect(mobileTabs).not.toContain('Presets')
+    expect(mobileTabs).not.toContain("id: 'animation'")
   })
 
   it('uses Grainrad Character Set dropdown options instead of a native select', async () => {
@@ -119,25 +118,32 @@ describe('Phase 5D Grainrad follow-up parity contract', () => {
     expect(rightPanel).not.toContain('Density')
   })
 
-  it('keeps Motion and Transform controls in the left Animation section only', async () => {
+  it('keeps Model geometry separate from generated-image 3D Motion controls', async () => {
     const leftPanel = await readFile(join(studioDir, 'StudioLeftPanel.tsx'), 'utf8')
     const rightPanel = await readFile(join(studioDir, 'StudioRightPanel.tsx'), 'utf8')
 
-    expect(leftPanel).toContain('label="Y Rotate"')
-    expect(leftPanel).toContain('label="X Rotate"')
-    expect(leftPanel).toContain('label="Depth"')
-    expect(leftPanel).toContain('label="Scale"')
-    expect(leftPanel).toContain('Reset Transform')
+    expect(leftPanel.indexOf('CharacterPanel')).toBeLessThan(leftPanel.indexOf('StudioModelPanel'))
+    expect(leftPanel.indexOf('StudioModelPanel')).toBeLessThan(leftPanel.indexOf('StudioMotionPanel'))
+    expect(leftPanel).toContain('label="Extrude"')
+    expect(leftPanel).toContain('label="Thickness"')
+    expect(leftPanel).toContain('label="Bevel"')
+    expect(leftPanel).toContain('label="Twist"')
+    expect(leftPanel).toContain('label="Taper"')
+    expect(leftPanel).toContain('label="Bend"')
+    expect(leftPanel).toContain('label="X"')
+    expect(leftPanel).toContain('label="Y"')
+    expect(leftPanel).toContain('label="Z"')
+    expect(leftPanel).not.toContain('label="Depth"')
+    expect(leftPanel).toContain('label="Speed"')
 
     for (const animationOnlyLabel of [
       'Motion',
-      'Transform',
-      'Y Rotate',
-      'X Rotate',
+      '3D Motion',
+      'label="X"',
+      'label="Y"',
+      'label="Z"',
       'Depth',
-      'Auto Spin',
-      'Spin',
-      'Reset Transform',
+      'Speed',
     ]) {
       expect(rightPanel).not.toContain(animationOnlyLabel)
     }
@@ -173,8 +179,12 @@ describe('Phase 5D Grainrad follow-up parity contract', () => {
     expect(exportPanel).toContain('animation.playing')
     expect(exportPanel).toContain('GIF')
     expect(exportPanel).toContain('MP4')
-    expect(exportPanel).toContain('High quality image')
-    expect(exportPanel).not.toContain('High quality WebGL canvas export')
+    expect(exportPanel).toContain('JPG')
+    expect(exportPanel).toContain('WEBP')
+    expect(exportPanel).toContain('APNG')
+    expect(exportPanel).toContain('SVG')
+    expect(exportPanel).toContain('COPY')
+    expect(exportPanel).not.toContain('High quality image')
     expect(exportPanel).toContain('captureAnimationLoop')
   })
 })

@@ -2,13 +2,10 @@
 
 import CharacterPanel from '@/components/studio/CharacterPanel'
 import TerminalSection from '@/components/studio/TerminalSection'
-import {
-  TerminalRangeRow,
-  TerminalRowGroup,
-  TerminalToggleRow,
-} from '@/components/studio/TerminalRows'
+import { TerminalRangeRow } from '@/components/studio/TerminalRows'
 import {
   DEFAULT_MESH_STATE,
+  getCharacterDisplayState,
   useStudioStore,
 } from '@/app/studio/studio-store'
 import { GRAINRAD_EFFECTS } from '@/components/studio/grainrad-effects'
@@ -19,16 +16,86 @@ export default function StudioLeftPanel() {
     <>
       <div className={classes.brandRow}>Hanzi Studio</div>
       <TerminalSection id="input" title="Input">
-        <p className={classes.panelNote}>Character selector</p>
+        <div className={classes.inputLabel}>Character</div>
         <CharacterPanel />
+        <div className={classes.inputLabel}>Model</div>
+        <StudioModelPanel />
+        <div className={classes.inputLabel}>3D Motion</div>
+        <StudioMotionPanel />
       </TerminalSection>
       <TerminalSection id="effects" title="Effects">
         <StudioEffectsPanel />
       </TerminalSection>
-      <TerminalSection id="animation" title="Animation">
-        <StudioAnimationPanel />
+      <TerminalSection id="presets" title="Presets">
+        <p className={classes.panelNote}>Effect-local presets will appear here.</p>
       </TerminalSection>
     </>
+  )
+}
+
+export function StudioModelPanel() {
+  const mesh = useStudioStore((store) => store.mesh)
+  const setMeshControl = useStudioStore((store) => store.setMeshControl)
+
+  return (
+    <div className={classes.modelPanel} data-studio-model-panel>
+      <TerminalRangeRow
+        label="Extrude"
+        value={mesh.extrusionDepth}
+        min={0.01}
+        max={1}
+        step={0.01}
+        onChange={(extrusionDepth) => setMeshControl({ extrusionDepth })}
+        onReset={() => setMeshControl({ extrusionDepth: DEFAULT_MESH_STATE.extrusionDepth })}
+      />
+      <TerminalRangeRow
+        label="Thickness"
+        value={mesh.thickness}
+        min={-0.4}
+        max={0.4}
+        step={0.01}
+        onChange={(thickness) => setMeshControl({ thickness })}
+        onReset={() => setMeshControl({ thickness: DEFAULT_MESH_STATE.thickness })}
+      />
+      <TerminalRangeRow
+        label="Bevel"
+        value={mesh.bevel}
+        min={0}
+        max={0.3}
+        step={0.01}
+        onChange={(bevel) => setMeshControl({ bevel })}
+        onReset={() => setMeshControl({ bevel: DEFAULT_MESH_STATE.bevel })}
+      />
+      <TerminalRangeRow
+        label="Twist"
+        value={mesh.twist}
+        min={-360}
+        max={360}
+        step={1}
+        displayValue={`${Math.round(mesh.twist)}°`}
+        onChange={(twist) => setMeshControl({ twist })}
+        onReset={() => setMeshControl({ twist: DEFAULT_MESH_STATE.twist })}
+      />
+      <TerminalRangeRow
+        label="Taper"
+        value={mesh.taper}
+        min={-0.8}
+        max={0.8}
+        step={0.01}
+        onChange={(taper) => setMeshControl({ taper })}
+        onReset={() => setMeshControl({ taper: DEFAULT_MESH_STATE.taper })}
+      />
+      <TerminalRangeRow
+        label="Bend"
+        value={mesh.bend}
+        min={-120}
+        max={120}
+        step={1}
+        displayValue={`${Math.round(mesh.bend)}°`}
+        onChange={(bend) => setMeshControl({ bend })}
+        onReset={() => setMeshControl({ bend: DEFAULT_MESH_STATE.bend })}
+      />
+    </div>
   )
 }
 
@@ -46,22 +113,25 @@ export function StudioEffectsPanel() {
           data-active={selectedEffectId === effect.id}
           onClick={() => setSelectedEffect(effect.id)}
         >
-          <span className={classes.effectMarker}>
-            {selectedEffectId === effect.id ? '●' : '○'}
+          <span className={classes.effectHandle} aria-hidden>⠿</span>
+          <span className={classes.effectLabel}>{effect.label}</span>
+          <span className={classes.effectMarker} aria-hidden>
+            {selectedEffectId === effect.id ? '●' : ''}
           </span>
-          {effect.label}
         </button>
       ))}
     </div>
   )
 }
 
-export function StudioAnimationPanel() {
+export function StudioMotionPanel() {
   const animation = useStudioStore((store) => store.animation)
   const mesh = useStudioStore((store) => store.mesh)
+  const character = useStudioStore((store) => store.character)
   const setAnimationControl = useStudioStore((store) => store.setAnimationControl)
   const setMeshControl = useStudioStore((store) => store.setMeshControl)
-  const setMeshRotation = (axis: 'x' | 'y', degrees: number) => {
+  const { ch } = getCharacterDisplayState(character)
+  const setMeshRotation = (axis: 'x' | 'y' | 'z', degrees: number) => {
     setMeshControl({
       rotation: {
         ...mesh.rotation,
@@ -69,22 +139,39 @@ export function StudioAnimationPanel() {
       },
     })
   }
-  const resetTransform = () => {
-    setMeshControl({
-      extrusionDepth: DEFAULT_MESH_STATE.extrusionDepth,
-      rotation: { ...DEFAULT_MESH_STATE.rotation },
-      scale: DEFAULT_MESH_STATE.scale,
-      position: { ...DEFAULT_MESH_STATE.position },
-    })
-  }
 
   return (
-    <>
-      <TerminalRowGroup title="Motion">
-        <TerminalToggleRow
-          label="Play"
-          checked={animation.playing}
-          onChange={(playing) => setAnimationControl({ playing })}
+    <div className={classes.motionPanel} data-studio-motion-panel>
+      <div className={classes.motionControls}>
+        <TerminalRangeRow
+          label="X"
+          value={radiansToDegrees(mesh.rotation.x)}
+          min={-180}
+          max={180}
+          step={1}
+          displayValue={`${Math.round(radiansToDegrees(mesh.rotation.x))}°`}
+          onChange={(degrees) => setMeshRotation('x', degrees)}
+          onReset={() => setMeshRotation('x', radiansToDegrees(DEFAULT_MESH_STATE.rotation.x))}
+        />
+        <TerminalRangeRow
+          label="Y"
+          value={radiansToDegrees(mesh.rotation.y)}
+          min={-180}
+          max={180}
+          step={1}
+          displayValue={`${Math.round(radiansToDegrees(mesh.rotation.y))}°`}
+          onChange={(degrees) => setMeshRotation('y', degrees)}
+          onReset={() => setMeshRotation('y', radiansToDegrees(DEFAULT_MESH_STATE.rotation.y))}
+        />
+        <TerminalRangeRow
+          label="Z"
+          value={radiansToDegrees(mesh.rotation.z)}
+          min={-180}
+          max={180}
+          step={1}
+          displayValue={`${Math.round(radiansToDegrees(mesh.rotation.z))}°`}
+          onChange={(degrees) => setMeshRotation('z', degrees)}
+          onReset={() => setMeshRotation('z', radiansToDegrees(DEFAULT_MESH_STATE.rotation.z))}
         />
         <TerminalRangeRow
           label="Speed"
@@ -95,79 +182,13 @@ export function StudioAnimationPanel() {
           onChange={(speed) => setAnimationControl({ speed })}
           onReset={() => setAnimationControl({ speed: 1 })}
         />
-        <TerminalRangeRow
-          label="Time"
-          value={animation.timeOffset}
-          min={0}
-          max={60}
-          step={0.1}
-          onChange={(timeOffset) => setAnimationControl({ timeOffset })}
-          onReset={() => setAnimationControl({ timeOffset: 0 })}
-        />
-        <TerminalToggleRow
-          label="Auto Spin"
-          checked={mesh.autoRotate}
-          onChange={(autoRotate) => setMeshControl({ autoRotate })}
-        />
-        <TerminalRangeRow
-          label="Spin"
-          value={mesh.autoRotateSpeed}
-          min={0}
-          max={4}
-          step={0.01}
-          onChange={(autoRotateSpeed) => setMeshControl({ autoRotateSpeed })}
-          onReset={() => setMeshControl({ autoRotateSpeed: DEFAULT_MESH_STATE.autoRotateSpeed })}
-        />
-      </TerminalRowGroup>
-
-      <TerminalRowGroup title="Transform">
-        <TerminalRangeRow
-          label="Y Rotate"
-          value={radiansToDegrees(mesh.rotation.y)}
-          min={-180}
-          max={180}
-          step={1}
-          displayValue={`${Math.round(radiansToDegrees(mesh.rotation.y))}°`}
-          onChange={(degrees) => setMeshRotation('y', degrees)}
-          onReset={() => setMeshRotation('y', radiansToDegrees(DEFAULT_MESH_STATE.rotation.y))}
-        />
-        <TerminalRangeRow
-          label="X Rotate"
-          value={radiansToDegrees(mesh.rotation.x)}
-          min={-180}
-          max={180}
-          step={1}
-          displayValue={`${Math.round(radiansToDegrees(mesh.rotation.x))}°`}
-          onChange={(degrees) => setMeshRotation('x', degrees)}
-          onReset={() => setMeshRotation('x', radiansToDegrees(DEFAULT_MESH_STATE.rotation.x))}
-        />
-        <TerminalRangeRow
-          label="Depth"
-          value={mesh.extrusionDepth}
-          min={0.01}
-          max={1}
-          step={0.01}
-          onChange={(extrusionDepth) => setMeshControl({ extrusionDepth })}
-          onReset={() => setMeshControl({ extrusionDepth: DEFAULT_MESH_STATE.extrusionDepth })}
-        />
-        <TerminalRangeRow
-          label="Scale"
-          value={mesh.scale}
-          min={0.25}
-          max={3}
-          step={0.01}
-          onChange={(scale) => setMeshControl({ scale })}
-          onReset={() => setMeshControl({ scale: DEFAULT_MESH_STATE.scale })}
-        />
-        <button
-          type="button"
-          className={classes.secondaryButton}
-          onClick={resetTransform}
-        >
-          Reset Transform
-        </button>
-      </TerminalRowGroup>
-    </>
+      </div>
+      <div className={classes.motionPreview} aria-hidden>
+        <span className={classes.motionGlyph}>{ch}</span>
+        <span className={classes.motionCubeFront} />
+        <span className={classes.motionCubeBack} />
+      </div>
+    </div>
   )
 }
 

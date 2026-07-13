@@ -6,15 +6,21 @@ import CharacterAsciiCanvas, {
   IDLE_CHARACTER_ASCII_STATUS,
   type CharacterAsciiStatus,
 } from '@/components/studio/CharacterAsciiCanvas'
+import CharacterDitheringCanvas from '@/components/studio/CharacterDitheringCanvas'
+import CharacterDotsCanvas from '@/components/studio/CharacterDotsCanvas'
+import CharacterHalftoneCanvas from '@/components/studio/CharacterHalftoneCanvas'
+import CharacterMatrixRainCanvas from '@/components/studio/CharacterMatrixRainCanvas'
 import { getGrainradEffectById } from '@/components/studio/grainrad-effects'
 import { isAbortError } from '@/utils/dataUrl'
 import classes from './StudioShell.module.css'
 
 export default function StudioCanvas() {
   const character = useStudioStore((store) => store.character)
-  const rendererMode = useStudioStore((store) => store.rendererMode)
   const selectedEffectId = useStudioStore((store) => store.grainradEffect.selectedEffectId)
-  const backgroundColor = useStudioStore((store) => store.ascii.backgroundColor)
+  const asciiBackgroundColor = useStudioStore((store) => store.ascii.backgroundColor)
+  const effectControls = useStudioStore(
+    (store) => store.grainradEffect.controls[selectedEffectId],
+  )
   const previewZoom = useStudioStore((store) => store.view.previewZoom)
   const setPreviewZoom = useStudioStore((store) => store.setPreviewZoom)
   const resetPreviewView = useStudioStore((store) => store.resetPreviewView)
@@ -25,8 +31,16 @@ export default function StudioCanvas() {
     IDLE_CHARACTER_ASCII_STATUS,
   )
   const { charUrl } = getCharacterDisplayState(character)
-  const statusText = asciiStatus.state === 'idle' ? null : asciiStatus.message
+  const statusText =
+    selectedEffectId === 'ascii' && asciiStatus.state !== 'idle'
+      ? asciiStatus.message
+      : null
   const selectedEffect = getGrainradEffectById(selectedEffectId)
+  const backgroundColor = selectedEffectId === 'ascii'
+    ? asciiBackgroundColor
+    : typeof effectControls.background === 'string'
+      ? effectControls.background
+      : '#000000'
 
   useEffect(() => {
     const controller = new AbortController()
@@ -65,16 +79,31 @@ export default function StudioCanvas() {
       className={classes.previewRoot}
       style={{ background: backgroundColor }}
     >
-      <div className={classes.rendererStatus}>
-        <span className={classes.statusDot} />
-        <span>{selectedEffect.label}</span>
-        <span className={classes.statusEngine}>[{rendererMode.toUpperCase()}]</span>
-      </div>
       <div
         className={classes.previewCanvasFrame}
         style={{ transform: `scale(${previewZoom})` }}
       >
-        <CharacterAsciiCanvas onAsciiStatusChange={setAsciiStatus} />
+        {selectedEffectId === 'ascii' ? (
+          <CharacterAsciiCanvas onAsciiStatusChange={setAsciiStatus} />
+        ) : selectedEffectId === 'dithering' ? (
+          <CharacterDitheringCanvas />
+        ) : selectedEffectId === 'halftone' ? (
+          <CharacterHalftoneCanvas />
+        ) : selectedEffectId === 'matrix-rain' ? (
+          <CharacterMatrixRainCanvas />
+        ) : selectedEffectId === 'dots' ? (
+          <CharacterDotsCanvas />
+        ) : (
+          <div
+            data-testid="effect-renderer-not-implemented"
+            role="status"
+            className={classes.previewMessage}
+          >
+            <div className={classes.previewMessageTitle}>
+              {selectedEffect.label} renderer is not implemented yet.
+            </div>
+          </div>
+        )}
       </div>
       {statusText ? (
         <div className={classes.previewMessage} data-state={asciiStatus.state}>
@@ -104,6 +133,15 @@ export default function StudioCanvas() {
           onClick={resetPreviewView}
         >
           Reset
+        </button>
+        <span className={classes.zoomSpacer} />
+        <button
+          type="button"
+          className={classes.fitButton}
+          aria-label="Fit preview"
+          onClick={resetPreviewView}
+        >
+          Fit <span className={classes.fitIcon} aria-hidden>⌗</span>
         </button>
       </div>
     </div>

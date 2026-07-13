@@ -1,10 +1,6 @@
 'use client'
 
-import {
-  IoExpandOutline,
-  IoPauseOutline,
-  IoPlayOutline,
-} from 'react-icons/io5'
+import { IoExpandOutline } from 'react-icons/io5'
 import { useStudioStore } from '@/app/studio/studio-store'
 import StudioCanvas from '@/components/studio/StudioCanvas'
 import StudioLeftPanel from '@/components/studio/StudioLeftPanel'
@@ -16,8 +12,6 @@ import classes from './StudioShell.module.css'
 
 export default function StudioShell() {
   const theme = useStudioStore((store) => store.view.theme)
-  const playing = useStudioStore((store) => store.animation.playing)
-  const setAnimationControl = useStudioStore((store) => store.setAnimationControl)
 
   const handleFullscreen = () => {
     const preview = document.querySelector<HTMLElement>('[data-studio-preview]')
@@ -46,29 +40,19 @@ export default function StudioShell() {
       </aside>
       <main className={classes.preview} data-studio-preview>
         <StudioCanvas />
-        <div className={classes.previewActions}>
-          <StudioThemeToggle />
-          <button
-            type="button"
-            className={classes.iconButton}
-            aria-label={playing ? 'Pause animation' : 'Play animation'}
-            aria-pressed={playing}
-            onClick={() => setAnimationControl({ playing: !playing })}
-          >
-            {playing ? (
-              <IoPauseOutline aria-hidden size={16} />
-            ) : (
-              <IoPlayOutline aria-hidden size={16} />
-            )}
-          </button>
-          <button
-            type="button"
-            className={classes.iconButton}
-            aria-label="Toggle fullscreen"
-            onClick={handleFullscreen}
-          >
-            <IoExpandOutline aria-hidden size={16} />
-          </button>
+        <div className={classes.previewTopRail}>
+          <div className={classes.previewActions}>
+            <StudioThemeToggle />
+            <button
+              type="button"
+              className={classes.previewActionButton}
+              aria-label="Toggle fullscreen"
+              onClick={handleFullscreen}
+            >
+              <IoExpandOutline aria-hidden size={16} />
+              <span>Fullscreen</span>
+            </button>
+          </div>
         </div>
       </main>
       <aside className={classes.rightPanel} data-studio-right-panel>

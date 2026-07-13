@@ -173,6 +173,143 @@ describe('Phase 5F Grainrad runtime effect compiler', () => {
       0xef / 255,
     ])
   })
+
+  it('uses Grainrad Dithering algorithm ids instead of catalogue ordinals', () => {
+    const defaults = createDefaultGrainradEffectControls().dithering
+
+    expect(compileGrainradEffectRuntime({
+      selectedEffectId: 'dithering',
+      controls: { ...defaults, algorithm: 'floyd-steinberg' },
+    }).effectValues[0]).toBe(0)
+    expect(compileGrainradEffectRuntime({
+      selectedEffectId: 'dithering',
+      controls: { ...defaults, algorithm: 'bayer-8x8' },
+    }).effectValues[0]).toBe(10)
+    expect(compileGrainradEffectRuntime({
+      selectedEffectId: 'dithering',
+      controls: { ...defaults, algorithm: 'crosshatch' },
+    }).effectValues[0]).toBe(20)
+  })
+
+  it('keeps Dithering matrix size in source-pixel units', () => {
+    const defaults = createDefaultGrainradEffectControls().dithering
+
+    expect(compileGrainradEffectRuntime({
+      selectedEffectId: 'dithering',
+      controls: defaults,
+    }).effectValues[2]).toBe(4)
+    expect(compileGrainradEffectRuntime({
+      selectedEffectId: 'dithering',
+      controls: { ...defaults, 'matrix-size': '16' },
+    }).effectValues[2]).toBe(16)
+  })
+
+  it('keeps Halftone values in the renderer units verified from Grainrad', () => {
+    const defaults = createDefaultGrainradEffectControls().halftone
+    const runtime = compileGrainradEffectRuntime({
+      selectedEffectId: 'halftone',
+      controls: {
+        ...defaults,
+        shape: 'diamond',
+        'dot-scale': 1.7,
+        spacing: 13,
+        angle: 65,
+        invert: true,
+        brightness: 40,
+        contrast: -25,
+        'color-mode': 'color',
+        foreground: '#123456',
+        background: '#abcdef',
+      },
+    })
+
+    expect(runtime.effectValues.slice(0, 8)).toEqual([
+      2,
+      1.7,
+      13,
+      65,
+      1,
+      0.4,
+      -0.25,
+      1,
+    ])
+    expect(runtime.effectColorA).toEqual([0x12 / 255, 0x34 / 255, 0x56 / 255])
+    expect(runtime.effectColorB).toEqual([0xab / 255, 0xcd / 255, 0xef / 255])
+  })
+
+  it('packs Matrix Rain controls in Grainrad uniform units and preserves custom glyphs', () => {
+    const defaults = createDefaultGrainradEffectControls()['matrix-rain']
+    const runtime = compileGrainradEffectRuntime({
+      selectedEffectId: 'matrix-rain',
+      controls: {
+        ...defaults,
+        'character-set': 'custom',
+        'custom-chars': '雨電01',
+        'cell-size': 24,
+        spacing: 0.35,
+        speed: 2.4,
+        'trail-length': 27,
+        direction: 'left',
+        glow: 1.6,
+        'bg-opacity': 0.65,
+        brightness: 40,
+        contrast: -25,
+        threshold: 0.18,
+        'rain-color': '#12ab34',
+      },
+    })
+
+    expect(runtime.effectValues.slice(0, 11)).toEqual([
+      9,
+      24,
+      0.35,
+      2.4,
+      27,
+      2,
+      1.6,
+      0.65,
+      0.4,
+      -0.25,
+      0.18,
+    ])
+    expect(runtime.effectColorA).toEqual([0x12 / 255, 0xab / 255, 0x34 / 255])
+    expect(runtime.customGlyphChars).toBe('雨電01')
+    expect(runtime.customGlyphCount).toBe(4)
+    expect(runtime.customGlyphHash).toBeGreaterThan(0)
+  })
+
+  it('packs Dots controls in the exact production uniform units and ids', () => {
+    const defaults = createDefaultGrainradEffectControls().dots
+    const runtime = compileGrainradEffectRuntime({
+      selectedEffectId: 'dots',
+      controls: {
+        ...defaults,
+        shape: 'diamond',
+        'grid-type': 'hex',
+        size: 1.7,
+        spacing: 1.4,
+        invert: true,
+        brightness: 40,
+        contrast: -25,
+        'color-mode': 'custom',
+        foreground: '#12ab34',
+        background: '#abcdef',
+      },
+    })
+
+    expect(runtime.effectValues.slice(0, 8)).toEqual([
+      2,
+      1,
+      1.7,
+      1.4,
+      1,
+      0.4,
+      -0.25,
+      1,
+    ])
+    expect(runtime.effectColorA).toEqual([0x12 / 255, 0xab / 255, 0x34 / 255])
+    expect(runtime.effectColorB).toEqual([0xab / 255, 0xcd / 255, 0xef / 255])
+  })
 })
 
 function signatureFor(

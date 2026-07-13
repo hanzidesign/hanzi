@@ -2,16 +2,36 @@ export type GrainradControlValue = string | number | boolean
 
 export const ASCII_OUTPUT_WIDTH_MAX = 600
 
+export type GrainradControlCondition =
+  | {
+      controlId: string
+      operator: 'equals'
+      value: GrainradControlValue
+    }
+  | {
+      controlId: string
+      operator: 'in'
+      values: GrainradControlValue[]
+    }
+
+export type GrainradControlVisibility =
+  | GrainradControlCondition
+  | { all: GrainradControlCondition[] }
+
+type GrainradControlBase = {
+  id: string
+  label: string
+  visibleWhen?: GrainradControlVisibility
+}
+
 export type GrainradSelectOption<T extends string = string> = {
   value: T
   label: string
   meta?: string
 }
 
-export type GrainradRangeControl = {
+export type GrainradRangeControl = GrainradControlBase & {
   kind: 'range'
-  id: string
-  label: string
   defaultValue: number
   min: number
   max: number
@@ -19,32 +39,24 @@ export type GrainradRangeControl = {
   unit?: string
 }
 
-export type GrainradSelectControl = {
+export type GrainradSelectControl = GrainradControlBase & {
   kind: 'select'
-  id: string
-  label: string
   defaultValue: string
   options: Array<GrainradSelectOption>
 }
 
-export type GrainradTextControl = {
+export type GrainradTextControl = GrainradControlBase & {
   kind: 'text'
-  id: string
-  label: string
   defaultValue: string
 }
 
-export type GrainradToggleControl = {
+export type GrainradToggleControl = GrainradControlBase & {
   kind: 'toggle'
-  id: string
-  label: string
   defaultValue: boolean
 }
 
-export type GrainradColorControl = {
+export type GrainradColorControl = GrainradControlBase & {
   kind: 'color'
-  id: string
-  label: string
   defaultValue: string
 }
 
@@ -63,8 +75,17 @@ export type GrainradSettingGroup = {
 export type GrainradEffectDefinition = {
   id: GrainradEffectId
   label: string
+  renderer: GrainradEffectRenderer
   settingGroups: GrainradSettingGroup[]
 }
+
+export type GrainradEffectRenderer =
+  | 'ascii'
+  | 'dithering'
+  | 'halftone'
+  | 'matrix-rain'
+  | 'dots'
+  | 'unimplemented'
 
 export const GRAINRAD_CHARACTER_SETS = [
   { value: 'standard', label: 'STANDARD' },
@@ -83,6 +104,15 @@ export type GrainradCharacterSet = (typeof GRAINRAD_CHARACTER_SETS)[number]['val
 
 export const GRAINRAD_CHARACTER_SET_IDS = GRAINRAD_CHARACTER_SETS.map((option) => option.value)
 
+export const MATRIX_RAIN_CHARACTER_SETS = GRAINRAD_CHARACTER_SETS.map((option) =>
+  option.value === 'symbols'
+    ? { value: 'emoji', label: option.label }
+    : { ...option },
+)
+
+export const MATRIX_RAIN_CUSTOM_CHARS_DEFAULT =
+  'ｱｲｳｴｵｶｷｸｹｺｻｼｽｾｿﾀﾁﾂﾃﾄﾅﾆﾇﾈﾉﾊﾋﾌﾍﾎﾏﾐﾑﾒﾓﾔﾕﾖﾗﾘﾙﾚﾛﾜﾝ0123456789'
+
 const monoOriginalColorModeOptions = [
   { value: 'mono', label: 'Mono' },
   { value: 'original', label: 'Original' },
@@ -94,6 +124,21 @@ const ditheringColorModeOptions = [
   { value: 'palette', label: 'Palette' },
   { value: 'rgb', label: 'RGB' },
   { value: 'original', label: 'Original' },
+]
+
+const ditheringPaletteOptions = [
+  { value: 'gameboy-4', label: 'GameBoy 4', meta: 'Retro Gaming' },
+  { value: 'cga-16', label: 'CGA 16', meta: 'Retro Gaming' },
+  { value: 'nes-54', label: 'NES 54', meta: 'Retro Gaming' },
+  { value: 'pico-8-16', label: 'PICO-8 16', meta: 'Retro Gaming' },
+  { value: 'c64-16', label: 'C64 16', meta: 'Retro Gaming' },
+  { value: 'apple-ii-16', label: 'Apple II 16', meta: 'Retro Gaming' },
+  { value: 'macintosh-16', label: 'Macintosh 16', meta: 'Retro Gaming' },
+  { value: 'sepia-5', label: 'Sepia 5', meta: 'Artistic' },
+  { value: 'cyberpunk-6', label: 'Cyberpunk 6', meta: 'Artistic' },
+  { value: 'newspaper-2', label: 'Newspaper 2', meta: 'Print' },
+  { value: 'risograph-5', label: 'Risograph 5', meta: 'Print' },
+  { value: 'custom', label: 'Custom', meta: 'Custom' },
 ]
 
 const blockifyColorModeOptions = [
@@ -173,6 +218,7 @@ export const GRAINRAD_EFFECTS: GrainradEffectDefinition[] = [
   {
     id: 'ascii',
     label: 'ASCII',
+    renderer: 'ascii',
     settingGroups: [
       {
         title: 'ASCII',
@@ -199,6 +245,7 @@ export const GRAINRAD_EFFECTS: GrainradEffectDefinition[] = [
   {
     id: 'dithering',
     label: 'Dithering',
+    renderer: 'dithering',
     settingGroups: [
       {
         title: 'Dithering',
@@ -221,29 +268,115 @@ export const GRAINRAD_EFFECTS: GrainradEffectDefinition[] = [
             { value: 'interleaved-gradient', label: 'Interleaved Gradient' },
             { value: 'crosshatch', label: 'Crosshatch' },
           ]),
-          rangeControl('intensity', 'Intensity', 1, 0, 2, 0.01),
-          selectControl('matrix-size', 'Matrix Size', '4x4', [
-            { value: '2x2', label: '2x2 (Coarse)' },
-            { value: '4x4', label: '4x4 (Medium)' },
-            { value: '8x8', label: '8x8 (Fine)' },
-            { value: '16x16', label: '16x16 (Very Fine)' },
-          ]),
+          rangeControl('intensity', 'Intensity', 1, 0.1, 2, 0.05),
+          rangeControl('levels', 'Levels', 2, 2, 32, 1, undefined, {
+            controlId: 'color-mode',
+            operator: 'in',
+            values: ['tonal', 'rgb'],
+          }),
+          selectControl('matrix-size', 'Matrix Size', '4', [
+            { value: '2', label: '2x2 (Coarse)' },
+            { value: '4', label: '4x4 (Medium)' },
+            { value: '8', label: '8x8 (Fine)' },
+            { value: '16', label: '16x16 (Very Fine)' },
+          ], {
+            controlId: 'algorithm',
+            operator: 'in',
+            values: ['bayer-2x2', 'bayer-4x4', 'bayer-8x8', 'bayer-16x16', 'clustered-dot'],
+          }),
+          rangeControl('line-weight', 'Line Weight', 0.5, 0.1, 1, 0.05, undefined, {
+            controlId: 'algorithm',
+            operator: 'equals',
+            value: 'crosshatch',
+          }),
+          rangeControl('line-spacing', 'Line Spacing', 10, 1, 50, 1, undefined, {
+            controlId: 'algorithm',
+            operator: 'equals',
+            value: 'crosshatch',
+          }),
+          rangeControl('layers', 'Layers', 2, 1, 4, 1, undefined, {
+            controlId: 'algorithm',
+            operator: 'equals',
+            value: 'crosshatch',
+          }),
           toggleControl('modulation', 'Modulation', false),
+          selectControl('mod-type', 'Mod Type', 'wave', [
+            { value: 'wave', label: 'Wave' },
+            { value: 'grid', label: 'Grid' },
+            { value: 'radial', label: 'Radial' },
+            { value: 'horizontal', label: 'Horizontal' },
+            { value: 'rgb-split', label: 'RGB Split' },
+          ], {
+            controlId: 'modulation',
+            operator: 'equals',
+            value: true,
+          }),
+          rangeControl('mod-frequency', 'Mod Frequency', 5, 1, 20, 1, undefined, {
+            controlId: 'modulation',
+            operator: 'equals',
+            value: true,
+          }),
+          rangeControl('mod-amplitude', 'Mod Amplitude', 0.1, 0, 10, 0.1, undefined, {
+            controlId: 'modulation',
+            operator: 'equals',
+            value: true,
+          }),
         ],
       },
-      adjustmentGroup(['Brightness', 'Contrast', 'Gamma', 'Sharpen']),
-      colorModeGroup('mono', ditheringColorModeOptions, [
-        colorControl('foreground', 'Foreground', '#ffffff'),
-        colorControl('background', 'Background', '#000000'),
-      ]),
+      {
+        title: 'Adjustments',
+        controls: [
+          rangeControl('brightness', 'Brightness', 0, -100, 100, 1),
+          rangeControl('contrast', 'Contrast', 0, -100, 100, 1),
+          rangeControl('gamma', 'Gamma', 1, 0.5, 2, 0.05),
+          rangeControl('sharpen', 'Sharpen', 0, -1, 1, 0.1),
+        ],
+      },
+      {
+        title: 'Color',
+        controls: [
+          selectControl('color-mode', 'Mode', 'mono', ditheringColorModeOptions),
+          selectControl('palette', 'Palette', 'gameboy-4', ditheringPaletteOptions, {
+            controlId: 'color-mode',
+            operator: 'equals',
+            value: 'palette',
+          }),
+          textControl(
+            'custom-palette',
+            'Custom Palette',
+            '#9bbc0f,#8bac0f,#306230,#0f380f',
+            {
+              all: [
+                { controlId: 'color-mode', operator: 'equals', value: 'palette' },
+                { controlId: 'palette', operator: 'equals', value: 'custom' },
+              ],
+            },
+          ),
+          colorControl('foreground', 'Foreground', '#ffffff', {
+            controlId: 'color-mode',
+            operator: 'in',
+            values: ['mono', 'tonal'],
+          }),
+          colorControl('background', 'Background', '#000000', {
+            controlId: 'color-mode',
+            operator: 'in',
+            values: ['mono', 'tonal', 'original'],
+          }),
+          rangeControl('color-depth', 'Color Depth', 2, 2, 64, 1, undefined, {
+            controlId: 'color-mode',
+            operator: 'equals',
+            value: 'rgb',
+          }),
+        ],
+      },
       {
         title: 'Chromatic Effects',
         controls: [
           toggleControl('chromatic-enabled', 'Enabled', false),
-          rangeControl('max-displace', 'Max Displace', 6, 0, 24, 1, 'px'),
-          rangeControl('red-channel', 'Red Channel', 23, 0, 100, 1),
-          rangeControl('green-channel', 'Green Channel', 50, 0, 100, 1),
-          rangeControl('blue-channel', 'Blue Channel', 80, 0, 100, 1),
+          rangeControl('max-displace', 'Max Displace', 6, 0, 50, 1, 'px'),
+          rangeControl('red-channel', 'Red Channel', 23, 0, 360, 1),
+          rangeControl('green-channel', 'Green Channel', 50, 0, 360, 1),
+          rangeControl('blue-channel', 'Blue Channel', 80, 0, 360, 1),
         ],
       },
     ],
@@ -251,74 +384,135 @@ export const GRAINRAD_EFFECTS: GrainradEffectDefinition[] = [
   {
     id: 'halftone',
     label: 'Halftone',
+    renderer: 'halftone',
     settingGroups: [
       {
         title: 'Halftone',
         controls: [
           selectControl('shape', 'Shape', 'circle', [...shapeOptions, { value: 'line', label: 'Line' }]),
-          rangeControl('dot-scale', 'Dot Scale', 1, 0.1, 4, 0.01),
-          rangeControl('spacing', 'Spacing', 8, 1, 48, 1),
-          rangeControl('angle', 'Angle', 45, -180, 180, 1, 'deg'),
+          rangeControl('dot-scale', 'Dot Scale', 1, 0.5, 2, 0.1),
+          rangeControl('spacing', 'Spacing', 8, 1, 20, 1),
+          rangeControl('angle', 'Angle', 45, 0, 90, 5, '°'),
           toggleControl('invert', 'Invert', false),
         ],
       },
-      adjustmentGroup(['Brightness', 'Contrast']),
-      monoColorGroup(),
+      {
+        title: 'Adjustments',
+        controls: [
+          rangeControl('brightness', 'Brightness', 0, -100, 100, 1),
+          rangeControl('contrast', 'Contrast', 0, -100, 100, 1),
+        ],
+      },
+      {
+        title: 'Color',
+        controls: [
+          selectControl('color-mode', 'Mode', 'bw', [
+            { value: 'bw', label: 'Mono' },
+            { value: 'color', label: 'Original' },
+          ]),
+          colorControl('foreground', 'Foreground', '#ffffff', {
+            controlId: 'color-mode',
+            operator: 'equals',
+            value: 'bw',
+          }),
+          colorControl('background', 'Background', '#000000', {
+            controlId: 'color-mode',
+            operator: 'equals',
+            value: 'bw',
+          }),
+        ],
+      },
     ],
   },
   {
     id: 'matrix-rain',
     label: 'Matrix Rain',
+    renderer: 'matrix-rain',
     settingGroups: [
       {
         title: 'Matrix Rain',
         controls: [
-          selectControl('character-set', 'Character Set', 'standard', [...GRAINRAD_CHARACTER_SETS]),
-          rangeControl('cell-size', 'Cell Size', 12, 4, 48, 1),
-          rangeControl('spacing', 'Spacing', 0, 0, 2, 0.1),
-          rangeControl('speed', 'Speed', 1, 0, 4, 0.01),
-          rangeControl('trail-length', 'Trail Length', 15, 1, 80, 1),
+          selectControl('character-set', 'Character Set', 'standard', MATRIX_RAIN_CHARACTER_SETS),
+          textControl(
+            'custom-chars',
+            'Custom Chars',
+            MATRIX_RAIN_CUSTOM_CHARS_DEFAULT,
+            { controlId: 'character-set', operator: 'equals', value: 'custom' },
+          ),
+          rangeControl('cell-size', 'Cell Size', 12, 4, 32, 1),
+          rangeControl('spacing', 'Spacing', 0, 0, 1, 0.05),
+          rangeControl('speed', 'Speed', 1, 0.5, 3, 0.1),
+          rangeControl('trail-length', 'Trail Length', 15, 5, 30, 1),
           selectControl('direction', 'Direction', 'down', [
             { value: 'down', label: 'Down' },
             { value: 'up', label: 'Up' },
             { value: 'left', label: 'Left' },
             { value: 'right', label: 'Right' },
           ]),
-          rangeControl('glow', 'Glow', 1, 0, 3, 0.01),
-          rangeControl('bg-opacity', 'BG Opacity', 0.3, 0, 1, 0.01),
+          rangeControl('glow', 'Glow', 1, 0, 2, 0.1),
+          rangeControl('bg-opacity', 'BG Opacity', 0.3, 0, 1, 0.05),
         ],
       },
-      adjustmentGroup(['Brightness', 'Contrast', 'Threshold']),
+      {
+        title: 'Adjustments',
+        controls: [
+          rangeControl('brightness', 'Brightness', 0, -100, 100, 1),
+          rangeControl('contrast', 'Contrast', 0, -100, 100, 1),
+          rangeControl('threshold', 'Threshold', 0, 0, 0.5, 0.01),
+        ],
+      },
       {
         title: 'Color',
-        controls: [colorControl('rain-color', 'Rain Color', '#2cff77')],
+        controls: [colorControl('rain-color', 'Rain Color', '#00ff00')],
       },
     ],
   },
   {
     id: 'dots',
     label: 'Dots',
+    renderer: 'dots',
     settingGroups: [
       {
         title: 'Dots',
         controls: [
           selectControl('shape', 'Shape', 'circle', shapeOptions),
-          selectControl('grid-type', 'Grid Type', 'square-grid', [
-            { value: 'square-grid', label: 'Square Grid' },
-            { value: 'hexagonal-grid', label: 'Hexagonal Grid' },
+          selectControl('grid-type', 'Grid Type', 'square', [
+            { value: 'square', label: 'Square Grid' },
+            { value: 'hex', label: 'Hexagonal Grid' },
           ]),
-          rangeControl('size', 'Size', 1, 0.1, 4, 0.01),
-          rangeControl('spacing', 'Spacing', 1, 0.2, 4, 0.01),
+          rangeControl('size', 'Size', 1, 0.5, 2, 0.1),
+          rangeControl('spacing', 'Spacing', 1, 0.5, 2, 0.1),
           toggleControl('invert', 'Invert', false),
         ],
       },
-      adjustmentGroup(['Brightness', 'Contrast']),
-      colorModeGroup('original'),
+      {
+        title: 'Adjustments',
+        controls: [
+          rangeControl('brightness', 'Brightness', 0, -100, 100, 1),
+          rangeControl('contrast', 'Contrast', 0, -100, 100, 1),
+        ],
+      },
+      colorModeGroup('original', [
+        { value: 'custom', label: 'Mono' },
+        { value: 'original', label: 'Original' },
+      ], [
+        colorControl('foreground', 'Dot Color', '#ffffff', {
+          controlId: 'color-mode',
+          operator: 'equals',
+          value: 'custom',
+        }),
+        colorControl('background', 'Background', '#000000', {
+          controlId: 'color-mode',
+          operator: 'equals',
+          value: 'custom',
+        }),
+      ]),
     ],
   },
   {
     id: 'contour',
     label: 'Contour',
+    renderer: 'unimplemented',
     settingGroups: [
       {
         title: 'Contour',
@@ -339,6 +533,7 @@ export const GRAINRAD_EFFECTS: GrainradEffectDefinition[] = [
   {
     id: 'pixel-sort',
     label: 'Pixel Sort',
+    renderer: 'unimplemented',
     settingGroups: [
       {
         title: 'Pixel Sort',
@@ -365,6 +560,7 @@ export const GRAINRAD_EFFECTS: GrainradEffectDefinition[] = [
   {
     id: 'blockify',
     label: 'Blockify',
+    renderer: 'unimplemented',
     settingGroups: [
       {
         title: 'Blockify',
@@ -391,6 +587,7 @@ export const GRAINRAD_EFFECTS: GrainradEffectDefinition[] = [
   {
     id: 'threshold',
     label: 'Threshold',
+    renderer: 'unimplemented',
     settingGroups: [
       {
         title: 'Threshold',
@@ -408,6 +605,7 @@ export const GRAINRAD_EFFECTS: GrainradEffectDefinition[] = [
   {
     id: 'edge-detection',
     label: 'Edge Detection',
+    renderer: 'unimplemented',
     settingGroups: [
       {
         title: 'Edge Detection',
@@ -436,6 +634,7 @@ export const GRAINRAD_EFFECTS: GrainradEffectDefinition[] = [
   {
     id: 'crosshatch',
     label: 'Crosshatch',
+    renderer: 'unimplemented',
     settingGroups: [
       {
         title: 'Crosshatch',
@@ -461,6 +660,7 @@ export const GRAINRAD_EFFECTS: GrainradEffectDefinition[] = [
   {
     id: 'wave-lines',
     label: 'Wave Lines',
+    renderer: 'unimplemented',
     settingGroups: [
       {
         title: 'Wave Lines',
@@ -480,6 +680,7 @@ export const GRAINRAD_EFFECTS: GrainradEffectDefinition[] = [
   {
     id: 'noise-field',
     label: 'Noise Field',
+    renderer: 'unimplemented',
     settingGroups: [
       {
         title: 'Noise Field',
@@ -503,6 +704,7 @@ export const GRAINRAD_EFFECTS: GrainradEffectDefinition[] = [
   {
     id: 'voronoi',
     label: 'Voronoi',
+    renderer: 'unimplemented',
     settingGroups: [
       {
         title: 'Voronoi',
@@ -528,6 +730,7 @@ export const GRAINRAD_EFFECTS: GrainradEffectDefinition[] = [
   {
     id: 'vhs',
     label: 'VHS',
+    renderer: 'unimplemented',
     settingGroups: [
       {
         title: 'VHS',
@@ -548,6 +751,35 @@ export const GRAINRAD_EFFECT_IDS = GRAINRAD_EFFECTS.map((effect) => effect.id)
 
 export function getGrainradEffectById(effectId: GrainradEffectId) {
   return GRAINRAD_EFFECTS.find((effect) => effect.id === effectId) ?? GRAINRAD_EFFECTS[0]
+}
+
+export function isGrainradControlVisible(
+  control: GrainradEffectControl,
+  values: Record<string, GrainradControlValue> | undefined,
+) {
+  const condition = control.visibleWhen
+
+  if (!condition) {
+    return true
+  }
+
+  if ('all' in condition) {
+    return condition.all.every((entry) => matchesVisibilityCondition(entry, values))
+  }
+
+  return matchesVisibilityCondition(condition, values)
+}
+
+function matchesVisibilityCondition(
+  condition: GrainradControlCondition,
+  values: Record<string, GrainradControlValue> | undefined,
+) {
+
+  const currentValue = values?.[condition.controlId]
+
+  return condition.operator === 'equals'
+    ? currentValue === condition.value
+    : condition.values.includes(currentValue ?? '')
 }
 
 export function createDefaultGrainradEffectControls() {
@@ -637,6 +869,7 @@ function rangeControl(
   max: number,
   step: number,
   unit?: string,
+  visibleWhen?: GrainradControlVisibility,
 ): GrainradRangeControl {
   return {
     kind: 'range',
@@ -647,6 +880,7 @@ function rangeControl(
     max,
     step,
     unit,
+    visibleWhen,
   }
 }
 
@@ -655,6 +889,7 @@ function selectControl(
   label: string,
   defaultValue: string,
   options: Array<GrainradSelectOption>,
+  visibleWhen?: GrainradControlVisibility,
 ): GrainradSelectControl {
   return {
     kind: 'select',
@@ -662,15 +897,22 @@ function selectControl(
     label,
     defaultValue,
     options,
+    visibleWhen,
   }
 }
 
-function textControl(id: string, label: string, defaultValue: string): GrainradTextControl {
+function textControl(
+  id: string,
+  label: string,
+  defaultValue: string,
+  visibleWhen?: GrainradControlVisibility,
+): GrainradTextControl {
   return {
     kind: 'text',
     id,
     label,
     defaultValue,
+    visibleWhen,
   }
 }
 
@@ -683,11 +925,17 @@ function toggleControl(id: string, label: string, defaultValue: boolean): Grainr
   }
 }
 
-function colorControl(id: string, label: string, defaultValue: string): GrainradColorControl {
+function colorControl(
+  id: string,
+  label: string,
+  defaultValue: string,
+  visibleWhen?: GrainradControlVisibility,
+): GrainradColorControl {
   return {
     kind: 'color',
     id,
     label,
     defaultValue,
+    visibleWhen,
   }
 }

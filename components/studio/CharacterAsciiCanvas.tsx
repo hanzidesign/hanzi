@@ -119,6 +119,10 @@ function CharacterAsciiScene({
         shapes,
         extrusionDepth: mesh.extrusionDepth,
         thickness: mesh.thickness,
+        bevel: mesh.bevel,
+        twist: mesh.twist,
+        taper: mesh.taper,
+        bend: mesh.bend,
         displacementSubdivisionLevel: 0,
       })
 
@@ -137,6 +141,10 @@ function CharacterAsciiScene({
   }, [
     mesh.extrusionDepth,
     mesh.thickness,
+    mesh.bevel,
+    mesh.twist,
+    mesh.taper,
+    mesh.bend,
     onAsciiStatusChange,
     svgData,
     svgLoadError,
@@ -150,8 +158,8 @@ function CharacterAsciiScene({
   }, [])
 
   const grainradRuntime = useMemo(() => compileGrainradEffectRuntime({
-    selectedEffectId: grainradEffect.selectedEffectId,
-    controls: grainradEffect.controls[grainradEffect.selectedEffectId],
+    selectedEffectId: 'ascii',
+    controls: grainradEffect.controls.ascii,
   }), [grainradEffect])
 
   const material = useMemo(() => createAsciiShaderMaterial({

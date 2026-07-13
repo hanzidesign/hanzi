@@ -2,9 +2,131 @@
 
 Active implementation package: `tasks/v2.1/phase-5d-grainrad-studio-refactor-plan.md`.
 Direct development branch for v2.1 architecture: `v2.1`.
-Current status: Phase 5D Grainrad `/studio` refactor implementation is complete and verified. Phase 5E Grainrad effect dynamics correction is complete and verified. Phase 5F runtime effect parity is complete and verified so every visible Grainrad setting maps into active renderer behavior. Phase 5G setting-effect contract analysis is captured so future implementation checks must prove each visible row changes the renderer in the intended way. Phase 5H real ASCII Character Set rendering is complete and verified with actual glyph atlas text for each set. Phase 5I ASCII Scale/Spacing/Output Width semantics correction is complete and verified. Phase 5J ASCII Foreground Color correction is complete and verified. Phase 5K ASCII Output Width range correction is complete and verified. Phase 5L ASCII Color Mode default/reset correction is complete and verified. Scope stays route-local to `/studio`; homepage `/` is not redesigned. The current Hanzi Studio font configuration and current character selector input stay preserved; the rest of `/studio` is rebuilt around Grainrad's editor architecture, compact effect-controller UI, ASCII-only active effect surface, and route-local light/dark themes with light as default.
+Current status: Phase 5M now has three independent renderers: ASCII, Dithering, and Halftone. The shared Character Model panel is implemented below Character, and the remaining 12 effects are explicitly marked unimplemented instead of falling through ASCII. Scope stays route-local to `/studio`; homepage `/` is not redesigned. Preserve the current character selector and 3D motion panel as Input, and use `data/Generated image 1.png` as the authoritative UI-layout reference.
 
 Keep this file as current-state tracking only. Historical phase logs belong in the superseded task docs or git history, not here.
+
+## Phase 5M Grainrad Effect Architecture Correction - 2026-07-13
+
+### Shared Model Panel addition - 2026-07-13
+
+User contract:
+
+- Add a dedicated `Model` panel directly below `Character` in Input.
+- SVG Extrude is the baseline model operation.
+- Add explicit model-deformation controllers; do not mix geometry controls into `3D Motion`.
+- Every 3D Character effect renderer must consume the same model geometry state.
+
+Implementation plan:
+
+- [x] RED→GREEN: extend the public Character geometry helper with Extrude, Thickness, Bevel, Twist, Taper, and Bend behavior.
+- [x] RED→GREEN: persist and sanitize the new model params with effect-independent reset behavior.
+- [x] Add a compact `Model` panel below Character; move Depth out of `3D Motion` and expose geometry controls with per-row reset.
+- [x] Route the shared geometry params into ASCII, Dithering, and every newly implemented renderer.
+- [x] Verify visible geometry changes in browser and preserve the generated-image three-column proportions.
+- [x] Run focused/full tests, TypeScript, ESLint, build, and diff hygiene; record review evidence.
+
+### Halftone vertical slice
+
+- [x] Verify the live Grainrad Halftone UI and current public bundle schema/runtime equations.
+- [x] Correct Halftone defaults, ranges, options, conditional colors, and renderer discriminator with RED→GREEN schema tests.
+- [x] Add the deterministic Halftone CPU oracle one behavior at a time.
+- [x] Add the independent Halftone shader material and shared Processing/Post stages.
+- [x] Add `CharacterHalftoneCanvas` using the shared 3D Character Model source.
+- [x] Prove selected-only reset, persistence, sanitization, and cross-effect isolation.
+- [x] Browser-test Halftone output and dynamic controls; verify every visible setting through CPU/material value mappings and inspect console/WebGL errors.
+- [x] Run full verification and record the remaining 12-effect queue.
+
+Review result:
+
+- `Model` now sits directly below Character and owns Extrude, Thickness, Bevel, Twist, Taper, and Bend. `3D Motion` contains only X/Y/Z rotation and Speed. The shared geometry helper creates real bevel geometry and CPU-applies twist, taper, and bend before UV/bounds calculation.
+- ASCII, Dithering, and Halftone all consume the same persisted/sanitized Model state. Browser pixel checks changed for every Model controller on ASCII and for Bend on Dithering; routing/geometry tests cover the same contract for Halftone.
+- Halftone now has an independent CPU oracle, shader material, offscreen 3D Character source, explicit renderer route, exact Grainrad schema, selected-only reset, conditional Mono colors, and shared Processing/Post-Processing stages.
+- Live browser verification caught and fixed a real Three.js shader helper collision (`luminance`). After renaming the local helper, Halftone renders the Character correctly; Shape, Invert, Mode, Foreground, and Background visibly change output, Original hides Mono-only colors, and no new shader errors appear after the fix. Range semantics are covered by the CPU/material tests because the in-app browser wrapper does not dispatch React range changes reliably.
+- Verification passed: full Vitest `52` files / `266` tests, TypeScript, ESLint, production build, and `git diff --check`. The only environment warning is Node 24.18.0 while the repository requests Node 22.x.
+- Remaining Phase 5M queue: Matrix Rain, Dots, Contour, Pixel Sort, Blockify, Threshold, Edge Detection, Crosshatch, Wave Lines, Noise Field, Voronoi, and VHS.
+
+Detailed specification: `tasks/v2.1/phase-5n-model-halftone.md`.
+
+### Matrix Rain vertical slice
+
+- [x] Audit the placeholder schema/runtime and verify current Grainrad Matrix Rain UI, defaults, character sets, WGSL, atlas, and uniform packing.
+- [x] RED→GREEN: correct Matrix Rain schema, renderer discriminator, Custom Chars visibility, ranges, defaults, and effect-local runtime units.
+- [x] Add a deterministic Matrix Rain CPU oracle proving every visible Settings row changes output.
+- [x] Add an independent Matrix glyph atlas and Matrix Rain shader material with shared Processing/Post stages.
+- [x] Add `CharacterMatrixRainCanvas` using the shared 3D Character Model source and explicit route.
+- [x] Prove selected-only reset, persistence, sanitization, custom fallback, and cross-effect/Model isolation.
+- [x] Browser-test Matrix Rain output, directions/time, conditional Custom Chars, shared Model behavior, and console/WebGL errors.
+- [x] Run full verification and record the remaining 11-effect queue.
+
+Detailed specification: `tasks/v2.1/phase-5o-matrix-rain.md`.
+
+Matrix Rain review — 2026-07-13:
+
+- Matrix Rain now has an explicit independent renderer route, deterministic CPU oracle, fixed 16-column `20×32` glyph atlas, exact built-in/custom charset behavior, and its own shader/material lifecycle. It does not import or fall through ASCII, Dithering, or Halftone.
+- Settings match the current Grainrad contract: exact groups/order, defaults, ranges, Custom Chars visibility, direction IDs, runtime units, threshold/background/head-glow behavior, shared Processing/Post stages, and selected-only reset/sanitization/persistence.
+- Browser verification rendered the selected 3D Character with Matrix glyphs, verified CUSTOM text and LEFT direction interactions, and found no console errors or shader compilation errors. Range changes remain covered by deterministic CPU/material/store tests because the in-app browser wrapper does not dispatch React range changes reliably.
+- Verification passed: focused Matrix suites `7` files / `64` tests, full Vitest `56` files / `309` tests, TypeScript, ESLint, production build, and `git diff --check`. The only environment warning is Node 24.18.0 while the repository requests Node 22.x.
+- Remaining independent-effect queue: Dots, Contour, Pixel Sort, Blockify, Threshold, Edge Detection, Crosshatch, Wave Lines, Noise Field, Voronoi, and VHS.
+
+### Dots vertical slice
+
+- [x] Audit the Dots placeholder and verify the current Grainrad Dots UI, defaults, uniform packing, shader equations, and quirks.
+- [x] Write the detailed Dots specification before application-code implementation.
+- [ ] RED→GREEN: correct Dots schema, renderer discriminator, exact options/ranges/defaults, runtime units, reset, persistence, and sanitization.
+- [ ] Add a deterministic Dots CPU oracle proving every visible Dots Setting changes output.
+- [ ] Add an independent Dots material and `CharacterDotsCanvas` using the shared 3D Character Model source.
+- [ ] Prove explicit routing with no ASCII/Dithering/Halftone/Matrix fallback and full Model/animation wiring.
+- [ ] Browser-test every Dots option/control, shared Model behavior, and console/WebGL errors.
+- [ ] Run full verification and record the remaining 10-effect queue.
+
+User correction:
+
+- Only ASCII has completed Settings behavior.
+- Every other Effect currently has the wrong Settings and is incorrectly treated as ASCII.
+- Grainrad Effects have different parameter sets and different rendering logic; parity must be proven one Effect and one setting change at a time.
+
+Selected first vertical slice: **Dithering**.
+
+Plan checkpoint before implementation:
+
+- [x] Capture Grainrad's desktop three-column layout, section hierarchy, spacing, borders, typography, canvas toolbar, and export panel.
+- [x] Confirm `data/sample.jpg` is the Grainrad-only behavior probe and that the local app remains Character-only. Browser upload is not exposed by the available browser-control API, so manual Grainrad upload remains the visual checkpoint.
+- [x] Record every Dithering Settings row, control type, default, min/max/step/options, reset behavior, conditional visibility, and runtime change logic.
+- [x] Audit `grainrad-effects.ts`, `grainrad-effect-runtime.ts`, store persistence/reset/sanitization, `StudioRightPanel`, and the active renderer path to locate the shared-ASCII coupling.
+- [x] Generate and inspect a Grainrad-aligned `/studio` reference image before implementation, using the external site as the visual source of truth.
+- [x] Check this plan with the user before modifying application code; approved on 2026-07-13.
+
+Implementation checklist after plan approval:
+
+- [x] Add failing tests that require an explicit Effect discriminator and forbid non-ASCII Effects from using ASCII-only controls/runtime.
+- [x] Add Dithering-specific catalogue/schema/defaults/sanitization/reset behavior.
+- [x] Add a Dithering-specific renderer/runtime compiler whose every visible control changes output.
+- [x] Rebuild `/studio` shell to the generated-image layout while retaining the existing Character selector and 3D Motion panel in Input.
+- [x] Keep ASCII on its dedicated glyph-atlas renderer and route Dithering to its own pipeline.
+- [x] Verify Dithering setting mappings, conditional visibility, reset isolation, algorithms, color modes, palette/custom palette, modulation, chromatic, Processing, and Post-Processing behavior with pure-oracle/material/runtime tests; use `data/sample.jpg` only for the Grainrad-side research checkpoint.
+- [x] Run focused Vitest, full Vitest, TypeScript, lint, build, `git diff --check`, and browser console checks.
+- [x] Record the implementation review, evidence, remaining deltas, and the next Effect slice.
+
+Acceptance criteria:
+
+- Selecting Dithering never shows ASCII-only Character Set, Scale, Spacing, Output Width, or ASCII color-mode controls.
+- Dithering Settings match Grainrad's labels, order, control types, defaults, ranges/options, and reset behavior.
+- Every visible Dithering setting has a tested mapping to a Dithering renderer parameter and causes the intended visible change.
+- Switching ASCII ↔ Dithering preserves effect-local settings without cross-contamination.
+- `/studio` matches Grainrad's desktop architecture and UI layout, except Input uses the existing Character selector and 3D Motion panel.
+- `/studio` visual placement, density, and component proportions match `data/Generated image 1.png`, which is the authoritative UI-layout reference.
+- The local app accepts only the existing Character input; `data/sample.jpg` is never exposed as a local input or persisted in local state.
+
+Review result:
+
+- Removed every non-ASCII branch from the ASCII shader. `StudioCanvas` now routes by explicit renderer discriminator: ASCII → `CharacterAsciiCanvas`, Dithering → `CharacterDitheringCanvas`, and the other 13 effects → an explicit not-implemented state.
+- Dithering now has an independent offscreen 3D Character source scene and full-screen shader material. Its tests cover 16 algorithms, ordered/error-diffusion oracle behavior, Clustered Dot, Crosshatch, adjustments, all color modes, 11 built-in palettes plus a 64-color custom palette, modulation modes, RGB split, chromatic displacement, shared Processing, and shared Post-Processing.
+- Effect state is local to the selected effect. Settings Reset resets only that effect, storage uses `hanzi-studio-grainrad-effects-v1`, and dynamic controls follow `visibleWhen` conditions.
+- `/studio` now matches `data/Generated image 1.png` at the reference 1586×992 viewport: measured columns are exactly 329 / 843 / 414px, with 50px top and 60px bottom rails, collapsed Character trigger/popover, Input → Effects → Presets, compact right rows, and the 4×2 Export grid.
+- Browser verification on `https://localhost:3100/studio` passed: Character popover opens/closes, Dithering becomes active, its independent canvas mounts, Algorithm/Intensity are present, all eight Export cells render, and console/page errors are empty. Screenshot: `.codex/visualizations/2026/07/13/019f5b7d-b520-77f0-8100-297099448021/studio-dithering.png`.
+- Verification passed: full Vitest 48 files / 237 tests, TypeScript, ESLint, production build, and `git diff --check`. The only environment warning is the repository's Node 22 requirement while this shell runs Node 24.18.0.
+- Remaining Phase 5M work: implement the other 13 effects one vertical slice at a time. The next recommended slice is Halftone; no remaining effect is allowed to reuse ASCII as a fallback.
 
 ## Simplify Commit 462878dff484a3122 - 2026-06-18
 

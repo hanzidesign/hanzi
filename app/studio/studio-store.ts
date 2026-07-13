@@ -45,7 +45,7 @@ import {
   type GrainradEffectId,
 } from '@/components/studio/grainrad-effects'
 
-export const STUDIO_STORE_STORAGE_KEY = 'hanzi-studio-grainrad-ascii-v1'
+export const STUDIO_STORE_STORAGE_KEY = 'hanzi-studio-grainrad-effects-v1'
 const STUDIO_STORE_STORAGE_VERSION = 2
 export const MAX_PATTERN_LAYERS = 3
 const DEFAULT_ART_PATTERN_LAYERS: Array<
@@ -103,6 +103,7 @@ export const DEFAULT_VIEW_STATE = {
     input: true,
     effects: true,
     animation: false,
+    presets: false,
     settings: true,
     processing: false,
     postProcessing: false,
@@ -115,7 +116,7 @@ export const DEFAULT_VIEW_STATE = {
 export type StudioActivePanel = 'character' | 'morph' | 'shader' | 'ascii' | 'asciiStyle' | 'pattern' | 'animation' | 'post' | 'randomize'
 export type StudioTheme = 'light' | 'dark'
 export type StudioMobileTab = 'input' | 'effects' | 'animation' | 'export'
-export type StudioSectionId = 'input' | 'effects' | 'animation' | 'settings' | 'processing' | 'postProcessing' | 'export'
+export type StudioSectionId = 'input' | 'effects' | 'animation' | 'presets' | 'settings' | 'processing' | 'postProcessing' | 'export'
 export type StudioExportFormat = 'png' | 'gif' | 'mp4'
 
 export type StudioRendererMode = 'webgl' | 'webgpu-experimental'
@@ -234,6 +235,10 @@ export type StudioPostFxLayer = {
 export const DEFAULT_MESH_STATE = {
   extrusionDepth: 0.18,
   thickness: 0,
+  bevel: 0,
+  twist: 0,
+  taper: 0,
+  bend: 0,
   rotation: { x: 0, y: 0, z: 0 },
   scale: 1,
   position: { x: 0, y: 0 },
@@ -314,6 +319,10 @@ export type StudioStoreState = {
   mesh: {
     extrusionDepth: number
     thickness: number
+    bevel: number
+    twist: number
+    taper: number
+    bend: number
     rotation: { x: number; y: number; z: number }
     scale: number
     position: { x: number; y: number }
@@ -1884,7 +1893,8 @@ function sanitizeGrainradControlValue(
   }
 
   if (control.kind === 'text') {
-    return typeof value === 'string' ? value.slice(0, 128) : fallback
+    const maxLength = control.id === 'custom-palette' ? 576 : 128
+    return typeof value === 'string' ? value.slice(0, maxLength) : fallback
   }
 
   return sanitizeHexColor(value, typeof fallback === 'string' ? fallback : control.defaultValue)
@@ -2035,6 +2045,10 @@ function sanitizeMeshState(value: unknown, fallback: StudioStoreState['mesh']): 
   return {
     extrusionDepth: readClampedNumber(record.extrusionDepth, fallback.extrusionDepth, 0.01, 1),
     thickness: readClampedNumber(record.thickness, fallback.thickness, -0.4, 0.4),
+    bevel: readClampedNumber(record.bevel, fallback.bevel, 0, 0.3),
+    twist: readClampedNumber(record.twist, fallback.twist, -360, 360),
+    taper: readClampedNumber(record.taper, fallback.taper, -0.8, 0.8),
+    bend: readClampedNumber(record.bend, fallback.bend, -120, 120),
     rotation: {
       x: readClampedNumber(rotation.x, fallback.rotation.x, -Math.PI, Math.PI),
       y: readClampedNumber(rotation.y, fallback.rotation.y, -Math.PI, Math.PI),
@@ -2131,6 +2145,7 @@ function sanitizeExpandedSections(
     input: typeof record.input === 'boolean' ? record.input : fallback.input,
     effects: typeof record.effects === 'boolean' ? record.effects : fallback.effects,
     animation: typeof record.animation === 'boolean' ? record.animation : fallback.animation,
+    presets: typeof record.presets === 'boolean' ? record.presets : fallback.presets,
     settings: typeof record.settings === 'boolean' ? record.settings : fallback.settings,
     processing: typeof record.processing === 'boolean' ? record.processing : fallback.processing,
     postProcessing: typeof record.postProcessing === 'boolean' ? record.postProcessing : fallback.postProcessing,

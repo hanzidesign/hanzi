@@ -26,7 +26,7 @@ export const GRAINRAD_EFFECT_SHADER_IDS: Record<GrainradEffectId, number> = {
   vhs: 14,
 }
 
-export const EFFECT_VALUE_SLOT_COUNT = 20
+export const EFFECT_VALUE_SLOT_COUNT = 24
 export const PROCESSING_VALUE_SLOT_COUNT = 6
 export const POST_VALUE_SLOT_COUNT = 9
 
@@ -110,15 +110,25 @@ const EFFECT_CONTROL_IDS: Record<GrainradEffectId, string[]> = {
   dithering: [
     'algorithm',
     'intensity',
+    'levels',
     'matrix-size',
+    'line-weight',
+    'line-spacing',
+    'layers',
     'modulation',
+    'mod-type',
+    'mod-frequency',
+    'mod-amplitude',
     'brightness',
     'contrast',
     'gamma',
     'sharpen',
     'color-mode',
+    'palette',
+    'custom-palette',
     'foreground',
     'background',
+    'color-depth',
     'chromatic-enabled',
     'max-displace',
     'red-channel',
@@ -139,6 +149,7 @@ const EFFECT_CONTROL_IDS: Record<GrainradEffectId, string[]> = {
   ],
   'matrix-rain': [
     'character-set',
+    'custom-chars',
     'cell-size',
     'spacing',
     'speed',
@@ -160,6 +171,8 @@ const EFFECT_CONTROL_IDS: Record<GrainradEffectId, string[]> = {
     'brightness',
     'contrast',
     'color-mode',
+    'foreground',
+    'background',
   ],
   contour: [
     'fill-mode',
@@ -266,6 +279,80 @@ const EFFECT_CONTROL_IDS: Record<GrainradEffectId, string[]> = {
   ],
 }
 
+const DITHERING_ALGORITHM_IDS: Record<string, number> = {
+  'floyd-steinberg': 0,
+  atkinson: 1,
+  'jarvis-judice-ninke': 2,
+  stucki: 3,
+  burkes: 4,
+  sierra: 5,
+  'sierra-two-row': 6,
+  'sierra-lite': 7,
+  'bayer-2x2': 8,
+  'bayer-4x4': 9,
+  'bayer-8x8': 10,
+  'bayer-16x16': 11,
+  'clustered-dot': 14,
+  'blue-noise': 17,
+  'interleaved-gradient': 19,
+  crosshatch: 20,
+}
+
+const DITHERING_MATRIX_SIZES: Record<string, number> = {
+  '2': 2,
+  '4': 4,
+  '8': 8,
+  '16': 16,
+}
+
+const HALFTONE_SHAPE_IDS: Record<string, number> = {
+  circle: 0,
+  square: 1,
+  diamond: 2,
+  line: 3,
+}
+
+const HALFTONE_COLOR_MODE_IDS: Record<string, number> = {
+  bw: 0,
+  color: 1,
+}
+
+const MATRIX_RAIN_CHARACTER_SET_IDS: Record<string, number> = {
+  standard: 0,
+  blocks: 1,
+  binary: 2,
+  detailed: 3,
+  minimal: 4,
+  alphabetic: 5,
+  numeric: 6,
+  math: 7,
+  emoji: 8,
+  custom: 9,
+}
+
+const MATRIX_RAIN_DIRECTION_IDS: Record<string, number> = {
+  down: 0,
+  up: 1,
+  left: 2,
+  right: 3,
+}
+
+const DOTS_SHAPE_IDS: Record<string, number> = {
+  circle: 0,
+  square: 1,
+  diamond: 2,
+}
+
+const DOTS_GRID_IDS: Record<string, number> = {
+  square: 0,
+  hex: 1,
+}
+
+const DOTS_COLOR_MODE_IDS: Record<string, number> = {
+  original: 0,
+  custom: 1,
+}
+
 export function compileGrainradEffectRuntime({
   selectedEffectId,
   controls,
@@ -302,9 +389,9 @@ export function compileGrainradEffectRuntime({
       customGlyphCount = customGlyphChars.length
       break
     case 'dithering':
-      effectValues[0] = read.select('algorithm')
+      effectValues[0] = DITHERING_ALGORITHM_IDS[read.text('algorithm', 'bayer-8x8')] ?? 10
       effectValues[1] = read.number('intensity', 1)
-      effectValues[2] = read.select('matrix-size')
+      effectValues[2] = DITHERING_MATRIX_SIZES[read.text('matrix-size', '4')] ?? 4
       effectValues[3] = read.boolean('modulation')
       effectValues[4] = read.number('brightness', 0)
       effectValues[5] = read.number('contrast', 0)
@@ -314,46 +401,61 @@ export function compileGrainradEffectRuntime({
       effectColorA = read.color('foreground', '#ffffff')
       effectColorB = read.color('background', '#000000')
       effectValues[9] = read.boolean('chromatic-enabled')
-      effectValues[10] = read.number('max-displace', 6) / 24
-      effectValues[11] = read.number('red-channel', 23) / 100
-      effectValues[12] = read.number('green-channel', 50) / 100
-      effectValues[13] = read.number('blue-channel', 80) / 100
+      effectValues[10] = read.number('max-displace', 6) / 50
+      effectValues[11] = read.number('red-channel', 23) / 360
+      effectValues[12] = read.number('green-channel', 50) / 360
+      effectValues[13] = read.number('blue-channel', 80) / 360
+      effectValues[14] = read.number('levels', 2)
+      effectValues[15] = read.number('line-weight', 0.5)
+      effectValues[16] = read.number('line-spacing', 10)
+      effectValues[17] = read.number('layers', 2)
+      effectValues[18] = read.select('mod-type')
+      effectValues[19] = read.number('mod-frequency', 5)
+      effectValues[20] = read.number('mod-amplitude', 0.1)
+      effectValues[21] = read.select('palette')
+      effectValues[22] = read.number('color-depth', 2)
+      effectValues[23] = hashText(read.text('custom-palette', '')) / 997
       break
     case 'halftone':
-      effectValues[0] = read.select('shape')
+      effectValues[0] = HALFTONE_SHAPE_IDS[read.text('shape', 'circle')] ?? 0
       effectValues[1] = read.number('dot-scale', 1)
-      effectValues[2] = read.number('spacing', 8) / 48
-      effectValues[3] = read.number('angle', 45) / 180
+      effectValues[2] = read.number('spacing', 8)
+      effectValues[3] = read.number('angle', 45)
       effectValues[4] = read.boolean('invert')
-      effectValues[5] = read.number('brightness', 0)
-      effectValues[6] = read.number('contrast', 0)
-      effectValues[7] = read.select('color-mode')
+      effectValues[5] = read.number('brightness', 0) / 100
+      effectValues[6] = read.number('contrast', 0) / 100
+      effectValues[7] = HALFTONE_COLOR_MODE_IDS[read.text('color-mode', 'bw')] ?? 0
       effectColorA = read.color('foreground', '#ffffff')
       effectColorB = read.color('background', '#000000')
       break
     case 'matrix-rain':
-      effectValues[0] = read.select('character-set')
-      effectValues[1] = read.number('cell-size', 12) / 48
+      effectValues[0] = MATRIX_RAIN_CHARACTER_SET_IDS[read.text('character-set', 'standard')] ?? 0
+      effectValues[1] = read.number('cell-size', 12)
       effectValues[2] = read.number('spacing', 0)
       effectValues[3] = read.number('speed', 1)
-      effectValues[4] = read.number('trail-length', 15) / 80
-      effectValues[5] = read.select('direction')
+      effectValues[4] = read.number('trail-length', 15)
+      effectValues[5] = MATRIX_RAIN_DIRECTION_IDS[read.text('direction', 'down')] ?? 0
       effectValues[6] = read.number('glow', 1)
       effectValues[7] = read.number('bg-opacity', 0.3)
-      effectValues[8] = read.number('brightness', 0)
-      effectValues[9] = read.number('contrast', 0)
+      effectValues[8] = read.number('brightness', 0) / 100
+      effectValues[9] = read.number('contrast', 0) / 100
       effectValues[10] = read.number('threshold', 0)
-      effectColorA = read.color('rain-color', '#2cff77')
+      effectColorA = read.color('rain-color', '#00ff00')
+      customGlyphChars = read.text('custom-chars', '')
+      customGlyphCount = customGlyphChars.length
+      customGlyphHash = hashText(customGlyphChars) / 997
       break
     case 'dots':
-      effectValues[0] = read.select('shape')
-      effectValues[1] = read.select('grid-type')
+      effectValues[0] = DOTS_SHAPE_IDS[read.text('shape', 'circle')] ?? 0
+      effectValues[1] = DOTS_GRID_IDS[read.text('grid-type', 'square')] ?? 0
       effectValues[2] = read.number('size', 1)
       effectValues[3] = read.number('spacing', 1)
       effectValues[4] = read.boolean('invert')
-      effectValues[5] = read.number('brightness', 0)
-      effectValues[6] = read.number('contrast', 0)
-      effectValues[7] = read.select('color-mode')
+      effectValues[5] = read.number('brightness', 0) / 100
+      effectValues[6] = read.number('contrast', 0) / 100
+      effectValues[7] = DOTS_COLOR_MODE_IDS[read.text('color-mode', 'original')] ?? 0
+      effectColorA = read.color('foreground', '#ffffff')
+      effectColorB = read.color('background', '#000000')
       break
     case 'contour':
       effectValues[0] = read.select('fill-mode')

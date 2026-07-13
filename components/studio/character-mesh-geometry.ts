@@ -1,8 +1,10 @@
 import {
+  Box2,
   Box3,
   BufferAttribute,
   BufferGeometry,
   ExtrudeGeometry,
+  Vector2,
   Vector3,
   type Shape,
 } from 'three'
@@ -15,6 +17,10 @@ type CreateCharacterMeshGeometriesOptions = {
   shapes: Shape[]
   extrusionDepth: number
   thickness?: number
+  bevel?: number
+  twist?: number
+  taper?: number
+  bend?: number
   displacementSubdivisionLevel?: number
 }
 
@@ -34,6 +40,10 @@ export function createCharacterMeshGeometries({
   shapes,
   extrusionDepth,
   thickness = 0,
+  bevel = 0,
+  twist = 0,
+  taper = 0,
+  bend = 0,
   displacementSubdivisionLevel = 0,
 }: CreateCharacterMeshGeometriesOptions): CharacterMeshGeometryResult {
   if (shapes.length === 0) {
@@ -41,11 +51,17 @@ export function createCharacterMeshGeometries({
   }
 
   const depth = clampCharacterExtrusionDepth(extrusionDepth)
+  const safeBevel = Math.max(0, bevel)
+  const sourceBevelSize = safeBevel * getShapeSpan(shapes) / 2
   let geometries: BufferGeometry[] = shapes.map(
     (shape) =>
       new ExtrudeGeometry(shape, {
         depth,
-        bevelEnabled: false,
+        steps: twist === 0 && taper === 0 ? 1 : 8,
+        bevelEnabled: safeBevel > 0,
+        bevelSize: sourceBevelSize,
+        bevelThickness: Math.min(safeBevel, depth / 2),
+        bevelSegments: 2,
       }),
   )
 
@@ -66,12 +82,20 @@ export function createCharacterMeshGeometries({
       applyCharacterMeshThickness(geometry, thickness)
     }
 
+    const subdivisionLevel = Math.max(
+      sanitizeDisplacementSubdivisionLevel(displacementSubdivisionLevel),
+      bend === 0 ? 0 : 2,
+    )
     geometries = geometries.map((geometry) =>
       subdivideGeometryTriangles(
         geometry,
-        sanitizeDisplacementSubdivisionLevel(displacementSubdivisionLevel),
+        subdivisionLevel,
       ),
     )
+
+    for (const geometry of geometries) {
+      applyCharacterMeshDeformation(geometry, depth, twist, taper, bend)
+    }
 
     const normalizedBounds = getCombinedBounds(geometries)
     const boundsMin = roundVector(normalizedBounds.min)
@@ -99,6 +123,69 @@ export function createCharacterMeshGeometries({
     disposeGeometries(geometries)
     throw error
   }
+}
+
+function applyCharacterMeshDeformation(
+  geometry: BufferGeometry,
+  depth: number,
+  twistDegrees: number,
+  taper: number,
+  bendDegrees: number,
+) {
+  if (twistDegrees === 0 && taper === 0 && bendDegrees === 0) {
+    return
+  }
+
+  const position = geometry.attributes.position
+  const twistRadians = (twistDegrees * Math.PI) / 180
+  const bendRadians = (bendDegrees * Math.PI) / 180
+  const bendRadius = bendRadians === 0 ? 0 : 2 / Math.abs(bendRadians)
+  const bendDirection = Math.sign(bendRadians)
+
+  for (let index = 0; index < position.count; index += 1) {
+    const x = position.getX(index)
+    const y = position.getY(index)
+    const z = position.getZ(index)
+    const depthPosition = z / Math.max(depth, MIN_CHARACTER_EXTRUSION_DEPTH)
+    const angle = twistRadians * depthPosition
+    const cosine = Math.cos(angle)
+    const sine = Math.sin(angle)
+    const taperedScale = Math.max(0.15, 1 + taper * depthPosition)
+    const twistedX = (x * cosine - y * sine) * taperedScale
+    const twistedY = (x * sine + y * cosine) * taperedScale
+    const bendAngle = bendRadians * twistedX / 2
+    const bentX = bendRadians === 0
+      ? twistedX
+      : Math.sin(bendAngle) * bendRadius
+    const bentZ = bendRadians === 0
+      ? z
+      : z + (1 - Math.cos(bendAngle)) * bendRadius * bendDirection
+
+    position.setXYZ(
+      index,
+      bentX,
+      twistedY,
+      bentZ,
+    )
+  }
+
+  position.needsUpdate = true
+  geometry.computeVertexNormals()
+  geometry.computeBoundingBox()
+  geometry.computeBoundingSphere()
+}
+
+function getShapeSpan(shapes: Shape[]) {
+  const bounds = new Box2()
+
+  for (const shape of shapes) {
+    for (const point of shape.getPoints()) {
+      bounds.expandByPoint(new Vector2(point.x, point.y))
+    }
+  }
+
+  const size = bounds.getSize(new Vector2())
+  return Math.max(size.x, size.y, 1)
 }
 
 export function sanitizeDisplacementSubdivisionLevel(value: number) {

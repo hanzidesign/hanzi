@@ -27,13 +27,15 @@ describe('Phase 5C active 3D ASCII renderer contract', () => {
     expect(rendererSource).toContain('u_asciiCellSize')
   })
 
-  it('wires Grainrad effect controls into the active shader runtime', async () => {
+  it('uses only the ASCII effect bucket and never compiles another Effect', async () => {
     const rendererSource = await readFile(join(studioDir, 'CharacterAsciiCanvas.tsx'), 'utf8')
 
     expect(rendererSource).toContain('grainradEffect')
     expect(rendererSource).toContain('compileGrainradEffectRuntime')
-    expect(rendererSource).toContain('grainradEffect.selectedEffectId')
-    expect(rendererSource).toContain('grainradEffect.controls[grainradEffect.selectedEffectId]')
+    expect(rendererSource).toContain("selectedEffectId: 'ascii'")
+    expect(rendererSource).toContain('grainradEffect.controls.ascii')
+    expect(rendererSource).not.toContain('grainradEffect.selectedEffectId')
+    expect(rendererSource).not.toContain('grainradEffect.controls[grainradEffect.selectedEffectId]')
     expect(rendererSource).toContain('grainradRuntime')
     expect(rendererSource).toContain('applyGrainradRuntimeUniforms')
   })

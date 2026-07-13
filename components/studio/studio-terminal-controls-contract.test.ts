@@ -13,7 +13,7 @@ describe('Phase 5D Grainrad terminal controller contract', () => {
 
     expect(sectionSource).toContain('TerminalSection')
     expect(sectionSource).toContain('expandedSections')
-    expect(sectionSource).toContain("symbol = expanded ? '-' : '+'")
+    expect(sectionSource).toContain("symbol = expanded ? '⌄' : '›'")
     expect(rowSource).toContain('TerminalRangeRow')
     expect(rowSource).toContain('TerminalSelectRow')
     expect(rowSource).toContain('TerminalDropdownRow')

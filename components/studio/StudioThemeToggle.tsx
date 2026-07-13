@@ -12,12 +12,13 @@ export default function StudioThemeToggle() {
   return (
     <button
       type="button"
-      className={classes.iconButton}
+      className={classes.previewActionButton}
       aria-label={theme === 'light' ? 'Switch to dark theme' : 'Switch to light theme'}
       aria-pressed={theme === 'dark'}
       onClick={toggleStudioTheme}
     >
       <Icon aria-hidden size={16} />
+      <span>Theme</span>
     </button>
   )
 }

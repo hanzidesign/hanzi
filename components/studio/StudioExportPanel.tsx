@@ -1,31 +1,32 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
-import { IoDownloadOutline } from 'react-icons/io5'
-import { useStudioStore, type StudioExportFormat } from '@/app/studio/studio-store'
+import { useEffect, useState } from 'react'
 import {
-  TerminalOptionGrid,
-  type TerminalSelectOption,
-} from '@/components/studio/TerminalRows'
+  IoCodeSlashOutline,
+  IoCopyOutline,
+  IoDocumentOutline,
+  IoPlayOutline,
+} from 'react-icons/io5'
+import { useStudioStore, type StudioExportFormat } from '@/app/studio/studio-store'
 import classes from './StudioShell.module.css'
 
-const pngExportOption: TerminalSelectOption<StudioExportFormat> = {
-  value: 'png',
-  label: 'PNG',
-  meta: '.png',
+type ExportGridOption = {
+  label: string
+  value?: StudioExportFormat
+  supported: boolean
+  requiresAnimation?: boolean
+  icon: 'document' | 'play' | 'code' | 'copy'
 }
 
-const animationExportOptions: Array<TerminalSelectOption<StudioExportFormat>> = [
-  {
-    value: 'gif',
-    label: 'GIF',
-    meta: '.gif',
-  },
-  {
-    value: 'mp4',
-    label: 'MP4',
-    meta: '.mp4',
-  },
+const exportOptions: ExportGridOption[] = [
+  { value: 'png', label: 'PNG', supported: true, icon: 'document' },
+  { label: 'JPG', supported: false, icon: 'document' },
+  { label: 'WEBP', supported: false, icon: 'document' },
+  { value: 'gif', label: 'GIF', supported: true, requiresAnimation: true, icon: 'document' },
+  { value: 'mp4', label: 'MP4', supported: true, requiresAnimation: true, icon: 'play' },
+  { label: 'APNG', supported: false, icon: 'document' },
+  { label: 'SVG', supported: false, icon: 'code' },
+  { label: 'COPY', supported: false, icon: 'copy' },
 ]
 
 export default function StudioExportPanel() {
@@ -33,22 +34,18 @@ export default function StudioExportPanel() {
   const animation = useStudioStore((store) => store.animation)
   const setExportFormat = useStudioStore((store) => store.setExportFormat)
   const [message, setMessage] = useState('Ready')
-  const exportOptions = useMemo(
-    () => animation.playing ? [pngExportOption, ...animationExportOptions] : [pngExportOption],
-    [animation.playing],
-  )
-  const activeFormat = exportOptions.some((option) => option.value === selectedFormat) ? selectedFormat : 'png'
-  const activeLabel = exportOptions.find((option) => option.value === activeFormat)?.label ?? 'PNG'
-
+  const activeFormat = exportOptions.some((option) => option.value === selectedFormat)
+    ? selectedFormat
+    : 'png'
   useEffect(() => {
     if (!animation.playing && selectedFormat !== 'png') {
       setExportFormat('png')
     }
   }, [animation.playing, selectedFormat, setExportFormat])
 
-  const handleExport = async () => {
+  const handleExport = async (format: StudioExportFormat) => {
     const canvas = document.querySelector<HTMLCanvasElement>(
-      '[data-testid="character-ascii-canvas"] canvas',
+      '[data-studio-preview] canvas',
     )
 
     if (!canvas) {
@@ -57,7 +54,7 @@ export default function StudioExportPanel() {
     }
 
     try {
-      if (activeFormat === 'png') {
+      if (format === 'png') {
         downloadDataUrl(
           canvas.toDataURL('image/png'),
           createExportFileName('png'),
@@ -71,9 +68,9 @@ export default function StudioExportPanel() {
         return
       }
 
-      const blob = await captureAnimationLoop(canvas, activeFormat)
-      downloadBlob(blob, createExportFileName(activeFormat))
-      setMessage(`${activeLabel} exported`)
+      const blob = await captureAnimationLoop(canvas, format)
+      downloadBlob(blob, createExportFileName(format))
+      setMessage(`${optionLabel(format)} exported`)
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Export failed')
     }
@@ -81,23 +78,52 @@ export default function StudioExportPanel() {
 
   return (
     <div className={classes.exportPanel}>
-      <TerminalOptionGrid
-        options={exportOptions}
-        value={activeFormat}
-        onChange={setExportFormat}
-      />
-      <p className={classes.exportMeta}>High quality image</p>
-      <button
-        type="button"
-        className={classes.exportButton}
-        onClick={handleExport}
-      >
-        <IoDownloadOutline aria-hidden size={16} />
-        Export {activeLabel}
-      </button>
-      <p className={classes.exportStatus}>{message}</p>
+      <div className={classes.exportFormatGrid} aria-label="Export format" data-studio-export-grid>
+        {exportOptions.map((option) => {
+          const disabled = !option.supported || (option.requiresAnimation && !animation.playing)
+
+          return (
+            <button
+              key={option.label}
+              type="button"
+              className={classes.exportFormatButton}
+              data-active={option.value === activeFormat}
+              disabled={disabled}
+              title={disabled ? `${option.label} export is not available` : `Select ${option.label}`}
+              onClick={() => {
+                if (option.value) {
+                  setExportFormat(option.value)
+                  void handleExport(option.value)
+                }
+              }}
+            >
+              <ExportFormatIcon icon={option.icon} />
+              <span>{option.label}</span>
+            </button>
+          )
+        })}
+      </div>
+      <p className={classes.exportStatus} aria-live="polite">{message}</p>
     </div>
   )
+}
+
+function optionLabel(format: StudioExportFormat) {
+  return exportOptions.find((option) => option.value === format)?.label ?? format.toUpperCase()
+}
+
+function ExportFormatIcon({ icon }: { icon: ExportGridOption['icon'] }) {
+  if (icon === 'play') {
+    return <IoPlayOutline aria-hidden size={15} />
+  }
+  if (icon === 'code') {
+    return <IoCodeSlashOutline aria-hidden size={15} />
+  }
+  if (icon === 'copy') {
+    return <IoCopyOutline aria-hidden size={15} />
+  }
+
+  return <IoDocumentOutline aria-hidden size={15} />
 }
 
 async function captureAnimationLoop(
@@ -226,5 +252,5 @@ function downloadBlob(blob: Blob, fileName: string) {
 }
 
 function createExportFileName(format: StudioExportFormat) {
-  return `hanzi-ascii-${new Date().toISOString().slice(0, 10)}.${format}`
+  return `hanzi-studio-${new Date().toISOString().slice(0, 10)}.${format}`
 }

@@ -4,15 +4,14 @@ import type { IconType } from 'react-icons'
 import {
   IoDownloadOutline,
   IoOptionsOutline,
-  IoPlayCircleOutline,
   IoTextOutline,
 } from 'react-icons/io5'
 import { useStudioStore, type StudioMobileTab } from '@/app/studio/studio-store'
 import CharacterPanel from '@/components/studio/CharacterPanel'
 import StudioExportPanel from '@/components/studio/StudioExportPanel'
 import {
-  StudioAnimationPanel,
   StudioEffectsPanel,
+  StudioMotionPanel,
 } from '@/components/studio/StudioLeftPanel'
 import classes from './StudioShell.module.css'
 
@@ -25,7 +24,6 @@ type MobileTabDefinition = {
 const mobileTabs: MobileTabDefinition[] = [
   { id: 'input', label: 'Input', Icon: IoTextOutline },
   { id: 'effects', label: 'Effects', Icon: IoOptionsOutline },
-  { id: 'animation', label: 'Animation', Icon: IoPlayCircleOutline },
   { id: 'export', label: 'Export', Icon: IoDownloadOutline },
 ]
 
@@ -40,9 +38,13 @@ export default function StudioMobileTabs() {
           <h2 className={classes.mobilePanelTitle}>
             {mobileTabs.find((tab) => tab.id === mobileTab)?.label ?? 'Input'}
           </h2>
-          {mobileTab === 'input' ? <CharacterPanel /> : null}
+          {mobileTab === 'input' ? (
+            <>
+              <CharacterPanel />
+              <StudioMotionPanel />
+            </>
+          ) : null}
           {mobileTab === 'effects' ? <StudioEffectsPanel /> : null}
-          {mobileTab === 'animation' ? <StudioAnimationPanel /> : null}
           {mobileTab === 'export' ? <StudioExportPanel /> : null}
         </div>
       </div>
