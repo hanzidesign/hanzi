@@ -73,11 +73,11 @@ Matrix Rain review — 2026-07-13:
 
 - [x] Audit the Dots placeholder and verify the current Grainrad Dots UI, defaults, uniform packing, shader equations, and quirks.
 - [x] Write the detailed Dots specification before application-code implementation.
-- [ ] RED→GREEN: correct Dots schema, renderer discriminator, exact options/ranges/defaults, runtime units, reset, persistence, and sanitization.
-- [ ] Add a deterministic Dots CPU oracle proving every visible Dots Setting changes output.
-- [ ] Add an independent Dots material and `CharacterDotsCanvas` using the shared 3D Character Model source.
-- [ ] Prove explicit routing with no ASCII/Dithering/Halftone/Matrix fallback and full Model/animation wiring.
-- [ ] Browser-test every Dots option/control, shared Model behavior, and console/WebGL errors.
+- [x] RED→GREEN: correct Dots schema, renderer discriminator, exact options/ranges/defaults, runtime units, reset, persistence, and sanitization.
+- [x] Add a deterministic Dots CPU oracle proving every functional Dots Setting changes output and locking Grainrad's Dot Color no-op.
+- [x] Add an independent Dots material and `CharacterDotsCanvas` using the shared 3D Character Model source.
+- [x] Prove explicit routing with no ASCII/Dithering/Halftone/Matrix fallback and full Model/animation wiring.
+- [x] Browser-test Dots selects/toggle/conditional colors, representative output, shared Model wiring, and console/WebGL errors; range semantics use deterministic CPU/material/store tests because the browser wrapper does not dispatch range input.
 - [ ] Run full verification and record the remaining 10-effect queue.
 
 User correction:
