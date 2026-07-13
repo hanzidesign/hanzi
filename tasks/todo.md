@@ -78,7 +78,172 @@ Matrix Rain review — 2026-07-13:
 - [x] Add an independent Dots material and `CharacterDotsCanvas` using the shared 3D Character Model source.
 - [x] Prove explicit routing with no ASCII/Dithering/Halftone/Matrix fallback and full Model/animation wiring.
 - [x] Browser-test Dots selects/toggle/conditional colors, representative output, shared Model wiring, and console/WebGL errors; range semantics use deterministic CPU/material/store tests because the browser wrapper does not dispatch range input.
-- [ ] Run full verification and record the remaining 10-effect queue.
+- [x] Run full verification and record the remaining 10-effect queue.
+
+Detailed specification: `tasks/v2.1/phase-5p-dots.md`.
+
+Dots review — 2026-07-13:
+
+- Dots now has an explicit independent renderer route, deterministic CPU oracle, direct uniform mapping, exact square/offset-row hex lattice, strict Circle/Square/Diamond boundaries, and its own shader/material lifecycle. It does not import or fall through ASCII, Dithering, Halftone, or Matrix Rain.
+- Settings match the current production bundles: exact group/row order, options, defaults, ranges, `/100` adjustment units, conditional Mono colors, selected-only reset, sanitization, persistence, and full shared Model/animation wiring.
+- Production quirks are locked instead of silently corrected: UI Mono maps to grayscale shader mode `1`, so Dot Color is a visible no-op; Background still affects Original while hidden; Invert reverses luminance/radius but not Original RGB; Dots ignores shared Processing and only Post runs after the effect.
+- Browser verification rendered the selected 3D Character with Dots, visibly changed Shape, Grid Type, Invert, Mode, and Background state, exposed Mono-only color rows, and found no console or shader errors. Numeric range behavior and Dot Color no-op are proven by CPU/material/store tests because the in-app browser wrapper does not dispatch React range input reliably.
+- Verification passed: focused Dots integration `6` files / `43` tests, full Vitest `59` files / `329` tests, TypeScript, ESLint, production build, and `git diff --check`. The only environment warning is Node 24.18.0 while the repository requests Node 22.x.
+- Remaining independent-effect queue: Contour, Pixel Sort, Blockify, Threshold, Edge Detection, Crosshatch, Wave Lines, Noise Field, Voronoi, and VHS.
+
+### Contour vertical slice
+
+- [x] Audit the Contour placeholder and verify current Grainrad UI, defaults, uniforms, shader equations, Processing/Post behavior, and quirks.
+- [x] Write the detailed Contour specification before application-code implementation.
+- [x] RED→GREEN: correct Contour schema, renderer discriminator, exact controls, runtime units, reset, persistence, and sanitization.
+- [x] Add a deterministic Contour CPU oracle proving every functional setting and production quirk/no-op.
+- [x] Add an independent Contour material and `CharacterContourCanvas` using the shared 3D Character Model source.
+- [x] Prove explicit routing with no prior-effect fallback and full Model/animation/resource lifecycle.
+- [x] Browser-test Contour selects/toggle/conditional colors, representative output, Model wiring, and console/WebGL errors; range semantics use CPU/material/store tests because the browser wrapper does not dispatch range input.
+- [x] Run full verification and record the remaining 9-effect queue.
+
+Detailed specification: `tasks/v2.1/phase-5q-contour.md`.
+
+Contour review — 2026-07-13:
+
+- Contour now has an explicit independent renderer route, deterministic CPU oracle, direct material uniforms, exact midpoint band quantization and four-neighbor contour classification, and its own 3D Character canvas/resource lifecycle. It does not import or fall through any prior effect.
+- Settings match the current production bundles: exact group/row order, options, defaults, slider ranges, enum IDs, `/100` adjustment units, conditional Mono colors, selected-only reset, sanitization, persistence, and shared Model/animation wiring.
+- Production quirks are locked: Invert affects only center luminance while neighbors remain uninverted; Line Thickness is sample distance rather than geometric stroke width; Original is still RGB midpoint-quantized; hidden Line Color/Background remain functional in their applicable contexts; Processing is a Contour no-op and Post runs after the effect.
+- Browser verification rendered the selected 3D Character, changed Filled Bands to Lines Only, toggled Invert, exposed and changed Mono Line Color/Background, visibly reproduced the all-contour Invert bug, and found no console or shader errors. Numeric ranges are proven by CPU/material/store tests because the browser wrapper does not dispatch range input reliably.
+- Verification passed: focused Contour integration `6` files / `47` tests, full Vitest `62` files / `351` tests, TypeScript, ESLint, production build, and `git diff --check`. The only environment warning is Node 24.18.0 while the repository requests Node 22.x.
+- Remaining independent-effect queue: Pixel Sort, Blockify, Threshold, Edge Detection, Crosshatch, Wave Lines, Noise Field, Voronoi, and VHS.
+
+### Pixel Sort vertical slice
+
+- [x] Audit the Pixel Sort placeholder and verify current Grainrad UI, defaults, uniforms, shader equations, Processing/Post behavior, and quirks.
+- [x] Write the detailed Pixel Sort specification before application-code implementation.
+- [x] RED→GREEN: correct Pixel Sort schema, renderer discriminator, exact controls, runtime units, reset, persistence, and sanitization.
+- [x] Add a deterministic Pixel Sort CPU oracle proving every functional setting and production no-op/limit.
+- [x] Add an independent Pixel Sort material and `CharacterPixelSortCanvas` using the shared 3D Character Model source.
+- [x] Prove explicit routing with no prior-effect fallback and full Model/animation/resource lifecycle.
+- [x] Browser-test Pixel Sort controls, representative output, Model wiring, and console/WebGL errors.
+- [x] Run full verification and record the remaining 8-effect queue.
+
+Pixel Sort review — 2026-07-13:
+
+- Pixel Sort now has an explicit independent renderer route, deterministic CPU oracle, exact two-sided span search, fixed 24-sample cap, luminance bubble sort, and its own 3D Character canvas/material lifecycle. It does not import or fall through any prior effect.
+- Settings match the current production bundles: exact group/row order, options, defaults, slider ranges, enum IDs, raw streak units, `/100` adjustment units, selected-only reset, sanitization, persistence, and shared Model/animation wiring.
+- Production quirks are locked: UI mode names map to black/white/bright span predicates, all modes sort by Rec.601 luminance, terminal non-span/OOB distance is included, diagonal steps use normalized component-wise pixels, Processing is a no-op, and Post runs last.
+- Browser verification rendered the selected extruded Character, exposed the exact Pixel Sort rows, changed Direction to Vertical, Sort Mode to Hue, toggled Reverse, and produced no shader/runtime errors; the terminal showed only the existing Three.js Clock deprecation warning. Numeric ranges and Model wiring are proven by CPU/material/store/routing tests because the browser wrapper does not reliably dispatch range input.
+- Verification passed: focused Pixel Sort integration `6` files / `51` tests, full Vitest `65` files / `375` tests, TypeScript, ESLint, production build, and `git diff --check`. The only environment warning is Node 24.18.0 while the repository requests Node 22.x.
+- Remaining independent-effect queue: Blockify, Threshold, Edge Detection, Crosshatch, Wave Lines, Noise Field, Voronoi, and VHS.
+
+### Blockify vertical slice
+
+- [x] Audit the Blockify placeholder and verify current Grainrad UI, defaults, uniforms, shader equations, Processing/Post behavior, and quirks.
+- [x] Write the detailed Blockify specification before application-code implementation.
+- [x] RED→GREEN: correct Blockify schema, renderer discriminator, exact controls, runtime units, reset, persistence, and sanitization.
+- [x] Add a deterministic Blockify CPU oracle proving every functional setting and production no-op/limit.
+- [x] Add an independent Blockify material and `CharacterBlockifyCanvas` using the shared 3D Character Model source.
+- [x] Prove explicit routing with no prior-effect fallback and full Model/animation/resource lifecycle.
+- [x] Browser-test Blockify controls, representative output, Model wiring, and console/WebGL errors.
+- [x] Run full verification and record the remaining 7-effect queue.
+
+Blockify review — 2026-07-13:
+
+- Blockify now has an explicit independent renderer route, deterministic CPU oracle, exact block-center linear-clamp sampling, and its own 3D Character canvas/material lifecycle. It does not import or fall through any prior effect.
+- Settings match the current production bundles: exact groups/order, Style and Color IDs, defaults, ranges, steps, raw pixel units, `/100` adjustment units, Border Color visibility when Border Width is positive, selected-only reset, sanitization, persistence, and shared Model/animation wiring.
+- Production quirks are locked: the source is sampled once at each block center rather than averaged; Shaded uses the fixed radial multiplier; Outline uses strict comparisons and raw Border Color; border controls are contextual no-ops outside Outline; partial blocks clamp to the source edge; Processing is ignored and Post runs last.
+- Browser verification rendered the selected extruded Character, changed Style to Outline, Mode to Grayscale, and Border Color to red. The output visibly showed the expected screen-space block borders, and the terminal reported no shader/runtime errors; only the existing Three.js Clock deprecation warning remained. Numeric range and Model behavior are covered by schema/core/material/store/routing tests because the browser wrapper does not reliably dispatch range input.
+- Verification passed: focused Blockify integration `6` files / `50` tests, full Vitest `68` files / `396` tests, TypeScript, ESLint, production build, and `git diff --check`. The only environment warning is Node 24.18.0 while the repository requests Node 22.x.
+- Remaining independent-effect queue: Threshold, Edge Detection, Crosshatch, Wave Lines, Noise Field, Voronoi, and VHS.
+
+### Threshold vertical slice
+
+- [x] Audit the Threshold placeholder and verify current Grainrad UI, defaults, uniforms, shader equations, Processing/Post behavior, and quirks.
+- [x] Write the detailed Threshold specification before application-code implementation.
+- [x] RED→GREEN: correct Threshold schema, renderer discriminator, exact controls, runtime units, reset, persistence, and sanitization.
+- [x] Add a deterministic Threshold CPU oracle proving every functional setting and production no-op/limit.
+- [x] Add an independent Threshold material and `CharacterThresholdCanvas` using the shared 3D Character Model source.
+- [x] Prove explicit routing with no prior-effect fallback and full Model/animation/resource lifecycle.
+- [x] Browser-test Threshold controls, representative output, Model wiring, and console/WebGL errors.
+- [x] Run full verification and record the remaining 6-effect queue.
+
+Threshold review — 2026-07-13:
+
+- Threshold now has an explicit independent renderer route, deterministic CPU oracle, exact Bayer 4×4 dithering, strict binary threshold and multi-level posterize branches, and its own 3D Character canvas/material lifecycle. It does not import or fall through any prior effect.
+- Settings match current production: exact groups/order, defaults, ranges, steps, custom/color IDs, `/100` adjustment units, conditional Mono colors, selected-only reset, sanitization, persistence, and shared Model/animation wiring.
+- Production quirks are locked: equality is dark; Dither changes the decision/posterization input; two-level Original returns undithered adjusted color for light pixels and black for dark pixels; Threshold Point is a visible no-op above two levels; multi-level Mono uses posterized Rec.601 luminance as the Background→Foreground tint; Processing is ignored and Post runs last.
+- Browser verification rendered the selected extruded Character, toggled Dither and Invert, switched Mode to Original, hid Mono-only colors, and visibly produced the expected thresholded output. The terminal reported no shader/runtime errors, only the existing Three.js Clock deprecation warning. Numeric ranges and Model behavior are covered by schema/core/material/store/routing tests because the browser wrapper does not reliably dispatch range input.
+- Verification passed: focused Threshold integration `6` files / `60` tests, full Vitest `71` files / `425` tests, TypeScript, ESLint, production build, and `git diff --check`. The only environment warning is Node 24.18.0 while the repository requests Node 22.x.
+- Remaining independent-effect queue: Edge Detection, Crosshatch, Wave Lines, Noise Field, Voronoi, and VHS.
+
+### Edge Detection vertical slice
+
+- [x] Audit the Edge Detection placeholder and verify current Grainrad UI, defaults, uniforms, shader equations, Processing/Post behavior, and quirks.
+- [x] Write the detailed Edge Detection specification before application-code implementation.
+- [x] RED→GREEN: correct Edge Detection schema, renderer discriminator, exact controls, runtime units, reset, persistence, and sanitization.
+- [x] Add a deterministic Edge Detection CPU oracle proving every functional setting and production no-op/limit.
+- [x] Add an independent Edge Detection material and `CharacterEdgeDetectionCanvas` using the shared 3D Character Model source.
+- [x] Prove explicit routing with no prior-effect fallback and full Model/animation/resource lifecycle.
+- [x] Browser-test Edge Detection controls, representative output, Model wiring, and console/WebGL errors.
+- [x] Run full verification and record the remaining 5-effect queue.
+
+Edge Detection review — 2026-07-14:
+
+- Edge Detection now has an explicit independent renderer route, deterministic CPU oracle, nested Gaussian sampling, exact coarse/fine Sobel/Prewitt/Laplacian detector behavior, and its own 3D Character canvas/material lifecycle. It does not import or fall through any prior effect.
+- Settings match current production: exact groups/order, algorithm and color IDs, defaults, ranges, steps, raw Line Width/Threshold units, `/100` adjustments, conditional Mono colors, selected-only reset, sanitization, persistence, and shared Model/animation wiring.
+- Production quirks are locked: Line Width scales sampling radius; fine Prewitt deliberately uses Sobel; combined magnitude uses `max(coarse, fine*.7)`; mask softness is `threshold*.3`; Original still mixes against hidden Background and ignores Edge Color; Contrast `-100` flattens adjusted RGB to `.5`; Processing is ignored and Post runs last.
+- Browser verification rendered the selected extruded Character, changed Algorithm to Laplacian, toggled Invert, switched to Original, hid Mono-only colors, and confirmed the dedicated canvas was ready. No shader/page errors occurred; only React dev, Three.js Clock deprecation, headless GL readback performance, and teardown context-loss warnings appeared.
+- Verification passed: focused Edge Detection integration `6` files / `54` tests, full Vitest `74` files / `446` tests, TypeScript, ESLint, production build, and `git diff --check`. The only environment warning is Node 24.18.0 while the repository requests Node 22.x.
+- Remaining independent-effect queue: Crosshatch, Wave Lines, Noise Field, Voronoi, and VHS.
+
+### Crosshatch vertical slice
+
+- [x] Audit the Crosshatch placeholder and verify current Grainrad UI, defaults, uniforms, shader equations, Processing/Post behavior, and quirks.
+- [x] Write the detailed Crosshatch specification before application-code implementation.
+- [x] RED→GREEN: correct Crosshatch schema, renderer discriminator, exact controls, runtime units, reset, persistence, and sanitization.
+- [x] Add a deterministic Crosshatch CPU oracle proving every functional setting and production no-op/limit.
+- [x] Add an independent Crosshatch material and `CharacterCrosshatchCanvas` using the shared 3D Character Model source.
+- [x] Prove explicit routing with no prior-effect fallback and full Model/animation/resource lifecycle.
+- [x] Browser-test Crosshatch controls, representative output, Model wiring, and console/WebGL errors.
+- [x] Run full verification and record the remaining 4-effect queue.
+
+Crosshatch review — 2026-07-14:
+
+- Crosshatch now has an explicit independent renderer route, deterministic CPU oracle, exact hash/value-noise wobble, six cumulative tonal-art-map patterns, layer collapse/weights/solid fill, and its own 3D Character canvas/material lifecycle. It does not reuse Dithering's Crosshatch sub-algorithm or any prior effect material.
+- Settings match current production: exact groups/order, defaults, ranges, steps, radians/raw packing, `/100` adjustments, black-on-white palette, selected-only reset, sanitization, persistence, and shared Model/animation wiring.
+- The production Line Width mismatch is preserved end-to-end: reset/store/material keep `0.15` despite UI min `0.5`; the UI displays `0.1` with a thumb left of the track, and the first slider interaction clamps into the valid range. Generic hydration now preserves intentional out-of-range production defaults without allowing other invalid values.
+- Production quirks are locked: Density is inverse visual density/spacing; luma uses red coefficient `.2326`; Line Width is raw and can saturate patterns; Layers control luminance-gated TAM directions; Randomness is deterministic phase wobble; B/C and Invert affect the mask rather than palette; Processing is ignored and Post runs last.
+- Browser verification rendered the selected extruded Character with the default crosshatch, proved the negative slider-thumb position and `0.1` display, moved Line Width to `0.5`, toggled Invert, changed Line Color, and found no shader/page errors. Only React dev, Three.js Clock deprecation, headless GL readback, and teardown context-loss warnings appeared.
+- Verification passed: focused Crosshatch integration `6` files / `61` tests, full Vitest `77` files / `472` tests, TypeScript, ESLint, production build, and `git diff --check`. The only environment warning is Node 24.18.0 while the repository requests Node 22.x.
+- Remaining independent-effect queue: Wave Lines, Noise Field, Voronoi, and VHS.
+
+### Wave Lines vertical slice
+
+- [x] Audit the Wave Lines placeholder and verify current Grainrad UI, defaults, uniforms, shader equations, Processing/Post behavior, and quirks.
+- [x] Write the detailed Wave Lines specification before application-code implementation.
+- [x] RED→GREEN: correct Wave Lines schema, renderer discriminator, exact controls, runtime units, reset, persistence, and sanitization.
+- [x] Add a deterministic Wave Lines CPU oracle proving every functional setting and production no-op/limit.
+- [x] Add an independent Wave Lines material and `CharacterWaveLinesCanvas` using the shared 3D Character Model source.
+- [x] Prove explicit routing with no prior-effect fallback and full Model/animation/resource lifecycle.
+- [x] Browser-test Wave Lines controls, representative output, Model wiring, and console/WebGL errors.
+- [x] Run full verification and record the remaining 3-effect queue.
+
+Wave Lines review — 2026-07-14:
+
+- Wave Lines now has an explicit independent renderer route, deterministic CPU oracle, exact horizontal/vertical base-cell sine displacement, strict hard line boundary, and its own 3D Character canvas/material lifecycle. It does not import or fall through any prior effect renderer.
+- Settings match current production: exact groups/order, options, defaults, ranges, steps, raw pixel/amplitude units, `/100` adjustments, conditional Mono colors, selected-only reset, persistence, sanitization, and full shared Model/animation wiring.
+- Production mismatches are preserved: Line Thickness resets to `0.4` below the UI minimum `0.5` and displays a left-of-track thumb; the first dispatched slider change clamps into range. Mono uploads shader mode `1`, so Line Color remains an unconditional no-op; hidden Background remains functional in Original; Animate OFF freezes effect time at zero without removing the spatial sine.
+- Browser verification rendered the selected extruded Character, showed the default `0.4` custom thumb at `left: calc(-4% - 4px)`, changed thickness through a native input event, switched Direction to Vertical, disabled Animate, exposed Mono-only colors, and found no console/page/shader errors. Only the existing Three.js Clock and headless GL readback warnings occurred during the default capture.
+- Verification passed: focused Wave Lines integration `6` files / `55` tests, full Vitest `80` files / `495` tests, TypeScript, ESLint, production build, and `git diff --check`. The only environment warning is Node 24.18.0 while the repository requests Node 22.x.
+- Remaining independent-effect queue: Noise Field, Voronoi, and VHS.
+
+### Noise Field vertical slice
+
+- [x] Audit the Noise Field placeholder and verify current Grainrad UI, defaults, uniform ABI, shader equations, Processing/Post behavior, WebGL fallback, and quirks.
+- [x] Write the detailed Noise Field specification before application-code implementation.
+- [ ] RED→GREEN: correct Noise Field schema, renderer discriminator, exact controls, runtime units, reset, persistence, and sanitization.
+- [ ] Add a deterministic Noise Field CPU oracle proving all functional settings and contextual no-ops.
+- [ ] Add an independent Noise Field material and `CharacterNoiseFieldCanvas` using the shared 3D Character Model source.
+- [ ] Prove explicit routing with no prior-effect fallback and full Model/animation/resource lifecycle.
+- [ ] Browser-test Noise Field controls, representative output, Model wiring, and console/WebGL errors.
+- [ ] Run full verification and record the remaining 2-effect queue.
 
 User correction:
 

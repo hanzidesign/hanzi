@@ -343,6 +343,491 @@ describe('Phase 5D Grainrad terminal Studio store', () => {
     expect(store.getState().mesh.bend).toBe(35)
   })
 
+  it('sanitizes persisted Contour controls and resets only Contour', () => {
+    const base = createInitialStudioStoreState()
+    const persistedState = {
+      ...base,
+      mesh: { ...base.mesh, twist: 55 },
+      grainradEffect: {
+        ...base.grainradEffect,
+        selectedEffectId: 'contour',
+        controls: {
+          ...base.grainradEffect.controls,
+          ascii: { ...base.grainradEffect.controls.ascii, scale: 9 },
+          dots: { ...base.grainradEffect.controls.dots, size: 1.8 },
+          contour: {
+            ...base.grainradEffect.controls.contour,
+            'fill-mode': 'edges',
+            levels: 99,
+            'line-thickness': -4,
+            invert: 'yes',
+            brightness: 999,
+            contrast: -999,
+            'color-mode': 'mono',
+            'line-color': 'black',
+            background: '#123456',
+          },
+        },
+      },
+    }
+    const { storage } = createMemoryStorage(JSON.stringify({
+      state: persistedState,
+      version: 2,
+    }))
+    const store = createStudioStore(storage)
+
+    expect(store.getState().grainradEffect.controls.contour).toMatchObject({
+      'fill-mode': 'filled',
+      levels: 20,
+      'line-thickness': 0.5,
+      invert: false,
+      brightness: 100,
+      contrast: -100,
+      'color-mode': 'original',
+      'line-color': '#000000',
+      background: '#123456',
+    })
+
+    store.getState().setGrainradEffectControl('contour', 'levels', 12)
+    store.getState().resetSelectedEffectControls()
+
+    expect(store.getState().grainradEffect.controls.contour).toMatchObject({
+      'fill-mode': 'filled',
+      levels: 8,
+      'line-thickness': 1,
+      invert: false,
+      brightness: 0,
+      contrast: 0,
+      'color-mode': 'original',
+      'line-color': '#000000',
+      background: '#ffffff',
+    })
+    expect(store.getState().grainradEffect.controls.ascii.scale).toBe(9)
+    expect(store.getState().grainradEffect.controls.dots.size).toBe(1.8)
+    expect(store.getState().mesh.twist).toBe(55)
+  })
+
+  it('sanitizes persisted Pixel Sort controls and resets only Pixel Sort', () => {
+    const base = createInitialStudioStoreState()
+    const persistedState = {
+      ...base,
+      mesh: { ...base.mesh, twist: 65 },
+      grainradEffect: {
+        ...base.grainradEffect,
+        selectedEffectId: 'pixel-sort',
+        controls: {
+          ...base.grainradEffect.controls,
+          ascii: { ...base.grainradEffect.controls.ascii, scale: 9 },
+          contour: { ...base.grainradEffect.controls.contour, levels: 12 },
+          'pixel-sort': {
+            ...base.grainradEffect.controls['pixel-sort'],
+            direction: 'radial',
+            'sort-mode': 'black',
+            threshold: 9,
+            'streak-length': -1,
+            intensity: 9,
+            randomness: -4,
+            reverse: 'yes',
+            brightness: 999,
+            contrast: -999,
+          },
+        },
+      },
+    }
+    const { storage } = createMemoryStorage(JSON.stringify({
+      state: persistedState,
+      version: 2,
+    }))
+    const store = createStudioStore(storage)
+
+    expect(store.getState().grainradEffect.controls['pixel-sort']).toMatchObject({
+      direction: 'horizontal',
+      'sort-mode': 'brightness',
+      threshold: 0.5,
+      'streak-length': 10,
+      intensity: 1,
+      randomness: 0,
+      reverse: false,
+      brightness: 100,
+      contrast: -100,
+    })
+
+    store.getState().setGrainradEffectControl('pixel-sort', 'direction', 'diagonal')
+    store.getState().resetSelectedEffectControls()
+
+    expect(store.getState().grainradEffect.controls['pixel-sort']).toMatchObject({
+      direction: 'horizontal',
+      'sort-mode': 'brightness',
+      threshold: 0.25,
+      'streak-length': 100,
+      intensity: 0.8,
+      randomness: 0.3,
+      reverse: false,
+      brightness: 0,
+      contrast: 0,
+    })
+    expect(store.getState().grainradEffect.controls.ascii.scale).toBe(9)
+    expect(store.getState().grainradEffect.controls.contour.levels).toBe(12)
+    expect(store.getState().mesh.twist).toBe(65)
+  })
+
+  it('sanitizes persisted Blockify controls and resets only Blockify', () => {
+    const base = createInitialStudioStoreState()
+    const persistedState = {
+      ...base,
+      mesh: { ...base.mesh, bend: 45 },
+      grainradEffect: {
+        ...base.grainradEffect,
+        selectedEffectId: 'blockify',
+        controls: {
+          ...base.grainradEffect.controls,
+          ascii: { ...base.grainradEffect.controls.ascii, scale: 9 },
+          'pixel-sort': { ...base.grainradEffect.controls['pixel-sort'], threshold: 0.4 },
+          blockify: {
+            ...base.grainradEffect.controls.blockify,
+            style: 'tiles',
+            'block-size': 99,
+            'border-width': -4,
+            brightness: 999,
+            contrast: -999,
+            'color-mode': 'mono',
+            'border-color': 'black',
+          },
+        },
+      },
+    }
+    const { storage } = createMemoryStorage(JSON.stringify({
+      state: persistedState,
+      version: 2,
+    }))
+    const store = createStudioStore(storage)
+
+    expect(store.getState().grainradEffect.controls.blockify).toMatchObject({
+      style: 'full',
+      'block-size': 20,
+      'border-width': 0,
+      brightness: 100,
+      contrast: -100,
+      'color-mode': 'color',
+      'border-color': '#000000',
+    })
+
+    store.getState().setGrainradEffectControl('blockify', 'style', 'outline')
+    store.getState().resetSelectedEffectControls()
+
+    expect(store.getState().grainradEffect.controls.blockify).toMatchObject({
+      style: 'full',
+      'block-size': 8,
+      'border-width': 1,
+      brightness: 0,
+      contrast: 0,
+      'color-mode': 'color',
+      'border-color': '#000000',
+    })
+    expect(store.getState().grainradEffect.controls.ascii.scale).toBe(9)
+    expect(store.getState().grainradEffect.controls['pixel-sort'].threshold).toBe(0.4)
+    expect(store.getState().mesh.bend).toBe(45)
+  })
+
+  it('sanitizes persisted Threshold controls and resets only Threshold', () => {
+    const base = createInitialStudioStoreState()
+    const persistedState = {
+      ...base,
+      mesh: { ...base.mesh, taper: 0.4 },
+      grainradEffect: {
+        ...base.grainradEffect,
+        selectedEffectId: 'threshold',
+        controls: {
+          ...base.grainradEffect.controls,
+          ascii: { ...base.grainradEffect.controls.ascii, scale: 9 },
+          blockify: { ...base.grainradEffect.controls.blockify, 'block-size': 16 },
+          threshold: {
+            ...base.grainradEffect.controls.threshold,
+            levels: 99,
+            'threshold-point': -1,
+            dither: 'yes',
+            invert: 'yes',
+            brightness: 999,
+            contrast: -999,
+            'color-mode': 'mono',
+            foreground: 'white',
+            background: '#123456',
+          },
+        },
+      },
+    }
+    const { storage } = createMemoryStorage(JSON.stringify({
+      state: persistedState,
+      version: 2,
+    }))
+    const store = createStudioStore(storage)
+
+    expect(store.getState().grainradEffect.controls.threshold).toMatchObject({
+      levels: 8,
+      'threshold-point': 0.1,
+      dither: false,
+      invert: false,
+      brightness: 100,
+      contrast: -100,
+      'color-mode': 'custom',
+      foreground: '#ffffff',
+      background: '#123456',
+    })
+
+    store.getState().setGrainradEffectControl('threshold', 'levels', 6)
+    store.getState().resetSelectedEffectControls()
+
+    expect(store.getState().grainradEffect.controls.threshold).toMatchObject({
+      levels: 2,
+      'threshold-point': 0.5,
+      dither: false,
+      invert: false,
+      brightness: 0,
+      contrast: 0,
+      'color-mode': 'custom',
+      foreground: '#ffffff',
+      background: '#000000',
+    })
+    expect(store.getState().grainradEffect.controls.ascii.scale).toBe(9)
+    expect(store.getState().grainradEffect.controls.blockify['block-size']).toBe(16)
+    expect(store.getState().mesh.taper).toBe(0.4)
+  })
+
+  it('sanitizes persisted Edge Detection controls and resets only Edge Detection', () => {
+    const base = createInitialStudioStoreState()
+    const persistedState = {
+      ...base,
+      mesh: { ...base.mesh, bevel: 0.08 },
+      grainradEffect: {
+        ...base.grainradEffect,
+        selectedEffectId: 'edge-detection',
+        controls: {
+          ...base.grainradEffect.controls,
+          ascii: { ...base.grainradEffect.controls.ascii, scale: 9 },
+          threshold: { ...base.grainradEffect.controls.threshold, levels: 6 },
+          'edge-detection': {
+            ...base.grainradEffect.controls['edge-detection'],
+            algorithm: 'canny',
+            threshold: 9,
+            'line-width': -2,
+            invert: 'yes',
+            brightness: 999,
+            contrast: -999,
+            'color-mode': 'mono',
+            'edge-color': 'white',
+            background: '#123456',
+          },
+        },
+      },
+    }
+    const { storage } = createMemoryStorage(JSON.stringify({ state: persistedState, version: 2 }))
+    const store = createStudioStore(storage)
+
+    expect(store.getState().grainradEffect.controls['edge-detection']).toMatchObject({
+      algorithm: 'sobel',
+      threshold: 0.8,
+      'line-width': 0.5,
+      invert: false,
+      brightness: 100,
+      contrast: -100,
+      'color-mode': 'custom',
+      'edge-color': '#ffffff',
+      background: '#123456',
+    })
+
+    store.getState().setGrainradEffectControl('edge-detection', 'algorithm', 'laplacian')
+    store.getState().resetSelectedEffectControls()
+
+    expect(store.getState().grainradEffect.controls['edge-detection']).toMatchObject({
+      algorithm: 'sobel',
+      threshold: 0.3,
+      'line-width': 1,
+      invert: false,
+      brightness: 0,
+      contrast: 0,
+      'color-mode': 'custom',
+      'edge-color': '#ffffff',
+      background: '#000000',
+    })
+    expect(store.getState().grainradEffect.controls.ascii.scale).toBe(9)
+    expect(store.getState().grainradEffect.controls.threshold.levels).toBe(6)
+    expect(store.getState().mesh.bevel).toBe(0.08)
+  })
+
+  it('preserves Crosshatch production width 0.15 while clamping other invalid values and resetting only Crosshatch', () => {
+    const base = createInitialStudioStoreState()
+    const persistedState = {
+      ...base,
+      mesh: { ...base.mesh, thickness: 0.12 },
+      grainradEffect: {
+        ...base.grainradEffect,
+        selectedEffectId: 'crosshatch',
+        controls: {
+          ...base.grainradEffect.controls,
+          threshold: { ...base.grainradEffect.controls.threshold, levels: 6 },
+          crosshatch: {
+            ...base.grainradEffect.controls.crosshatch,
+            density: 99,
+            layers: -2,
+            angle: 999,
+            'line-width': 0.15,
+            randomness: 9,
+            invert: 'yes',
+            brightness: 999,
+            contrast: -999,
+            'line-color': 'black',
+            background: '#123456',
+          },
+        },
+      },
+    }
+    const { storage } = createMemoryStorage(JSON.stringify({ state: persistedState, version: 2 }))
+    const store = createStudioStore(storage)
+
+    expect(store.getState().grainradEffect.controls.crosshatch).toMatchObject({
+      density: 12,
+      layers: 1,
+      angle: 90,
+      'line-width': 0.15,
+      randomness: 1,
+      invert: false,
+      brightness: 100,
+      contrast: -100,
+      'line-color': '#000000',
+      background: '#123456',
+    })
+
+    store.getState().setGrainradEffectControl('crosshatch', 'line-width', 0.2)
+    expect(store.getState().grainradEffect.controls.crosshatch['line-width']).toBe(0.5)
+    store.getState().resetSelectedEffectControls()
+
+    expect(store.getState().grainradEffect.controls.crosshatch).toMatchObject({
+      density: 6,
+      layers: 3,
+      angle: 45,
+      'line-width': 0.15,
+      randomness: 0,
+      invert: false,
+      brightness: 0,
+      contrast: 0,
+      'line-color': '#000000',
+      background: '#ffffff',
+    })
+    expect(store.getState().grainradEffect.controls.threshold.levels).toBe(6)
+    expect(store.getState().mesh.thickness).toBe(0.12)
+  })
+
+  it('preserves Wave Lines production thickness 0.4 while sanitizing and resetting only Wave Lines', () => {
+    const base = createInitialStudioStoreState()
+    const persistedState = {
+      ...base,
+      mesh: { ...base.mesh, bend: 0.2 },
+      grainradEffect: {
+        ...base.grainradEffect,
+        selectedEffectId: 'wave-lines' as const,
+        controls: {
+          ...base.grainradEffect.controls,
+          threshold: { ...base.grainradEffect.controls.threshold, levels: 6 },
+          'wave-lines': {
+            ...base.grainradEffect.controls['wave-lines'],
+            'line-count': 999,
+            amplitude: -9,
+            frequency: 99,
+            'line-thickness': 0.4,
+            direction: 'diagonal',
+            animate: 'yes',
+            brightness: 999,
+            contrast: -999,
+            'color-mode': 'custom',
+            'line-color': 'white',
+            background: '#123456',
+          },
+        },
+      },
+    }
+    const { storage } = createMemoryStorage(JSON.stringify({ state: persistedState, version: 2 }))
+    const store = createStudioStore(storage)
+
+    expect(store.getState().grainradEffect.controls['wave-lines']).toMatchObject({
+      'line-count': 150,
+      amplitude: 5,
+      frequency: 3,
+      'line-thickness': 0.4,
+      direction: 'horizontal',
+      animate: true,
+      brightness: 100,
+      contrast: -100,
+      'color-mode': 'custom',
+      'line-color': '#ffffff',
+      background: '#123456',
+    })
+
+    store.getState().setGrainradEffectControl('wave-lines', 'line-thickness', 0.45)
+    expect(store.getState().grainradEffect.controls['wave-lines']['line-thickness']).toBe(0.5)
+    store.getState().resetSelectedEffectControls()
+
+    expect(store.getState().grainradEffect.controls['wave-lines']).toMatchObject({
+      'line-count': 50,
+      amplitude: 20,
+      frequency: 1,
+      'line-thickness': 0.4,
+      direction: 'horizontal',
+      animate: true,
+      brightness: 0,
+      contrast: 0,
+      'color-mode': 'original',
+      'line-color': '#ffffff',
+      background: '#000000',
+    })
+    expect(store.getState().grainradEffect.controls.threshold.levels).toBe(6)
+    expect(store.getState().mesh.bend).toBe(0.2)
+  })
+
+  it('sanitizes persisted Noise Field controls and resets only Noise Field', () => {
+    const base = createInitialStudioStoreState()
+    const persistedState = {
+      ...base,
+      mesh: { ...base.mesh, twist: 0.2 },
+      grainradEffect: {
+        ...base.grainradEffect,
+        selectedEffectId: 'noise-field' as const,
+        controls: {
+          ...base.grainradEffect.controls,
+          threshold: { ...base.grainradEffect.controls.threshold, levels: 6 },
+          'noise-field': {
+            ...base.grainradEffect.controls['noise-field'],
+            'noise-type': 'cellular',
+            scale: 999,
+            intensity: -5,
+            octaves: 99,
+            speed: -1,
+            animate: 'yes',
+            'distort-only': true,
+            brightness: 999,
+            contrast: -999,
+          },
+        },
+      },
+    }
+    const { storage } = createMemoryStorage(JSON.stringify({ state: persistedState, version: 2 }))
+    const store = createStudioStore(storage)
+
+    expect(store.getState().grainradEffect.controls['noise-field']).toMatchObject({
+      'noise-type': 'perlin', scale: 100, intensity: 0.5, octaves: 8, speed: 0.1,
+      animate: true, 'distort-only': true, brightness: 100, contrast: -100,
+    })
+
+    store.getState().setGrainradEffectControl('noise-field', 'noise-type', 'simplex')
+    store.getState().resetSelectedEffectControls()
+
+    expect(store.getState().grainradEffect.controls['noise-field']).toMatchObject({
+      'noise-type': 'perlin', scale: 50, intensity: 1, octaves: 4, speed: 1,
+      animate: true, 'distort-only': false, brightness: 0, contrast: 0,
+    })
+    expect(store.getState().grainradEffect.controls.threshold.levels).toBe(6)
+    expect(store.getState().mesh.twist).toBe(0.2)
+  })
+
   it('migrates the old persisted ASCII Color Mode default from original to mono', () => {
     const base = createInitialStudioStoreState()
     const staleState = {

@@ -310,6 +310,250 @@ describe('Phase 5F Grainrad runtime effect compiler', () => {
     expect(runtime.effectColorA).toEqual([0x12 / 255, 0xab / 255, 0x34 / 255])
     expect(runtime.effectColorB).toEqual([0xab / 255, 0xcd / 255, 0xef / 255])
   })
+
+  it('packs Contour controls in the exact production uniform units and ids', () => {
+    const defaults = createDefaultGrainradEffectControls().contour
+    const runtime = compileGrainradEffectRuntime({
+      selectedEffectId: 'contour',
+      controls: {
+        ...defaults,
+        'fill-mode': 'lines',
+        levels: 17,
+        'line-thickness': 2.25,
+        invert: true,
+        brightness: 40,
+        contrast: -25,
+        'color-mode': 'custom',
+        'line-color': '#123456',
+        background: '#abcdef',
+      },
+    })
+
+    expect(runtime.effectValues.slice(0, 7)).toEqual([
+      1,
+      17,
+      2.25,
+      1,
+      0.4,
+      -0.25,
+      2,
+    ])
+    expect(runtime.effectColorA).toEqual([0x12 / 255, 0x34 / 255, 0x56 / 255])
+    expect(runtime.effectColorB).toEqual([0xab / 255, 0xcd / 255, 0xef / 255])
+  })
+
+  it('packs Pixel Sort controls in the exact production uniform units and ids', () => {
+    const defaults = createDefaultGrainradEffectControls()['pixel-sort']
+    const runtime = compileGrainradEffectRuntime({
+      selectedEffectId: 'pixel-sort',
+      controls: {
+        ...defaults,
+        direction: 'diagonal',
+        'sort-mode': 'saturation',
+        threshold: 0.45,
+        'streak-length': 270,
+        intensity: 0.65,
+        randomness: 0.75,
+        reverse: true,
+        brightness: 40,
+        contrast: -25,
+      },
+    })
+
+    expect(runtime.effectValues.slice(0, 9)).toEqual([
+      2,
+      2,
+      0.45,
+      270,
+      0.65,
+      0.75,
+      1,
+      0.4,
+      -0.25,
+    ])
+  })
+
+  it('packs Blockify controls in the exact production uniform units and ids', () => {
+    const defaults = createDefaultGrainradEffectControls().blockify
+    const runtime = compileGrainradEffectRuntime({
+      selectedEffectId: 'blockify',
+      controls: {
+        ...defaults,
+        style: 'outline',
+        'block-size': 17,
+        'border-width': 2.5,
+        brightness: 40,
+        contrast: -25,
+        'color-mode': 'grayscale',
+        'border-color': '#123456',
+      },
+    })
+
+    expect(runtime.effectValues.slice(0, 6)).toEqual([
+      2,
+      17,
+      2.5,
+      0.4,
+      -0.25,
+      1,
+    ])
+    expect(runtime.effectColorA).toEqual([0x12 / 255, 0x34 / 255, 0x56 / 255])
+  })
+
+  it('packs Threshold controls in the exact production uniform units and ids', () => {
+    const defaults = createDefaultGrainradEffectControls().threshold
+    const runtime = compileGrainradEffectRuntime({
+      selectedEffectId: 'threshold',
+      controls: {
+        ...defaults,
+        levels: 7,
+        'threshold-point': 0.65,
+        dither: true,
+        invert: true,
+        brightness: 40,
+        contrast: -25,
+        'color-mode': 'color',
+        foreground: '#123456',
+        background: '#abcdef',
+      },
+    })
+
+    expect(runtime.effectValues.slice(0, 7)).toEqual([
+      7,
+      1,
+      0.65,
+      0.4,
+      -0.25,
+      1,
+      1,
+    ])
+    expect(runtime.effectColorA).toEqual([0x12 / 255, 0x34 / 255, 0x56 / 255])
+    expect(runtime.effectColorB).toEqual([0xab / 255, 0xcd / 255, 0xef / 255])
+  })
+
+  it('packs Edge Detection controls in the exact production uniform units and ids', () => {
+    const defaults = createDefaultGrainradEffectControls()['edge-detection']
+    const runtime = compileGrainradEffectRuntime({
+      selectedEffectId: 'edge-detection',
+      controls: {
+        ...defaults,
+        algorithm: 'laplacian',
+        threshold: 0.65,
+        'line-width': 3.5,
+        invert: true,
+        brightness: 40,
+        contrast: -25,
+        'color-mode': 'original',
+        'edge-color': '#123456',
+        background: '#abcdef',
+      },
+    })
+
+    expect(runtime.effectValues.slice(0, 7)).toEqual([
+      0.65,
+      3.5,
+      1,
+      2,
+      0.4,
+      -0.25,
+      1,
+    ])
+    expect(runtime.effectColorA).toEqual([0x12 / 255, 0x34 / 255, 0x56 / 255])
+    expect(runtime.effectColorB).toEqual([0xab / 255, 0xcd / 255, 0xef / 255])
+  })
+
+  it('packs Crosshatch controls in exact production units and preserves the below-minimum default width', () => {
+    const defaults = createDefaultGrainradEffectControls().crosshatch
+    expect(compileGrainradEffectRuntime({
+      selectedEffectId: 'crosshatch',
+      controls: defaults,
+    }).effectValues[3]).toBe(0.15)
+
+    const runtime = compileGrainradEffectRuntime({
+      selectedEffectId: 'crosshatch',
+      controls: {
+        ...defaults,
+        density: 11,
+        angle: 90,
+        layers: 4,
+        'line-width': 2.25,
+        brightness: 40,
+        contrast: -25,
+        invert: true,
+        randomness: 0.75,
+        'line-color': '#123456',
+        background: '#abcdef',
+      },
+    })
+
+    expect(runtime.effectValues.slice(0, 8)).toEqual([
+      11,
+      Math.PI / 2,
+      4,
+      2.25,
+      0.4,
+      -0.25,
+      1,
+      0.75,
+    ])
+    expect(runtime.effectColorA).toEqual([0x12 / 255, 0x34 / 255, 0x56 / 255])
+    expect(runtime.effectColorB).toEqual([0xab / 255, 0xcd / 255, 0xef / 255])
+  })
+
+  it('packs Wave Lines controls in exact production units and preserves the below-minimum default thickness', () => {
+    const defaults = createDefaultGrainradEffectControls()['wave-lines']
+    expect(compileGrainradEffectRuntime({
+      selectedEffectId: 'wave-lines',
+      controls: defaults,
+    }).effectValues[4]).toBe(0.4)
+
+    const runtime = compileGrainradEffectRuntime({
+      selectedEffectId: 'wave-lines',
+      controls: {
+        ...defaults,
+        'line-count': 125,
+        amplitude: 42,
+        frequency: 2.4,
+        'line-thickness': 1.7,
+        direction: 'vertical',
+        animate: false,
+        brightness: 40,
+        contrast: -25,
+        'color-mode': 'custom',
+        'line-color': '#123456',
+        background: '#abcdef',
+      },
+    })
+
+    expect(runtime.effectValues.slice(0, 9)).toEqual([
+      125, 42, 2.4, 1, 1.7, 0.4, -0.25, 1, 0,
+    ])
+    expect(runtime.effectColorA).toEqual([0x12 / 255, 0x34 / 255, 0x56 / 255])
+    expect(runtime.effectColorB).toEqual([0xab / 255, 0xcd / 255, 0xef / 255])
+  })
+
+  it('packs Noise Field controls in exact production units and ids', () => {
+    const defaults = createDefaultGrainradEffectControls()['noise-field']
+    const runtime = compileGrainradEffectRuntime({
+      selectedEffectId: 'noise-field',
+      controls: {
+        ...defaults,
+        'noise-type': 'worley',
+        scale: 85,
+        intensity: 2.4,
+        speed: 1.7,
+        octaves: 7,
+        animate: false,
+        brightness: 40,
+        contrast: -25,
+        'distort-only': true,
+      },
+    })
+
+    expect(runtime.effectValues.slice(0, 9)).toEqual([
+      85, 2.4, 1.7, 7, 0, 0.4, -0.25, 2, 1,
+    ])
+  })
 })
 
 function signatureFor(

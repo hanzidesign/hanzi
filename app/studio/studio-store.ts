@@ -1879,7 +1879,15 @@ function sanitizeGrainradControlValue(
   fallback: GrainradControlValue
 ): GrainradControlValue {
   if (control.kind === 'range') {
-    return readClampedNumber(value, typeof fallback === 'number' ? fallback : control.defaultValue, control.min, control.max)
+    const numericFallback = typeof fallback === 'number' ? fallback : control.defaultValue
+    const numericValue = typeof value === 'number' && Number.isFinite(value) ? value : numericFallback
+    const hasOutOfRangeProductionDefault = control.defaultValue < control.min || control.defaultValue > control.max
+
+    if (hasOutOfRangeProductionDefault && numericValue === control.defaultValue) {
+      return control.defaultValue
+    }
+
+    return readClampedNumber(numericValue, numericFallback, control.min, control.max)
   }
 
   if (control.kind === 'toggle') {

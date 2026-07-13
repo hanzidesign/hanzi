@@ -68,6 +68,7 @@ export function TerminalRangeRow({
   displayValue,
   onChange,
   onReset,
+  allowOutOfRangeValue = false,
 }: {
   label: string
   value: number
@@ -77,23 +78,36 @@ export function TerminalRangeRow({
   displayValue?: string
   onChange: (value: number) => void
   onReset?: () => void
+  allowOutOfRangeValue?: boolean
 }) {
+  const isOutOfRange = allowOutOfRangeValue && (value < min || value > max)
+  const outOfRangePosition = (value - min) / (max - min) * 100
+
   return (
     <TerminalRowShell
       label={label}
       value={displayValue ?? formatNumber(value)}
       onReset={onReset}
     >
-      <input
-        aria-label={label}
-        className={classes.rangeInput}
-        type="range"
-        min={min}
-        max={max}
-        step={step}
-        value={value}
-        onChange={(event) => onChange(Number(event.currentTarget.value))}
-      />
+      <span className={classes.rangeInputShell}>
+        <input
+          aria-label={label}
+          className={`${classes.rangeInput} ${isOutOfRange ? classes.rangeInputOutOfRange : ''}`}
+          type="range"
+          min={min}
+          max={max}
+          step={step}
+          value={value}
+          onChange={(event) => onChange(Number(event.currentTarget.value))}
+        />
+        {isOutOfRange ? (
+          <span
+            aria-hidden
+            className={classes.rangeOutOfRangeThumb}
+            style={{ left: `calc(${outOfRangePosition}% - 4px)` }}
+          />
+        ) : null}
+      </span>
     </TerminalRowShell>
   )
 }

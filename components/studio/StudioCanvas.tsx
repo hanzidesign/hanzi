@@ -6,10 +6,18 @@ import CharacterAsciiCanvas, {
   IDLE_CHARACTER_ASCII_STATUS,
   type CharacterAsciiStatus,
 } from '@/components/studio/CharacterAsciiCanvas'
+import CharacterBlockifyCanvas from '@/components/studio/CharacterBlockifyCanvas'
+import CharacterContourCanvas from '@/components/studio/CharacterContourCanvas'
+import CharacterCrosshatchCanvas from '@/components/studio/CharacterCrosshatchCanvas'
 import CharacterDitheringCanvas from '@/components/studio/CharacterDitheringCanvas'
 import CharacterDotsCanvas from '@/components/studio/CharacterDotsCanvas'
+import CharacterEdgeDetectionCanvas from '@/components/studio/CharacterEdgeDetectionCanvas'
 import CharacterHalftoneCanvas from '@/components/studio/CharacterHalftoneCanvas'
 import CharacterMatrixRainCanvas from '@/components/studio/CharacterMatrixRainCanvas'
+import CharacterNoiseFieldCanvas from '@/components/studio/CharacterNoiseFieldCanvas'
+import CharacterPixelSortCanvas from '@/components/studio/CharacterPixelSortCanvas'
+import CharacterThresholdCanvas from '@/components/studio/CharacterThresholdCanvas'
+import CharacterWaveLinesCanvas from '@/components/studio/CharacterWaveLinesCanvas'
 import { getGrainradEffectById } from '@/components/studio/grainrad-effects'
 import { isAbortError } from '@/utils/dataUrl'
 import classes from './StudioShell.module.css'
@@ -93,6 +101,22 @@ export default function StudioCanvas() {
           <CharacterMatrixRainCanvas />
         ) : selectedEffectId === 'dots' ? (
           <CharacterDotsCanvas />
+        ) : selectedEffectId === 'contour' ? (
+          <CharacterContourCanvas />
+        ) : selectedEffectId === 'pixel-sort' ? (
+          <CharacterPixelSortCanvas />
+        ) : selectedEffectId === 'blockify' ? (
+          <CharacterBlockifyCanvas />
+        ) : selectedEffectId === 'threshold' ? (
+          <CharacterThresholdCanvas />
+        ) : selectedEffectId === 'edge-detection' ? (
+          <CharacterEdgeDetectionCanvas />
+        ) : selectedEffectId === 'crosshatch' ? (
+          <CharacterCrosshatchCanvas />
+        ) : selectedEffectId === 'wave-lines' ? (
+          <CharacterWaveLinesCanvas />
+        ) : selectedEffectId === 'noise-field' ? (
+          <CharacterNoiseFieldCanvas />
         ) : (
           <div
             data-testid="effect-renderer-not-implemented"

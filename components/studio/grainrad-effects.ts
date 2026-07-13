@@ -13,6 +13,11 @@ export type GrainradControlCondition =
       operator: 'in'
       values: GrainradControlValue[]
     }
+  | {
+      controlId: string
+      operator: 'greater-than'
+      value: number
+    }
 
 export type GrainradControlVisibility =
   | GrainradControlCondition
@@ -85,6 +90,14 @@ export type GrainradEffectRenderer =
   | 'halftone'
   | 'matrix-rain'
   | 'dots'
+  | 'contour'
+  | 'pixel-sort'
+  | 'blockify'
+  | 'threshold'
+  | 'edge-detection'
+  | 'crosshatch'
+  | 'wave-lines'
+  | 'noise-field'
   | 'unimplemented'
 
 export const GRAINRAD_CHARACTER_SETS = [
@@ -142,7 +155,7 @@ const ditheringPaletteOptions = [
 ]
 
 const blockifyColorModeOptions = [
-  { value: 'preserve-colors', label: 'Preserve Colors' },
+  { value: 'color', label: 'Preserve Colors' },
   { value: 'grayscale', label: 'Grayscale' },
 ]
 
@@ -512,28 +525,48 @@ export const GRAINRAD_EFFECTS: GrainradEffectDefinition[] = [
   {
     id: 'contour',
     label: 'Contour',
-    renderer: 'unimplemented',
+    renderer: 'contour',
     settingGroups: [
       {
         title: 'Contour',
         controls: [
-          selectControl('fill-mode', 'Fill Mode', 'filled-bands', [
-            { value: 'filled-bands', label: 'Filled Bands' },
-            { value: 'lines-only', label: 'Lines Only' },
+          selectControl('fill-mode', 'Fill Mode', 'filled', [
+            { value: 'filled', label: 'Filled Bands' },
+            { value: 'lines', label: 'Lines Only' },
           ]),
-          rangeControl('levels', 'Levels', 8, 2, 32, 1),
-          rangeControl('line-thickness', 'Line Thickness', 1, 0.1, 6, 0.1),
+          rangeControl('levels', 'Levels', 8, 3, 20, 1),
+          rangeControl('line-thickness', 'Line Thickness', 1, 0.5, 3, 0.25),
           toggleControl('invert', 'Invert', false),
         ],
       },
-      adjustmentGroup(['Brightness', 'Contrast']),
-      colorModeGroup('original'),
+      {
+        title: 'Adjustments',
+        controls: [
+          rangeControl('brightness', 'Brightness', 0, -100, 100, 1),
+          rangeControl('contrast', 'Contrast', 0, -100, 100, 1),
+        ],
+      },
+      colorModeGroup('original', [
+        { value: 'custom', label: 'Mono' },
+        { value: 'original', label: 'Original' },
+      ], [
+        colorControl('line-color', 'Line Color', '#000000', {
+          controlId: 'color-mode',
+          operator: 'equals',
+          value: 'custom',
+        }),
+        colorControl('background', 'Background', '#ffffff', {
+          controlId: 'color-mode',
+          operator: 'equals',
+          value: 'custom',
+        }),
+      ]),
     ],
   },
   {
     id: 'pixel-sort',
     label: 'Pixel Sort',
-    renderer: 'unimplemented',
+    renderer: 'pixel-sort',
     settingGroups: [
       {
         title: 'Pixel Sort',
@@ -547,39 +580,55 @@ export const GRAINRAD_EFFECTS: GrainradEffectDefinition[] = [
             { value: 'hue', label: 'Hue' },
             { value: 'saturation', label: 'Saturation' },
           ]),
-          rangeControl('threshold', 'Threshold', 0.3, 0, 1, 0.01),
-          rangeControl('streak-length', 'Streak Length', 100, 1, 300, 1),
-          rangeControl('intensity', 'Intensity', 0.8, 0, 1, 0.01),
-          rangeControl('randomness', 'Randomness', 0.3, 0, 1, 0.01),
+          rangeControl('threshold', 'Threshold', 0.25, 0, 0.5, 0.05),
+          rangeControl('streak-length', 'Streak Length', 100, 10, 300, 10),
+          rangeControl('intensity', 'Intensity', 0.8, 0, 1, 0.05),
+          rangeControl('randomness', 'Randomness', 0.3, 0, 1, 0.05),
           toggleControl('reverse', 'Reverse', false),
         ],
       },
-      adjustmentGroup(['Brightness', 'Contrast']),
+      {
+        title: 'Adjustments',
+        controls: [
+          rangeControl('brightness', 'Brightness', 0, -100, 100, 1),
+          rangeControl('contrast', 'Contrast', 0, -100, 100, 1),
+        ],
+      },
     ],
   },
   {
     id: 'blockify',
     label: 'Blockify',
-    renderer: 'unimplemented',
+    renderer: 'blockify',
     settingGroups: [
       {
         title: 'Blockify',
         controls: [
-          selectControl('style', 'Style', 'full-blocks', [
-            { value: 'full-blocks', label: 'Full Blocks' },
+          selectControl('style', 'Style', 'full', [
+            { value: 'full', label: 'Full Blocks' },
             { value: 'shaded', label: 'Shaded' },
             { value: 'outline', label: 'Outline' },
           ]),
-          rangeControl('block-size', 'Block Size', 8, 2, 64, 1),
-          rangeControl('border-width', 'Border Width', 1, 0, 12, 0.1),
+          rangeControl('block-size', 'Block Size', 8, 4, 20, 1),
+          rangeControl('border-width', 'Border Width', 1, 0, 3, 0.5),
         ],
       },
-      adjustmentGroup(['Brightness', 'Contrast']),
+      {
+        title: 'Adjustments',
+        controls: [
+          rangeControl('brightness', 'Brightness', 0, -100, 100, 1),
+          rangeControl('contrast', 'Contrast', 0, -100, 100, 1),
+        ],
+      },
       {
         title: 'Color',
         controls: [
-          selectControl('color-mode', 'Mode', 'preserve-colors', blockifyColorModeOptions),
-          colorControl('border-color', 'Border Color', '#000000'),
+          selectControl('color-mode', 'Mode', 'color', blockifyColorModeOptions),
+          colorControl('border-color', 'Border Color', '#000000', {
+            controlId: 'border-width',
+            operator: 'greater-than',
+            value: 0,
+          }),
         ],
       },
     ],
@@ -587,25 +636,49 @@ export const GRAINRAD_EFFECTS: GrainradEffectDefinition[] = [
   {
     id: 'threshold',
     label: 'Threshold',
-    renderer: 'unimplemented',
+    renderer: 'threshold',
     settingGroups: [
       {
         title: 'Threshold',
         controls: [
-          rangeControl('levels', 'Levels', 2, 2, 16, 1),
-          rangeControl('threshold-point', 'Threshold Point', 0.5, 0, 1, 0.01),
+          rangeControl('levels', 'Levels', 2, 2, 8, 1),
+          rangeControl('threshold-point', 'Threshold Point', 0.5, 0.1, 0.9, 0.05),
           toggleControl('dither', 'Dither', false),
           toggleControl('invert', 'Invert', false),
         ],
       },
-      adjustmentGroup(['Brightness', 'Contrast']),
-      monoColorGroup(),
+      {
+        title: 'Adjustments',
+        controls: [
+          rangeControl('brightness', 'Brightness', 0, -100, 100, 1),
+          rangeControl('contrast', 'Contrast', 0, -100, 100, 1),
+        ],
+      },
+      {
+        title: 'Color',
+        controls: [
+          selectControl('color-mode', 'Mode', 'custom', [
+            { value: 'custom', label: 'Mono' },
+            { value: 'color', label: 'Original' },
+          ]),
+          colorControl('foreground', 'Foreground', '#ffffff', {
+            controlId: 'color-mode',
+            operator: 'equals',
+            value: 'custom',
+          }),
+          colorControl('background', 'Background', '#000000', {
+            controlId: 'color-mode',
+            operator: 'equals',
+            value: 'custom',
+          }),
+        ],
+      },
     ],
   },
   {
     id: 'edge-detection',
     label: 'Edge Detection',
-    renderer: 'unimplemented',
+    renderer: 'edge-detection',
     settingGroups: [
       {
         title: 'Edge Detection',
@@ -615,18 +688,35 @@ export const GRAINRAD_EFFECTS: GrainradEffectDefinition[] = [
             { value: 'prewitt', label: 'Prewitt' },
             { value: 'laplacian', label: 'Laplacian' },
           ]),
-          rangeControl('threshold', 'Threshold', 0.3, 0, 1, 0.01),
-          rangeControl('line-width', 'Line Width', 1, 0.1, 8, 0.1),
+          rangeControl('threshold', 'Threshold', 0.3, 0.1, 0.8, 0.05),
+          rangeControl('line-width', 'Line Width', 1, 0.5, 4, 0.5),
           toggleControl('invert', 'Invert', false),
         ],
       },
-      adjustmentGroup(['Brightness', 'Contrast']),
+      {
+        title: 'Adjustments',
+        controls: [
+          rangeControl('brightness', 'Brightness', 0, -100, 100, 1),
+          rangeControl('contrast', 'Contrast', 0, -100, 100, 1),
+        ],
+      },
       {
         title: 'Color',
         controls: [
-          selectControl('color-mode', 'Mode', 'mono', monoOriginalColorModeOptions),
-          colorControl('edge-color', 'Edge Color', '#ffffff'),
-          colorControl('background', 'Background', '#000000'),
+          selectControl('color-mode', 'Mode', 'custom', [
+            { value: 'custom', label: 'Mono' },
+            { value: 'original', label: 'Original' },
+          ]),
+          colorControl('edge-color', 'Edge Color', '#ffffff', {
+            controlId: 'color-mode',
+            operator: 'equals',
+            value: 'custom',
+          }),
+          colorControl('background', 'Background', '#000000', {
+            controlId: 'color-mode',
+            operator: 'equals',
+            value: 'custom',
+          }),
         ],
       },
     ],
@@ -634,25 +724,31 @@ export const GRAINRAD_EFFECTS: GrainradEffectDefinition[] = [
   {
     id: 'crosshatch',
     label: 'Crosshatch',
-    renderer: 'unimplemented',
+    renderer: 'crosshatch',
     settingGroups: [
       {
         title: 'Crosshatch',
         controls: [
-          rangeControl('density', 'Density', 6, 1, 24, 1),
-          rangeControl('layers', 'Layers', 3, 1, 8, 1),
-          rangeControl('angle', 'Angle', 45, -180, 180, 1, 'deg'),
-          rangeControl('line-width', 'Line Width', 0.1, 0.05, 3, 0.05),
-          rangeControl('randomness', 'Randomness', 0, 0, 1, 0.01),
+          rangeControl('density', 'Density', 6, 2, 12, 1),
+          rangeControl('layers', 'Layers', 3, 1, 4, 1),
+          rangeControl('angle', 'Angle', 45, 0, 90, 5, '°'),
+          rangeControl('line-width', 'Line Width', 0.15, 0.5, 3, 0.25),
+          rangeControl('randomness', 'Randomness', 0, 0, 1, 0.05),
           toggleControl('invert', 'Invert', false),
         ],
       },
-      adjustmentGroup(['Brightness', 'Contrast']),
+      {
+        title: 'Adjustments',
+        controls: [
+          rangeControl('brightness', 'Brightness', 0, -100, 100, 1),
+          rangeControl('contrast', 'Contrast', 0, -100, 100, 1),
+        ],
+      },
       {
         title: 'Color',
         controls: [
-          colorControl('line-color', 'Line Color', '#ffffff'),
-          colorControl('background', 'Background', '#000000'),
+          colorControl('line-color', 'Line Color', '#000000'),
+          colorControl('background', 'Background', '#ffffff'),
         ],
       },
     ],
@@ -660,27 +756,51 @@ export const GRAINRAD_EFFECTS: GrainradEffectDefinition[] = [
   {
     id: 'wave-lines',
     label: 'Wave Lines',
-    renderer: 'unimplemented',
+    renderer: 'wave-lines',
     settingGroups: [
       {
         title: 'Wave Lines',
         controls: [
-          rangeControl('line-count', 'Line Count', 50, 1, 200, 1),
-          rangeControl('amplitude', 'Amplitude', 20, 0, 100, 1),
-          rangeControl('frequency', 'Frequency', 1, 0, 8, 0.01),
-          rangeControl('line-thickness', 'Line Thickness', 0.4, 0.05, 6, 0.05),
+          rangeControl('line-count', 'Line Count', 50, 10, 150, 5),
+          rangeControl('amplitude', 'Amplitude', 20, 5, 50, 1),
+          rangeControl('frequency', 'Frequency', 1, 0.5, 3, 0.1),
+          rangeControl('line-thickness', 'Line Thickness', 0.4, 0.5, 3, 0.1),
           selectControl('direction', 'Direction', 'horizontal', directionOptions),
-          toggleControl('animate', 'Animate', false),
+          toggleControl('animate', 'Animate', true),
         ],
       },
-      adjustmentGroup(['Brightness', 'Contrast']),
-      colorModeGroup('original'),
+      {
+        title: 'Adjustments',
+        controls: [
+          rangeControl('brightness', 'Brightness', 0, -100, 100, 1),
+          rangeControl('contrast', 'Contrast', 0, -100, 100, 1),
+        ],
+      },
+      {
+        title: 'Color',
+        controls: [
+          selectControl('color-mode', 'Mode', 'original', [
+            { value: 'custom', label: 'Mono' },
+            { value: 'original', label: 'Original' },
+          ]),
+          colorControl('line-color', 'Line Color', '#ffffff', {
+            controlId: 'color-mode',
+            operator: 'equals',
+            value: 'custom',
+          }),
+          colorControl('background', 'Background', '#000000', {
+            controlId: 'color-mode',
+            operator: 'equals',
+            value: 'custom',
+          }),
+        ],
+      },
     ],
   },
   {
     id: 'noise-field',
     label: 'Noise Field',
-    renderer: 'unimplemented',
+    renderer: 'noise-field',
     settingGroups: [
       {
         title: 'Noise Field',
@@ -690,15 +810,21 @@ export const GRAINRAD_EFFECTS: GrainradEffectDefinition[] = [
             { value: 'simplex', label: 'Simplex' },
             { value: 'worley', label: 'Worley' },
           ]),
-          rangeControl('scale', 'Scale', 50, 1, 200, 1),
-          rangeControl('intensity', 'Intensity', 1, 0, 2, 0.01),
+          rangeControl('scale', 'Scale', 50, 10, 100, 5),
+          rangeControl('intensity', 'Intensity', 1, 0.5, 3, 0.1),
           rangeControl('octaves', 'Octaves', 4, 1, 8, 1),
-          rangeControl('speed', 'Speed', 1, 0, 4, 0.01),
-          toggleControl('animate', 'Animate', false),
+          rangeControl('speed', 'Speed', 1, 0.1, 3, 0.1),
+          toggleControl('animate', 'Animate', true),
           toggleControl('distort-only', 'Distort Only', false),
         ],
       },
-      adjustmentGroup(['Brightness', 'Contrast']),
+      {
+        title: 'Adjustments',
+        controls: [
+          rangeControl('brightness', 'Brightness', 0, -100, 100, 1),
+          rangeControl('contrast', 'Contrast', 0, -100, 100, 1),
+        ],
+      },
     ],
   },
   {
@@ -777,9 +903,15 @@ function matchesVisibilityCondition(
 
   const currentValue = values?.[condition.controlId]
 
-  return condition.operator === 'equals'
-    ? currentValue === condition.value
-    : condition.values.includes(currentValue ?? '')
+  if (condition.operator === 'equals') {
+    return currentValue === condition.value
+  }
+
+  if (condition.operator === 'greater-than') {
+    return typeof currentValue === 'number' && currentValue > condition.value
+  }
+
+  return condition.values.includes(currentValue ?? '')
 }
 
 export function createDefaultGrainradEffectControls() {
@@ -838,13 +970,6 @@ function adjustmentGroup(labels: string[] = [
       return rangeControl(id, label, 0, min, max, 0.01)
     }),
   }
-}
-
-function monoColorGroup(): GrainradSettingGroup {
-  return colorModeGroup('mono', monoOriginalColorModeOptions, [
-    colorControl('foreground', 'Foreground', '#ffffff'),
-    colorControl('background', 'Background', '#000000'),
-  ])
 }
 
 function colorModeGroup(

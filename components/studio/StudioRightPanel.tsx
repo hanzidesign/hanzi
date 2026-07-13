@@ -326,7 +326,12 @@ function renderEffectControl({
         min={control.min}
         max={control.max}
         step={control.step}
-        displayValue={formatControlValue(numberValue, control.unit)}
+        displayValue={selectedEffectId === 'crosshatch'
+          && control.id === 'line-width'
+          && numberValue === 0.15
+          ? numberValue.toFixed(1)
+          : formatControlValue(numberValue, control.unit)}
+        allowOutOfRangeValue={numberValue < control.min || numberValue > control.max}
         onChange={(nextValue) => onChange(selectedEffectId, control.id, nextValue)}
         onReset={() => onChange(selectedEffectId, control.id, control.defaultValue)}
       />
@@ -403,7 +408,7 @@ function readStringControl(
 }
 
 function formatControlValue(value: number, unit?: string) {
-  if (unit === 'deg') {
+  if (unit === 'deg' || unit === '°') {
     return `${Math.round(value)}°`
   }
 

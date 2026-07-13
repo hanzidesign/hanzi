@@ -182,6 +182,8 @@ const EFFECT_CONTROL_IDS: Record<GrainradEffectId, string[]> = {
     'brightness',
     'contrast',
     'color-mode',
+    'line-color',
+    'background',
   ],
   'pixel-sort': [
     'direction',
@@ -247,6 +249,8 @@ const EFFECT_CONTROL_IDS: Record<GrainradEffectId, string[]> = {
     'brightness',
     'contrast',
     'color-mode',
+    'line-color',
+    'background',
   ],
   'noise-field': [
     'noise-type',
@@ -351,6 +355,71 @@ const DOTS_GRID_IDS: Record<string, number> = {
 const DOTS_COLOR_MODE_IDS: Record<string, number> = {
   original: 0,
   custom: 1,
+}
+
+const CONTOUR_FILL_MODE_IDS: Record<string, number> = {
+  filled: 0,
+  lines: 1,
+}
+
+const CONTOUR_COLOR_MODE_IDS: Record<string, number> = {
+  original: 1,
+  custom: 2,
+}
+
+const PIXEL_SORT_DIRECTION_IDS: Record<string, number> = {
+  horizontal: 0,
+  vertical: 1,
+  diagonal: 2,
+}
+
+const PIXEL_SORT_MODE_IDS: Record<string, number> = {
+  brightness: 0,
+  hue: 1,
+  saturation: 2,
+}
+
+const BLOCKIFY_STYLE_IDS: Record<string, number> = {
+  full: 0,
+  shaded: 1,
+  outline: 2,
+}
+
+const BLOCKIFY_COLOR_MODE_IDS: Record<string, number> = {
+  color: 0,
+  grayscale: 1,
+}
+
+const THRESHOLD_COLOR_MODE_IDS: Record<string, number> = {
+  custom: 0,
+  color: 1,
+}
+
+const EDGE_DETECTION_ALGORITHM_IDS: Record<string, number> = {
+  sobel: 0,
+  prewitt: 1,
+  laplacian: 2,
+}
+
+const EDGE_DETECTION_COLOR_MODE_IDS: Record<string, number> = {
+  custom: 0,
+  original: 1,
+}
+
+const WAVE_LINES_DIRECTION_IDS: Record<string, number> = {
+  horizontal: 0,
+  vertical: 1,
+}
+
+const WAVE_LINES_COLOR_MODE_IDS: Record<string, number> = {
+  original: 0,
+  custom: 1,
+}
+
+const NOISE_FIELD_TYPE_IDS: Record<string, number> = {
+  perlin: 0,
+  simplex: 1,
+  worley: 2,
 }
 
 export function compileGrainradEffectRuntime({
@@ -458,89 +527,93 @@ export function compileGrainradEffectRuntime({
       effectColorB = read.color('background', '#000000')
       break
     case 'contour':
-      effectValues[0] = read.select('fill-mode')
+      effectValues[0] = CONTOUR_FILL_MODE_IDS[read.text('fill-mode', 'filled')] ?? 0
       effectValues[1] = read.number('levels', 8)
       effectValues[2] = read.number('line-thickness', 1)
       effectValues[3] = read.boolean('invert')
-      effectValues[4] = read.number('brightness', 0)
-      effectValues[5] = read.number('contrast', 0)
-      effectValues[6] = read.select('color-mode')
+      effectValues[4] = read.number('brightness', 0) / 100
+      effectValues[5] = read.number('contrast', 0) / 100
+      effectValues[6] = CONTOUR_COLOR_MODE_IDS[read.text('color-mode', 'original')] ?? 1
+      effectColorA = read.color('line-color', '#000000')
+      effectColorB = read.color('background', '#ffffff')
       break
     case 'pixel-sort':
-      effectValues[0] = read.select('direction')
-      effectValues[1] = read.select('sort-mode')
-      effectValues[2] = read.number('threshold', 0.3)
-      effectValues[3] = read.number('streak-length', 100) / 300
+      effectValues[0] = PIXEL_SORT_DIRECTION_IDS[read.text('direction', 'horizontal')] ?? 0
+      effectValues[1] = PIXEL_SORT_MODE_IDS[read.text('sort-mode', 'brightness')] ?? 0
+      effectValues[2] = read.number('threshold', 0.25)
+      effectValues[3] = read.number('streak-length', 100)
       effectValues[4] = read.number('intensity', 0.8)
       effectValues[5] = read.number('randomness', 0.3)
       effectValues[6] = read.boolean('reverse')
-      effectValues[7] = read.number('brightness', 0)
-      effectValues[8] = read.number('contrast', 0)
+      effectValues[7] = read.number('brightness', 0) / 100
+      effectValues[8] = read.number('contrast', 0) / 100
       break
     case 'blockify':
-      effectValues[0] = read.select('style')
-      effectValues[1] = read.number('block-size', 8) / 64
-      effectValues[2] = read.number('border-width', 1) / 12
-      effectValues[3] = read.number('brightness', 0)
-      effectValues[4] = read.number('contrast', 0)
-      effectValues[5] = read.select('color-mode')
+      effectValues[0] = BLOCKIFY_STYLE_IDS[read.text('style', 'full')] ?? 0
+      effectValues[1] = read.number('block-size', 8)
+      effectValues[2] = read.number('border-width', 1)
+      effectValues[3] = read.number('brightness', 0) / 100
+      effectValues[4] = read.number('contrast', 0) / 100
+      effectValues[5] = BLOCKIFY_COLOR_MODE_IDS[read.text('color-mode', 'color')] ?? 0
       effectColorA = read.color('border-color', '#000000')
       break
     case 'threshold':
       effectValues[0] = read.number('levels', 2)
-      effectValues[1] = read.number('threshold-point', 0.5)
-      effectValues[2] = read.boolean('dither')
-      effectValues[3] = read.boolean('invert')
-      effectValues[4] = read.number('brightness', 0)
-      effectValues[5] = read.number('contrast', 0)
-      effectValues[6] = read.select('color-mode')
+      effectValues[1] = read.boolean('dither')
+      effectValues[2] = read.number('threshold-point', 0.5)
+      effectValues[3] = read.number('brightness', 0) / 100
+      effectValues[4] = read.number('contrast', 0) / 100
+      effectValues[5] = read.boolean('invert')
+      effectValues[6] = THRESHOLD_COLOR_MODE_IDS[read.text('color-mode', 'custom')] ?? 0
       effectColorA = read.color('foreground', '#ffffff')
       effectColorB = read.color('background', '#000000')
       break
     case 'edge-detection':
-      effectValues[0] = read.select('algorithm')
-      effectValues[1] = read.number('threshold', 0.3)
-      effectValues[2] = read.number('line-width', 1)
-      effectValues[3] = read.boolean('invert')
-      effectValues[4] = read.number('brightness', 0)
-      effectValues[5] = read.number('contrast', 0)
-      effectValues[6] = read.select('color-mode')
+      effectValues[0] = read.number('threshold', 0.3)
+      effectValues[1] = read.number('line-width', 1)
+      effectValues[2] = read.boolean('invert')
+      effectValues[3] = EDGE_DETECTION_ALGORITHM_IDS[read.text('algorithm', 'sobel')] ?? 0
+      effectValues[4] = read.number('brightness', 0) / 100
+      effectValues[5] = read.number('contrast', 0) / 100
+      effectValues[6] = EDGE_DETECTION_COLOR_MODE_IDS[read.text('color-mode', 'custom')] ?? 0
       effectColorA = read.color('edge-color', '#ffffff')
       effectColorB = read.color('background', '#000000')
       break
     case 'crosshatch':
       effectValues[0] = read.number('density', 6)
-      effectValues[1] = read.number('layers', 3)
-      effectValues[2] = read.number('angle', 45) / 180
-      effectValues[3] = read.number('line-width', 0.1)
-      effectValues[4] = read.number('randomness', 0)
-      effectValues[5] = read.boolean('invert')
-      effectValues[6] = read.number('brightness', 0)
-      effectValues[7] = read.number('contrast', 0)
-      effectColorA = read.color('line-color', '#ffffff')
-      effectColorB = read.color('background', '#000000')
+      effectValues[1] = read.number('angle', 45) * Math.PI / 180
+      effectValues[2] = read.number('layers', 3)
+      effectValues[3] = read.number('line-width', 0.15)
+      effectValues[4] = read.number('brightness', 0) / 100
+      effectValues[5] = read.number('contrast', 0) / 100
+      effectValues[6] = read.boolean('invert')
+      effectValues[7] = read.number('randomness', 0)
+      effectColorA = read.color('line-color', '#000000')
+      effectColorB = read.color('background', '#ffffff')
       break
     case 'wave-lines':
       effectValues[0] = read.number('line-count', 50)
-      effectValues[1] = read.number('amplitude', 20) / 100
+      effectValues[1] = read.number('amplitude', 20)
       effectValues[2] = read.number('frequency', 1)
-      effectValues[3] = read.number('line-thickness', 0.4)
-      effectValues[4] = read.select('direction')
-      effectValues[5] = read.boolean('animate')
-      effectValues[6] = read.number('brightness', 0)
-      effectValues[7] = read.number('contrast', 0)
-      effectValues[8] = read.select('color-mode')
+      effectValues[3] = WAVE_LINES_DIRECTION_IDS[read.text('direction', 'horizontal')] ?? 0
+      effectValues[4] = read.number('line-thickness', 0.4)
+      effectValues[5] = read.number('brightness', 0) / 100
+      effectValues[6] = read.number('contrast', 0) / 100
+      effectValues[7] = WAVE_LINES_COLOR_MODE_IDS[read.text('color-mode', 'original')] ?? 0
+      effectValues[8] = read.boolean('animate')
+      effectColorA = read.color('line-color', '#ffffff')
+      effectColorB = read.color('background', '#000000')
       break
     case 'noise-field':
-      effectValues[0] = read.select('noise-type')
-      effectValues[1] = read.number('scale', 50) / 200
-      effectValues[2] = read.number('intensity', 1)
+      effectValues[0] = read.number('scale', 50)
+      effectValues[1] = read.number('intensity', 1)
+      effectValues[2] = read.number('speed', 1)
       effectValues[3] = read.number('octaves', 4)
-      effectValues[4] = read.number('speed', 1)
-      effectValues[5] = read.boolean('animate')
-      effectValues[6] = read.boolean('distort-only')
-      effectValues[7] = read.number('brightness', 0)
-      effectValues[8] = read.number('contrast', 0)
+      effectValues[4] = read.boolean('animate')
+      effectValues[5] = read.number('brightness', 0) / 100
+      effectValues[6] = read.number('contrast', 0) / 100
+      effectValues[7] = NOISE_FIELD_TYPE_IDS[read.text('noise-type', 'perlin')] ?? 0
+      effectValues[8] = read.boolean('distort-only')
       break
     case 'voronoi':
       effectValues[0] = read.number('cell-size', 30) / 120
