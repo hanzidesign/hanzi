@@ -14,6 +14,8 @@
   --studio-top-rail-height: 50px;
   --studio-bottom-rail-height: 60px;
 
+  position: fixed;
+  inset: 0;
   width: 100%;
   height: 100dvh;
   display: grid;
@@ -358,6 +360,31 @@
 
 .inputLabel:not(:first-child) {
   margin-top: 16px;
+}
+
+.inputGroupHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 16px 0 8px;
+}
+
+.inputGroupHeader .inputLabel {
+  margin: 0;
+}
+
+.inputGroupReset {
+  border: 0;
+  background: transparent;
+  color: var(--studio-text-dim);
+  padding: 0;
+  font: inherit;
+  font-size: 11px;
+}
+
+.inputGroupReset:hover {
+  color: var(--studio-text-bright);
 }
 
 .modelPanel {
@@ -903,6 +930,126 @@
   white-space: nowrap;
 }
 
+.exportModalBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: color-mix(in srgb, #000 52%, transparent);
+  backdrop-filter: blur(4px);
+}
+
+.exportRenderSurface {
+  position: fixed;
+  top: 0;
+  left: -10000px;
+  z-index: -1;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.exportRenderSurface > * {
+  width: 100%;
+  height: 100%;
+}
+
+.exportModal {
+  width: min(420px, calc(100vw - 48px));
+  border: 1px solid var(--studio-border-strong);
+  background: var(--studio-panel-strong);
+  color: var(--studio-text);
+  box-shadow: 0 24px 80px color-mix(in srgb, #000 36%, transparent);
+  padding: 24px;
+  display: grid;
+  gap: 18px;
+}
+
+.exportModalHeader {
+  display: grid;
+  gap: 5px;
+}
+
+.exportModalEyebrow {
+  color: var(--studio-text-dim);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.exportModalHeader h2 {
+  margin: 0;
+  color: var(--studio-text-bright);
+  font-size: 18px;
+  font-weight: 500;
+}
+
+.exportProgressTrack {
+  position: relative;
+  height: 8px;
+  overflow: hidden;
+  border: 1px solid var(--studio-border-strong);
+  background: var(--studio-control);
+}
+
+.exportProgressFill {
+  display: block;
+  height: 100%;
+  background: var(--studio-text-bright);
+  transition: width 120ms linear;
+}
+
+.exportProgressMeta {
+  margin-top: -10px;
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  color: var(--studio-text-dim);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.exportModalMessage {
+  margin: 0;
+  color: var(--studio-text-dim);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.exportModalActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.exportModalPrimaryButton,
+.exportModalSecondaryButton {
+  min-height: 34px;
+  border: 1px solid var(--studio-border-strong);
+  padding: 0 16px;
+  font: inherit;
+  font-size: 11px;
+}
+
+.exportModalSecondaryButton {
+  justify-self: end;
+  background: transparent;
+  color: var(--studio-text);
+}
+
+.exportModalPrimaryButton {
+  background: var(--studio-text-bright);
+  color: var(--studio-panel-strong);
+}
+
+.exportModalPrimaryButton:hover,
+.exportModalSecondaryButton:hover {
+  border-color: var(--studio-text-bright);
+}
+
 .characterPicker {
   position: relative;
 }
@@ -940,17 +1087,61 @@
 }
 
 .characterPopover {
-  position: absolute;
-  z-index: 30;
-  top: calc(100% + 6px);
-  left: 0;
-  width: min(28rem, calc(100vw - 32px));
-  max-height: min(34rem, calc(100vh - 10rem));
+  position: fixed;
+  z-index: 100;
+  height: min(34rem, calc(100dvh - 2rem));
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
   overflow: hidden;
-  padding: 10px;
+  padding: 0;
   border: 1px solid var(--studio-border-strong);
   background: var(--studio-panel);
   box-shadow: 0 12px 30px rgb(0 0 0 / 35%);
+}
+
+.characterPopover > .characterSelector:first-child {
+  padding: 10px 10px 0;
+}
+
+.characterPopoverScroll {
+  min-height: 0;
+  overflow-y: auto;
+  align-items: start;
+  padding: 0 10px 10px;
+}
+
+@supports not selector(::-webkit-scrollbar) {
+  .characterPopoverScroll {
+    scrollbar-width: thin;
+    scrollbar-color: transparent transparent;
+    transition: scrollbar-color 160ms ease;
+  }
+
+  .characterPopoverScroll[data-scrollbar-visible='true'] {
+    scrollbar-color: color-mix(in srgb, var(--studio-text-bright) 55%, transparent) transparent;
+  }
+}
+
+.characterPopoverScroll::-webkit-scrollbar {
+  width: 3px;
+}
+
+.characterPopoverScroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.characterPopoverScroll::-webkit-scrollbar-thumb {
+  border-radius: 1.5px;
+  background-color: transparent;
+  transition: background-color 160ms ease;
+}
+
+.characterPopoverScroll[data-scrollbar-visible='true']::-webkit-scrollbar-thumb {
+  background-color: color-mix(in srgb, var(--studio-text-bright) 55%, transparent);
+}
+
+.characterPopoverScroll::-webkit-scrollbar-thumb:hover {
+  background-color: color-mix(in srgb, var(--studio-text-bright) 85%, transparent);
 }
 
 .characterColumnTitle {
@@ -982,8 +1173,6 @@
 }
 
 .characterList {
-  max-height: 552px;
-  overflow: auto;
   display: grid;
   gap: 2px;
 }
@@ -1184,7 +1373,4 @@
     display: none;
   }
 
-  .characterList {
-    max-height: 240px;
-  }
 }

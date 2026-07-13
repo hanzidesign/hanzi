@@ -67,8 +67,8 @@ describe('Grainrad Threshold schema', () => {
       brightness: 0,
       contrast: 0,
       'color-mode': 'custom',
-      foreground: '#ffffff',
-      background: '#000000',
+      foreground: '#000000',
+      background: '#ffffff',
     })
   })
 

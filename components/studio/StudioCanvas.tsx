@@ -2,31 +2,18 @@
 
 import { useEffect, useState } from 'react'
 import { getCharacterDisplayState, useStudioStore } from '@/app/studio/studio-store'
-import CharacterAsciiCanvas, {
+import {
   IDLE_CHARACTER_ASCII_STATUS,
   type CharacterAsciiStatus,
 } from '@/components/studio/CharacterAsciiCanvas'
-import CharacterBlockifyCanvas from '@/components/studio/CharacterBlockifyCanvas'
-import CharacterContourCanvas from '@/components/studio/CharacterContourCanvas'
-import CharacterCrosshatchCanvas from '@/components/studio/CharacterCrosshatchCanvas'
-import CharacterDitheringCanvas from '@/components/studio/CharacterDitheringCanvas'
-import CharacterDotsCanvas from '@/components/studio/CharacterDotsCanvas'
-import CharacterEdgeDetectionCanvas from '@/components/studio/CharacterEdgeDetectionCanvas'
-import CharacterHalftoneCanvas from '@/components/studio/CharacterHalftoneCanvas'
-import CharacterMatrixRainCanvas from '@/components/studio/CharacterMatrixRainCanvas'
-import CharacterNoiseFieldCanvas from '@/components/studio/CharacterNoiseFieldCanvas'
-import CharacterPixelSortCanvas from '@/components/studio/CharacterPixelSortCanvas'
-import CharacterThresholdCanvas from '@/components/studio/CharacterThresholdCanvas'
-import CharacterWaveLinesCanvas from '@/components/studio/CharacterWaveLinesCanvas'
-import CharacterVoronoiCanvas from '@/components/studio/CharacterVoronoiCanvas'
-import CharacterVhsCanvas from '@/components/studio/CharacterVhsCanvas'
-import { getGrainradEffectById } from '@/components/studio/grainrad-effects'
+import StudioEffectCanvas from '@/components/studio/StudioEffectCanvas'
 import { isAbortError } from '@/utils/dataUrl'
 import classes from './StudioShell.module.css'
 
 export default function StudioCanvas() {
   const character = useStudioStore((store) => store.character)
   const selectedEffectId = useStudioStore((store) => store.grainradEffect.selectedEffectId)
+  const theme = useStudioStore((store) => store.view.theme)
   const asciiBackgroundColor = useStudioStore((store) => store.ascii.backgroundColor)
   const effectControls = useStudioStore(
     (store) => store.grainradEffect.controls[selectedEffectId],
@@ -45,12 +32,13 @@ export default function StudioCanvas() {
     selectedEffectId === 'ascii' && asciiStatus.state !== 'idle'
       ? asciiStatus.message
       : null
-  const selectedEffect = getGrainradEffectById(selectedEffectId)
   const backgroundColor = selectedEffectId === 'ascii'
     ? asciiBackgroundColor
     : typeof effectControls.background === 'string'
       ? effectControls.background
-      : '#000000'
+      : theme === 'light'
+        ? '#f4f1e8'
+        : '#101010'
 
   useEffect(() => {
     const controller = new AbortController()
@@ -93,47 +81,7 @@ export default function StudioCanvas() {
         className={classes.previewCanvasFrame}
         style={{ transform: `scale(${previewZoom})` }}
       >
-        {selectedEffectId === 'ascii' ? (
-          <CharacterAsciiCanvas onAsciiStatusChange={setAsciiStatus} />
-        ) : selectedEffectId === 'dithering' ? (
-          <CharacterDitheringCanvas />
-        ) : selectedEffectId === 'halftone' ? (
-          <CharacterHalftoneCanvas />
-        ) : selectedEffectId === 'matrix-rain' ? (
-          <CharacterMatrixRainCanvas />
-        ) : selectedEffectId === 'dots' ? (
-          <CharacterDotsCanvas />
-        ) : selectedEffectId === 'contour' ? (
-          <CharacterContourCanvas />
-        ) : selectedEffectId === 'pixel-sort' ? (
-          <CharacterPixelSortCanvas />
-        ) : selectedEffectId === 'blockify' ? (
-          <CharacterBlockifyCanvas />
-        ) : selectedEffectId === 'threshold' ? (
-          <CharacterThresholdCanvas />
-        ) : selectedEffectId === 'edge-detection' ? (
-          <CharacterEdgeDetectionCanvas />
-        ) : selectedEffectId === 'crosshatch' ? (
-          <CharacterCrosshatchCanvas />
-        ) : selectedEffectId === 'wave-lines' ? (
-          <CharacterWaveLinesCanvas />
-        ) : selectedEffectId === 'noise-field' ? (
-          <CharacterNoiseFieldCanvas />
-        ) : selectedEffectId === 'voronoi' ? (
-          <CharacterVoronoiCanvas />
-        ) : selectedEffectId === 'vhs' ? (
-          <CharacterVhsCanvas />
-        ) : (
-          <div
-            data-testid="effect-renderer-not-implemented"
-            role="status"
-            className={classes.previewMessage}
-          >
-            <div className={classes.previewMessageTitle}>
-              {selectedEffect.label} renderer is not implemented yet.
-            </div>
-          </div>
-        )}
+        <StudioEffectCanvas onAsciiStatusChange={setAsciiStatus} />
       </div>
       {statusText ? (
         <div className={classes.previewMessage} data-state={asciiStatus.state}>

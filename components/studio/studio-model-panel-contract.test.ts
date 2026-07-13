@@ -23,6 +23,11 @@ describe('Studio shared Model panel contract', () => {
     expect(source).toContain('label="Twist"')
     expect(source).toContain('label="Taper"')
     expect(source).toContain('label="Bend"')
+    expect(source).toContain('function StudioModelReset')
+    expect(source).toContain('function StudioMotionReset')
+    expect(source.match(/Reset all/g)).toHaveLength(2)
+    expect(source).toContain('setMeshControl({ rotation: { ...DEFAULT_MESH_STATE.rotation } })')
+    expect(source).toContain('setAnimationControl({ speed: 1 })')
     expect(motionSource).not.toContain('label="Depth"')
   })
 

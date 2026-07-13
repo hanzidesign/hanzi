@@ -6,6 +6,92 @@ Current status: Phase 5M now has all 15 Effects implemented as independent rende
 
 Keep this file as current-state tracking only. Historical phase logs belong in the superseded task docs or git history, not here.
 
+## Character Popover Bottom Scroll Fix - 2026-07-14
+
+User contract:
+
+- When a Character list contains more options than the popover can display, every Character row, including the final row, must scroll fully into view.
+- Use one shared vertical scroll area for both Country and Year/Character content; do not create independent column scrollbars.
+- Keep the `Country` and `Year` headings fixed at the top of the popover while the two content columns scroll together.
+- Keep the portal-backed Character selector, its current content, and its viewport-contained behavior.
+
+Plan:
+
+- [x] Reproduce the clipping from the current popover/list height contracts and lock it with a focused regression assertion.
+- [x] Restructure the popover into a fixed two-column header and one shared two-column scrollport that consumes the remaining height.
+- [x] Verify the focused contract test, TypeScript, ESLint, and `git diff --check` without disturbing the existing working-tree changes.
+- [x] Review the final diff for the smallest layout-only fix and document the result here.
+
+Review:
+
+- Root cause: each column owned a 552px scrollport while the padded popover exposed at most 494px for list content, so the popover's `overflow: hidden` clipped the bottom of both independent scrollports.
+- The popover now has a fixed header row containing `Country`, `Year`, and TC/SC, plus one shared two-column scroll row. Only the shared row scrolls, and every final Character option can enter its visible area completely.
+- Verification passed: focused Character layout/control tests (`2` files / `6` tests), TypeScript, ESLint, and `git diff --check`. Node reports the existing version warning (`24.18.0`; repository requests `22.x`).
+- Follow-up: moved the shared scrollbar flush to the popover's right border while preserving 10px content spacing inside the fixed header and scrollport.
+- Follow-up: reduced the shared popover scrollbar to the user-selected 3px in WebKit browsers while retaining the thin Firefox scrollbar.
+- Correction: scoped Firefox's `scrollbar-width: thin` fallback behind `@supports not selector(::-webkit-scrollbar)` because modern Chromium otherwise overrides the exact 3px WebKit scrollbar width.
+- Screenshot correction: moved `scrollbar-color` into the same Firefox-only fallback so Chromium no longer retains the wide standard scrollbar instead of the requested 3px WebKit scrollbar.
+- Final scrollbar width selection: 4px after confirming the WebKit styling is active.
+- Final interaction correction: use a 3px scrollbar, keep its thumb transparent until the shared list is hovered, and show the fully opaque thumb only while hovering the thumb itself; Firefox receives the closest standard-property fallback.
+- Screenshot correction: derive the hover thumb from `--studio-text-bright` at 55%/85% instead of the dim border token, and use `background-color`, so the 3px thumb is visibly revealed on the dark Studio background.
+- Interaction correction: replace the CSS-only list hover trigger with explicit pointer enter/leave state on the shared scroll region; the data state reveals the thumb, leaving hides it, and thumb hover retains the higher-opacity state.
+- Motion follow-up: animate the 3px thumb opacity over 160ms for list enter/leave and thumb hover; add a matching `scrollbar-color` transition to the Firefox fallback.
+- Screenshot correction: WebKit ignored thumb `opacity` and left its solid background visible. Animate `background-color` from transparent to 55%/85% over 160ms instead, preserving the explicit list enter/leave state.
+- Character trigger follow-up: replace collapsed/expanded `v` / `^` with `+` / `−` to match the Studio disclosure convention.
+
+## Studio Panel And Theme UX Follow-up - 2026-07-14
+
+User contract:
+
+- Add a right-aligned `reset` action to both `Model` and `3D Motion`; each action resets every control in its own group and must not reset the other group.
+- Render the Character dropdown list in a portal-backed popover so opening it never creates horizontal overflow in the left panel.
+- Use `+` for collapsed Studio sections and `−` for expanded sections.
+- Store effect color controls separately for light and dark Studio themes. Clicking the Theme toggle must immediately switch every active effect color to the selected theme's saved color set without changing shared non-color settings.
+- Inventory every color setting across all 15 Effects. Every color picker plus Dithering Custom Palette and Voronoi Edge Color must define both a light default and a dark default.
+- Keep `/studio` fixed to the viewport with no document-level vertical scroll or trailing blank area. Desktop/mobile panels may retain their own intended internal scrolling.
+- Keep the existing Studio visual language, effect renderers, panel widths, and route-local scope.
+
+Implementation plan — completed:
+
+- [x] RED: add contract/store tests for group-local reset-all, portal Character popover, `+` / `−` section symbols, route-local fixed viewport layout, and theme-scoped effect colors.
+- [x] Add compact label rows for `Model` and `3D Motion`, each with the existing terminal-style `reset` action aligned at the right.
+  - `Model reset` restores Extrude, Thickness, Bevel, Twist, Taper, and Bend only.
+  - `3D Motion reset` restores X/Y/Z rotation and Speed only.
+  - Keep per-row reset behavior unchanged and prove the two reset-all actions do not cross-reset.
+- [x] Move the Character selector list through a React portal popover anchored to the existing trigger.
+  - Preserve Country, Year, TC/SC, active states, outside-click close, Escape close, and selection close.
+  - Position/flip within the viewport and remove the wide absolute child from the left panel scroll container.
+  - Do not introduce a second visual system or change the Character selector content.
+- [x] Replace Studio accordion glyphs with the explicit state mapping: collapsed `+`, expanded `−`; update the matching source-contract tests.
+- [x] Add theme-scoped effect color state while keeping every non-color effect control shared.
+  - Preserve `grainradEffect.controls` as the active resolved controls used by all existing renderers.
+  - Add persisted, sanitized light/dark color buckets containing every theme-sensitive color value.
+  - Give each schema color control explicit light and dark defaults; light defaults must retain readable dark-on-light contrast and dark defaults readable light-on-dark contrast while preserving effect-specific color intent.
+  - Cover every color picker plus Dithering Custom Palette and Voronoi Edge Color; do not special-case only ASCII Foreground and Background.
+  - Editing a color updates only the active theme bucket and the active resolved controls.
+  - Toggle to `light`: immediately replace every active effect color with its saved light color set.
+  - Toggle to `dark`: immediately replace every active effect color with its saved dark color set.
+  - Theme switching must update the Settings color fields and Canvas output in the same state transition, without changing Scale, Brightness, geometry, Processing, Post-Processing, or other non-color values.
+  - Reset Settings restores the selected effect's colors only for the active theme and leaves the other theme's custom colors intact.
+  - Keep ASCII `foregroundColor` / `backgroundColor` synchronized with its active resolved Grainrad controls on edit, reset, migration, and theme switch.
+  - Make the preview fallback background theme-aware for effects without an explicit Background color control.
+- [x] Bump persisted Studio state version and implement a sequential migration.
+  - Preserve the existing ASCII `original` to `mono` migration.
+  - Treat the user's existing persisted colors as the current persisted theme's values; initialize the other theme from schema defaults.
+  - Reject invalid hex values, unknown effects, and non-color control ids from persisted color buckets.
+- [x] Lock `/studio` to the viewport with route-local fixed positioning (`inset: 0`) instead of changing global `body` behavior; preserve internal desktop/mobile panel scrolling.
+- [x] GREEN: run focused Studio contract/store/runtime tests, then `pnpm test`, `pnpm exec tsc --noEmit`, `pnpm lint`, `pnpm build`, and `git diff --check`.
+- [x] Elegance review: confirm theme color synchronization is centralized in store helpers/actions, no renderer receives theme-specific branching, and no duplicated reset logic can drift.
+- [x] Provide a manual `/studio` browser checklist and wait for the user's report instead of running automated visual browser QA.
+
+Review — implementation complete:
+
+- Added independent persisted light/dark sets for all 22 color settings found across all 15 Effects: 20 color pickers, Dithering Custom Palette, and Voronoi Edge Color. Theme toggle atomically updates active controls, ASCII's renderer-specific colors, Settings values, and Canvas output while preserving every non-color setting.
+- Version 3 persistence migrates legacy colors into the theme active at save time and initializes the other theme from its explicit schema defaults. Invalid and unknown persisted color values do not enter active controls.
+- Added group-local Model and 3D Motion reset-all actions, a portal-backed Character popover, `+` / `−` section glyphs, theme-aware Canvas fallback, and a route-local fixed Studio viewport.
+- Verification passed after the final exhaustive color-set regression: 89 test files / 588 tests, TypeScript, ESLint, production build, and diff hygiene.
+- Manual `/studio` visual verification remains for the user: check all Effect colors across both themes, theme round-trip restoration, Character popover overflow, both reset-all actions, section glyphs, and absence of page-level y-scroll.
+
 ## Phase 5M Grainrad Effect Architecture Correction - 2026-07-13
 
 ### Shared Model Panel addition - 2026-07-13
@@ -1790,3 +1876,52 @@ Residual notes:
 - Strengthened superseded/historical guards in old planning docs so future work does not accidentally resume the Character Mesh path.
 - Verification: stale active-rule grep against `tasks/todo.md` and `tasks/lessons.md` returned no matches.
 - Verification: old-doc guard grep confirmed the historical and superseded warnings are present.
+
+## Studio Export - PNG / APNG / GIF / MP4 (2026-07-14)
+
+Specification:
+
+- Keep exactly four Export actions: PNG, APNG, GIF, and MP4; remove JPG, WEBP, SVG, and COPY from the active UI.
+- PNG captures the current preview frame at exactly `2048×2048` and downloads immediately when selected.
+- Animated formats capture exactly one Y-axis 3D Motion revolution using the same runtime angular velocity (`mesh.autoRotateSpeed * animation.speed`) as the preview.
+- Keep the export loop deterministic: preserve the current Y rotation as frame zero, advance rotation and shader time from explicit frame timestamps, and restore all Studio state after success or failure.
+- Encode MP4 at 30 fps, APNG at 24 fps, and GIF at 12 fps. A loop frame count is the rounded one-turn duration multiplied by the format fps; loop playback returns from its last sampled frame to the identical first-frame orientation without an extra duplicate hold frame.
+- Render every MP4, APNG, and GIF frame at exactly `1024×1024`.
+- Reject animated export when 3D Motion speed cannot produce a finite positive revolution, and report progress/failure in the existing Export status region.
+- Open a viewport-centered modal for animated export, show a visible progress bar and frame count, and provide a Cancel action while encoding.
+- Do not auto-download animation results. Keep the completed file in the modal until the user explicitly selects Download; PNG remains a direct download.
+- Run PNG and GIF through the same-origin server-side Sharp compression route before download. Keep APNG on its APNG encoder because verified Sharp re-encoding drops its animation; MP4 stays with the AVC encoder because Sharp has no MP4 output.
+- Render exports from a separately mounted, UI-hidden square WebGL canvas at the exact target size. Never resize pixels copied from the visible preview canvas to simulate 1:1 export.
+- When 3D Motion Speed is above zero, disable PNG; when it is zero, enable PNG and disable animation formats. Synchronize the export renderer's starting effective time with the preview canvas.
+
+Checklist:
+
+- [x] Add pure, tested one-revolution timing/frame-plan helpers.
+- [x] Add deterministic canvas frame capture with state restoration.
+- [x] Implement APNG 24 fps, GIF 12 fps, and MP4 30 fps encoders.
+- [x] Add animated-export progress modal, cancellation, and explicit post-completion Download.
+- [x] Reduce the Export grid to PNG, APNG, GIF, and MP4 and update persisted format sanitization.
+- [x] Update focused export/store/UI contract tests.
+- [x] Run focused tests, full Vitest, TypeScript, ESLint, build, and `git diff --check`.
+- [x] Record implementation and verification results in this review section.
+
+Hidden square render-surface correction:
+
+- [x] Mount an export-only square WebGL render surface using the active Studio effect renderer.
+- [x] Render PNG directly at `2048×2048` and animation directly at `1024×1024` on that surface.
+- [x] Remove visible-preview canvas copying/stretching from the export path.
+- [x] Add readiness, cleanup, and hidden 1:1 surface contracts; rerun full verification.
+
+Review result:
+
+- Export now exposes only PNG, APNG, GIF, and MP4. PNG renders to `2048×2048`, passes through the Sharp API, and downloads immediately; animation frames render to `1024×1024`.
+- MP4 uses Mediabunny/WebCodecs AVC at 30 fps, APNG uses exact `1/24` frame timing with compressed PNG-frame assembly, and GIF uses averaged centisecond timing at 12 fps followed by Sharp optimization.
+- Animated capture uses the preview's actual angular velocity, samples one endpoint-exclusive revolution, freezes live playback while stepping absolute rotation/time, and restores the original mesh/animation state in `finally`.
+- Animated export opens a viewport-centered portal modal with progress, frame count, cancellation, Sharp optimization stage, and an explicit Download button after completion. It never auto-downloads.
+- Sharp behavior was tested rather than assumed: PNG dimensions survive compression; GIF keeps pages, loop, and frame delays. Sharp APNG re-encoding collapsed animation, so APNG intentionally bypasses Sharp; MP4 also bypasses it because Sharp has no video output.
+- Verification passed: focused export/compression suites `6` files / `42` tests, full Vitest `92` files / `598` tests, TypeScript, full ESLint, production build including `/api/studio/export/compress`, and `git diff --check`.
+- Environment note: commands emit the existing Node version warning (`24.18.0`; repository requests `22.x`) but all verification commands exited successfully.
+- Hidden render-surface correction: preview and export now share `StudioEffectCanvas`, while export mounts its own offscreen square WebGL surface only for the active job. The export context forces `dpr=1`, so CSS size and physical drawing-buffer size remain exactly `2048²` or `1024²`.
+- Export no longer queries or scales `[data-studio-preview] canvas`. Each requested frame receives a monotonic request id and is captured only after the export WebGL renderer acknowledges a completed post-effect render; mismatched physical dimensions, stale acknowledgements, timeout, cancellation, and teardown are guarded.
+- Speed/time correction: PNG is enabled only when 3D Motion Speed is `0`; APNG/GIF/MP4 are enabled only above `0`. Animation export seeds its first frame from the preview renderer's latest effective animation time, and Speed `0` keeps PNG preview/export time identical for WYSIWYG output.
+- Correction verification passed: focused hidden-surface/routing/timing suites `4` files / `15` tests, full Vitest `92` files / `598` tests, TypeScript, full ESLint, production build, and `git diff --check`.

@@ -5,6 +5,7 @@ import {
   GRAINRAD_COMMON_PROCESSING_GROUPS,
   GRAINRAD_EFFECTS,
   createDefaultGrainradEffectControls,
+  isGrainradThemeColorControl,
   type GrainradControlValue,
   type GrainradEffectControl,
   type GrainradEffectId,
@@ -16,6 +17,66 @@ import {
 } from './grainrad-effect-runtime'
 
 describe('Phase 5F Grainrad runtime effect compiler', () => {
+  it('defines valid light and dark defaults for every color control', () => {
+    const colorControlIds: string[] = []
+    const lightDefaults = createDefaultGrainradEffectControls('light')
+    const darkDefaults = createDefaultGrainradEffectControls('dark')
+
+    for (const effect of GRAINRAD_EFFECTS) {
+      for (const group of effect.settingGroups) {
+        for (const control of group.controls) {
+          if (!isGrainradThemeColorControl(control)) {
+            continue
+          }
+
+          if (control.kind === 'color') {
+            expect(control.defaultValueByTheme, `${effect.id}.${control.id}`).toEqual({
+              light: expect.stringMatching(/^#[0-9a-f]{6}$/i),
+              dark: expect.stringMatching(/^#[0-9a-f]{6}$/i),
+            })
+          } else if (control.kind === 'text') {
+            for (const value of Object.values(control.defaultValueByTheme)) {
+              expect(value.split(',')).toHaveLength(4)
+              expect(value.split(',').every((entry) => /^#[0-9a-f]{6}$/i.test(entry))).toBe(true)
+            }
+          } else {
+            expect(control.options.map((option) => option.value)).toEqual(
+              expect.arrayContaining(Object.values(control.defaultValueByTheme)),
+            )
+          }
+          expect(lightDefaults[effect.id][control.id]).toBe(control.defaultValueByTheme.light)
+          expect(darkDefaults[effect.id][control.id]).toBe(control.defaultValueByTheme.dark)
+          colorControlIds.push(`${effect.id}.${control.id}`)
+        }
+      }
+    }
+
+    expect(colorControlIds).toEqual([
+      'ascii.foreground',
+      'ascii.background',
+      'dithering.custom-palette',
+      'dithering.foreground',
+      'dithering.background',
+      'halftone.foreground',
+      'halftone.background',
+      'matrix-rain.rain-color',
+      'dots.foreground',
+      'dots.background',
+      'contour.line-color',
+      'contour.background',
+      'blockify.border-color',
+      'threshold.foreground',
+      'threshold.background',
+      'edge-detection.edge-color',
+      'edge-detection.background',
+      'crosshatch.line-color',
+      'crosshatch.background',
+      'wave-lines.line-color',
+      'wave-lines.background',
+      'voronoi.edge-color',
+    ])
+  })
+
   it('publishes all 15 Effects as independent renderers with no unimplemented fallback', () => {
     expect(GRAINRAD_EFFECTS).toHaveLength(15)
     expect(GRAINRAD_EFFECTS.map((effect) => effect.renderer)).toEqual(

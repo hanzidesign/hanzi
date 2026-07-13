@@ -80,11 +80,9 @@ export default function StudioRightPanel({
   }
   const setAsciiForegroundColor = (foregroundColor: string) => {
     setAsciiControl({ foregroundColor, palette: 'custom' })
-    setGrainradEffectControl('ascii', 'foreground', foregroundColor)
   }
   const setAsciiBackgroundColor = (backgroundColor: string) => {
     setAsciiControl({ backgroundColor, palette: 'custom' })
-    setGrainradEffectControl('ascii', 'background', backgroundColor)
   }
 
   return (

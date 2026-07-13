@@ -7,7 +7,8 @@ import {
   useState,
   type MutableRefObject,
 } from 'react'
-import { Canvas, useFrame, useThree } from '@react-three/fiber'
+import { useFrame, useThree } from '@react-three/fiber'
+import { StudioRenderCanvas as Canvas } from '@/components/studio/studio-render-context'
 import { SVGLoader } from 'three/addons/loaders/SVGLoader.js'
 import {
   AmbientLight,

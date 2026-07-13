@@ -15,6 +15,7 @@ Keep this file as evergreen guidance only. Historical phase notes, completed tas
 
 ## Studio State And Persistence
 
+- Treat Studio theme colors as two explicit saved sets. Inventory every color-bearing setting across every Effect, including color pickers, custom palettes, and color enums such as Voronoi Edge Color. Clicking the Theme toggle must immediately activate all of the selected theme's saved effect colors in both Settings and Canvas; do not only switch UI tokens, cover only ASCII, or derive/invert colors at toggle time.
 - Do not assume Studio editor state should remain session-only once the user is designing heavier WebGL/shader controls. If refresh safety matters, treat local persistence as part of the product contract.
 - Persist only compact serializable editor choices. Do not persist uploaded data URLs, generated mask textures, future generated SDF textures, WebGPU availability, transient render errors, Three.js textures, geometries, or materials.
 - Do not persist uploaded pattern image data URLs in localStorage. Treat uploaded pattern data as session-only because localStorage has practical size limits.
@@ -41,6 +42,16 @@ Keep this file as evergreen guidance only. Historical phase notes, completed tas
 - When the user asks to redesign Hanzi Studio, keep the scope route-local to `/studio` unless they explicitly include the homepage. Do not redesign `/` as part of Studio-only work.
 - When adapting Grainrad-like Studio UI, make effect/controller panels use the reference's compact section/row/range/select/grid language, but implement route-local light and dark theme tokens and follow the user's current requested default theme instead of assuming the reference site's dark default.
 - Grainrad-matched Character Set must use the reference dropdown pattern, not a native select: uppercase trigger, dark floating option list, selected checkmark, and the option set `STANDARD / BLOCKS / BINARY / DETAILED / MINIMAL / ALPHABETIC / NUMERIC / MATH / SYMBOLS`.
+- The Character chooser popover must have one shared vertical scroll area for the Country and Year/Character columns. Keep the `Country` and `Year` headings fixed above that shared scrollport; do not give each column its own scrollbar.
+- Use the same disclosure symbols on the Character trigger as other Studio sections: collapsed `+`, expanded `−`; do not use `v` / `^` chevrons.
+- Keep the Character chooser's shared scrollbar flush with the popover's right edge. Put content spacing inside the scrollport instead of padding the popover around the scrollport.
+- Keep the Character chooser scrollbar at the explicitly selected 3px width in WebKit browsers. Hide its thumb until the shared list scrollport is hovered, then increase opacity again when the thumb itself is hovered.
+- Do not apply `scrollbar-width: thin` unconditionally alongside a pixel-sized `::-webkit-scrollbar`; modern Chromium gives the standard property precedence, making the requested pixel width appear unchanged. Scope `thin` to browsers without WebKit scrollbar selectors.
+- Scope `scrollbar-color` together with `scrollbar-width` to the Firefox fallback. Leaving either standard scrollbar property active in Chromium can keep the browser-native scrollbar and prevent the exact `::-webkit-scrollbar` width from appearing.
+- For a hover-revealed scrollbar on the dark Studio theme, do not derive a translucent thumb from the already-dim border token; it becomes effectively invisible. Use the high-contrast text token with explicit hover alpha and `background-color`.
+- For the Character popover, drive scrollbar visibility from explicit pointer enter/leave state on the scrollable list region. Do not treat a color adjustment as a substitute for the required interaction: enter list shows, leave list hides, and thumb hover increases opacity.
+- Animate the Character popover thumb's visual opacity through alpha-mixed `background-color`: list enter fades it in, list leave fades it out, and thumb hover transitions to a stronger color. Do not make these visibility changes instantaneous.
+- Do not set `opacity` directly on `::-webkit-scrollbar-thumb`; WebKit may ignore it while retaining the solid background, producing an always-visible full-strength scrollbar. Animate `background-color` between transparent and alpha-mixed colors instead.
 - When the user asks for Grainrad effect settings, match the reference site's per-effect settings panels and catalogue behavior. Do not only render the left effect names without controller-backed settings and visible renderer behavior.
 - In Grainrad parity work, do not confuse Processing with Animation. Grainrad `Processing` is a shared image/effect pipeline (`Invert`, `Brightness Map`, `Edge Enhance`, `Blur`, `Quantize Colors`, `Shape Matching`); motion/transform rows belong in the left `Animation` panel, not the right `Processing` section.
 - Grainrad setting parity is not complete until every visible setting and option changes active renderer behavior. UI metadata, dropdown lists, and persisted values are insufficient without a runtime compiler, shader uniforms, tests that catch unmapped controls, and browser pixel smoke for representative effects.
@@ -84,6 +95,14 @@ Keep this file as evergreen guidance only. Historical phase notes, completed tas
 - When the user expects shader, morph, and pattern effects to stack like design-tool layers, define the shared layer contract first: enabled, order where meaningful, intensity, blend mode where meaningful, lock, target, params, caps, and runtime compile phase. Do not jump directly into disconnected panels.
 - For Three.js `ShaderMaterial` uniforms, GLSL `vec2`/`vec3`/`vec4` array uniforms must receive Three vector objects or another shape with `toArray()`. Do not pass plain nested number arrays to `vec4[]`; it will fail at runtime with `firstElem.toArray is not a function`.
 - When adding GLSL helper functions for `ShaderMaterial`, place helpers in the shader string that calls them. A helper accidentally added to the vertex shader is not visible to the fragment shader and will only surface during browser WebGL compilation.
+
+## Export
+
+- Animated export must use a viewport-centered modal with a visible progress bar and an in-progress Cancel action. Do not auto-download completed exports; keep the encoded result in the modal and require an explicit Download action.
+- PNG export is the direct-download exception and must render at exactly `2048×2048`. MP4, APNG, and GIF must render at exactly `1024×1024`.
+- Sharp compression runs server-side, not in the browser. Use it for PNG and animated GIF only: the installed Sharp/libvips path was verified to preserve GIF pages/loop, but re-encoding APNG collapsed it to a static PNG, and Sharp does not support MP4 output.
+- Fixed-size export must render the active effect into a separate hidden square WebGL canvas at the target resolution. Do not scale or stretch pixels copied from the visible preview canvas; that does not preserve true 1:1 rendering quality.
+- Export format availability follows 3D Motion Speed: when Speed is above zero, disable PNG and enable animation formats; when Speed is zero, enable PNG and disable animation formats. Seed the export renderer from the preview's current effective animation time so the hidden render matches what the user sees.
 
 ## Experimental Extensions
 

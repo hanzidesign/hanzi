@@ -61,8 +61,8 @@ describe('Grainrad Wave Lines schema', () => {
       brightness: 0,
       contrast: 0,
       'color-mode': 'original',
-      'line-color': '#ffffff',
-      background: '#000000',
+      'line-color': '#000000',
+      background: '#ffffff',
     })
   })
 })

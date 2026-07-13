@@ -39,6 +39,7 @@ import {
   GRAINRAD_EFFECTS,
   GRAINRAD_EFFECT_IDS,
   createDefaultGrainradEffectControls,
+  isGrainradThemeColorControl,
   type GrainradCharacterSet,
   type GrainradControlValue,
   type GrainradEffectControl,
@@ -46,7 +47,7 @@ import {
 } from '@/components/studio/grainrad-effects'
 
 export const STUDIO_STORE_STORAGE_KEY = 'hanzi-studio-grainrad-effects-v1'
-const STUDIO_STORE_STORAGE_VERSION = 2
+const STUDIO_STORE_STORAGE_VERSION = 3
 export const MAX_PATTERN_LAYERS = 3
 const DEFAULT_ART_PATTERN_LAYERS: Array<
   Pick<StudioPatternLayer, 'source' | 'target' | 'enabled' | 'intensity' | 'blendMode' | 'locked'>
@@ -117,7 +118,7 @@ export type StudioActivePanel = 'character' | 'morph' | 'shader' | 'ascii' | 'as
 export type StudioTheme = 'light' | 'dark'
 export type StudioMobileTab = 'input' | 'effects' | 'animation' | 'export'
 export type StudioSectionId = 'input' | 'effects' | 'animation' | 'presets' | 'settings' | 'processing' | 'postProcessing' | 'export'
-export type StudioExportFormat = 'png' | 'gif' | 'mp4'
+export type StudioExportFormat = 'png' | 'apng' | 'gif' | 'mp4'
 
 export type StudioRendererMode = 'webgl' | 'webgpu-experimental'
 
@@ -137,6 +138,11 @@ export const ASCII_PALETTES = ['green', 'amber', 'noir', 'synthwave', 'custom'] 
 
 export type StudioAsciiCharsetStyle = GrainradCharacterSet
 export type StudioAsciiPalette = (typeof ASCII_PALETTES)[number]
+
+export type StudioThemeColorControls = Record<
+  StudioTheme,
+  Record<GrainradEffectId, Record<string, string>>
+>
 
 export type StudioAsciiState = {
   cellSize: number
@@ -313,6 +319,7 @@ export type StudioStoreState = {
   grainradEffect: {
     selectedEffectId: GrainradEffectId
     controls: Record<GrainradEffectId, Record<string, GrainradControlValue>>
+    colorControlsByTheme: StudioThemeColorControls
   }
   ascii: StudioAsciiState
   rendererMode: StudioRendererMode
@@ -546,12 +553,12 @@ export function createStudioStore(storage?: StateStorage) {
           set({ view: { ...get().view, backgroundColor } })
         },
         setStudioTheme: (theme) => {
-          set({ view: { ...get().view, theme } })
+          set(resolveStudioThemeState(get(), theme))
         },
         toggleStudioTheme: () => {
           const theme = get().view.theme === 'light' ? 'dark' : 'light'
 
-          set({ view: { ...get().view, theme } })
+          set(resolveStudioThemeState(get(), theme))
         },
         setMobileTab: (mobileTab) => {
           set({ view: { ...get().view, mobileTab } })
@@ -976,38 +983,99 @@ export function createStudioStore(storage?: StateStorage) {
           const currentControls = state.grainradEffect.controls[effectId] ?? {}
           const sanitizedValue = sanitizeGrainradControlValue(control, value, currentControls[controlId] ?? control.defaultValue)
 
+          const nextEffectControls = {
+            ...currentControls,
+            [controlId]: sanitizedValue,
+          }
+          const nextColorControlsByTheme = isGrainradThemeColorControl(control)
+            ? {
+                ...state.grainradEffect.colorControlsByTheme,
+                [state.view.theme]: {
+                  ...state.grainradEffect.colorControlsByTheme[state.view.theme],
+                  [effectId]: {
+                    ...state.grainradEffect.colorControlsByTheme[state.view.theme][effectId],
+                    [controlId]: sanitizedValue as string,
+                  },
+                },
+              }
+            : state.grainradEffect.colorControlsByTheme
+
           set({
+            ascii: effectId === 'ascii' && isGrainradThemeColorControl(control)
+              ? syncAsciiColorsFromControls(state.ascii, nextEffectControls)
+              : state.ascii,
             grainradEffect: {
               ...state.grainradEffect,
               controls: {
                 ...state.grainradEffect.controls,
-                [effectId]: {
-                  ...currentControls,
-                  [controlId]: sanitizedValue,
-                },
+                [effectId]: nextEffectControls,
               },
+              colorControlsByTheme: nextColorControlsByTheme,
             },
           })
         },
         resetSelectedEffectControls: () => {
           const state = get()
           const selectedEffectId = state.grainradEffect.selectedEffectId
-          const defaults = createDefaultGrainradEffectControls()
+          const defaults = createDefaultGrainradEffectControls(state.view.theme)
+          const defaultThemeColors = createDefaultGrainradColorControls(state.view.theme)
+          const nextSelectedControls = defaults[selectedEffectId]
 
           set({
-            ascii: selectedEffectId === 'ascii' ? DEFAULT_ASCII_STATE : state.ascii,
+            ascii: selectedEffectId === 'ascii'
+              ? syncAsciiColorsFromControls(DEFAULT_ASCII_STATE, nextSelectedControls)
+              : state.ascii,
             grainradEffect: {
               ...state.grainradEffect,
               controls: {
                 ...state.grainradEffect.controls,
-                [selectedEffectId]: defaults[selectedEffectId],
+                [selectedEffectId]: nextSelectedControls,
+              },
+              colorControlsByTheme: {
+                ...state.grainradEffect.colorControlsByTheme,
+                [state.view.theme]: {
+                  ...state.grainradEffect.colorControlsByTheme[state.view.theme],
+                  [selectedEffectId]: defaultThemeColors[selectedEffectId],
+                },
               },
             },
           })
         },
         setAsciiControl: (partial) => {
+          const state = get()
+          const ascii = sanitizeAsciiState({ ...state.ascii, ...partial }, state.ascii)
+          const colorUpdates = {
+            ...(typeof partial.foregroundColor === 'string' ? { foreground: ascii.foregroundColor } : {}),
+            ...(typeof partial.backgroundColor === 'string' ? { background: ascii.backgroundColor } : {}),
+          }
+
+          if (Object.keys(colorUpdates).length === 0) {
+            set({ ascii })
+            return
+          }
+
           set({
-            ascii: sanitizeAsciiState({ ...get().ascii, ...partial }, get().ascii),
+            ascii,
+            grainradEffect: {
+              ...state.grainradEffect,
+              controls: {
+                ...state.grainradEffect.controls,
+                ascii: {
+                  ...state.grainradEffect.controls.ascii,
+                  ...colorUpdates,
+                },
+              },
+              colorControlsByTheme: {
+                ...state.grainradEffect.colorControlsByTheme,
+                [state.view.theme]: {
+                  ...state.grainradEffect.colorControlsByTheme[state.view.theme],
+                  ascii: {
+                    ...state.grainradEffect.colorControlsByTheme[state.view.theme].ascii,
+                    ...colorUpdates,
+                  },
+                },
+              },
+            },
           })
         },
         addPostFxLayer: (partial = {}) => {
@@ -1305,7 +1373,72 @@ function createDefaultAnimationState(): StudioStoreState['animation'] {
 function createDefaultGrainradEffectState(): StudioStoreState['grainradEffect'] {
   return {
     selectedEffectId: DEFAULT_GRAINRAD_EFFECT_ID,
-    controls: createDefaultGrainradEffectControls(),
+    controls: createDefaultGrainradEffectControls('light'),
+    colorControlsByTheme: {
+      light: createDefaultGrainradColorControls('light'),
+      dark: createDefaultGrainradColorControls('dark'),
+    },
+  }
+}
+
+function createDefaultGrainradColorControls(theme: StudioTheme) {
+  const defaults = createDefaultGrainradEffectControls(theme)
+
+  return Object.fromEntries(
+    GRAINRAD_EFFECTS.map((effect) => [
+      effect.id,
+      Object.fromEntries(
+        effect.settingGroups
+          .flatMap((group) => group.controls)
+          .filter(isGrainradThemeColorControl)
+          .map((control) => [control.id, defaults[effect.id][control.id] as string]),
+      ),
+    ]),
+  ) as Record<GrainradEffectId, Record<string, string>>
+}
+
+function resolveStudioThemeState(
+  state: StudioStore,
+  theme: StudioTheme,
+): Pick<StudioStoreState, 'view' | 'grainradEffect' | 'ascii'> {
+  const controls = mergeGrainradThemeColors(
+    state.grainradEffect.controls,
+    state.grainradEffect.colorControlsByTheme[theme],
+  )
+
+  return {
+    view: { ...state.view, theme },
+    grainradEffect: {
+      ...state.grainradEffect,
+      controls,
+    },
+    ascii: syncAsciiColorsFromControls(state.ascii, controls.ascii),
+  }
+}
+
+function mergeGrainradThemeColors(
+  controls: Record<GrainradEffectId, Record<string, GrainradControlValue>>,
+  themeColors: Record<GrainradEffectId, Record<string, string>>,
+) {
+  return Object.fromEntries(
+    GRAINRAD_EFFECTS.map((effect) => [
+      effect.id,
+      {
+        ...controls[effect.id],
+        ...themeColors[effect.id],
+      },
+    ]),
+  ) as Record<GrainradEffectId, Record<string, GrainradControlValue>>
+}
+
+function syncAsciiColorsFromControls(
+  ascii: StudioAsciiState,
+  controls: Record<string, GrainradControlValue>,
+): StudioAsciiState {
+  return {
+    ...ascii,
+    foregroundColor: sanitizeHexColor(controls.foreground, ascii.foregroundColor),
+    backgroundColor: sanitizeHexColor(controls.background, ascii.backgroundColor),
   }
 }
 
@@ -1617,45 +1750,111 @@ function sanitizePersistedState(value: unknown): PersistedStudioState {
   const base = createInitialStudioStoreState()
   const persisted = isRecord(value) ? value : {}
   const character = sanitizeCharacter(persisted.character, base.character)
+  const view = sanitizeViewState(persisted.view, base.view)
+  const grainradEffect = sanitizeGrainradEffectState(
+    persisted.grainradEffect,
+    base.grainradEffect,
+    view.theme,
+  )
+  const ascii = syncAsciiColorsFromControls(
+    sanitizeAsciiState(persisted.ascii, base.ascii),
+    grainradEffect.controls.ascii,
+  )
 
   return {
     character,
-    ascii: sanitizeAsciiState(persisted.ascii, base.ascii),
+    ascii,
     mesh: sanitizeMeshState(persisted.mesh, base.mesh),
     rendererMode: sanitizeRendererMode(persisted.rendererMode, base.rendererMode),
-    view: sanitizeViewState(persisted.view, base.view),
+    view,
     export: sanitizeExportState(persisted.export, base.export),
-    grainradEffect: sanitizeGrainradEffectState(persisted.grainradEffect, base.grainradEffect),
+    grainradEffect,
   }
 }
 
 function migratePersistedStudioState(value: unknown, version: number): unknown {
-  if (version >= STUDIO_STORE_STORAGE_VERSION) {
-    return value
-  }
+  let persisted = readRecord(value)
 
-  const persisted = readRecord(value)
-  const grainradEffect = readRecord(persisted.grainradEffect)
-  const controls = readRecord(grainradEffect.controls)
-  const asciiControls = readRecord(controls.ascii)
+  if (version < 2) {
+    const grainradEffect = readRecord(persisted.grainradEffect)
+    const controls = readRecord(grainradEffect.controls)
+    const asciiControls = readRecord(controls.ascii)
 
-  if (asciiControls['color-mode'] !== 'original') {
-    return value
-  }
-
-  return {
-    ...persisted,
-    grainradEffect: {
-      ...grainradEffect,
-      controls: {
-        ...controls,
-        ascii: {
-          ...asciiControls,
-          'color-mode': 'mono',
+    persisted = {
+      ...persisted,
+      grainradEffect: {
+        ...grainradEffect,
+        controls: {
+          ...controls,
+          ascii: {
+            ...asciiControls,
+            ...(asciiControls['color-mode'] === 'original' ? { 'color-mode': 'mono' } : {}),
+          },
         },
       },
-    },
+    }
   }
+
+  if (version < 3) {
+    const grainradEffect = readRecord(persisted.grainradEffect)
+    const controls = readRecord(grainradEffect.controls)
+    const ascii = readRecord(persisted.ascii)
+    const theme = sanitizeStudioTheme(readRecord(persisted.view).theme, 'light')
+    const colorControlsByTheme: StudioThemeColorControls = {
+      light: createDefaultGrainradColorControls('light'),
+      dark: createDefaultGrainradColorControls('dark'),
+    }
+
+    colorControlsByTheme[theme] = readLegacyGrainradThemeColors(
+      controls,
+      ascii,
+      colorControlsByTheme[theme],
+    )
+    persisted = {
+      ...persisted,
+      grainradEffect: {
+        ...grainradEffect,
+        colorControlsByTheme,
+      },
+    }
+  }
+
+  return persisted
+}
+
+function readLegacyGrainradThemeColors(
+  controls: Record<string, unknown>,
+  ascii: Record<string, unknown>,
+  fallback: Record<GrainradEffectId, Record<string, string>>,
+) {
+  return Object.fromEntries(
+    GRAINRAD_EFFECTS.map((effect) => {
+      const effectControls = readRecord(controls[effect.id])
+      const colors = Object.fromEntries(
+        effect.settingGroups
+          .flatMap((group) => group.controls)
+          .filter(isGrainradThemeColorControl)
+          .map((control) => {
+            const legacyValue = effect.id === 'ascii' && control.id === 'foreground'
+              ? ascii.foregroundColor
+              : effect.id === 'ascii' && control.id === 'background'
+                ? ascii.backgroundColor
+                : effectControls[control.id]
+
+            return [
+              control.id,
+              sanitizeGrainradControlValue(
+                control,
+                legacyValue,
+                fallback[effect.id][control.id],
+              ) as string,
+            ]
+          }),
+      )
+
+      return [effect.id, colors]
+    }),
+  ) as Record<GrainradEffectId, Record<string, string>>
 }
 
 function sanitizeCharacter(value: unknown, fallback: StudioCharacterState): StudioCharacterState {
@@ -1824,14 +2023,64 @@ function sanitizeAnimationState(
 
 function sanitizeGrainradEffectState(
   value: unknown,
-  fallback: StudioStoreState['grainradEffect']
+  fallback: StudioStoreState['grainradEffect'],
+  theme: StudioTheme,
 ): StudioStoreState['grainradEffect'] {
   const record = readRecord(value)
+  const colorControlsByTheme = sanitizeGrainradColorControlsByTheme(
+    record.colorControlsByTheme,
+    fallback.colorControlsByTheme,
+  )
+  const controls = mergeGrainradThemeColors(
+    sanitizeGrainradEffectControls(record.controls, fallback.controls),
+    colorControlsByTheme[theme],
+  )
 
   return {
     selectedEffectId: sanitizeGrainradEffectId(record.selectedEffectId, fallback.selectedEffectId),
-    controls: sanitizeGrainradEffectControls(record.controls, fallback.controls),
+    controls,
+    colorControlsByTheme,
   }
+}
+
+function sanitizeGrainradColorControlsByTheme(
+  value: unknown,
+  fallback: StudioThemeColorControls,
+): StudioThemeColorControls {
+  const record = readRecord(value)
+
+  return {
+    light: sanitizeGrainradThemeColors(record.light, fallback.light),
+    dark: sanitizeGrainradThemeColors(record.dark, fallback.dark),
+  }
+}
+
+function sanitizeGrainradThemeColors(
+  value: unknown,
+  fallback: Record<GrainradEffectId, Record<string, string>>,
+) {
+  const record = readRecord(value)
+
+  return Object.fromEntries(
+    GRAINRAD_EFFECTS.map((effect) => {
+      const effectRecord = readRecord(record[effect.id])
+      const colors = Object.fromEntries(
+        effect.settingGroups
+          .flatMap((group) => group.controls)
+          .filter(isGrainradThemeColorControl)
+          .map((control) => [
+            control.id,
+            sanitizeGrainradControlValue(
+              control,
+              effectRecord[control.id],
+              fallback[effect.id][control.id],
+            ) as string,
+          ]),
+      )
+
+      return [effect.id, colors]
+    }),
+  ) as Record<GrainradEffectId, Record<string, string>>
 }
 
 function sanitizeGrainradEffectId(value: unknown, fallback: GrainradEffectId): GrainradEffectId {
@@ -2140,7 +2389,9 @@ function sanitizeMobileTab(value: unknown, fallback: StudioMobileTab): StudioMob
 }
 
 function sanitizeExportFormat(value: unknown, fallback: StudioExportFormat): StudioExportFormat {
-  return value === 'png' || value === 'gif' || value === 'mp4' ? value : fallback
+  return value === 'png' || value === 'apng' || value === 'gif' || value === 'mp4'
+    ? value
+    : fallback
 }
 
 function sanitizeExpandedSections(

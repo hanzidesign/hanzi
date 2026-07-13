@@ -9,6 +9,7 @@ declare module 'gifenc' {
       options: {
         palette: GifPalette
         delay?: number
+        repeat?: number
       }
     ) => void
     finish: () => void

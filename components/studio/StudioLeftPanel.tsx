@@ -18,9 +18,15 @@ export default function StudioLeftPanel() {
       <TerminalSection id="input" title="Input">
         <div className={classes.inputLabel}>Character</div>
         <CharacterPanel />
-        <div className={classes.inputLabel}>Model</div>
+        <div className={classes.inputGroupHeader}>
+          <div className={classes.inputLabel}>Model</div>
+          <StudioModelReset />
+        </div>
         <StudioModelPanel />
-        <div className={classes.inputLabel}>3D Motion</div>
+        <div className={classes.inputGroupHeader}>
+          <div className={classes.inputLabel}>3D Motion</div>
+          <StudioMotionReset />
+        </div>
         <StudioMotionPanel />
       </TerminalSection>
       <TerminalSection id="effects" title="Effects">
@@ -30,6 +36,47 @@ export default function StudioLeftPanel() {
         <p className={classes.panelNote}>Effect-local presets will appear here.</p>
       </TerminalSection>
     </>
+  )
+}
+
+function StudioModelReset() {
+  const setMeshControl = useStudioStore((store) => store.setMeshControl)
+
+  return (
+    <button
+      type="button"
+      className={classes.inputGroupReset}
+      onClick={() =>
+        setMeshControl({
+          extrusionDepth: DEFAULT_MESH_STATE.extrusionDepth,
+          thickness: DEFAULT_MESH_STATE.thickness,
+          bevel: DEFAULT_MESH_STATE.bevel,
+          twist: DEFAULT_MESH_STATE.twist,
+          taper: DEFAULT_MESH_STATE.taper,
+          bend: DEFAULT_MESH_STATE.bend,
+        })
+      }
+    >
+      Reset all
+    </button>
+  )
+}
+
+function StudioMotionReset() {
+  const setAnimationControl = useStudioStore((store) => store.setAnimationControl)
+  const setMeshControl = useStudioStore((store) => store.setMeshControl)
+
+  return (
+    <button
+      type="button"
+      className={classes.inputGroupReset}
+      onClick={() => {
+        setMeshControl({ rotation: { ...DEFAULT_MESH_STATE.rotation } })
+        setAnimationControl({ speed: 1 })
+      }}
+    >
+      Reset all
+    </button>
   )
 }
 

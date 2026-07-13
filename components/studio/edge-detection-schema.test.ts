@@ -75,8 +75,8 @@ describe('Grainrad Edge Detection schema', () => {
       brightness: 0,
       contrast: 0,
       'color-mode': 'custom',
-      'edge-color': '#ffffff',
-      background: '#000000',
+      'edge-color': '#000000',
+      background: '#ffffff',
     })
   })
 

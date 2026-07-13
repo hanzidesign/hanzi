@@ -21,7 +21,7 @@ export default function TerminalSection({
 }: TerminalSectionProps) {
   const expanded = useStudioStore((store) => store.view.expandedSections[id])
   const toggleTerminalSection = useStudioStore((store) => store.toggleTerminalSection)
-  const symbol = expanded ? '⌄' : '›'
+  const symbol = expanded ? '−' : '+'
 
   return (
     <section className={classes.section} data-studio-section={id}>
