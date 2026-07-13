@@ -60,6 +60,10 @@ describe('Grainrad effect renderer routing contract', () => {
       join(studioDir, 'CharacterVoronoiCanvas.tsx'),
       'utf8',
     )
+    const vhsCanvasSource = await readFile(
+      join(studioDir, 'CharacterVhsCanvas.tsx'),
+      'utf8',
+    )
 
     expect(studioCanvasSource).toContain("selectedEffectId === 'ascii'")
     expect(studioCanvasSource).toContain('<CharacterAsciiCanvas')
@@ -89,6 +93,8 @@ describe('Grainrad effect renderer routing contract', () => {
     expect(studioCanvasSource).toContain('<CharacterNoiseFieldCanvas')
     expect(studioCanvasSource).toContain("selectedEffectId === 'voronoi'")
     expect(studioCanvasSource).toContain('<CharacterVoronoiCanvas')
+    expect(studioCanvasSource).toContain("selectedEffectId === 'vhs'")
+    expect(studioCanvasSource).toContain('<CharacterVhsCanvas')
     expect(studioCanvasSource).toContain('data-testid="effect-renderer-not-implemented"')
     expect(studioCanvasSource).toContain('effectControls.background')
 
@@ -555,5 +561,50 @@ describe('Grainrad effect renderer routing contract', () => {
     expect(voronoiCanvasSource).toContain('computeEffectiveAnimationTime')
     expect(voronoiCanvasSource).toContain('animation.playing')
     expect(voronoiCanvasSource).toContain('animation.speed')
+
+    for (const forbiddenImport of [
+      'character-ascii-material',
+      'dithering-material',
+      'halftone-material',
+      'matrix-rain-material',
+      'dots-material',
+      'contour-material',
+      'pixel-sort-material',
+      'blockify-material',
+      'threshold-material',
+      'edge-detection-material',
+      'crosshatch-material',
+      'wave-lines-material',
+      'noise-field-material',
+      'voronoi-material',
+      'grainrad-effect-runtime',
+    ]) {
+      expect(vhsCanvasSource).not.toContain(forbiddenImport)
+    }
+    expect(vhsCanvasSource).toContain('runtime.svgData')
+    expect(vhsCanvasSource).toContain('<Canvas')
+    expect(vhsCanvasSource).toContain('SVGLoader')
+    expect(vhsCanvasSource).toContain('createVhsShaderMaterial')
+    expect(vhsCanvasSource).toContain('applyVhsUniforms')
+    expect(vhsCanvasSource).toContain('disposeVhsShaderMaterial')
+    expect(vhsCanvasSource).toContain('data-testid="character-vhs-canvas"')
+    for (const meshParam of [
+      'extrusionDepth',
+      'thickness',
+      'bevel',
+      'twist',
+      'taper',
+      'bend',
+      'position',
+      'rotation',
+      'scale',
+      'autoRotate',
+      'autoRotateSpeed',
+    ]) {
+      expect(vhsCanvasSource).toContain(`meshSettings.${meshParam}`)
+    }
+    expect(vhsCanvasSource).toContain('clock.getElapsedTime()')
+    expect(vhsCanvasSource).toContain('animation.playing')
+    expect(vhsCanvasSource).toContain('animation.speed')
   })
 })

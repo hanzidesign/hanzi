@@ -19,6 +19,7 @@ import CharacterPixelSortCanvas from '@/components/studio/CharacterPixelSortCanv
 import CharacterThresholdCanvas from '@/components/studio/CharacterThresholdCanvas'
 import CharacterWaveLinesCanvas from '@/components/studio/CharacterWaveLinesCanvas'
 import CharacterVoronoiCanvas from '@/components/studio/CharacterVoronoiCanvas'
+import CharacterVhsCanvas from '@/components/studio/CharacterVhsCanvas'
 import { getGrainradEffectById } from '@/components/studio/grainrad-effects'
 import { isAbortError } from '@/utils/dataUrl'
 import classes from './StudioShell.module.css'
@@ -120,6 +121,8 @@ export default function StudioCanvas() {
           <CharacterNoiseFieldCanvas />
         ) : selectedEffectId === 'voronoi' ? (
           <CharacterVoronoiCanvas />
+        ) : selectedEffectId === 'vhs' ? (
+          <CharacterVhsCanvas />
         ) : (
           <div
             data-testid="effect-renderer-not-implemented"

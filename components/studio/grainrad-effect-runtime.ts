@@ -276,7 +276,7 @@ const EFFECT_CONTROL_IDS: Record<GrainradEffectId, string[]> = {
     'distortion',
     'noise',
     'color-bleed',
-    'scanlines',
+    'vhs-scanlines',
     'tracking-error',
     'brightness',
     'contrast',
@@ -634,10 +634,10 @@ export function compileGrainradEffectRuntime({
       effectValues[0] = read.number('distortion', 0.5)
       effectValues[1] = read.number('noise', 0.3)
       effectValues[2] = read.number('color-bleed', 0.5)
-      effectValues[3] = read.number('scanlines', 0.3)
+      effectValues[3] = read.number('vhs-scanlines', 0.3)
       effectValues[4] = read.number('tracking-error', 0.2)
-      effectValues[5] = read.number('brightness', 0)
-      effectValues[6] = read.number('contrast', 0)
+      effectValues[5] = read.number('brightness', 0) / 100
+      effectValues[6] = read.number('contrast', 0) / 100
       break
   }
 

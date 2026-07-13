@@ -16,6 +16,29 @@ import {
 } from './grainrad-effect-runtime'
 
 describe('Phase 5F Grainrad runtime effect compiler', () => {
+  it('publishes all 15 Effects as independent renderers with no unimplemented fallback', () => {
+    expect(GRAINRAD_EFFECTS).toHaveLength(15)
+    expect(GRAINRAD_EFFECTS.map((effect) => effect.renderer)).toEqual(
+      GRAINRAD_EFFECTS.map((effect) => effect.id),
+    )
+    expect(GRAINRAD_EFFECTS.some((effect) => effect.renderer === 'unimplemented')).toBe(false)
+  })
+
+  it('keeps effect-local control ids disjoint from shared Processing and Post ids', () => {
+    const sharedIds = new Set([
+      ...GRAINRAD_COMMON_PROCESSING_GROUPS,
+      ...GRAINRAD_COMMON_POST_PROCESSING_GROUPS,
+    ].flatMap((group) => group.controls.map((control) => control.id)))
+
+    for (const effect of GRAINRAD_EFFECTS) {
+      const collisions = effect.settingGroups
+        .flatMap((group) => group.controls.map((control) => control.id))
+        .filter((id) => sharedIds.has(id))
+
+      expect(collisions, effect.id).toEqual([])
+    }
+  })
+
   it('assigns each Grainrad effect a unique shader id', () => {
     const ids = GRAINRAD_EFFECTS.map((effect) => GRAINRAD_EFFECT_SHADER_IDS[effect.id])
 
@@ -574,6 +597,29 @@ describe('Phase 5F Grainrad runtime effect compiler', () => {
     expect(runtime.effectValues.slice(0, 7)).toEqual([
       85, 0.65, 2, 1, 0.35, 0.4, -0.25,
     ])
+  })
+
+  it('packs VHS controls in exact production units and does not confuse Post Scanlines', () => {
+    const defaults = createDefaultGrainradEffectControls().vhs
+    const runtime = compileGrainradEffectRuntime({
+      selectedEffectId: 'vhs',
+      controls: {
+        ...defaults,
+        distortion: 0.8,
+        noise: 0.65,
+        'color-bleed': 0.4,
+        'vhs-scanlines': 0.75,
+        'tracking-error': 0.55,
+        brightness: 40,
+        contrast: -25,
+        scanlines: true,
+      },
+    })
+
+    expect(runtime.effectValues.slice(0, 7)).toEqual([
+      0.8, 0.65, 0.4, 0.75, 0.55, 0.4, -0.25,
+    ])
+    expect(runtime.postValues[5]).toBe(1)
   })
 })
 

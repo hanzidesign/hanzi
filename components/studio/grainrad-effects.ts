@@ -99,6 +99,7 @@ export type GrainradEffectRenderer =
   | 'wave-lines'
   | 'noise-field'
   | 'voronoi'
+  | 'vhs'
   | 'unimplemented'
 
 export const GRAINRAD_CHARACTER_SETS = [
@@ -863,19 +864,25 @@ export const GRAINRAD_EFFECTS: GrainradEffectDefinition[] = [
   {
     id: 'vhs',
     label: 'VHS',
-    renderer: 'unimplemented',
+    renderer: 'vhs',
     settingGroups: [
       {
         title: 'VHS',
         controls: [
-          rangeControl('distortion', 'Distortion', 0.5, 0, 1, 0.01),
-          rangeControl('noise', 'Noise', 0.3, 0, 1, 0.01),
-          rangeControl('color-bleed', 'Color Bleed', 0.5, 0, 1, 0.01),
-          rangeControl('scanlines', 'Scanlines', 0.3, 0, 1, 0.01),
-          rangeControl('tracking-error', 'Tracking Error', 0.2, 0, 1, 0.01),
+          rangeControl('distortion', 'Distortion', 0.5, 0, 1, 0.05),
+          rangeControl('noise', 'Noise', 0.3, 0, 1, 0.05),
+          rangeControl('color-bleed', 'Color Bleed', 0.5, 0, 1, 0.05),
+          rangeControl('vhs-scanlines', 'Scanlines', 0.3, 0, 1, 0.05),
+          rangeControl('tracking-error', 'Tracking Error', 0.2, 0, 1, 0.05),
         ],
       },
-      adjustmentGroup(['Brightness', 'Contrast']),
+      {
+        title: 'Adjustments',
+        controls: [
+          rangeControl('brightness', 'Brightness', 0, -100, 100, 1),
+          rangeControl('contrast', 'Contrast', 0, -100, 100, 1),
+        ],
+      },
     ],
   },
 ]

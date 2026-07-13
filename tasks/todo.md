@@ -2,7 +2,7 @@
 
 Active implementation package: `tasks/v2.1/phase-5d-grainrad-studio-refactor-plan.md`.
 Direct development branch for v2.1 architecture: `v2.1`.
-Current status: Phase 5M now has three independent renderers: ASCII, Dithering, and Halftone. The shared Character Model panel is implemented below Character, and the remaining 12 effects are explicitly marked unimplemented instead of falling through ASCII. Scope stays route-local to `/studio`; homepage `/` is not redesigned. Preserve the current character selector and 3D motion panel as Input, and use `data/Generated image 1.png` as the authoritative UI-layout reference.
+Current status: Phase 5M now has all 15 Effects implemented as independent renderers with effect-specific Grainrad Settings and rendering logic. The shared Character Model panel is implemented below Character, no Effect falls through ASCII or remains marked unimplemented, and scope stays route-local to `/studio`; homepage `/` is not redesigned. Preserve the current character selector and 3D motion panel as Input, and use `data/Generated image 1.png` as the authoritative UI-layout reference.
 
 Keep this file as current-state tracking only. Historical phase logs belong in the superseded task docs or git history, not here.
 
@@ -280,14 +280,32 @@ Detailed specification: `tasks/v2.1/phase-5y-voronoi.md`.
 
 ### VHS vertical slice
 
-- [ ] Audit the VHS placeholder and verify current Grainrad UI, defaults, uniform ABI, shader equations, time behavior, Processing/Post, WebGL fallback, and quirks.
-- [ ] Write the detailed VHS specification before application-code implementation.
-- [ ] RED→GREEN: correct VHS schema, renderer discriminator, exact controls, runtime units, reset, persistence, and sanitization.
-- [ ] Add a deterministic VHS CPU oracle proving all functional settings, temporal branches, and unconditional VHS grading.
-- [ ] Add an independent VHS material and `CharacterVhsCanvas` using the shared 3D Character Model source.
-- [ ] Prove explicit routing with no prior-effect fallback and full Model/animation/resource lifecycle.
-- [ ] Browser-test VHS controls, representative output, Model wiring, and console/WebGL errors.
-- [ ] Run full verification and the final all-effects completion audit.
+- [x] Audit the VHS placeholder and verify current Grainrad UI, defaults, uniform ABI, shader equations, time behavior, Processing/Post, WebGL fallback, and quirks.
+- [x] Write the detailed VHS specification before application-code implementation.
+- [x] RED→GREEN: correct VHS schema, renderer discriminator, exact controls, runtime units, reset, persistence, and sanitization.
+- [x] Add a deterministic VHS CPU oracle proving all functional settings, temporal branches, and unconditional VHS grading.
+- [x] Add an independent VHS material and `CharacterVhsCanvas` using the shared 3D Character Model source.
+- [x] Prove explicit routing with no prior-effect fallback and full Model/animation/resource lifecycle.
+- [x] Browser-test VHS controls, representative output, Model wiring, and console/WebGL errors.
+- [x] Run full verification and the final all-effects completion audit.
+
+VHS review — 2026-07-14:
+
+- VHS now has an explicit independent renderer route, deterministic CPU oracle, exact value-noise time branches, and its own 3D Character canvas/material lifecycle. Tracking bands/jumps, three-part tape warp, RGB bleed/five-tap smear, scanlines, static bands/rolling bar, unconditional VHS grading/vignette, and final B/C all follow production order.
+- Settings match current production: exact groups/order, defaults, `.05` steps, raw effect units, `/100` adjustments, selected-only reset, persistence, sanitization, shared Model wiring, and continuous accumulated time with no invented Animate/Speed controls.
+- A real state-corruption bug was removed: effect-local numeric Scanlines now uses `vhs-scanlines`, while shared Post keeps boolean `scanlines`. Dedicated schema/runtime/store/material tests prove both values remain independent and can intentionally stack.
+- Browser verification rendered the selected extruded Character with the dedicated VHS canvas, exposed the exact seven rows including VHS Scanlines `0.3`, and found no console/page/shader errors. CPU/material tests lock every temporal branch, the strict `>0.01` gates, warped-UV vignette, unconditional all-zero VHS treatment, and Post ordering.
+- Verification passed: focused VHS integration `6` files / `76` tests, full Vitest `89` files / `582` tests, TypeScript, ESLint, production build, and `git diff --check`. The only environment warning is Node 24.18.0 while the repository requests Node 22.x.
+
+Detailed specification: `tasks/v2.1/phase-5z-vhs.md`.
+
+### Final all-effects completion audit — 2026-07-14
+
+- [x] All 15 definitions publish independent renderer discriminators equal to their Effect IDs; none uses `unimplemented`.
+- [x] All visible effect-local control IDs are disjoint from shared Processing/Post IDs.
+- [x] `StudioCanvas` explicitly routes all 15 Effects to dedicated canvases/materials with no ASCII fallback.
+- [x] Browser-switched all 15 Effects in one session: every dedicated canvas existed, all 14 stateful canvases reported `ready`, ASCII rendered, no not-implemented view appeared, and no console/page/shader errors occurred.
+- [x] Full regression suite, TypeScript, ESLint, production build, and `git diff --check` pass after the audit.
 
 User correction:
 

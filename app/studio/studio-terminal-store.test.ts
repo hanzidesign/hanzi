@@ -871,6 +871,65 @@ describe('Phase 5D Grainrad terminal Studio store', () => {
     expect(store.getState().mesh.taper).toBe(0.2)
   })
 
+  it('keeps numeric VHS Scanlines independent from boolean Post Scanlines across persistence and reset', () => {
+    const base = createInitialStudioStoreState()
+    const persistedState = {
+      ...base,
+      mesh: { ...base.mesh, bevel: 0.08 },
+      grainradEffect: {
+        ...base.grainradEffect,
+        selectedEffectId: 'vhs' as const,
+        controls: {
+          ...base.grainradEffect.controls,
+          threshold: { ...base.grainradEffect.controls.threshold, levels: 6 },
+          vhs: {
+            ...base.grainradEffect.controls.vhs,
+            distortion: 99,
+            noise: -1,
+            'color-bleed': 2,
+            'vhs-scanlines': 0.65,
+            'tracking-error': -1,
+            brightness: 999,
+            contrast: -999,
+            scanlines: true,
+          },
+        },
+      },
+    }
+    const { storage } = createMemoryStorage(JSON.stringify({ state: persistedState, version: 2 }))
+    const store = createStudioStore(storage)
+
+    expect(store.getState().grainradEffect.controls.vhs).toMatchObject({
+      distortion: 1,
+      noise: 0,
+      'color-bleed': 1,
+      'vhs-scanlines': 0.65,
+      'tracking-error': 0,
+      brightness: 100,
+      contrast: -100,
+      scanlines: true,
+    })
+
+    store.getState().setGrainradEffectControl('vhs', 'vhs-scanlines', 0.45)
+    store.getState().setGrainradEffectControl('vhs', 'scanlines', false)
+    expect(store.getState().grainradEffect.controls.vhs['vhs-scanlines']).toBe(0.45)
+    expect(store.getState().grainradEffect.controls.vhs.scanlines).toBe(false)
+    store.getState().resetSelectedEffectControls()
+
+    expect(store.getState().grainradEffect.controls.vhs).toMatchObject({
+      distortion: 0.5,
+      noise: 0.3,
+      'color-bleed': 0.5,
+      'vhs-scanlines': 0.3,
+      'tracking-error': 0.2,
+      brightness: 0,
+      contrast: 0,
+      scanlines: false,
+    })
+    expect(store.getState().grainradEffect.controls.threshold.levels).toBe(6)
+    expect(store.getState().mesh.bevel).toBe(0.08)
+  })
+
   it('migrates the old persisted ASCII Color Mode default from original to mono', () => {
     const base = createInitialStudioStoreState()
     const staleState = {
