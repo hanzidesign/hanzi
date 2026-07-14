@@ -54,7 +54,6 @@ const liveDropdownOptionLabels = [
   'Hexagonal Grid',
   'Diagonal',
   'Shaded',
-  'Grayscale',
   'Worley',
   'Darkened',
   'Center Sample',

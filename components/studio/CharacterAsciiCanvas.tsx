@@ -6,6 +6,7 @@ import { StudioRenderCanvas as Canvas } from '@/components/studio/studio-render-
 import { SVGLoader } from 'three/addons/loaders/SVGLoader.js'
 import { Group, Vector2, type ShaderMaterial } from 'three'
 import { useStudioStore } from '@/app/studio/studio-store'
+import { withoutSharedControllerValues } from './grainrad-shared-controls'
 import { computeEffectiveAnimationTime } from '@/components/studio/animation-time'
 import {
   createCharacterMeshGeometries,
@@ -160,7 +161,7 @@ function CharacterAsciiScene({
 
   const grainradRuntime = useMemo(() => compileGrainradEffectRuntime({
     selectedEffectId: 'ascii',
-    controls: grainradEffect.controls.ascii,
+    controls: withoutSharedControllerValues(grainradEffect.controls.ascii),
   }), [grainradEffect])
 
   const material = useMemo(() => createAsciiShaderMaterial({

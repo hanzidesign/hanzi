@@ -1,13 +1,7 @@
 import {
-  CanvasTexture,
   Color,
-  ClampToEdgeWrapping,
-  DataTexture,
   DoubleSide,
-  NearestFilter,
-  RGBAFormat,
   ShaderMaterial,
-  UnsignedByteType,
   Vector2,
   type IUniform,
 } from 'three'
@@ -20,29 +14,19 @@ import {
   compileGrainradEffectRuntime,
   type GrainradEffectRuntime,
 } from '@/components/studio/grainrad-effect-runtime'
+import {
+  CHARACTER_SETS,
+  createCharacterGlyphAtlas,
+  resolveCharacterSet,
+} from '@/components/studio/character-glyph-atlas'
 
-export const ASCII_CHARACTER_SETS: Record<StudioAsciiCharsetStyle, string> = {
-  standard: '@%#*+=-:. ',
-  blocks: '█▓▒░',
-  binary: '01',
-  detailed: '$@B%8&WM#*oahkbdpqwmZO0QLCJUYXzcvunxrjft/\\|()1{}[]?-_+~<>i!lI;:,"^`\'. ',
-  minimal: '#.',
-  alphabetic: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz',
-  numeric: '0123456789',
-  math: '+-*/=<>^%()[]{}|~',
-  symbols: '!@#$%^&*()_+-=[]{}|;\':",./<>?`~',
-  custom: '█▓▒░@#%*+=-:. ',
-}
+export const ASCII_CHARACTER_SETS: Record<StudioAsciiCharsetStyle, string> = CHARACTER_SETS
 
 export function resolveAsciiCharacterSet(
   style: StudioAsciiCharsetStyle,
   customChars: string,
 ) {
-  if (style === 'custom' && customChars.length > 0) {
-    return customChars
-  }
-
-  return ASCII_CHARACTER_SETS[style]
+  return resolveCharacterSet(style, customChars)
 }
 
 export const ASCII_VERTEX_SHADER = `
@@ -434,8 +418,9 @@ vec4 applyGrainradProcessing(vec4 effectColor, float brightness) {
   vec3 softenedProcessingColor = mix(vec3(grainradLuma(color)), color, 0.35 + smoothstep(0.0, 1.0, mask) * 0.4);
   softenedProcessingColor = mix(softenedProcessingColor, vec3(brightness), 0.25);
   color = mix(color, softenedProcessingColor, clamp(u_processingD, 0.0, 1.0));
-  if (u_processingE > 0.5) {
-    color = floor(color * u_processingE) / max(u_processingE, 1.0);
+  if (u_processingE > 0.0) {
+    float quantizeLevels = max(u_processingE, 2.0);
+    color = floor(color * (quantizeLevels - 1.0) + 0.5) / (quantizeLevels - 1.0);
   }
   color = mix(color, color * smoothstep(0.15, 0.85, mask), u_processingF);
   return vec4(clamp(color, 0.0, 1.0), mask);
@@ -557,8 +542,10 @@ function createAsciiShaderUniforms({
   foregroundColor,
   backgroundColor,
 }: Required<CreateAsciiShaderMaterialOptions>): Record<string, IUniform> {
-  const asciiCharacterSet = resolveAsciiCharacterSet(ascii.charsetStyle, grainradRuntime.customGlyphChars)
-  const glyphAtlas = createAsciiGlyphAtlasTexture(asciiCharacterSet)
+  const glyphAtlas = createCharacterGlyphAtlas(
+    ascii.charsetStyle,
+    grainradRuntime.customGlyphChars,
+  )
   const uniforms: Record<string, IUniform> = {
     u_time: { value: 0 },
     u_mouse: { value: new Vector2(0, 0) },
@@ -593,105 +580,6 @@ function createAsciiShaderUniforms({
   assignGrainradRuntimeUniforms(uniforms, grainradRuntime)
 
   return uniforms
-}
-
-type AsciiGlyphAtlas = {
-  texture: CanvasTexture | DataTexture
-  count: number
-  columns: number
-}
-
-const ASCII_GLYPH_ATLAS_CELL_SIZE = 64
-
-function createAsciiGlyphAtlasTexture(characterSet: string): AsciiGlyphAtlas {
-  const glyphs = Array.from(characterSet.length > 0 ? characterSet : ASCII_CHARACTER_SETS.standard)
-  const count = glyphs.length
-  const columns = Math.max(1, Math.ceil(Math.sqrt(count)))
-  const rows = Math.max(1, Math.ceil(count / columns))
-
-  if (typeof document === 'undefined') {
-    return {
-      texture: createFallbackGlyphTexture(),
-      count,
-      columns,
-    }
-  }
-
-  const canvas = document.createElement('canvas')
-  canvas.width = columns * ASCII_GLYPH_ATLAS_CELL_SIZE
-  canvas.height = rows * ASCII_GLYPH_ATLAS_CELL_SIZE
-
-  const context = canvas.getContext('2d')
-
-  if (!context) {
-    return {
-      texture: createFallbackGlyphTexture(),
-      count,
-      columns,
-    }
-  }
-
-  context.clearRect(0, 0, canvas.width, canvas.height)
-  context.fillStyle = '#ffffff'
-  context.textAlign = 'center'
-  context.textBaseline = 'middle'
-  context.font = `${Math.floor(ASCII_GLYPH_ATLAS_CELL_SIZE * 0.76)}px ${readAsciiCanvasFontFamily()}`
-
-  glyphs.forEach((glyph, index) => {
-    if (glyph === ' ') {
-      return
-    }
-
-    const column = index % columns
-    const row = Math.floor(index / columns)
-    const x = column * ASCII_GLYPH_ATLAS_CELL_SIZE + ASCII_GLYPH_ATLAS_CELL_SIZE / 2
-    const y = row * ASCII_GLYPH_ATLAS_CELL_SIZE + ASCII_GLYPH_ATLAS_CELL_SIZE * 0.55
-
-    context.fillText(glyph, x, y)
-  })
-
-  const texture = new CanvasTexture(canvas)
-  configureGlyphTexture(texture)
-
-  return {
-    texture,
-    count,
-    columns,
-  }
-}
-
-function createFallbackGlyphTexture() {
-  const texture = new DataTexture(
-    new Uint8Array([255, 255, 255, 255]),
-    1,
-    1,
-    RGBAFormat,
-    UnsignedByteType,
-  )
-
-  configureGlyphTexture(texture)
-
-  return texture
-}
-
-function configureGlyphTexture(texture: CanvasTexture | DataTexture) {
-  texture.magFilter = NearestFilter
-  texture.minFilter = NearestFilter
-  texture.wrapS = ClampToEdgeWrapping
-  texture.wrapT = ClampToEdgeWrapping
-  texture.needsUpdate = true
-}
-
-function readAsciiCanvasFontFamily() {
-  if (typeof window === 'undefined') {
-    return 'monospace'
-  }
-
-  const styles = window.getComputedStyle(document.documentElement)
-  const bodyFont = styles.getPropertyValue('--font-body').trim()
-  const notoFont = styles.getPropertyValue('--font-noto').trim()
-
-  return [bodyFont, notoFont, 'monospace'].filter(Boolean).join(', ')
 }
 
 export function applyGrainradRuntimeUniforms(

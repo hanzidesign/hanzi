@@ -237,24 +237,30 @@ export default function StudioExportPanel() {
         {exportOptions.map((option) => {
           const disabled = exporting || pngExporting
             || (option.value === 'png' ? !pngAvailable : !animationAvailable)
+          const unavailableReason = option.value === 'png' && !pngAvailable
+            ? '3D Motion Speed must be 0 to export PNG'
+            : option.value !== 'png' && !animationAvailable
+              ? '3D Motion Speed must be above 0 to export animation'
+              : undefined
 
           return (
-            <button
+            <span
               key={option.value}
-              type="button"
-              className={classes.exportFormatButton}
-              data-active={option.value === selectedFormat}
-              disabled={disabled}
-              title={option.value === 'png' && !pngAvailable
-                ? 'Set 3D Motion Speed to 0 to export PNG'
-                : option.value !== 'png' && !animationAvailable
-                  ? 'Set 3D Motion Speed above 0 to export animation'
-                  : `Export ${option.label}`}
-              onClick={() => void handleExport(option.value)}
+              className={classes.exportFormatTooltip}
+              title={unavailableReason}
             >
-              <ExportFormatIcon icon={option.icon} />
-              <span>{option.label}</span>
-            </button>
+              <button
+                type="button"
+                className={classes.exportFormatButton}
+                data-active={option.value === selectedFormat}
+                disabled={disabled}
+                aria-label={unavailableReason ?? `Export ${option.label}`}
+                onClick={() => void handleExport(option.value)}
+              >
+                <ExportFormatIcon icon={option.icon} />
+                <span>{option.label}</span>
+              </button>
+            </span>
           )
         })}
       </div>

@@ -6,6 +6,20 @@ Current status: Phase 5M now has all 15 Effects implemented as independent rende
 
 Keep this file as current-state tracking only. Historical phase logs belong in the superseded task docs or git history, not here.
 
+## Settings Static Arrow Cleanup - 2026-07-14
+
+Plan:
+
+- [x] Lock the Settings group-title contract: static headings must not show a disclosure arrow.
+- [x] Remove only the non-interactive arrow markup and its unused styling.
+- [x] Run the focused regression test, TypeScript, and diff hygiene; review the final scope.
+
+Review:
+
+- Removed the static `⌄` from Settings group headings; real dropdown controls retain their interactive open/close indicator.
+- Removed the now-unused group-chevron styling and added a focused affordance regression.
+- Verification passed: focused Vitest (`1` test), TypeScript, focused ESLint, and `git diff --check`.
+
 ## Character Popover Bottom Scroll Fix - 2026-07-14
 
 User contract:
@@ -1925,3 +1939,369 @@ Review result:
 - Export no longer queries or scales `[data-studio-preview] canvas`. Each requested frame receives a monotonic request id and is captured only after the export WebGL renderer acknowledges a completed post-effect render; mismatched physical dimensions, stale acknowledgements, timeout, cancellation, and teardown are guarded.
 - Speed/time correction: PNG is enabled only when 3D Motion Speed is `0`; APNG/GIF/MP4 are enabled only above `0`. Animation export seeds its first frame from the preview renderer's latest effective animation time, and Speed `0` keeps PNG preview/export time identical for WYSIWYG output.
 - Correction verification passed: focused hidden-surface/routing/timing suites `4` files / `15` tests, full Vitest `92` files / `598` tests, TypeScript, full ESLint, production build, and `git diff --check`.
+
+## Studio navigation, character meaning, and pointer affordances (2026-07-14)
+
+Specification:
+
+- Turn the left-panel Hanzi Studio brand row into an accessible link to `/`, with a compact home icon before the title.
+- Show the selected Character's English meaning from `assets/chars.ts` inside the Character trigger, without changing character selection state or SVG rendering.
+- Complete missing current-year meaning entries so every listed Character has a meaning fallback from the same data source.
+- Apply `cursor: pointer` to enabled Studio controls with click behavior while retaining `not-allowed` for disabled actions.
+- When PNG export is unavailable, keep the disabled action wrapped in a hoverable tooltip target explaining that 3D Motion Speed must be `0`.
+- Keep all changes route-local and preserve the current terminal-style Studio layout.
+
+Checklist:
+
+- [x] Add focused source-contract tests for the home link, meaning rendering, meaning-data coverage, and pointer cursor rules.
+- [x] Make the disabled PNG export explanation reliably hoverable.
+- [x] Implement the linked Studio brand row and Character meaning line.
+- [x] Add missing meaning entries and pointer cursor affordances.
+- [x] Run focused tests, full relevant verification, and `git diff --check`.
+- [x] Record review results below.
+
+Review result:
+
+- The desktop Studio brand now uses the existing Hanzi logo and links the icon/title together to `/`, with a visible keyboard focus treatment.
+- Character cards show their English meaning below the selected glyph. `assets/chars.ts` now includes the missing 2024 meanings, and a data invariant test verifies that every selectable TC/SC character has a non-empty meaning.
+- Enabled Studio buttons, links, and portalled Character picker buttons use the pointer cursor; disabled Export actions retain `not-allowed`.
+- Disabled PNG/animation actions now place the Speed requirement on a hoverable wrapper, while the nested button remains natively disabled and exposes the same explanation through its accessible name.
+- Verification passed: focused Studio contracts `4` files / `13` tests, TypeScript, ESLint, production build, and `git diff --check`.
+- Full Vitest result: `90` files / `586` tests passed; `3` files / `17` tests failed because the pre-existing uncommitted `studio-store.ts` change sets the default theme to dark while those tests still assert light-theme defaults. This task did not modify or revert that unrelated work.
+- Per the project rule, browser visual verification remains for user-run `/studio` QA rather than automated inspection.
+
+## Grain Intensity default correction (2026-07-14)
+
+- [x] Change the shared Grain Intensity schema default from `35` to `0`.
+- [x] Align all renderer and compiler fallbacks with the shared `0` default.
+- [x] Add regression coverage for initial and reset behavior.
+- [x] Run focused verification and record results.
+
+Review result:
+
+- The shared Post-Processing Grain Intensity schema now defaults to `0`, so initial controls and selected-effect Reset both restore `0`.
+- The shared runtime compiler and all independent material uniform initializers/read fallbacks now use `0`; no stale `35` Grain Intensity fallback remains.
+- Verification passed: focused runtime/default tests `2` files / `30` tests, all material suites plus the new regression suite `18` files / `146` tests, TypeScript, focused ESLint, and `git diff --check`.
+
+## Matrix Rain direction semantics correction (2026-07-14)
+
+- [x] Treat Direction labels as destination (`to`) directions.
+- [x] Swap Up/Down and Left/Right runtime mappings in both shader paths and the CPU oracle.
+- [x] Add four-direction regression coverage and run focused verification.
+
+Review result:
+
+- Matrix Rain now interprets Up, Down, Left, and Right as the destination the rain moves `to`; both opposing pairs are reversed from the prior source/from semantics.
+- One shared direction-ID map now feeds the dedicated Matrix Rain material and generic Grainrad runtime compiler, while the deterministic CPU oracle uses the same destination-direction branch.
+- Verification passed: focused Matrix Rain/runtime suites `3` files / `59` tests, TypeScript, focused ESLint, and `git diff --check`.
+- The broader Studio store file remains independently red because the pre-existing dark-theme change conflicts with light-theme assertions; the three direction-specific suites pass.
+
+## Processing Brightness Map runtime repair (2026-07-14)
+
+Specification:
+
+- Keep the shared Brightness Map range/default unchanged for non-Matrix effects.
+- For Matrix Rain only, use the explicit Brightness Map minimum/default/maximum `0 / 3 / 6`.
+- Make Processing Brightness Map visibly affect every active Effect, not only ASCII, Dithering, Halftone, and Matrix Rain.
+- Apply Brightness Map in the processing stage before shared post-processing for each independent material.
+
+Checklist:
+
+- [x] Add a material-level regression that reproduces the 11 disconnected Effect paths.
+- [x] Add a Matrix Rain-only Brightness Map schema override and align its runtime/material fallback.
+- [x] Wire Brightness Map through the 11 missing materials and remove stale negative assertions.
+- [x] Run focused material/runtime/store verification, TypeScript, ESLint, and diff hygiene.
+- [x] Record diagnosis and results.
+
+Review result:
+
+- Root cause: the shared compiler packed Brightness Map for all 15 Effects, but 11 dedicated materials never declared, initialized, updated, or consumed the uniform. Compiler-signature tests therefore passed without proving visible renderer behavior.
+- Dots, Contour, Pixel Sort, Blockify, Threshold, Edge Detection, Crosshatch, Wave Lines, Noise Field, Voronoi, and VHS now multiply their completed effect color by `u_brightnessMap` before shared Post-Processing. ASCII, Dithering, Halftone, and Matrix Rain retain their working paths.
+- Matrix Rain alone now uses Brightness Map minimum/default/maximum `0 / 3 / 6`; every other Effect remains `0 / 1 / 2`. Initial state, Reset, persisted-value sanitization, generic compiler fallback, and the dedicated Matrix material all use the Effect-specific schema.
+- Verification passed: focused material/default/runtime suites `20` files / `175` tests, TypeScript, full ESLint, production build, and `git diff --check`.
+- Full Vitest result: `92` files / `591` tests passed; the same pre-existing dark-theme conflict leaves `3` files / `17` tests red. No Brightness Map or material suite failed.
+- Per project policy, visual proof remains a user-run `/studio` check across representative Effects rather than an automated browser inspection.
+
+## Complete Processing and Post-Processing controller audit (2026-07-14)
+
+Specification:
+
+- Audit all 15 active Effects against every visible Processing and Post-Processing controller at the actual renderer/material seam.
+- Treat a controller as implemented only when schema/store input reaches a declared uniform and changes shader output in the correct Processing/Post ordering.
+- Repair every missing or no-op path, including Edge Enhance, Blur, Quantize Colors, and Shape Matching.
+- Replace compiler-only or source-marker false positives with a deterministic all-Effect connectivity regression.
+- Preserve existing Effect-local behavior and Matrix Rain's explicit Brightness Map `0 / 3 / 6` contract.
+
+Checklist:
+
+- [x] Build the 15-Effect controller connectivity matrix and reproduce every missing path.
+- [x] Add a failing all-renderer regression at the material/uniform/shader-consumption seam.
+- [x] Implement missing Processing controllers across independent materials.
+- [x] Verify every Post-Processing controller and repair any missing/no-op paths.
+- [x] Run focused and full verification, clean diagnostics, and record results.
+
+Review result:
+
+- Root cause: all 15 Effects exposed the same six Processing controls, but only ASCII, Dithering, Halftone, and Matrix Rain consumed all six. The other 11 renderers consumed only Brightness Map, leaving `55` visible controller paths disconnected. Their local tests explicitly asserted those uniforms were absent, while shared-compiler tests never exercised the active independent materials.
+- Added Invert, Edge Enhance, spatial four-neighbor Blur, Quantize Colors, and Shape Matching to Dots, Contour, Pixel Sort, Blockify, Threshold, Edge Detection, Crosshatch, Wave Lines, Noise Field, Voronoi, and VHS. Each renderer samples Blur at its actual source seam, then applies the remaining Processing stage after effect construction and before Post-Processing. Quantize value `1` now maps to at least two output levels instead of acting as a no-op.
+- The complete Post-Processing audit found all nine controllers structurally connected across all 15 active renderers, so no missing Post shader path required repair. Grain Size and Grain Speed are intentionally conditional on Grain Intensity being above `0`; Grain Speed additionally needs advancing animation time.
+- Added one table-driven active-renderer contract covering the exact 15 Effect routes. It verifies schema group cardinality, uniform declaration/update/consumption, Processing-before-Post ordering, and effective Quantize value `1`, preventing an independent renderer from silently bypassing shared controls again.
+- Verification passed: focused renderer/controller suites `22` files / `196` tests, TypeScript, full ESLint, production build, and `git diff --check` after final hygiene. Full Vitest result: `94` files / `608` tests passed; the same pre-existing dark-theme conflict leaves `3` files / `17` tests red, with no controller/material regression failing.
+- Per project policy, final visual proof remains a user-run `/studio` check rather than automated browser inspection.
+
+## Three.js deprecated Clock warning (2026-07-14)
+
+Specification:
+
+- Reproduce `THREE.Clock: This module has been deprecated. Please use THREE.Timer instead.` from the actual Studio runtime dependency path.
+- Identify whether the deprecated constructor is owned by Hanzi source or the React Three Fiber renderer dependency.
+- Remove the warning with the smallest compatibility-safe change, without altering render delta, elapsed-time uniforms, animation speed, or export timing.
+- Add a focused regression guard at the owning seam so the deprecated path cannot silently return.
+
+Checklist:
+
+- [x] Reproduce the warning and locate the exact constructor call.
+- [x] Rank and test dependency/source hypotheses.
+- [x] Add a failing focused regression guard.
+- [x] Implement the minimal fix.
+- [x] Run focused tests, TypeScript, production build, and diff hygiene.
+- [x] Record root cause and verification results.
+
+Review result:
+
+- Root cause: `@react-three/fiber@9.6.1` constructs `new THREE.Clock()` for its root state and still depends on Clock-specific `getDelta()`, `elapsedTime`, and `oldTime` behavior. Hanzi source only consumes Fiber's `clock`; it does not construct the deprecated class.
+- `three@0.184.0` emits the warning for that Fiber-owned constructor. Replacing it with `THREE.Timer` inside Hanzi would require an incompatible Fiber fork because Timer has a different update and elapsed-time API.
+- `three` and `@types/three` are now pinned to `0.182.0`, the last release before Clock deprecation, preserving Fiber's render-loop timing while removing the warning. The exact pin prevents a future install from silently restoring the incompatible release.
+- Added a regression test that reproduced the warning on `0.184.0` and now proves Fiber's clock constructor remains warning-free.
+- Verification passed: focused render/clock suites `4` files / `20` tests, TypeScript, focused ESLint, frozen-lockfile install, production build, direct runtime reproduction (`THREE.REVISION === 182` with no warning), and `git diff --check`.
+- Full Vitest result: `93` files / `592` tests passed; the same pre-existing dark-theme work leaves `3` store suites / `17` assertions red. The new clock regression and all focused renderer tests pass.
+
+## Full Studio color and effect behavior repair (2026-07-14)
+
+Specification:
+
+- Audit all 15 active Effects, every color-bearing control, Color Mode, Reset, all six Processing controllers, and all nine Post-Processing controllers at the effective runtime/output seam.
+- Make every Effect Color Mode use `mono`; remove or normalize unsupported alternatives instead of exposing modes that do not match the product contract.
+- Make Reset restore every color control for the active Effect and active theme after the user changes it.
+- Keep every color role independent: model/base color changes the model; Matrix Rain Color changes rain glyphs; Dots Dot Color changes dots; Blockify Border Color changes borders; equivalent roles must work for every other Effect.
+- Repair ASCII Grain and all shared Bloom, Chromatic, Scanlines, CRT Curve, and Phosphor paths so non-default values produce measurable output changes.
+- Expand Processing slider ranges based on each algorithm's effective input domain so the full range produces useful, visible variation without invalid shader values.
+- Change Pixel Sort Sort Mode default to `hue` across schema, initial/reset state, persistence sanitization, and runtime fallback.
+- Replace structural source-marker confidence with table-driven behavioral contracts that fail when a control is declared but has no effective output.
+
+Checklist:
+
+- [x] Build complete Effect × Color/Mode/Reset matrix and reproduce failures.
+- [x] Build complete Effect × Processing/Post matrix with effective-value assertions.
+- [x] Add failing regressions for Matrix Rain, Dots, Blockify, ASCII Grain, and Pixel Sort default.
+- [x] Repair shared reset, mono mode, and color-role routing.
+- [x] Repair shared Post-Processing behavior and Processing ranges.
+- [x] Repair every remaining effect-specific color/runtime gap found by the matrix.
+- [x] Run focused and full verification, then record root causes and results.
+
+Review result:
+
+- Color/reset root causes: select, dropdown, and color rows never received reset callbacks; initial Grainrad colors were always created from the light palette even though Studio starts dark; several Effects encoded the visible Mono option with incompatible runtime IDs. Every theme-aware color row now resets against the active theme, all actual `color-mode` controls initialize/reset to canonical `mono`, and initial ASCII colors are synchronized from the active Grainrad palette.
+- Color routing repairs: Matrix Rain now exposes independent Model Color and Rain Color roles; Dots Mono now consumes Dot Color; Blockify applies Border Color in every style whenever Border Width is active; Voronoi's algorithmic source selector is renamed Cell Color Source so it is no longer confused with visual Color Mode. Pixel Sort schema, sanitizer, GPU fallback, and CPU oracle now default to Hue.
+- Post root cause: all nine controls existed in each material, but Bloom, Chromatic, Scanlines, CRT Curve, and Phosphor were local single-pixel approximations rather than a framebuffer compositor. Studio now mounts one shared `EffectComposer` after all 15 source renderers, using real mipmap Bloom, channel-offset Chromatic Aberration, Scanline, Vignette, UV-warp CRT Curve, phosphor RGB triads, and resolution/time-aware ASCII Grain. Export capture runs after composition.
+- Processing root cause: the former per-material math was capped or visually ineffective and the earlier source-marker regression only proved uniform names existed. One shared framebuffer Processing effect now applies spatial Blur, neighbor Edge Enhance, Brightness Map, Invert, Quantize Colors, and Shape Matching exactly once. Useful ranges are Brightness Map `0..4` (Matrix `0..6`, default `3`), Edge Enhance `0..4`, Blur `0..64`, Quantize Colors `0..64`, Shape Matching `0..1`.
+- Verification passed: focused behavior/compositor/Processing suites `4` files / `18` tests, full Vitest `100` files / `628` tests, TypeScript, full ESLint, production build, and `git diff --check`. The repository still emits its existing Node engine warning because the active runtime is Node `24.18.0` while `package.json` requests `22.x`; all commands exited successfully.
+- Per project policy, final visual proof remains a user-run `/studio` pass rather than automated browser inspection.
+
+## Corrected Effect color-role contract (2026-07-14)
+
+Specification:
+
+- Contour Line Color controls contour lines only; Background controls the remaining field.
+- Matrix Rain exposes `Foreground` for the source ASCII/model glyph color and `Rain Color` for rain glyphs; remove `Model Color` terminology.
+- Blockify exposes `Foreground` for the ASCII/model block color and a separate `Background` picker; remove `Border Color` terminology and prevent foreground changes from recoloring the field.
+- Crosshatch light/dark Foreground and Background pairs must match the active theme rather than being inverted.
+- Wave Lines Line Color must change the rendered lines independently from Background.
+- Noise Field Distort Only defaults and resets to enabled.
+
+Checklist:
+
+- [x] Reproduce all six corrections at the active schema/material/canvas seams.
+- [x] Add focused failing regressions for role names, defaults, resets, and uniform routing.
+- [x] Implement the minimal schema/runtime fixes without changing unrelated Effects.
+- [x] Run focused and full verification and record the result.
+
+Review result:
+
+- Root causes: Contour mixed Line Color through the entire filled field; Wave Lines encoded Mono as `1` but only read Line Color above `1.5`; Crosshatch rendered a white source over black while its darkness-driven hatch algorithm expected the opposite polarity; Matrix Rain and Blockify routed legacy model/border colors instead of explicit output palettes; Noise Field stored `distort-only` as false at every default seam.
+- Matrix Rain now has independent Foreground and Rain Color output uniforms while its source remains a neutral luminance mask. Blockify now has Foreground and Background controls with palette-aware Full, Shaded, and Outline output. Contour, Crosshatch, and Wave Lines now preserve their named foreground/background roles.
+- Persistence version 4 migrates Matrix `model-color` to `foreground`, Blockify `border-color` to `foreground`, seeds Blockify Background by theme, and enables Noise Field Distort Only for existing version-3 workspaces.
+- Verification passed before the concurrent Contour work appeared: full Vitest `101` files / `635` tests, TypeScript, ESLint, production build, and `git diff --check`. Final focused rerun passed `18` files / `168` tests and `git diff --check`.
+- A later full-suite rerun discovered a newly created, unrelated untracked `character-glyph-atlas.test.ts` whose implementation module does not yet exist. This correction set does not modify or delete that parallel Contour work.
+
+## Matrix Rain model ASCII foreground correction (2026-07-14)
+
+Specification:
+
+- `Foreground` changes the color of the ASCII characters that construct the model.
+- Do not render a solid model/base color behind those characters.
+- Keep `Rain Color` independent for the animated rain characters.
+- Preserve the neutral 3D source render only as the shape, depth, and luminance mask that drives the Matrix glyph output.
+
+Checklist:
+
+- [x] Trace the Matrix Rain source render, glyph atlas, shader color routing, and existing correction diff.
+- [x] Add failing regressions that reject a solid Foreground model fill and require a glyph-masked model color path.
+- [x] Apply Foreground through the model glyph mask while keeping Rain Color independent.
+- [x] Run focused Matrix/color-role tests, TypeScript, lint, and diff hygiene.
+- [x] Record review results and hand the final visual check to the user.
+
+Review result:
+
+- Root cause: Matrix Rain multiplied `Foreground` directly by the neutral source luminance, which produced a continuous solid model fill and bypassed the glyph atlas. A second static layer also used `Rain Color`, so the two color roles were not independent.
+- The model contribution is now `Foreground` multiplied by the selected Matrix glyph mask and neutral 3D source luminance. `Rain Color` is used only by animated trail/head glyphs, and the final composition contains no solid model/base-color layer.
+- The model and rain now use separate masks: source presence clips only the Foreground model-glyph layer, while the rain threshold mask preserves animated `Rain Color` glyphs across the background at threshold zero. The deterministic CPU oracle mirrors this GPU composition.
+- Verification passed: focused Matrix suites `3` files / `35` tests, broader Matrix/color/runtime selection `5` files passed with `43` tests and `1` file skipped by the name filter, focused ESLint, and `git diff --check`.
+- Full TypeScript verification was attempted but is currently blocked by unrelated concurrent Contour work: `CharacterContourCanvas.tsx(160,5)` passes a removed `sourceTexture` property to the new Contour material contract. Matrix-specific compilation through Vitest passes.
+- Per project policy, final `/studio` visual confirmation remains user-run: verify there is no solid model fill, `Foreground` changes model glyphs, `Rain Color` changes trails/heads, and rotating side faces remain ASCII-masked.
+
+Background rain follow-up:
+
+- [x] Reproduce the missing background rain in the CPU oracle after the source-presence gate was applied to both layers.
+- [x] Split the source/model mask from the rain threshold mask in the GPU shader and CPU oracle.
+- [x] Add regression coverage proving black background still renders rain at threshold zero and changing Foreground does not recolor that background rain.
+- [x] Re-run focused Matrix tests, ESLint, and diff hygiene.
+
+Matrix control semantics follow-up:
+
+- [x] Raise Matrix Rain `Glow` maximum from `2` to `4` without changing its default or step.
+- [x] Move `Rain Opacity` off the Foreground model-glyph layer and apply it only to rain outside the model.
+- [x] Keep rain over the model at full opacity while background rain interpolates from hidden to full visibility.
+- [x] Apply Matrix `Brightness`, `Contrast`, and `Threshold` to background rain as well as model-area output.
+- [x] Mirror the GPU composition in the deterministic CPU oracle and add focused behavioral regressions.
+
+Matrix Background color follow-up:
+
+- [x] Add a third independent Matrix Color control named `Background` after Foreground and Rain Color.
+- [x] Use theme defaults Dark `#000000` and Light `#f4f1e8`, including initialization, theme switching, reset, persistence sanitization, and missing-value fallback through the shared color contract.
+- [x] Add a Matrix background uniform and alpha-composite it behind model/rain glyph coverage rather than adding it directly, preserving dark glyph visibility on the Light background.
+- [x] Mirror Background color and coverage composition in the deterministic CPU oracle.
+- [x] Add focused schema, theme, material, CPU, and color-role regressions.
+
+Review result:
+
+- Matrix Color now exposes independent `Foreground`, `Rain Color`, and `Background` controls. Background defaults to `#000000` in Dark and `#f4f1e8` in Light through the existing saved theme-color system.
+- GPU and CPU use premultiplied coverage composition: Background fills uncovered pixels, dark Foreground glyphs remain visible on the Light background, rain remains independently colored, and Rain Opacity continues to affect only background rain.
+- Generic runtime packing now includes Matrix Background RGB so every visible controller changes the runtime signature even though the active Matrix renderer uses its dedicated material.
+- Verification passed: `7` focused files / `101` tests, TypeScript, focused ESLint, and `git diff --check`.
+
+Light Background visibility correction:
+
+- [x] Reproduce that the selected Background was composed before Matrix Processing, so default Brightness Map `3` multiplied the Light background and washed Foreground/Rain toward white.
+- [x] Process the premultiplied Foreground/Rain layer first, then alpha-composite the selected Background, while retaining Post-Processing on the final frame.
+- [x] Add CPU coverage proving dark Foreground model glyphs and green background rain both differ visibly from the Light background.
+- [x] Add shader-order regressions preventing Background from re-entering the Matrix Processing stage.
+
+Light Background contrast correction:
+
+- [x] Replace weak pixel-difference coverage with minimum contrast assertions for a dim 3D model and background rain on pure white.
+- [x] Stop multiplying model glyph opacity by neutral source luminance; use the glyph mask as opacity and retain source luminance only as bounded `0.55..1` shading.
+- [x] Stop multiplying rain glyph opacity by the extra `0.15 + sourceInfluence` factor; Character Set glyph coverage and rain intensity now determine visibility directly before Rain Opacity.
+- [x] Mirror the revised opacity/shading equations in the deterministic CPU oracle.
+
+Matrix Light processing/default correction:
+
+- [x] Change Matrix Brightness Map default, Reset, compiler fallback, and dedicated material fallback to neutral `1` while retaining its `0..6` range.
+- [x] Migrate the former persisted default `3` to `1` so existing workspaces receive the corrected Light-mode contrast.
+- [x] Rename the visible `BG Opacity` label to `Rain Opacity` while preserving the `bg-opacity` control ID for saved-state compatibility.
+- [x] Verify focused schema, store migration, processing, material, TypeScript, ESLint, and diff hygiene.
+
+Review result:
+
+- Root cause: Matrix defaulted the final framebuffer Brightness Map to `3`; its gamma transform lifted dark Light-mode Foreground and Rain colors toward white even though the Matrix-local Background compositing order was correct.
+- Matrix now uses neutral `1` consistently in schema initialization, Reset, generic runtime fallback, and the dedicated material. The Matrix range remains `0..6`.
+- Store persistence is versioned to migrate the former saved default `3` to `1`; other user-selected Brightness Map values are preserved.
+- The UI label is now `Rain Opacity`; the existing `bg-opacity` ID remains unchanged for saved-state compatibility.
+- Verification passed: focused Matrix/processing/migration selection `7` files / `44` tests, TypeScript, focused ESLint, and `git diff --check`. The complete store suite retains one pre-existing concurrent Contour `color-mode` expectation failure, reproduced before this implementation and outside this Matrix change.
+
+Matrix Light visibility defaults correction:
+
+- [x] Change Light Matrix Foreground default to `#15c15d` without changing Dark Foreground.
+- [x] Change Rain Opacity default and every renderer/compiler/reference fallback from `0.3` to `0.5`.
+- [x] Migrate only the former Light Foreground and Rain Opacity default values so explicit custom values remain untouched.
+- [x] Verify focused schema, material, runtime, CPU parity, store migration, TypeScript, ESLint, and diff hygiene without touching Contour.
+
+Review result:
+
+- Light Matrix Foreground now initializes and resets to `#15c15d`; Dark remains `#f4f1e8`.
+- Rain Opacity now initializes and resets to `0.5` consistently in the schema, generic runtime compiler, dedicated Matrix material, and deterministic CPU reference.
+- Persisted workspaces migrate exact former defaults (`#101010` in the Light color set and Rain Opacity `0.3`) while other values remain unchanged.
+- No rain intensity curve or Contour code was changed.
+- Verification passed: focused Matrix/store/processing selection `7` files / `48` tests, TypeScript, focused ESLint, and `git diff --check`.
+
+## Contour 3D renderer re-plan (2026-07-14)
+
+Specification:
+
+- Treat the current Contour result as a rejected visual direction. Do not keep tuning the fullscreen render-target/posterization plane.
+- Preserve the selected SVG as real extruded/deformed 3D geometry with the existing position, rotation, scale, bevel, twist, taper, bend, and auto-spin behavior.
+- Render contour bands directly on the mesh from a geometry-aware scalar field (view depth plus surface normal/lighting), with derivative-based antialiased band boundaries.
+- Add an optional Character Set material mode that uses a real glyph atlas to construct or mask the contour strokes; reuse the existing ASCII character strings and custom-character contract rather than procedural placeholder marks.
+- Keep shared Processing and Post-Processing downstream of the new mesh material, and preserve export through the existing hidden square render surface.
+
+Root-cause evidence:
+
+- `CharacterContourCanvas` currently renders the 3D Character into a color texture, then displays `contour-material` on a fullscreen plane. The visible result is therefore a 2D luminance posterization of a lit snapshot, not a contour material attached to the 3D Character.
+- Grainrad's production Contour is itself an image-space luminance quantizer with four-neighbor band-edge detection. Porting that equation exactly does not make it a convincing 3D Character effect.
+- The existing ASCII renderer already proves the required reusable seams: true extruded SVG geometry, mesh-attached `ShaderMaterial`, real Character Set glyph atlas data, animation time, and auto-spin.
+
+Proposed implementation checkpoints:
+
+- [x] Checkpoint 0 — obtain approval for the geometry-aware mesh material direction and the recommended Character Set integration.
+- [x] Slice 1 — add deterministic CPU/math tests for contour band index, derivative-safe line mask, depth/normal mixing, and glyph selection by band.
+- [x] Slice 2 — extract a shared glyph-atlas utility from the current ASCII implementation without changing ASCII output.
+- [x] Slice 3 — replace the Contour offscreen source scene/fullscreen plane with the actual Character meshes using a dedicated 3D Contour material.
+- [x] Slice 4 — add Contour controls for source (`Depth`, `Normals`, `Hybrid`), Character Set, Custom Chars, glyph scale/spacing, and character-masked versus solid lines; keep existing Levels, Line Thickness, Invert, Line Color, and Background semantics where they still apply.
+- [x] Slice 5 — reconnect shared Processing/Post, theme reset, persistence sanitization, animation, and hidden-square export contracts.
+- [x] Slice 6 — run focused material/schema/store/export tests, full Vitest, TypeScript, ESLint, production build, and `git diff --check`.
+- [ ] Checkpoint 1 — hand the user a `/studio` manual visual checklist covering front face, side walls, rotation, Character Set changes, custom glyphs, and export parity; wait for visual acceptance before declaring the renderer complete.
+
+Review result:
+
+- Replaced the rejected render-target/fullscreen-plane path with a depth-tested, double-sided ShaderMaterial attached directly to every extruded Character mesh. Position, deformation, rotation, auto-spin, shared Processing/Post, and hidden-square export continue through the common 3D path.
+- Hybrid uses normalized view depth plus surface normals and blends in the selected Character's SDF relief on front-facing surfaces, so the default flat front face still has internal contour structure before rotation exposes side walls.
+- Character Lines use the shared real glyph atlas and object-bound surface coordinates. A derivative-based cell test stamps complete glyphs only in cells crossed by an isoline; band and cell hashing prevents one blank glyph from erasing an entire contour.
+- Added Source, Line Style, Character Set, Custom Chars, Glyph Scale, and Glyph Spacing controls with schema-driven defaults, visibility, reset, persistence, and runtime packing. ASCII keeps its existing atlas behavior; Matrix Rain retains its intentionally separate atlas contract.
+- Removed Contour-local Processing/Post math so the shared compositor applies those controls exactly once.
+- Verification passed for Contour: focused atlas/material/core/schema/runtime/routing/store suites (`9` files / `79` tests), TypeScript, full ESLint, production build, and staged/unstaged `git diff --check`. The current full Vitest run passes `628` tests but is red on `3` unrelated concurrent Matrix Rain assertions (`matrix-rain-core`, `matrix-rain-material`, and `matrix-rain-schema`); no Contour suite fails. The existing Node engine warning remains because the active runtime is Node `24.18.0` while the package requests `22.x`.
+- Checkpoint 1 remains open for the required user-run `/studio` visual pass.
+
+## Contour Grainrad parity correction (2026-07-14)
+
+Specification:
+
+- Supersede the rejected mesh-attached Contour direction above.
+- Research the current Grainrad production bundle before implementation and keep source-backed evidence for the Contour shader, defaults, 3D input renderer, and downstream Processing/Post stages.
+- Render the selected extruded/deformed 3D Character to an intermediate color frame, then apply Grainrad's image-space luminance quantization and four-neighbor contour pass to that frame.
+- Remove Contour Source, Line Style, Character Set, Custom Chars, Glyph Scale, and Glyph Spacing controls. Character Set remains an ASCII concern and must not affect Contour.
+- Preserve existing Character geometry, Model controls, 3D Motion, shared Processing/Post, hidden-square export, and concurrent non-Contour work.
+
+Research evidence:
+
+- Grainrad's production Contour defaults are Levels `8`, Line Thickness `1`, Filled Bands, Original color, black Line Color, white Background, Invert off, Brightness `0`, and Contrast `0`.
+- Its Contour shader samples a 2D source texture, applies brightness/contrast and Rec.601 luminance, quantizes the center and four cardinal neighbors, and marks a contour when a neighbor band differs. It does not use geometry depth, normals, SDF, or a glyph atlas.
+- For GLB input, Grainrad first renders the model with its original glTF materials in a separate Three.js canvas using a perspective camera, ambient plus directional light, black scene background, normalized model scale, and optional Y auto-rotation. That canvas is then passed to the same effect renderer as image/video input.
+- Grainrad Processing/Post are downstream stages. Default Post Grain is enabled at intensity `35`, size `2`, speed `50`; this can add texture after Contour but is not part of the Contour shader itself.
+
+Checklist:
+
+- [x] Record the user correction in `tasks/lessons.md` and supersede the prior direction.
+- [x] Lock the corrected schema, runtime, routing, material, and CPU-oracle contracts with focused tests.
+- [x] Restore the offscreen 3D-frame to image-space Contour pipeline.
+- [x] Remove every Contour Character Set and guessed geometry-source seam.
+- [x] Run focused tests, TypeScript, ESLint, production build, and diff hygiene.
+- [x] Record results and provide the user-run `/studio` visual checklist.
+
+Review result:
+
+- Root cause: the rejected renderer replaced Grainrad's fullscreen source-texture algorithm with a custom mesh-attached depth/normal/SDF material and made Character Lines the default. That path could only produce glyph-covered gray faces; it could not reproduce the reference's dense boundaries over a detailed luminance frame.
+- Restored the verified production architecture: the selected 3D Character is lit in an intermediate scene, rendered to a framebuffer, and passed to the exact Rec.601 brightness/contrast, quantized-band, four-neighbor Contour shader. The source camera and lighting now match Grainrad's 3D renderer defaults: 50-degree perspective at z=5, ambient 0.6, directional 1 at (5,5,5), and black source background.
+- Contour exposes only the website control set, with the user-selected Hanzi default of Mono: Filled Bands, Levels 8, Line Thickness 1, Invert off, Brightness/Contrast 0, black Line Color, and white Background. Mono keeps Grainrad's exact two-color midpoint mix.
+- Removed Contour's Source, Line Style, Character Set, Custom Chars, Glyph Scale, Glyph Spacing, glyph-atlas, SDF, and derivative-isoline paths. The shared atlas utility remains for ASCII, where it belongs.
+- Processing/Post stay downstream in the current Studio compositor and are applied once. Grainrad's default Grain explains part of the reference texture, but no glyph or directional-streak stage exists in the Contour shader.
+- Verification passed: focused Contour/store/routing/compositor suites `7` files / `78` tests, full Vitest `102` files / `640` tests, TypeScript, focused ESLint, production build, and staged/unstaged diff checks. Build still reports the existing Node engine warning because the active runtime is Node `24.18.0` while `package.json` requests `22.x`.

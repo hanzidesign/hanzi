@@ -48,7 +48,7 @@ export type PixelSortSpanTrace = Readonly<{
 
 export const DEFAULT_PIXEL_SORT_SETTINGS: PixelSortSettings = {
   direction: 'horizontal',
-  mode: 'brightness',
+  mode: 'hue',
   threshold: 0.25,
   streakLength: 100,
   intensity: 0.8,

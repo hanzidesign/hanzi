@@ -34,6 +34,7 @@ describe('Threshold shader material', () => {
     expect(material.uniforms.u_brightness.value).toBe(0)
     expect(material.uniforms.u_contrast.value).toBe(0)
     expect(material.uniforms.u_colorMode.value).toBe(0)
+    expect(material.uniforms.u_brightnessMap.value).toBe(1)
     expect(material.uniforms.u_foreground.value.getHexString()).toBe('ffffff')
     expect(material.uniforms.u_background.value.getHexString()).toBe('000000')
     expect(material.uniforms.u_time.value).toBe(0)
@@ -52,9 +53,10 @@ describe('Threshold shader material', () => {
       'color-mode': 'color',
       foreground: '#123456',
       background: '#abcdef',
+      'brightness-map': 1.4,
     })
 
-    expect(THRESHOLD_COLOR_MODE_IDS).toEqual({ custom: 0, color: 1 })
+    expect(THRESHOLD_COLOR_MODE_IDS).toEqual({ mono: 0, custom: 0, color: 1 })
     expect(material.uniforms.u_levels.value).toBe(7)
     expect(material.uniforms.u_thresholdPoint.value).toBe(0.65)
     expect(material.uniforms.u_dither.value).toBe(1)
@@ -62,6 +64,7 @@ describe('Threshold shader material', () => {
     expect(material.uniforms.u_brightness.value).toBe(0.4)
     expect(material.uniforms.u_contrast.value).toBe(-0.25)
     expect(material.uniforms.u_colorMode.value).toBe(1)
+    expect(material.uniforms.u_brightnessMap.value).toBe(1.4)
     expect(material.uniforms.u_foreground.value.getHexString()).toBe('123456')
     expect(material.uniforms.u_background.value.getHexString()).toBe('abcdef')
   })
@@ -77,7 +80,7 @@ describe('Threshold shader material', () => {
 
   it('samples with clamp addressing and applies brightness then contrast before dither', () => {
     expect(THRESHOLD_FRAGMENT_SHADER).toContain(
-      'texture2D(u_sourceTexture, clamp(v_uv, vec2(0.0), vec2(1.0))).rgb',
+      'texture2D(u_sourceTexture, clamp(uv, vec2(0.0), vec2(1.0))).rgb',
     )
     expect(THRESHOLD_FRAGMENT_SHADER).toContain('vec3 adjustedColor = sourceColor + u_brightness;')
     expect(THRESHOLD_FRAGMENT_SHADER).toContain(
@@ -137,24 +140,36 @@ describe('Threshold shader material', () => {
     expect(multiLevelBranch).not.toContain('u_thresholdPoint')
   })
 
-  it('keeps Processing absent and maps shared Post after the complete Threshold branch', () => {
+  it('maps and consumes every Processing control between Threshold and Post', () => {
+    expect(THRESHOLD_FRAGMENT_SHADER).toContain('vec3 thresholdBlurredSource')
+    expect(THRESHOLD_FRAGMENT_SHADER).toContain('thresholdSourceSample(uv + vec2(blurTexel.x, 0.0))')
+    expect(THRESHOLD_FRAGMENT_SHADER).toContain('thresholdSourceSample(uv - vec2(blurTexel.x, 0.0))')
+    expect(THRESHOLD_FRAGMENT_SHADER).toContain('thresholdSourceSample(uv + vec2(0.0, blurTexel.y))')
+    expect(THRESHOLD_FRAGMENT_SHADER).toContain('thresholdSourceSample(uv - vec2(0.0, blurTexel.y))')
     for (const processingUniform of [
-      'u_processingInvert',
-      'u_brightnessMap',
-      'u_edgeEnhance',
-      'u_blur',
-      'u_quantizeColors',
-      'u_shapeMatching',
+      'u_processingInvert', 'u_brightnessMap', 'u_edgeEnhance', 'u_blur',
+      'u_quantizeColors', 'u_shapeMatching',
     ]) {
-      expect(THRESHOLD_FRAGMENT_SHADER).not.toContain(processingUniform)
+      expect(THRESHOLD_FRAGMENT_SHADER.split(processingUniform).length).toBeGreaterThan(2)
     }
+    expect(THRESHOLD_FRAGMENT_SHADER).toContain('if (u_quantizeColors >= 1.0)')
+    expect(THRESHOLD_FRAGMENT_SHADER).toContain('max(u_quantizeColors, 2.0)')
     expect(THRESHOLD_FRAGMENT_SHADER).toContain('vec3 applyThresholdPostProcessing')
     expect(THRESHOLD_FRAGMENT_SHADER.indexOf('if (levels <= 2.0)')).toBeLessThan(
+      THRESHOLD_FRAGMENT_SHADER.indexOf('effectColor = applyThresholdProcessing'),
+    )
+    expect(THRESHOLD_FRAGMENT_SHADER.indexOf('effectColor = applyThresholdProcessing')).toBeLessThan(
       THRESHOLD_FRAGMENT_SHADER.indexOf('effectColor = applyThresholdPostProcessing'),
     )
 
     const { material } = createFixture()
     applyThresholdUniforms(material, {
+      'processing-invert': true,
+      'brightness-map': 1.4,
+      'edge-enhance': 0.35,
+      blur: 3,
+      'quantize-colors': 1,
+      'shape-matching': 0.25,
       bloom: true,
       'grain-intensity': 61,
       'grain-size': 4,
@@ -166,6 +181,12 @@ describe('Threshold shader material', () => {
       phosphor: true,
     })
 
+    expect(material.uniforms.u_processingInvert.value).toBe(1)
+    expect(material.uniforms.u_brightnessMap.value).toBe(1.4)
+    expect(material.uniforms.u_edgeEnhance.value).toBe(0.35)
+    expect(material.uniforms.u_blur.value).toBe(3)
+    expect(material.uniforms.u_quantizeColors.value).toBe(1)
+    expect(material.uniforms.u_shapeMatching.value).toBe(0.25)
     expect(material.uniforms.u_bloom.value).toBe(1)
     expect(material.uniforms.u_grainIntensity.value).toBe(61)
     expect(material.uniforms.u_grainSize.value).toBe(4)

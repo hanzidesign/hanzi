@@ -35,7 +35,7 @@ describe('Contour shader material', () => {
     expect(material.uniforms.u_contrast.value).toBe(0)
     expect(material.uniforms.u_lineColor.value.getHexString()).toBe('000000')
     expect(material.uniforms.u_background.value.getHexString()).toBe('ffffff')
-    expect(material.uniforms.u_colorMode.value).toBe(1)
+    expect(material.uniforms.u_colorMode.value).toBe(2)
     expect(material.uniforms.u_invert.value).toBe(0)
   })
 
@@ -65,7 +65,7 @@ describe('Contour shader material', () => {
     })
 
     expect(CONTOUR_FILL_MODE_IDS).toEqual({ filled: 0, lines: 1 })
-    expect(CONTOUR_COLOR_MODE_IDS).toEqual({ original: 1, custom: 2 })
+    expect(CONTOUR_COLOR_MODE_IDS).toEqual({ original: 1, mono: 2, custom: 2 })
     expect(material.uniforms.u_fillMode.value).toBe(1)
     expect(material.uniforms.u_levels.value).toBe(17)
     expect(material.uniforms.u_lineThickness.value).toBe(2.25)
@@ -120,43 +120,24 @@ describe('Contour shader material', () => {
     )
   })
 
-  it('keeps Grainrad Processing controls as Contour no-ops and applies Post after the effect', () => {
+  it('keeps shared Processing and Post exclusively in the Studio compositor', () => {
     expect(CONTOUR_FRAGMENT_SHADER).not.toContain('u_processingInvert')
     expect(CONTOUR_FRAGMENT_SHADER).not.toContain('u_brightnessMap')
     expect(CONTOUR_FRAGMENT_SHADER).not.toContain('u_edgeEnhance')
     expect(CONTOUR_FRAGMENT_SHADER).not.toContain('u_blur')
     expect(CONTOUR_FRAGMENT_SHADER).not.toContain('u_quantizeColors')
     expect(CONTOUR_FRAGMENT_SHADER).not.toContain('u_shapeMatching')
-    expect(CONTOUR_FRAGMENT_SHADER).toContain('vec3 applyContourPostProcessing')
-    expect(CONTOUR_FRAGMENT_SHADER.indexOf('vec3 effectColor =')).toBeLessThan(
-      CONTOUR_FRAGMENT_SHADER.indexOf('applyContourPostProcessing(effectColor'),
-    )
-  })
-
-  it('maps every currently exposed shared Post control', () => {
-    const { material } = createFixture()
-
-    applyContourUniforms(material, {
-      bloom: true,
-      'grain-intensity': 61,
-      'grain-size': 4,
-      'grain-speed': 72,
-      chromatic: true,
-      scanlines: true,
-      vignette: true,
-      'crt-curve': true,
-      phosphor: true,
-    })
-
-    expect(material.uniforms.u_bloom.value).toBe(1)
-    expect(material.uniforms.u_grainIntensity.value).toBe(61)
-    expect(material.uniforms.u_grainSize.value).toBe(4)
-    expect(material.uniforms.u_grainSpeed.value).toBe(72)
-    expect(material.uniforms.u_postChromatic.value).toBe(1)
-    expect(material.uniforms.u_scanlines.value).toBe(1)
-    expect(material.uniforms.u_vignette.value).toBe(1)
-    expect(material.uniforms.u_crtCurve.value).toBe(1)
-    expect(material.uniforms.u_phosphor.value).toBe(1)
+    for (const uniform of [
+      'u_bloom',
+      'u_grainIntensity',
+      'u_postChromatic',
+      'u_scanlines',
+      'u_vignette',
+      'u_crtCurve',
+      'u_phosphor',
+    ]) {
+      expect(CONTOUR_FRAGMENT_SHADER).not.toContain(uniform)
+    }
   })
 
   it('disposes only its own material', () => {

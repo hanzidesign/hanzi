@@ -37,16 +37,16 @@ describe('Grainrad Wave Lines schema', () => {
     expect(controls.brightness).toMatchObject({ defaultValue: 0, min: -100, max: 100, step: 1 })
     expect(controls.contrast).toMatchObject({ defaultValue: 0, min: -100, max: 100, step: 1 })
     expect(controls['color-mode']).toMatchObject({
-      defaultValue: 'original',
+      defaultValue: 'mono',
       options: [
-        { value: 'custom', label: 'Mono' },
+        { value: 'mono', label: 'Mono' },
         { value: 'original', label: 'Original' },
       ],
     })
     for (const id of ['line-color', 'background']) {
       expect(controls[id]).toMatchObject({
         kind: 'color',
-        visibleWhen: { controlId: 'color-mode', operator: 'equals', value: 'custom' },
+        visibleWhen: { controlId: 'color-mode', operator: 'equals', value: 'mono' },
       })
     }
     expect(controls['line-color']).toMatchObject({ defaultValue: '#ffffff' })
@@ -60,7 +60,7 @@ describe('Grainrad Wave Lines schema', () => {
       animate: true,
       brightness: 0,
       contrast: 0,
-      'color-mode': 'original',
+      'color-mode': 'mono',
       'line-color': '#000000',
       background: '#ffffff',
     })

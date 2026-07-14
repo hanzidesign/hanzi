@@ -9,7 +9,7 @@ describe('Grainrad Voronoi schema', () => {
     expect(definition.renderer).toBe('voronoi')
     expect(definition.settingGroups.map((group) => group.title)).toEqual(['Voronoi', 'Adjustments'])
     expect(definition.settingGroups.flatMap((group) => group.controls.map((control) => control.id))).toEqual([
-      'cell-size', 'edge-width', 'edge-color', 'color-mode', 'randomize', 'brightness', 'contrast',
+      'cell-size', 'edge-width', 'edge-color', 'cell-color-mode', 'randomize', 'brightness', 'contrast',
     ])
   })
 
@@ -29,7 +29,7 @@ describe('Grainrad Voronoi schema', () => {
         { value: '2', label: 'Darkened' },
       ],
     })
-    expect(controls['color-mode']).toMatchObject({
+    expect(controls['cell-color-mode']).toMatchObject({
       defaultValue: '0',
       options: [
         { value: '0', label: 'Cell Average' },
@@ -42,7 +42,7 @@ describe('Grainrad Voronoi schema', () => {
     expect(controls.contrast).toMatchObject({ defaultValue: 0, min: -100, max: 100, step: 1 })
     expect(Object.values(controls).every((control) => control.visibleWhen === undefined)).toBe(true)
     expect(createDefaultGrainradEffectControls().voronoi).toMatchObject({
-      'cell-size': 30, 'edge-width': 0.3, 'edge-color': '0', 'color-mode': '0',
+      'cell-size': 30, 'edge-width': 0.3, 'edge-color': '0', 'cell-color-mode': '0',
       randomize: 0.8, brightness: 0, contrast: 0,
     })
   })

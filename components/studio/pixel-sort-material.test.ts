@@ -31,7 +31,7 @@ describe('Pixel Sort shader material', () => {
     expect(material.uniforms.u_sourceSize.value.toArray()).toEqual([1024, 768])
     expect(material.uniforms.u_resolution.value.toArray()).toEqual([1280, 720])
     expect(material.uniforms.u_direction.value).toBe(0)
-    expect(material.uniforms.u_mode.value).toBe(0)
+    expect(material.uniforms.u_mode.value).toBe(1)
     expect(material.uniforms.u_threshold.value).toBe(0.25)
     expect(material.uniforms.u_streakLength.value).toBe(100)
     expect(material.uniforms.u_intensity.value).toBe(0.8)
@@ -39,6 +39,12 @@ describe('Pixel Sort shader material', () => {
     expect(material.uniforms.u_reverse.value).toBe(0)
     expect(material.uniforms.u_brightness.value).toBe(0)
     expect(material.uniforms.u_contrast.value).toBe(0)
+    expect(material.uniforms.u_processingInvert.value).toBe(0)
+    expect(material.uniforms.u_brightnessMap.value).toBe(1)
+    expect(material.uniforms.u_edgeEnhance.value).toBe(0)
+    expect(material.uniforms.u_blur.value).toBe(0)
+    expect(material.uniforms.u_quantizeColors.value).toBe(0)
+    expect(material.uniforms.u_shapeMatching.value).toBe(0)
   })
 
   it('uses source dimensions as output resolution when none is supplied', () => {
@@ -106,14 +112,14 @@ describe('Pixel Sort shader material', () => {
     )
     expect(PIXEL_SORT_FRAGMENT_SHADER).toContain('direction = normalize(vec2(1.0, 1.0));')
     expect(PIXEL_SORT_FRAGMENT_SHADER).toContain('lineCoord = floor(pixel.x - pixel.y);')
-    expect(PIXEL_SORT_FRAGMENT_SHADER).toContain('vec3 currentColor = texture2D(u_sourceTexture, v_uv).rgb;')
+    expect(PIXEL_SORT_FRAGMENT_SHADER).toContain('vec3 currentColor = samplePixelSortSource(v_uv);')
     expect(PIXEL_SORT_FRAGMENT_SHADER).toContain(
       'for (int i = 1; i <= PIXEL_SORT_MAX_STREAK_STEPS; i++)',
     )
     expect(PIXEL_SORT_FRAGMENT_SHADER).toContain('if (float(i) > u_streakLength) break;')
     expect(PIXEL_SORT_FRAGMENT_SHADER).toContain('spanStartDist = i;')
     expect(PIXEL_SORT_FRAGMENT_SHADER).toContain('spanEndDist = i;')
-    expect(PIXEL_SORT_FRAGMENT_SHADER).toContain('vec3 checkColor = texture2D(u_sourceTexture, checkUV).rgb;')
+    expect(PIXEL_SORT_FRAGMENT_SHADER).toContain('vec3 checkColor = samplePixelSortSource(checkUV);')
   })
 
   it('ports capped sampling, luminance bubble sort, interpolation, and intensity exactly', () => {
@@ -157,20 +163,33 @@ describe('Pixel Sort shader material', () => {
     )
   })
 
-  it('keeps Grainrad Processing controls as no-ops and maps shared Post controls', () => {
-    for (const processingUniform of [
-      'u_processingInvert',
-      'u_brightnessMap',
-      'u_edgeEnhance',
-      'u_blur',
-      'u_quantizeColors',
-      'u_shapeMatching',
-    ]) {
-      expect(PIXEL_SORT_FRAGMENT_SHADER).not.toContain(processingUniform)
-    }
+  it('maps and consumes every Processing control before Post and maps shared Post controls', () => {
+    expect(PIXEL_SORT_FRAGMENT_SHADER).toContain('vec3 samplePixelSortSource')
+    expect(PIXEL_SORT_FRAGMENT_SHADER).toContain('vec2 blurTexel = texel * min(u_blur, 12.0);')
+    expect(PIXEL_SORT_FRAGMENT_SHADER).toContain('vec3 applyPixelSortProcessing')
+    expect(PIXEL_SORT_FRAGMENT_SHADER).toContain('mix(color, 1.0 - color, u_processingInvert)')
+    expect(PIXEL_SORT_FRAGMENT_SHADER).toContain('color *= u_brightnessMap;')
+    expect(PIXEL_SORT_FRAGMENT_SHADER).toContain('u_edgeEnhance * 8.0')
+    expect(PIXEL_SORT_FRAGMENT_SHADER).toContain('if (u_quantizeColors > 0.0)')
+    expect(PIXEL_SORT_FRAGMENT_SHADER).toContain(
+      'float levels = max(floor(u_quantizeColors + 0.5), 2.0);',
+    )
+    expect(PIXEL_SORT_FRAGMENT_SHADER).toContain('u_shapeMatching')
+    expect(PIXEL_SORT_FRAGMENT_SHADER.indexOf('effectColor = applyPixelSortBrightnessContrast')).toBeLessThan(
+      PIXEL_SORT_FRAGMENT_SHADER.indexOf('effectColor = applyPixelSortProcessing('),
+    )
+    expect(PIXEL_SORT_FRAGMENT_SHADER.indexOf('effectColor = applyPixelSortProcessing(')).toBeLessThan(
+      PIXEL_SORT_FRAGMENT_SHADER.indexOf('effectColor = applyPixelSortPostProcessing('),
+    )
 
     const { material } = createFixture()
     applyPixelSortUniforms(material, {
+      'processing-invert': true,
+      'brightness-map': 1.75,
+      'edge-enhance': 0.35,
+      blur: 4.5,
+      'quantize-colors': 1,
+      'shape-matching': 0.6,
       bloom: true,
       'grain-intensity': 61,
       'grain-size': 4,
@@ -182,6 +201,12 @@ describe('Pixel Sort shader material', () => {
       phosphor: true,
     })
 
+    expect(material.uniforms.u_processingInvert.value).toBe(1)
+    expect(material.uniforms.u_brightnessMap.value).toBe(1.75)
+    expect(material.uniforms.u_edgeEnhance.value).toBe(0.35)
+    expect(material.uniforms.u_blur.value).toBe(4.5)
+    expect(material.uniforms.u_quantizeColors.value).toBe(1)
+    expect(material.uniforms.u_shapeMatching.value).toBe(0.6)
     expect(material.uniforms.u_bloom.value).toBe(1)
     expect(material.uniforms.u_grainIntensity.value).toBe(61)
     expect(material.uniforms.u_grainSize.value).toBe(4)

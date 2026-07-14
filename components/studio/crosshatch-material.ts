@@ -33,6 +33,12 @@ uniform float u_invert;
 uniform vec3 u_lineColor;
 uniform vec3 u_background;
 uniform float u_randomness;
+uniform float u_processingInvert;
+uniform float u_brightnessMap;
+uniform float u_edgeEnhance;
+uniform float u_blur;
+uniform float u_quantizeColors;
+uniform float u_shapeMatching;
 uniform float u_time;
 uniform float u_bloom;
 uniform float u_grainIntensity;
@@ -56,6 +62,38 @@ vec3 applyCrosshatchBrightnessContrast(vec3 color) {
   float contrastFactor = (1.0 + u_contrast) / (1.0 - u_contrast * 0.99);
   result = (result - 0.5) * contrastFactor + 0.5;
   return clamp(result, vec3(0.0), vec3(1.0));
+}
+
+vec3 crosshatchSourceSample(vec2 uv) {
+  return texture2D(u_sourceTexture, clamp(uv, vec2(0.0), vec2(1.0))).rgb;
+}
+
+vec3 crosshatchBlurredSource(vec2 uv) {
+  vec3 center = crosshatchSourceSample(uv);
+  if (u_blur <= 0.0) {
+    return center;
+  }
+  vec2 blurTexel = min(u_blur, 12.0) / max(u_sourceSize, vec2(1.0));
+  return (
+    center * 4.0 +
+    crosshatchSourceSample(uv + vec2(blurTexel.x, 0.0)) +
+    crosshatchSourceSample(uv - vec2(blurTexel.x, 0.0)) +
+    crosshatchSourceSample(uv + vec2(0.0, blurTexel.y)) +
+    crosshatchSourceSample(uv - vec2(0.0, blurTexel.y))
+  ) / 8.0;
+}
+
+vec3 applyCrosshatchProcessing(vec3 color, float sourceLuminance) {
+  color = mix(color, 1.0 - color, u_processingInvert);
+  color *= u_brightnessMap;
+  color += length(fwidth(vec2(sourceLuminance))) * u_edgeEnhance * 8.0;
+  if (u_quantizeColors >= 1.0) {
+    float quantizeLevels = max(u_quantizeColors, 2.0);
+    float quantizeScale = quantizeLevels - 1.0;
+    color = floor(color * quantizeScale + 0.5) / quantizeScale;
+  }
+  color = mix(color, vec3(step(0.5, sourceLuminance)), u_shapeMatching);
+  return clamp(color, 0.0, 1.0);
 }
 
 float crosshatchHash21(vec2 p) {
@@ -116,10 +154,7 @@ vec3 applyCrosshatchPostProcessing(vec3 color, float sourceLuminance, vec2 uv) {
 }
 
 void main() {
-  vec3 sourceColor = texture2D(
-    u_sourceTexture,
-    clamp(v_uv, vec2(0.0), vec2(1.0))
-  ).rgb;
+  vec3 sourceColor = crosshatchBlurredSource(v_uv);
   vec3 adjustedColor = applyCrosshatchBrightnessContrast(clamp(sourceColor, 0.0, 1.0));
   float luminanceValue = crosshatchLuminance(adjustedColor);
   if (u_invert > 0.5) {
@@ -186,7 +221,9 @@ void main() {
   hatchValue = max(hatchValue, solidFill);
 
   vec3 effectColor = mix(u_background, u_lineColor, hatchValue);
-  effectColor = applyCrosshatchPostProcessing(effectColor, crosshatchLuminance(effectColor), v_uv);
+  float effectLuminance = crosshatchLuminance(effectColor);
+  effectColor = applyCrosshatchProcessing(effectColor, effectLuminance);
+  effectColor = applyCrosshatchPostProcessing(effectColor, effectLuminance, v_uv);
   gl_FragColor = vec4(effectColor, 1.0);
 }
 `
@@ -215,9 +252,15 @@ export function createCrosshatchShaderMaterial({
       u_lineColor: { value: new Color('#000000') },
       u_background: { value: new Color('#ffffff') },
       u_randomness: { value: 0 },
+      u_processingInvert: { value: 0 },
+      u_brightnessMap: { value: 1 },
+      u_edgeEnhance: { value: 0 },
+      u_blur: { value: 0 },
+      u_quantizeColors: { value: 0 },
+      u_shapeMatching: { value: 0 },
       u_time: { value: 0 },
       u_bloom: { value: 0 },
-      u_grainIntensity: { value: 35 },
+      u_grainIntensity: { value: 0 },
       u_grainSize: { value: 2 },
       u_grainSpeed: { value: 50 },
       u_postChromatic: { value: 0 },
@@ -247,8 +290,14 @@ export function applyCrosshatchUniforms(
   material.uniforms.u_lineColor.value.set(readString(controls['line-color'], '#000000'))
   material.uniforms.u_background.value.set(readString(controls.background, '#ffffff'))
   material.uniforms.u_randomness.value = readNumber(controls.randomness, 0)
+  material.uniforms.u_processingInvert.value = readBoolean(controls['processing-invert'])
+  material.uniforms.u_brightnessMap.value = readNumber(controls['brightness-map'], 1)
+  material.uniforms.u_edgeEnhance.value = readNumber(controls['edge-enhance'], 0)
+  material.uniforms.u_blur.value = readNumber(controls.blur, 0)
+  material.uniforms.u_quantizeColors.value = readNumber(controls['quantize-colors'], 0)
+  material.uniforms.u_shapeMatching.value = readNumber(controls['shape-matching'], 0)
   material.uniforms.u_bloom.value = readBoolean(controls.bloom)
-  material.uniforms.u_grainIntensity.value = readNumber(controls['grain-intensity'], 35)
+  material.uniforms.u_grainIntensity.value = readNumber(controls['grain-intensity'], 0)
   material.uniforms.u_grainSize.value = readNumber(controls['grain-size'], 2)
   material.uniforms.u_grainSpeed.value = readNumber(controls['grain-speed'], 50)
   material.uniforms.u_postChromatic.value = readBoolean(controls.chromatic)

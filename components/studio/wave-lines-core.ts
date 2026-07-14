@@ -1,6 +1,6 @@
 export type WaveLinesRgb = readonly [number, number, number]
 export type WaveLinesDirection = 'horizontal' | 'vertical'
-export type WaveLinesColorMode = 'original' | 'custom'
+export type WaveLinesColorMode = 'original' | 'mono' | 'custom'
 
 export type WaveLinesSettings = Readonly<{
   lineCount: number
@@ -54,7 +54,7 @@ export const DEFAULT_WAVE_LINES_SETTINGS: WaveLinesSettings = {
   animate: true,
   brightness: 0,
   contrast: 0,
-  colorMode: 'original',
+  colorMode: 'mono',
   lineColor: [255, 255, 255],
   background: [0, 0, 0],
 }
@@ -121,14 +121,13 @@ export function renderWaveLinesReference(
   const { width, height, settings } = input
   const data = new Uint8ClampedArray(width * height * 3)
   const background = normalizeRgb(settings.background)
+  const lineColor = normalizeRgb(settings.lineColor)
 
   for (let y = 0; y < height; y += 1) {
     for (let x = 0; x < width; x += 1) {
       const trace = traceWaveLinesUnchecked(input, x, y)
       const color: WaveLinesRgb = trace.isLine
-        ? (settings.colorMode === 'custom'
-            ? [trace.luminance, trace.luminance, trace.luminance]
-            : trace.adjustedSource)
+        ? (settings.colorMode === 'original' ? trace.adjustedSource : lineColor)
         : background
       const offset = (y * width + x) * 3
       data[offset] = color[0] * 255
@@ -212,8 +211,8 @@ function assertInput(input: WaveLinesReferenceInput) {
   if (typeof settings.animate !== 'boolean') {
     throw new TypeError('Wave Lines animate must be a boolean')
   }
-  if (!(['original', 'custom'] as const).includes(settings.colorMode)) {
-    throw new RangeError('Wave Lines colorMode must be original or custom')
+  if (!(['original', 'mono', 'custom'] as const).includes(settings.colorMode)) {
+    throw new RangeError('Wave Lines colorMode must be original, mono, or custom')
   }
   assertColor('lineColor', settings.lineColor)
   assertColor('background', settings.background)

@@ -8,6 +8,7 @@ import {
 import { createContext, useContext, useRef, type ReactNode } from 'react'
 import { useStudioStore } from '@/app/studio/studio-store'
 import { computeEffectiveAnimationTime } from '@/components/studio/animation-time'
+import StudioPostProcessing from '@/components/studio/studio-post-processing'
 
 type StudioRenderContextValue = {
   exportRender: boolean
@@ -48,6 +49,7 @@ export function StudioRenderCanvas(props: CanvasProps) {
   return (
     <FiberCanvas {...canvasProps} dpr={exportRender ? 1 : dpr}>
       {children}
+      <StudioPostProcessing />
       <StudioRenderFrameObserver {...renderContext} />
     </FiberCanvas>
   )
@@ -65,7 +67,7 @@ function StudioRenderFrameObserver({
   const animation = useStudioStore((store) => store.animation)
   const acknowledgedRequestRef = useRef(0)
 
-  useFrame(({ clock, gl, scene, camera }) => {
+  useFrame(({ clock, gl }) => {
     if (!exportRender) {
       latestPreviewAnimationTime = computeEffectiveAnimationTime({
         elapsedSeconds: clock.getElapsedTime(),
@@ -76,8 +78,6 @@ function StudioRenderFrameObserver({
       return
     }
 
-    gl.render(scene, camera)
-
     if (
       requestId > 0
       && requestId !== acknowledgedRequestRef.current
@@ -86,7 +86,7 @@ function StudioRenderFrameObserver({
       acknowledgedRequestRef.current = requestId
       onFrameRendered?.(requestId, gl.domElement)
     }
-  }, exportRender ? 1 : 0)
+  }, exportRender ? 2 : 0)
 
   return null
 }

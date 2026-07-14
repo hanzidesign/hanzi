@@ -36,10 +36,11 @@ describe('Wave Lines shader material', () => {
     expect(material.uniforms.u_lineThickness.value).toBe(0.4)
     expect(material.uniforms.u_brightness.value).toBe(0)
     expect(material.uniforms.u_contrast.value).toBe(0)
-    expect(material.uniforms.u_colorMode.value).toBe(0)
+    expect(material.uniforms.u_colorMode.value).toBe(1)
     expect(material.uniforms.u_lineColor.value.getHexString()).toBe('ffffff')
     expect(material.uniforms.u_background.value.getHexString()).toBe('000000')
     expect(material.uniforms.u_animate.value).toBe(1)
+    expect(material.uniforms.u_brightnessMap.value).toBe(1)
   })
 
   it('maps the exact uniform ABI units and ids without clamping the raw controls', () => {
@@ -57,10 +58,11 @@ describe('Wave Lines shader material', () => {
       'color-mode': 'custom',
       'line-color': '#123456',
       background: '#abcdef',
+      'brightness-map': 1.4,
     })
 
     expect(WAVE_LINES_DIRECTION_IDS).toEqual({ horizontal: 0, vertical: 1 })
-    expect(WAVE_LINES_COLOR_MODE_IDS).toEqual({ original: 0, custom: 1 })
+    expect(WAVE_LINES_COLOR_MODE_IDS).toEqual({ original: 0, mono: 1, custom: 1 })
     expect(material.uniforms.u_lineCount.value).toBe(135)
     expect(material.uniforms.u_amplitude.value).toBe(42)
     expect(material.uniforms.u_frequency.value).toBe(2.4)
@@ -72,6 +74,7 @@ describe('Wave Lines shader material', () => {
     expect(material.uniforms.u_colorMode.value).toBe(1)
     expect(material.uniforms.u_lineColor.value.getHexString()).toBe('123456')
     expect(material.uniforms.u_background.value.getHexString()).toBe('abcdef')
+    expect(material.uniforms.u_brightnessMap.value).toBe(1.4)
   })
 
   it('keeps missing Animate enabled and preserves the below-minimum thickness default', () => {
@@ -88,7 +91,7 @@ describe('Wave Lines shader material', () => {
 
   it('clamp-samples, adjusts brightness and contrast, then uses Rec.601 luminance', () => {
     expect(WAVE_LINES_FRAGMENT_SHADER).toContain(
-      'clamp(v_uv, vec2(0.0), vec2(1.0))',
+      'clamp(uv, vec2(0.0), vec2(1.0))',
     )
     expect(WAVE_LINES_FRAGMENT_SHADER).toContain(
       'applyWaveLinesBrightnessContrast(clamp(sourceColor, 0.0, 1.0))',
@@ -135,35 +138,47 @@ describe('Wave Lines shader material', () => {
     expect(WAVE_LINES_FRAGMENT_SHADER).not.toContain('smoothstep(halfWidth')
   })
 
-  it('locks the uploaded Mono mapping and unreachable Line Color production no-op', () => {
-    expect(WAVE_LINES_COLOR_MODE_IDS).toEqual({ original: 0, custom: 1 })
+  it('routes Mono output through Line Color', () => {
+    expect(WAVE_LINES_COLOR_MODE_IDS).toEqual({ original: 0, mono: 1, custom: 1 })
     expect(Object.values(WAVE_LINES_COLOR_MODE_IDS)).not.toContain(2)
     expect(WAVE_LINES_FRAGMENT_SHADER).toContain(
-      'u_colorMode < 1.5 ? vec3(luminanceValue) : u_lineColor',
+      'u_colorMode > 0.5 ? u_lineColor : adjustedColor',
     )
     expect(WAVE_LINES_FRAGMENT_SHADER).toContain(
       'vec3 effectColor = isLine ? linePixelColor : u_background;',
     )
   })
 
-  it('keeps Processing absent and maps shared Post after Wave Lines', () => {
+  it('maps and consumes every Processing control between Wave Lines and Post', () => {
+    expect(WAVE_LINES_FRAGMENT_SHADER).toContain('vec3 waveLinesBlurredSource')
+    expect(WAVE_LINES_FRAGMENT_SHADER).toContain('waveLinesSourceSample(uv + vec2(blurTexel.x, 0.0))')
+    expect(WAVE_LINES_FRAGMENT_SHADER).toContain('waveLinesSourceSample(uv - vec2(blurTexel.x, 0.0))')
+    expect(WAVE_LINES_FRAGMENT_SHADER).toContain('waveLinesSourceSample(uv + vec2(0.0, blurTexel.y))')
+    expect(WAVE_LINES_FRAGMENT_SHADER).toContain('waveLinesSourceSample(uv - vec2(0.0, blurTexel.y))')
     for (const processingUniform of [
-      'u_processingInvert',
-      'u_brightnessMap',
-      'u_edgeEnhance',
-      'u_blur',
-      'u_quantizeColors',
-      'u_shapeMatching',
+      'u_processingInvert', 'u_brightnessMap', 'u_edgeEnhance', 'u_blur',
+      'u_quantizeColors', 'u_shapeMatching',
     ]) {
-      expect(WAVE_LINES_FRAGMENT_SHADER).not.toContain(processingUniform)
+      expect(WAVE_LINES_FRAGMENT_SHADER.split(processingUniform).length).toBeGreaterThan(2)
     }
+    expect(WAVE_LINES_FRAGMENT_SHADER).toContain('if (u_quantizeColors >= 1.0)')
+    expect(WAVE_LINES_FRAGMENT_SHADER).toContain('max(u_quantizeColors, 2.0)')
     expect(WAVE_LINES_FRAGMENT_SHADER).toContain('vec3 applyWaveLinesPostProcessing')
     expect(WAVE_LINES_FRAGMENT_SHADER.indexOf('vec3 effectColor =')).toBeLessThan(
+      WAVE_LINES_FRAGMENT_SHADER.indexOf('effectColor = applyWaveLinesProcessing'),
+    )
+    expect(WAVE_LINES_FRAGMENT_SHADER.indexOf('effectColor = applyWaveLinesProcessing')).toBeLessThan(
       WAVE_LINES_FRAGMENT_SHADER.indexOf('applyWaveLinesPostProcessing(effectColor'),
     )
 
     const { material } = createFixture()
     applyWaveLinesUniforms(material, {
+      'processing-invert': true,
+      'brightness-map': 1.4,
+      'edge-enhance': 0.35,
+      blur: 3,
+      'quantize-colors': 1,
+      'shape-matching': 0.25,
       bloom: true,
       'grain-intensity': 61,
       'grain-size': 4,
@@ -175,6 +190,12 @@ describe('Wave Lines shader material', () => {
       phosphor: true,
     })
 
+    expect(material.uniforms.u_processingInvert.value).toBe(1)
+    expect(material.uniforms.u_brightnessMap.value).toBe(1.4)
+    expect(material.uniforms.u_edgeEnhance.value).toBe(0.35)
+    expect(material.uniforms.u_blur.value).toBe(3)
+    expect(material.uniforms.u_quantizeColors.value).toBe(1)
+    expect(material.uniforms.u_shapeMatching.value).toBe(0.25)
     expect(material.uniforms.u_bloom.value).toBe(1)
     expect(material.uniforms.u_grainIntensity.value).toBe(61)
     expect(material.uniforms.u_grainSize.value).toBe(4)

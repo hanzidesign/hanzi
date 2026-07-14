@@ -51,21 +51,21 @@ describe('Grainrad Edge Detection schema', () => {
     expect(controls.contrast).toMatchObject({ defaultValue: 0, min: -100, max: 100, step: 1 })
     expect(controls['color-mode']).toMatchObject({
       kind: 'select',
-      defaultValue: 'custom',
+      defaultValue: 'mono',
       options: [
-        { value: 'custom', label: 'Mono' },
+        { value: 'mono', label: 'Mono' },
         { value: 'original', label: 'Original' },
       ],
     })
     expect(controls['edge-color']).toMatchObject({
       kind: 'color',
       defaultValue: '#ffffff',
-      visibleWhen: { controlId: 'color-mode', operator: 'equals', value: 'custom' },
+      visibleWhen: { controlId: 'color-mode', operator: 'equals', value: 'mono' },
     })
     expect(controls.background).toMatchObject({
       kind: 'color',
       defaultValue: '#000000',
-      visibleWhen: { controlId: 'color-mode', operator: 'equals', value: 'custom' },
+      visibleWhen: { controlId: 'color-mode', operator: 'equals', value: 'mono' },
     })
     expect(createDefaultGrainradEffectControls()['edge-detection']).toMatchObject({
       algorithm: 'sobel',
@@ -74,7 +74,7 @@ describe('Grainrad Edge Detection schema', () => {
       invert: false,
       brightness: 0,
       contrast: 0,
-      'color-mode': 'custom',
+      'color-mode': 'mono',
       'edge-color': '#000000',
       background: '#ffffff',
     })

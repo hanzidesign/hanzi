@@ -226,6 +226,13 @@ describe('Grainrad effect renderer routing contract', () => {
     expect(contourCanvasSource).toContain('createContourShaderMaterial')
     expect(contourCanvasSource).toContain('applyContourUniforms')
     expect(contourCanvasSource).toContain('disposeContourShaderMaterial')
+    expect(contourCanvasSource).not.toContain('createCharacterGlyphAtlas')
+    expect(contourCanvasSource).not.toContain('deriveGlyphDistancePackFromCanvas')
+    expect(contourCanvasSource).toContain('WebGLRenderTarget')
+    expect(contourCanvasSource).toContain('<planeGeometry')
+    expect(contourCanvasSource).toContain('gl.render(source.scene, source.camera)')
+    expect(contourCanvasSource).toContain('u_sourceSize')
+    expect(contourCanvasSource).toContain('material={material}')
     expect(contourCanvasSource).toContain('data-testid="character-contour-canvas"')
     for (const meshParam of [
       'extrusionDepth',
@@ -242,7 +249,6 @@ describe('Grainrad effect renderer routing contract', () => {
     ]) {
       expect(contourCanvasSource).toContain(`meshSettings.${meshParam}`)
     }
-    expect(contourCanvasSource).toContain('computeEffectiveAnimationTime')
     expect(contourCanvasSource).toContain('animation.playing')
     expect(contourCanvasSource).toContain('animation.speed')
 

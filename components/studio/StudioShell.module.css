@@ -79,6 +79,25 @@
   font-weight: 500;
 }
 
+.brandLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: inherit;
+  text-decoration: none;
+}
+
+.brandLink:focus-visible {
+  outline: 1px solid var(--studio-text-bright);
+  outline-offset: 3px;
+}
+
+.shell button:not(:disabled),
+.shell a[href],
+.characterPopover button:not(:disabled) {
+  cursor: pointer;
+}
+
 .panelFooter {
   margin-top: auto;
   border-top: 1px solid var(--studio-border);
@@ -625,18 +644,11 @@
   min-height: 22px;
   display: flex;
   align-items: center;
-  gap: 8px;
   margin: 0 0 4px;
   color: var(--studio-text-bright);
   font-size: 12px;
   font-weight: 500;
   text-transform: uppercase;
-}
-
-.groupChevron {
-  width: 9px;
-  color: var(--studio-text-dim);
-  font-weight: 400;
 }
 
 .controlRow {
@@ -887,7 +899,13 @@
   gap: 6px;
 }
 
+.exportFormatTooltip {
+  min-width: 0;
+  display: flex;
+}
+
 .exportFormatButton {
+  width: 100%;
   min-width: 0;
   min-height: 46px;
   border: 1px solid var(--studio-border-strong);
@@ -1067,10 +1085,29 @@
 }
 
 .characterTriggerGlyph {
-  grid-column: 2;
   font-family: var(--font-noto);
   font-size: 34px;
   line-height: 1;
+}
+
+.characterTriggerValue {
+  grid-column: 2;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  padding: 10px 0;
+}
+
+.characterTriggerMeaning {
+  max-width: 100%;
+  overflow: hidden;
+  color: var(--studio-text-dim);
+  font-size: 11px;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .characterTriggerChevron {

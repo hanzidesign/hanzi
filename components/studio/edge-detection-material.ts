@@ -4,7 +4,7 @@ export type EdgeDetectionControlValue = string | number | boolean
 export type EdgeDetectionControls = Readonly<Record<string, EdgeDetectionControlValue>>
 
 export const EDGE_DETECTION_ALGORITHM_IDS = { sobel: 0, prewitt: 1, laplacian: 2 } as const
-export const EDGE_DETECTION_COLOR_MODE_IDS = { custom: 0, original: 1 } as const
+export const EDGE_DETECTION_COLOR_MODE_IDS = { mono: 0, custom: 0, original: 1 } as const
 
 type CreateOptions = Readonly<{
   controls: EdgeDetectionControls
@@ -34,6 +34,12 @@ uniform float u_contrast;
 uniform vec3 u_edgeColor;
 uniform vec3 u_background;
 uniform float u_colorMode;
+uniform float u_processingInvert;
+uniform float u_brightnessMap;
+uniform float u_edgeEnhance;
+uniform float u_blur;
+uniform float u_quantizeColors;
+uniform float u_shapeMatching;
 uniform float u_time;
 uniform float u_bloom;
 uniform float u_grainIntensity;
@@ -46,8 +52,22 @@ uniform float u_crtCurve;
 uniform float u_phosphor;
 varying vec2 v_uv;
 
+vec3 edgeSourceSample(vec2 uv) {
+  return texture2D(u_sourceTexture, clamp(uv, vec2(0.0), vec2(1.0))).rgb;
+}
+
 vec3 edgeAdjustedSample(vec2 uv) {
-  vec3 color = texture2D(u_sourceTexture, clamp(uv, vec2(0.0), vec2(1.0))).rgb;
+  vec3 color = edgeSourceSample(uv);
+  if (u_blur > 0.0) {
+    vec2 blurTexel = min(u_blur, 12.0) / max(u_sourceSize, vec2(1.0));
+    color = (
+      color * 4.0 +
+      edgeSourceSample(uv + vec2(blurTexel.x, 0.0)) +
+      edgeSourceSample(uv - vec2(blurTexel.x, 0.0)) +
+      edgeSourceSample(uv + vec2(0.0, blurTexel.y)) +
+      edgeSourceSample(uv - vec2(0.0, blurTexel.y))
+    ) / 8.0;
+  }
   color += u_brightness;
   float factor = (1.0 + u_contrast) / (1.0 - 0.99 * u_contrast);
   return clamp((color - 0.5) * factor + 0.5, 0.0, 1.0);
@@ -55,6 +75,19 @@ vec3 edgeAdjustedSample(vec2 uv) {
 
 float edgeLuminance(vec3 color) {
   return dot(color, vec3(0.299, 0.587, 0.114));
+}
+
+vec3 applyEdgeDetectionProcessing(vec3 color, float sourceLuminance) {
+  color = mix(color, 1.0 - color, u_processingInvert);
+  color *= u_brightnessMap;
+  color += length(fwidth(vec2(sourceLuminance))) * u_edgeEnhance * 8.0;
+  if (u_quantizeColors >= 1.0) {
+    float quantizeLevels = max(u_quantizeColors, 2.0);
+    float quantizeScale = quantizeLevels - 1.0;
+    color = floor(color * quantizeScale + 0.5) / quantizeScale;
+  }
+  color = mix(color, vec3(step(0.5, sourceLuminance)), u_shapeMatching);
+  return clamp(color, 0.0, 1.0);
 }
 
 float edgeGaussianLuminance(vec2 uv, vec2 stepSize) {
@@ -121,7 +154,9 @@ void main() {
   vec3 processedOriginal = edgeAdjustedSample(v_uv);
   vec3 foreground = u_colorMode > 0.5 ? processedOriginal : u_edgeColor;
   vec3 effectColor = mix(u_background, foreground, mask);
-  effectColor = applyEdgeDetectionPostProcessing(effectColor, edgeLuminance(effectColor), v_uv);
+  float effectLuminance = edgeLuminance(effectColor);
+  effectColor = applyEdgeDetectionProcessing(effectColor, effectLuminance);
+  effectColor = applyEdgeDetectionPostProcessing(effectColor, effectLuminance, v_uv);
   gl_FragColor = vec4(effectColor, 1.0);
 }
 `
@@ -150,9 +185,15 @@ export function createEdgeDetectionShaderMaterial({
       u_edgeColor: { value: new Color('#ffffff') },
       u_background: { value: new Color('#000000') },
       u_colorMode: { value: 0 },
+      u_processingInvert: { value: 0 },
+      u_brightnessMap: { value: 1 },
+      u_edgeEnhance: { value: 0 },
+      u_blur: { value: 0 },
+      u_quantizeColors: { value: 0 },
+      u_shapeMatching: { value: 0 },
       u_time: { value: 0 },
       u_bloom: { value: 0 },
-      u_grainIntensity: { value: 35 },
+      u_grainIntensity: { value: 0 },
       u_grainSize: { value: 2 },
       u_grainSpeed: { value: 50 },
       u_postChromatic: { value: 0 },
@@ -175,9 +216,15 @@ export function applyEdgeDetectionUniforms(material: ShaderMaterial, controls: E
   material.uniforms.u_contrast.value = readNumber(controls.contrast, 0) / 100
   material.uniforms.u_edgeColor.value.set(readString(controls['edge-color'], '#ffffff'))
   material.uniforms.u_background.value.set(readString(controls.background, '#000000'))
-  material.uniforms.u_colorMode.value = readEnum(controls['color-mode'], EDGE_DETECTION_COLOR_MODE_IDS, 'custom')
+  material.uniforms.u_colorMode.value = readEnum(controls['color-mode'], EDGE_DETECTION_COLOR_MODE_IDS, 'mono')
+  material.uniforms.u_processingInvert.value = readBoolean(controls['processing-invert'])
+  material.uniforms.u_brightnessMap.value = readNumber(controls['brightness-map'], 1)
+  material.uniforms.u_edgeEnhance.value = readNumber(controls['edge-enhance'], 0)
+  material.uniforms.u_blur.value = readNumber(controls.blur, 0)
+  material.uniforms.u_quantizeColors.value = readNumber(controls['quantize-colors'], 0)
+  material.uniforms.u_shapeMatching.value = readNumber(controls['shape-matching'], 0)
   material.uniforms.u_bloom.value = readBoolean(controls.bloom)
-  material.uniforms.u_grainIntensity.value = readNumber(controls['grain-intensity'], 35)
+  material.uniforms.u_grainIntensity.value = readNumber(controls['grain-intensity'], 0)
   material.uniforms.u_grainSize.value = readNumber(controls['grain-size'], 2)
   material.uniforms.u_grainSpeed.value = readNumber(controls['grain-speed'], 50)
   material.uniforms.u_postChromatic.value = readBoolean(controls.chromatic)

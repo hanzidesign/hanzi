@@ -6,16 +6,12 @@ import {
 } from 'three'
 
 import type { MatrixRainGlyphAtlas } from './matrix-rain-charset'
+import { MATRIX_RAIN_DIRECTION_IDS } from './matrix-rain-core'
+
+export { MATRIX_RAIN_DIRECTION_IDS } from './matrix-rain-core'
 
 export type MatrixRainControlValue = string | number | boolean
 export type MatrixRainControls = Readonly<Record<string, MatrixRainControlValue>>
-
-export const MATRIX_RAIN_DIRECTION_IDS = {
-  down: 0,
-  up: 1,
-  left: 2,
-  right: 3,
-} as const
 
 export type CreateMatrixRainShaderMaterialOptions = Readonly<{
   controls: MatrixRainControls
@@ -53,7 +49,9 @@ uniform float u_backgroundOpacity;
 uniform float u_brightness;
 uniform float u_contrast;
 uniform float u_threshold;
+uniform vec3 u_foreground;
 uniform vec3 u_rainColor;
+uniform vec3 u_background;
 uniform float u_time;
 uniform float u_processingInvert;
 uniform float u_brightnessMap;
@@ -181,8 +179,9 @@ vec3 applyMatrixSharedProcessing(vec3 color, float sourceLuminance) {
   color *= u_brightnessMap;
   float edge = length(fwidth(vec2(sourceLuminance))) * u_edgeEnhance * 8.0;
   color += edge;
-  if (u_quantizeColors > 1.0) {
-    color = floor(color * (u_quantizeColors - 1.0) + 0.5) / (u_quantizeColors - 1.0);
+  if (u_quantizeColors > 0.0) {
+    float quantizeLevels = max(u_quantizeColors, 2.0);
+    color = floor(color * (quantizeLevels - 1.0) + 0.5) / (quantizeLevels - 1.0);
   }
   color = mix(color, vec3(step(0.5, sourceLuminance)), u_shapeMatching);
   return clamp(color, 0.0, 1.0);
@@ -263,39 +262,55 @@ void main() {
   float topBrightness = matrixRainLuminance(texture2D(u_sourceTexture, v_uv + vec2(0.0, -edgeSampleOffset)).rgb);
   float bottomBrightness = matrixRainLuminance(texture2D(u_sourceTexture, v_uv + vec2(0.0, edgeSampleOffset)).rgb);
   float edgeStrength = abs(leftBrightness - rightBrightness) + abs(topBrightness - bottomBrightness);
-  float sourceInfluence = cellBrightness * 0.7 + edgeStrength * 0.5;
-  float aboveThreshold = step(u_threshold, cellBrightness);
-  float thresholdedInfluence = sourceInfluence * aboveThreshold;
-  float effectiveRain = rainIntensity * aboveThreshold +
-    thresholdedInfluence * 0.4 * (1.0 - rainIntensity);
-  float characterVisibility = characterPattern *
-    (0.15 + thresholdedInfluence * 0.85) * aboveThreshold;
-  vec3 backgroundColor = adjustedSourceColor * u_backgroundOpacity * 0.1;
+  float sourcePresence = step(0.0001, cellBrightness);
+  float rainThresholdMask = step(u_threshold, cellBrightness);
+  float modelThresholdMask = sourcePresence * rainThresholdMask;
+  float effectiveRain = rainIntensity * rainThresholdMask;
+  float characterVisibility = characterPattern * rainThresholdMask;
+  float modelGlyphMask = characterPattern * modelThresholdMask;
+  float modelOpacity = clamp(modelGlyphMask, 0.0, 1.0);
+  float modelShade = mix(
+    0.55,
+    1.0,
+    matrixRainLuminance(adjustedSourceColor)
+  );
+  vec3 modelCharacterColor = u_foreground * modelShade;
+  vec3 modelCharacters = modelCharacterColor * modelOpacity;
   vec3 tintedRain = mix(
     u_rainColor,
     u_rainColor * (0.5 + cellBrightness * 0.5),
     0.3
   );
-  vec3 characterColor = tintedRain * effectiveRain * characterVisibility;
+  tintedRain = applyMatrixBrightnessContrast(tintedRain);
+  float rainOpacity = effectiveRain * characterVisibility;
+  vec3 characterColor = tintedRain * rainOpacity;
 
   if (isHead > 0.5 && characterPattern > 0.5) {
     float headBrightness = 0.7 + edgeStrength * 0.5;
     vec3 headColor = mix(u_rainColor, vec3(1.0), headBrightness);
+    headColor = applyMatrixBrightnessContrast(headColor);
     characterColor = max(
       characterColor,
       headColor * characterVisibility * u_glowIntensity
     );
+    rainOpacity = max(
+      rainOpacity,
+      characterVisibility * u_glowIntensity
+    );
   }
+  float backgroundRainOpacity = mix(u_backgroundOpacity, 1.0, sourcePresence);
+  characterColor *= backgroundRainOpacity;
+  rainOpacity *= backgroundRainOpacity;
+  float effectOpacity = 1.0 -
+    (1.0 - modelOpacity) * (1.0 - clamp(rainOpacity, 0.0, 1.0));
 
-  float staticIntensity = 0.2 * thresholdedInfluence *
-    (1.0 - rainIntensity * 0.5) * aboveThreshold;
-  vec3 staticCharacters = u_rainColor * staticIntensity * characterVisibility;
+  vec3 effectLayerColor = clamp(modelCharacters + characterColor, 0.0, 1.0);
+  effectLayerColor = applyMatrixSharedProcessing(effectLayerColor, sourceLuminance);
   vec3 effectColor = clamp(
-    backgroundColor + characterColor + staticCharacters,
+    u_background * (1.0 - effectOpacity) + effectLayerColor,
     0.0,
     1.0
   );
-  effectColor = applyMatrixSharedProcessing(effectColor, sourceLuminance);
   effectColor = applyMatrixSharedPostProcessing(effectColor, sourceLuminance, v_uv);
   gl_FragColor = vec4(effectColor, 1.0);
 }
@@ -327,11 +342,13 @@ export function createMatrixRainShaderMaterial({
       u_trailLength: { value: 15 },
       u_direction: { value: MATRIX_RAIN_DIRECTION_IDS.down },
       u_glowIntensity: { value: 1 },
-      u_backgroundOpacity: { value: 0.3 },
+      u_backgroundOpacity: { value: 0.5 },
       u_brightness: { value: 0 },
       u_contrast: { value: 0 },
       u_threshold: { value: 0 },
+      u_foreground: { value: new Color('#ffffff') },
       u_rainColor: { value: new Color('#00ff00') },
+      u_background: { value: new Color('#000000') },
       u_time: { value: 0 },
       u_processingInvert: { value: 0 },
       u_brightnessMap: { value: 1 },
@@ -340,7 +357,7 @@ export function createMatrixRainShaderMaterial({
       u_quantizeColors: { value: 0 },
       u_shapeMatching: { value: 0 },
       u_bloom: { value: 0 },
-      u_grainIntensity: { value: 35 },
+      u_grainIntensity: { value: 0 },
       u_grainSize: { value: 2 },
       u_grainSpeed: { value: 50 },
       u_postChromatic: { value: 0 },
@@ -367,11 +384,13 @@ export function applyMatrixRainUniforms(
   material.uniforms.u_trailLength.value = readNumber(controls['trail-length'], 15)
   material.uniforms.u_direction.value = readDirection(controls.direction)
   material.uniforms.u_glowIntensity.value = readNumber(controls.glow, 1)
-  material.uniforms.u_backgroundOpacity.value = readNumber(controls['bg-opacity'], 0.3)
+  material.uniforms.u_backgroundOpacity.value = readNumber(controls['bg-opacity'], 0.5)
   material.uniforms.u_brightness.value = readNumber(controls.brightness, 0) / 100
   material.uniforms.u_contrast.value = readNumber(controls.contrast, 0) / 100
   material.uniforms.u_threshold.value = readNumber(controls.threshold, 0)
+  material.uniforms.u_foreground.value.set(readString(controls.foreground, '#ffffff'))
   material.uniforms.u_rainColor.value.set(readString(controls['rain-color'], '#00ff00'))
+  material.uniforms.u_background.value.set(readString(controls.background, '#000000'))
   material.uniforms.u_processingInvert.value = readBoolean(controls['processing-invert'])
   material.uniforms.u_brightnessMap.value = readNumber(controls['brightness-map'], 1)
   material.uniforms.u_edgeEnhance.value = readNumber(controls['edge-enhance'], 0)
@@ -379,7 +398,7 @@ export function applyMatrixRainUniforms(
   material.uniforms.u_quantizeColors.value = readNumber(controls['quantize-colors'], 0)
   material.uniforms.u_shapeMatching.value = readNumber(controls['shape-matching'], 0)
   material.uniforms.u_bloom.value = readBoolean(controls.bloom)
-  material.uniforms.u_grainIntensity.value = readNumber(controls['grain-intensity'], 35)
+  material.uniforms.u_grainIntensity.value = readNumber(controls['grain-intensity'], 0)
   material.uniforms.u_grainSize.value = readNumber(controls['grain-size'], 2)
   material.uniforms.u_grainSpeed.value = readNumber(controls['grain-speed'], 50)
   material.uniforms.u_postChromatic.value = readBoolean(controls.chromatic)

@@ -10,6 +10,7 @@ export const WAVE_LINES_DIRECTION_IDS = {
 
 export const WAVE_LINES_COLOR_MODE_IDS = {
   original: 0,
+  mono: 1,
   custom: 1,
 } as const
 
@@ -45,6 +46,12 @@ uniform float u_colorMode;
 uniform vec3 u_lineColor;
 uniform vec3 u_background;
 uniform float u_animate;
+uniform float u_processingInvert;
+uniform float u_brightnessMap;
+uniform float u_edgeEnhance;
+uniform float u_blur;
+uniform float u_quantizeColors;
+uniform float u_shapeMatching;
 uniform float u_bloom;
 uniform float u_grainIntensity;
 uniform float u_grainSize;
@@ -68,6 +75,38 @@ vec3 applyWaveLinesBrightnessContrast(vec3 color) {
   return clamp((result - 0.5) * contrastFactor + 0.5, 0.0, 1.0);
 }
 
+vec3 waveLinesSourceSample(vec2 uv) {
+  return texture2D(u_sourceTexture, clamp(uv, vec2(0.0), vec2(1.0))).rgb;
+}
+
+vec3 waveLinesBlurredSource(vec2 uv) {
+  vec3 center = waveLinesSourceSample(uv);
+  if (u_blur <= 0.0) {
+    return center;
+  }
+  vec2 blurTexel = min(u_blur, 12.0) / max(u_sourceSize, vec2(1.0));
+  return (
+    center * 4.0 +
+    waveLinesSourceSample(uv + vec2(blurTexel.x, 0.0)) +
+    waveLinesSourceSample(uv - vec2(blurTexel.x, 0.0)) +
+    waveLinesSourceSample(uv + vec2(0.0, blurTexel.y)) +
+    waveLinesSourceSample(uv - vec2(0.0, blurTexel.y))
+  ) / 8.0;
+}
+
+vec3 applyWaveLinesProcessing(vec3 color, float sourceLuminance) {
+  color = mix(color, 1.0 - color, u_processingInvert);
+  color *= u_brightnessMap;
+  color += length(fwidth(vec2(sourceLuminance))) * u_edgeEnhance * 8.0;
+  if (u_quantizeColors >= 1.0) {
+    float quantizeLevels = max(u_quantizeColors, 2.0);
+    float quantizeScale = quantizeLevels - 1.0;
+    color = floor(color * quantizeScale + 0.5) / quantizeScale;
+  }
+  color = mix(color, vec3(step(0.5, sourceLuminance)), u_shapeMatching);
+  return clamp(color, 0.0, 1.0);
+}
+
 float waveLinesPostNoise(vec2 pixel) {
   return fract(sin(dot(pixel, vec2(12.9898, 78.233))) * 43758.5453);
 }
@@ -89,10 +128,7 @@ vec3 applyWaveLinesPostProcessing(vec3 color, float sourceLuminance, vec2 uv) {
 }
 
 void main() {
-  vec3 sourceColor = texture2D(
-    u_sourceTexture,
-    clamp(v_uv, vec2(0.0), vec2(1.0))
-  ).rgb;
+  vec3 sourceColor = waveLinesBlurredSource(v_uv);
   vec3 adjustedColor = applyWaveLinesBrightnessContrast(clamp(sourceColor, 0.0, 1.0));
   float luminanceValue = waveLinesLuminance(adjustedColor);
   float animTime = u_animate > 0.5 ? u_time : 0.0;
@@ -122,10 +158,9 @@ void main() {
 
   float halfWidth = spacing * u_lineThickness * luminanceValue;
   bool isLine = distanceToLine < halfWidth;
-  vec3 linePixelColor = u_colorMode < 0.5
-    ? adjustedColor
-    : (u_colorMode < 1.5 ? vec3(luminanceValue) : u_lineColor);
+  vec3 linePixelColor = u_colorMode > 0.5 ? u_lineColor : adjustedColor;
   vec3 effectColor = isLine ? linePixelColor : u_background;
+  effectColor = applyWaveLinesProcessing(effectColor, waveLinesLuminance(effectColor));
   effectColor = applyWaveLinesPostProcessing(effectColor, luminanceValue, v_uv);
   gl_FragColor = vec4(effectColor, 1.0);
 }
@@ -153,12 +188,18 @@ export function createWaveLinesShaderMaterial({
       u_lineThickness: { value: 0.4 },
       u_brightness: { value: 0 },
       u_contrast: { value: 0 },
-      u_colorMode: { value: WAVE_LINES_COLOR_MODE_IDS.original },
+      u_colorMode: { value: WAVE_LINES_COLOR_MODE_IDS.mono },
       u_lineColor: { value: new Color('#ffffff') },
       u_background: { value: new Color('#000000') },
       u_animate: { value: 1 },
+      u_processingInvert: { value: 0 },
+      u_brightnessMap: { value: 1 },
+      u_edgeEnhance: { value: 0 },
+      u_blur: { value: 0 },
+      u_quantizeColors: { value: 0 },
+      u_shapeMatching: { value: 0 },
       u_bloom: { value: 0 },
-      u_grainIntensity: { value: 35 },
+      u_grainIntensity: { value: 0 },
       u_grainSize: { value: 2 },
       u_grainSpeed: { value: 50 },
       u_postChromatic: { value: 0 },
@@ -192,13 +233,19 @@ export function applyWaveLinesUniforms(
   material.uniforms.u_colorMode.value = readEnum(
     controls['color-mode'],
     WAVE_LINES_COLOR_MODE_IDS,
-    'original',
+    'mono',
   )
   material.uniforms.u_lineColor.value.set(readString(controls['line-color'], '#ffffff'))
   material.uniforms.u_background.value.set(readString(controls.background, '#000000'))
   material.uniforms.u_animate.value = controls.animate === false ? 0 : 1
+  material.uniforms.u_processingInvert.value = readBoolean(controls['processing-invert'])
+  material.uniforms.u_brightnessMap.value = readNumber(controls['brightness-map'], 1)
+  material.uniforms.u_edgeEnhance.value = readNumber(controls['edge-enhance'], 0)
+  material.uniforms.u_blur.value = readNumber(controls.blur, 0)
+  material.uniforms.u_quantizeColors.value = readNumber(controls['quantize-colors'], 0)
+  material.uniforms.u_shapeMatching.value = readNumber(controls['shape-matching'], 0)
   material.uniforms.u_bloom.value = readBoolean(controls.bloom)
-  material.uniforms.u_grainIntensity.value = readNumber(controls['grain-intensity'], 35)
+  material.uniforms.u_grainIntensity.value = readNumber(controls['grain-intensity'], 0)
   material.uniforms.u_grainSize.value = readNumber(controls['grain-size'], 2)
   material.uniforms.u_grainSpeed.value = readNumber(controls['grain-speed'], 50)
   material.uniforms.u_postChromatic.value = readBoolean(controls.chromatic)

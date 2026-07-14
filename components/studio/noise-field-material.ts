@@ -39,6 +39,12 @@ uniform float u_brightness;
 uniform float u_contrast;
 uniform float u_noiseType;
 uniform float u_distortOnly;
+uniform float u_processingInvert;
+uniform float u_brightnessMap;
+uniform float u_edgeEnhance;
+uniform float u_blur;
+uniform float u_quantizeColors;
+uniform float u_shapeMatching;
 uniform float u_bloom;
 uniform float u_grainIntensity;
 uniform float u_grainSize;
@@ -152,6 +158,35 @@ float noiseFieldLuminance(vec3 color) {
   return dot(color, vec3(0.299, 0.587, 0.114));
 }
 
+vec3 sampleNoiseFieldSource(vec2 uv) {
+  vec2 sourceUv = clamp(uv, vec2(0.0), vec2(1.0));
+  vec3 center = texture2D(u_sourceTexture, sourceUv).rgb;
+  if (u_blur <= 0.0) {
+    return center;
+  }
+
+  vec2 blurTexel = min(u_blur, 12.0) / max(u_sourceSize, vec2(1.0));
+  return (
+    center * 4.0 +
+    texture2D(u_sourceTexture, clamp(sourceUv + vec2(blurTexel.x, 0.0), vec2(0.0), vec2(1.0))).rgb +
+    texture2D(u_sourceTexture, clamp(sourceUv - vec2(blurTexel.x, 0.0), vec2(0.0), vec2(1.0))).rgb +
+    texture2D(u_sourceTexture, clamp(sourceUv + vec2(0.0, blurTexel.y), vec2(0.0), vec2(1.0))).rgb +
+    texture2D(u_sourceTexture, clamp(sourceUv - vec2(0.0, blurTexel.y), vec2(0.0), vec2(1.0))).rgb
+  ) / 8.0;
+}
+
+vec3 applyNoiseFieldProcessing(vec3 color, float luminance) {
+  color = mix(color, 1.0 - color, u_processingInvert);
+  color *= u_brightnessMap;
+  color += length(fwidth(vec2(luminance))) * u_edgeEnhance * 8.0;
+  if (u_quantizeColors >= 1.0) {
+    float levels = max(u_quantizeColors, 2.0);
+    color = floor(color * (levels - 1.0) + 0.5) / (levels - 1.0);
+  }
+  color = mix(color, vec3(step(0.5, luminance)), u_shapeMatching);
+  return clamp(color, 0.0, 1.0);
+}
+
 float noiseFieldPostNoise(vec2 pixel) {
   return fract(sin(dot(pixel, vec2(12.9898, 78.233))) * 43758.5453);
 }
@@ -186,10 +221,7 @@ void main() {
   vec2 displacement = (vec2(noiseValue, noiseValue2) - 0.5)
     * 2.0 * u_intensity * 0.02;
   vec2 displacedUv = v_uv + displacement;
-  vec3 effectColor = texture2D(
-    u_sourceTexture,
-    clamp(displacedUv, vec2(0.0), vec2(1.0))
-  ).rgb;
+  vec3 effectColor = sampleNoiseFieldSource(displacedUv);
   effectColor = applyNoiseFieldBrightnessContrast(effectColor);
 
   if (u_distortOnly < 0.5) {
@@ -202,6 +234,10 @@ void main() {
   }
 
   effectColor = clamp(effectColor, vec3(0.0), vec3(1.0));
+  effectColor = applyNoiseFieldProcessing(
+    effectColor,
+    noiseFieldLuminance(effectColor)
+  );
   effectColor = applyNoiseFieldPostProcessing(
     effectColor,
     noiseFieldLuminance(effectColor),
@@ -234,9 +270,15 @@ export function createNoiseFieldShaderMaterial({
       u_brightness: { value: 0 },
       u_contrast: { value: 0 },
       u_noiseType: { value: NOISE_FIELD_TYPE_IDS.perlin },
-      u_distortOnly: { value: 0 },
+      u_distortOnly: { value: 1 },
+      u_processingInvert: { value: 0 },
+      u_brightnessMap: { value: 1 },
+      u_edgeEnhance: { value: 0 },
+      u_blur: { value: 0 },
+      u_quantizeColors: { value: 0 },
+      u_shapeMatching: { value: 0 },
       u_bloom: { value: 0 },
-      u_grainIntensity: { value: 35 },
+      u_grainIntensity: { value: 0 },
       u_grainSize: { value: 2 },
       u_grainSpeed: { value: 50 },
       u_postChromatic: { value: 0 },
@@ -268,9 +310,15 @@ export function applyNoiseFieldUniforms(
     NOISE_FIELD_TYPE_IDS,
     'perlin',
   )
-  material.uniforms.u_distortOnly.value = readBoolean(controls['distort-only'])
+  material.uniforms.u_distortOnly.value = controls['distort-only'] === false ? 0 : 1
+  material.uniforms.u_processingInvert.value = readBoolean(controls['processing-invert'])
+  material.uniforms.u_brightnessMap.value = readNumber(controls['brightness-map'], 1)
+  material.uniforms.u_edgeEnhance.value = readNumber(controls['edge-enhance'], 0)
+  material.uniforms.u_blur.value = readNumber(controls.blur, 0)
+  material.uniforms.u_quantizeColors.value = readNumber(controls['quantize-colors'], 0)
+  material.uniforms.u_shapeMatching.value = readNumber(controls['shape-matching'], 0)
   material.uniforms.u_bloom.value = readBoolean(controls.bloom)
-  material.uniforms.u_grainIntensity.value = readNumber(controls['grain-intensity'], 35)
+  material.uniforms.u_grainIntensity.value = readNumber(controls['grain-intensity'], 0)
   material.uniforms.u_grainSize.value = readNumber(controls['grain-size'], 2)
   material.uniforms.u_grainSpeed.value = readNumber(controls['grain-speed'], 50)
   material.uniforms.u_postChromatic.value = readBoolean(controls.chromatic)

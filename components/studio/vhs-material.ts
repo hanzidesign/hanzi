@@ -31,6 +31,12 @@ uniform float u_vhsScanlines;
 uniform float u_trackingError;
 uniform float u_brightness;
 uniform float u_contrast;
+uniform float u_processingInvert;
+uniform float u_brightnessMap;
+uniform float u_edgeEnhance;
+uniform float u_blur;
+uniform float u_quantizeColors;
+uniform float u_shapeMatching;
 uniform float u_bloom;
 uniform float u_grainIntensity;
 uniform float u_grainSize;
@@ -66,6 +72,35 @@ vec3 applyVhsBrightnessContrast(vec3 color) {
 
 float vhsLuminance(vec3 color) {
   return dot(color, vec3(0.299, 0.587, 0.114));
+}
+
+vec3 sampleVhsSource(vec2 uv) {
+  vec2 sourceUv = clamp(uv, vec2(0.0), vec2(1.0));
+  vec3 center = texture2D(u_sourceTexture, sourceUv).rgb;
+  if (u_blur <= 0.0) {
+    return center;
+  }
+
+  vec2 blurTexel = min(u_blur, 12.0) / max(u_sourceSize, vec2(1.0));
+  return (
+    center * 4.0 +
+    texture2D(u_sourceTexture, clamp(sourceUv + vec2(blurTexel.x, 0.0), vec2(0.0), vec2(1.0))).rgb +
+    texture2D(u_sourceTexture, clamp(sourceUv - vec2(blurTexel.x, 0.0), vec2(0.0), vec2(1.0))).rgb +
+    texture2D(u_sourceTexture, clamp(sourceUv + vec2(0.0, blurTexel.y), vec2(0.0), vec2(1.0))).rgb +
+    texture2D(u_sourceTexture, clamp(sourceUv - vec2(0.0, blurTexel.y), vec2(0.0), vec2(1.0))).rgb
+  ) / 8.0;
+}
+
+vec3 applyVhsProcessing(vec3 color, float luminance) {
+  color = mix(color, 1.0 - color, u_processingInvert);
+  color *= u_brightnessMap;
+  color += length(fwidth(vec2(luminance))) * u_edgeEnhance * 8.0;
+  if (u_quantizeColors >= 1.0) {
+    float levels = max(u_quantizeColors, 2.0);
+    color = floor(color * (levels - 1.0) + 0.5) / (levels - 1.0);
+  }
+  color = mix(color, vec3(step(0.5, luminance)), u_shapeMatching);
+  return clamp(color, 0.0, 1.0);
 }
 
 float vhsPostNoise(vec2 pixel) {
@@ -121,28 +156,19 @@ void main() {
 
   if (u_colorBleed > 0.01) {
     float bleedAmount = u_colorBleed * 0.01;
-    float red = texture2D(
-      u_sourceTexture,
-      warpedUv + vec2(bleedAmount * 2.0, 0.0)
-    ).r;
-    float green = texture2D(u_sourceTexture, warpedUv).g;
-    float blue = texture2D(
-      u_sourceTexture,
-      warpedUv - vec2(bleedAmount * 2.0, 0.0)
-    ).b;
+    float red = sampleVhsSource(warpedUv + vec2(bleedAmount * 2.0, 0.0)).r;
+    float green = sampleVhsSource(warpedUv).g;
+    float blue = sampleVhsSource(warpedUv - vec2(bleedAmount * 2.0, 0.0)).b;
 
     vec3 chromaBlur = vec3(0.0);
     for (int i = -2; i <= 2; i++) {
       float sampleOffset = float(i) * bleedAmount;
-      chromaBlur += texture2D(
-        u_sourceTexture,
-        warpedUv + vec2(sampleOffset, 0.0)
-      ).rgb;
+      chromaBlur += sampleVhsSource(warpedUv + vec2(sampleOffset, 0.0));
     }
     chromaBlur /= 5.0;
     effectColor = mix(vec3(red, green, blue), chromaBlur, 0.3);
   } else {
-    effectColor = texture2D(u_sourceTexture, warpedUv).rgb;
+    effectColor = sampleVhsSource(warpedUv);
   }
 
   if (u_vhsScanlines > 0.01) {
@@ -183,6 +209,7 @@ void main() {
     - length((warpedUv - 0.5) * vec2(0.5, 0.7)) * 0.5;
   effectColor *= fixedVignette;
   effectColor = applyVhsBrightnessContrast(effectColor);
+  effectColor = applyVhsProcessing(effectColor, vhsLuminance(effectColor));
   effectColor = applyVhsPostProcessing(
     effectColor,
     vhsLuminance(effectColor),
@@ -214,8 +241,14 @@ export function createVhsShaderMaterial({
       u_trackingError: { value: 0.2 },
       u_brightness: { value: 0 },
       u_contrast: { value: 0 },
+      u_processingInvert: { value: 0 },
+      u_brightnessMap: { value: 1 },
+      u_edgeEnhance: { value: 0 },
+      u_blur: { value: 0 },
+      u_quantizeColors: { value: 0 },
+      u_shapeMatching: { value: 0 },
       u_bloom: { value: 0 },
-      u_grainIntensity: { value: 35 },
+      u_grainIntensity: { value: 0 },
       u_grainSize: { value: 2 },
       u_grainSpeed: { value: 50 },
       u_postChromatic: { value: 0 },
@@ -239,8 +272,14 @@ export function applyVhsUniforms(material: ShaderMaterial, controls: VhsControls
   material.uniforms.u_trackingError.value = readNumber(controls['tracking-error'], 0.2)
   material.uniforms.u_brightness.value = readNumber(controls.brightness, 0) / 100
   material.uniforms.u_contrast.value = readNumber(controls.contrast, 0) / 100
+  material.uniforms.u_processingInvert.value = readBoolean(controls['processing-invert'])
+  material.uniforms.u_brightnessMap.value = readNumber(controls['brightness-map'], 1)
+  material.uniforms.u_edgeEnhance.value = readNumber(controls['edge-enhance'], 0)
+  material.uniforms.u_blur.value = readNumber(controls.blur, 0)
+  material.uniforms.u_quantizeColors.value = readNumber(controls['quantize-colors'], 0)
+  material.uniforms.u_shapeMatching.value = readNumber(controls['shape-matching'], 0)
   material.uniforms.u_bloom.value = readBoolean(controls.bloom)
-  material.uniforms.u_grainIntensity.value = readNumber(controls['grain-intensity'], 35)
+  material.uniforms.u_grainIntensity.value = readNumber(controls['grain-intensity'], 0)
   material.uniforms.u_grainSize.value = readNumber(controls['grain-size'], 2)
   material.uniforms.u_grainSpeed.value = readNumber(controls['grain-speed'], 50)
   material.uniforms.u_postChromatic.value = readBoolean(controls.chromatic)

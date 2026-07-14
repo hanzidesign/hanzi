@@ -23,6 +23,7 @@ import {
   type ShaderMaterial,
 } from 'three'
 import { useStudioStore } from '@/app/studio/studio-store'
+import { withoutSharedControllerValues } from './grainrad-shared-controls'
 import {
   applyVhsUniforms,
   createVhsShaderMaterial,
@@ -171,7 +172,7 @@ function CharacterVhsScene({
   }, [material])
 
   useEffect(() => {
-    applyVhsUniforms(material, controls)
+applyVhsUniforms(material, withoutSharedControllerValues(controls))
   }, [controls, material])
 
   useEffect(() => {
@@ -296,4 +297,3 @@ function disposeCurrentGeometryResult(
   disposeGeometryResult(resultRef.current)
   resultRef.current = null
 }
-

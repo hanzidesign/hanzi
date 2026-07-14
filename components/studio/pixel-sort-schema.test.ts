@@ -44,7 +44,7 @@ describe('Grainrad Pixel Sort schema', () => {
     })
     expect(controls['sort-mode']).toMatchObject({
       kind: 'select',
-      defaultValue: 'brightness',
+      defaultValue: 'hue',
       options: [
         { value: 'brightness', label: 'Brightness' },
         { value: 'hue', label: 'Hue' },
@@ -60,7 +60,7 @@ describe('Grainrad Pixel Sort schema', () => {
     expect(controls.contrast).toMatchObject({ defaultValue: 0, min: -100, max: 100, step: 1 })
     expect(createDefaultGrainradEffectControls()['pixel-sort']).toMatchObject({
       direction: 'horizontal',
-      'sort-mode': 'brightness',
+      'sort-mode': 'hue',
       threshold: 0.25,
       'streak-length': 100,
       intensity: 0.8,

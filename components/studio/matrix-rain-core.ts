@@ -2,6 +2,13 @@ export type MatrixRgb = readonly [number, number, number]
 export type MatrixVec2 = readonly [number, number]
 export type MatrixRainDirection = 'down' | 'up' | 'left' | 'right'
 
+export const MATRIX_RAIN_DIRECTION_IDS: Record<MatrixRainDirection, number> = {
+  down: 1,
+  up: 0,
+  left: 3,
+  right: 2,
+}
+
 export type MatrixGlyphMask = Readonly<{
   data: Float32Array | Uint8Array | Uint8ClampedArray
   width: number
@@ -19,7 +26,9 @@ export type MatrixRainSettings = Readonly<{
   brightness: number
   contrast: number
   threshold: number
+  foreground: MatrixRgb
   rainColor: MatrixRgb
+  background: MatrixRgb
 }>
 
 export type MatrixRainReferenceInput = Readonly<{
@@ -54,11 +63,13 @@ export const DEFAULT_MATRIX_RAIN_SETTINGS: MatrixRainSettings = {
   trailLength: 15,
   direction: 'down',
   glow: 1,
-  bgOpacity: 0.3,
+  bgOpacity: 0.5,
   brightness: 0,
   contrast: 0,
   threshold: 0,
+  foreground: [255, 255, 255],
   rainColor: [0, 255, 0],
+  background: [0, 0, 0],
 }
 
 const DROP_COUNT = 3
@@ -100,7 +111,7 @@ export function getMatrixRainIntensity({
     const phase = hash11(seed + 17.3)
     const length = trailLength * (0.7 + hash11(seed + 41.7) * 0.6)
     const headPosition = fract(time * speed * dropSpeed * 0.15 + phase)
-    const forward = direction === 'down' || direction === 'right'
+    const forward = direction === 'up' || direction === 'left'
     let distance = forward
       ? headPosition - rowPosition
       : rowPosition - (1 - headPosition)
@@ -161,7 +172,9 @@ export function renderMatrixRainReference({
   const cellsX = width / totalCellSize
   const cellsY = height / totalCellSize
   const horizontal = settings.direction === 'left' || settings.direction === 'right'
+  const normalizedForeground = normalizeRgb(settings.foreground)
   const normalizedRainColor = normalizeRgb(settings.rainColor)
+  const normalizedBackground = normalizeRgb(settings.background)
   const edgeSampleOffset = 1 / Math.max(cellsX, cellsY)
 
   for (let y = 0; y < height; y += 1) {
@@ -200,37 +213,49 @@ export function renderMatrixRainReference({
       const top = luminance(sampleSource(rgb, width, height, u, v - edgeSampleOffset))
       const bottom = luminance(sampleSource(rgb, width, height, u, v + edgeSampleOffset))
       const edgeStrength = Math.abs(left - right) + Math.abs(top - bottom)
-      const sourceInfluence = cellBrightness * 0.7 + edgeStrength * 0.5
-      const aboveThreshold = cellBrightness >= settings.threshold ? 1 : 0
-      const thresholdedInfluence = sourceInfluence * aboveThreshold
-      const effectiveRain = rain.intensity * aboveThreshold
-        + thresholdedInfluence * 0.4 * (1 - rain.intensity)
-      const glyphVisibility = glyphPattern
-        * (0.15 + thresholdedInfluence * 0.85)
-        * aboveThreshold
-      const background = scaleRgb(adjustedSource, settings.bgOpacity * 0.1)
+      const sourcePresence = cellBrightness >= 0.0001 ? 1 : 0
+      const rainThresholdMask = cellBrightness >= settings.threshold ? 1 : 0
+      const modelThresholdMask = sourcePresence * rainThresholdMask
+      const effectiveRain = rain.intensity * rainThresholdMask
+      const glyphVisibility = glyphPattern * rainThresholdMask
+      const modelGlyphMask = glyphPattern * modelThresholdMask
+      const modelOpacity = clamp01(modelGlyphMask)
+      const modelShade = 0.55 + 0.45 * luminance(adjustedSource)
+      const modelCharacters = scaleRgb(
+        normalizedForeground,
+        modelOpacity * modelShade,
+      )
       const dimmedRain = scaleRgb(normalizedRainColor, 0.5 + cellBrightness * 0.5)
-      const tintedRain = mixRgb(normalizedRainColor, dimmedRain, 0.3)
-      let glyphColor = scaleRgb(tintedRain, effectiveRain * glyphVisibility)
+      const tintedRain = adjustSource(
+        mixRgb(normalizedRainColor, dimmedRain, 0.3),
+        settings.brightness,
+        settings.contrast,
+      )
+      let rainOpacity = effectiveRain * glyphVisibility
+      let glyphColor = scaleRgb(tintedRain, rainOpacity)
 
       if (rain.isHead && glyphPattern > 0.5) {
         const headBrightness = 0.7 + edgeStrength * 0.5
-        const headColor = mixRgb(normalizedRainColor, [1, 1, 1], headBrightness)
+        const headColor = adjustSource(
+          mixRgb(normalizedRainColor, [1, 1, 1], headBrightness),
+          settings.brightness,
+          settings.contrast,
+        )
         glyphColor = maxRgb(
           glyphColor,
           scaleRgb(headColor, glyphVisibility * settings.glow),
         )
+        rainOpacity = Math.max(rainOpacity, glyphVisibility * settings.glow)
       }
+      const backgroundRainOpacity = sourcePresence > 0 ? 1 : settings.bgOpacity
+      glyphColor = scaleRgb(glyphColor, backgroundRainOpacity)
+      rainOpacity *= backgroundRainOpacity
 
-      const staticIntensity = 0.2
-        * thresholdedInfluence
-        * (1 - rain.intensity * 0.5)
-        * aboveThreshold
-      const staticGlyph = scaleRgb(
-        normalizedRainColor,
-        staticIntensity * glyphVisibility,
+      const effectOpacity = 1 - (1 - modelOpacity) * (1 - clamp01(rainOpacity))
+      const result = addRgb(
+        scaleRgb(normalizedBackground, 1 - effectOpacity),
+        addRgb(modelCharacters, glyphColor),
       )
-      const result = addRgb(addRgb(background, glyphColor), staticGlyph)
       const outputOffset = (y * width + x) * 3
       data[outputOffset] = clamp01(result[0]) * 255
       data[outputOffset + 1] = clamp01(result[1]) * 255

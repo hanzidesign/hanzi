@@ -7,6 +7,10 @@ import {
   type GrainradEffectId,
   type GrainradSelectOption,
 } from './grainrad-effects'
+import {
+  MATRIX_RAIN_DIRECTION_IDS,
+  type MatrixRainDirection,
+} from './matrix-rain-core'
 
 export const GRAINRAD_EFFECT_SHADER_IDS: Record<GrainradEffectId, number> = {
   ascii: 0,
@@ -160,7 +164,9 @@ const EFFECT_CONTROL_IDS: Record<GrainradEffectId, string[]> = {
     'brightness',
     'contrast',
     'threshold',
+    'foreground',
     'rain-color',
+    'background',
   ],
   dots: [
     'shape',
@@ -203,7 +209,8 @@ const EFFECT_CONTROL_IDS: Record<GrainradEffectId, string[]> = {
     'brightness',
     'contrast',
     'color-mode',
-    'border-color',
+    'foreground',
+    'background',
   ],
   threshold: [
     'levels',
@@ -267,7 +274,7 @@ const EFFECT_CONTROL_IDS: Record<GrainradEffectId, string[]> = {
     'cell-size',
     'edge-width',
     'edge-color',
-    'color-mode',
+    'cell-color-mode',
     'randomize',
     'brightness',
     'contrast',
@@ -317,6 +324,7 @@ const HALFTONE_SHAPE_IDS: Record<string, number> = {
 }
 
 const HALFTONE_COLOR_MODE_IDS: Record<string, number> = {
+  mono: 0,
   bw: 0,
   color: 1,
 }
@@ -334,13 +342,6 @@ const MATRIX_RAIN_CHARACTER_SET_IDS: Record<string, number> = {
   custom: 9,
 }
 
-const MATRIX_RAIN_DIRECTION_IDS: Record<string, number> = {
-  down: 0,
-  up: 1,
-  left: 2,
-  right: 3,
-}
-
 const DOTS_SHAPE_IDS: Record<string, number> = {
   circle: 0,
   square: 1,
@@ -354,6 +355,7 @@ const DOTS_GRID_IDS: Record<string, number> = {
 
 const DOTS_COLOR_MODE_IDS: Record<string, number> = {
   original: 0,
+  mono: 1,
   custom: 1,
 }
 
@@ -364,6 +366,7 @@ const CONTOUR_FILL_MODE_IDS: Record<string, number> = {
 
 const CONTOUR_COLOR_MODE_IDS: Record<string, number> = {
   original: 1,
+  mono: 2,
   custom: 2,
 }
 
@@ -387,10 +390,12 @@ const BLOCKIFY_STYLE_IDS: Record<string, number> = {
 
 const BLOCKIFY_COLOR_MODE_IDS: Record<string, number> = {
   color: 0,
+  mono: 1,
   grayscale: 1,
 }
 
 const THRESHOLD_COLOR_MODE_IDS: Record<string, number> = {
+  mono: 0,
   custom: 0,
   color: 1,
 }
@@ -402,6 +407,7 @@ const EDGE_DETECTION_ALGORITHM_IDS: Record<string, number> = {
 }
 
 const EDGE_DETECTION_COLOR_MODE_IDS: Record<string, number> = {
+  mono: 0,
   custom: 0,
   original: 1,
 }
@@ -413,6 +419,7 @@ const WAVE_LINES_DIRECTION_IDS: Record<string, number> = {
 
 const WAVE_LINES_COLOR_MODE_IDS: Record<string, number> = {
   original: 0,
+  mono: 1,
   custom: 1,
 }
 
@@ -499,7 +506,7 @@ export function compileGrainradEffectRuntime({
       effectValues[4] = read.boolean('invert')
       effectValues[5] = read.number('brightness', 0) / 100
       effectValues[6] = read.number('contrast', 0) / 100
-      effectValues[7] = HALFTONE_COLOR_MODE_IDS[read.text('color-mode', 'bw')] ?? 0
+      effectValues[7] = HALFTONE_COLOR_MODE_IDS[read.text('color-mode', 'mono')] ?? 0
       effectColorA = read.color('foreground', '#ffffff')
       effectColorB = read.color('background', '#000000')
       break
@@ -509,13 +516,22 @@ export function compileGrainradEffectRuntime({
       effectValues[2] = read.number('spacing', 0)
       effectValues[3] = read.number('speed', 1)
       effectValues[4] = read.number('trail-length', 15)
-      effectValues[5] = MATRIX_RAIN_DIRECTION_IDS[read.text('direction', 'down')] ?? 0
+      effectValues[5] = MATRIX_RAIN_DIRECTION_IDS[
+        read.text('direction', 'down') as MatrixRainDirection
+      ] ?? MATRIX_RAIN_DIRECTION_IDS.down
       effectValues[6] = read.number('glow', 1)
-      effectValues[7] = read.number('bg-opacity', 0.3)
+      effectValues[7] = read.number('bg-opacity', 0.5)
       effectValues[8] = read.number('brightness', 0) / 100
       effectValues[9] = read.number('contrast', 0) / 100
       effectValues[10] = read.number('threshold', 0)
       effectColorA = read.color('rain-color', '#00ff00')
+      effectColorB = read.color('foreground', '#ffffff')
+      {
+        const background = read.color('background', '#000000')
+        effectValues[11] = background[0]
+        effectValues[12] = background[1]
+        effectValues[13] = background[2]
+      }
       customGlyphChars = read.text('custom-chars', '')
       customGlyphCount = customGlyphChars.length
       customGlyphHash = hashText(customGlyphChars) / 997
@@ -528,7 +544,7 @@ export function compileGrainradEffectRuntime({
       effectValues[4] = read.boolean('invert')
       effectValues[5] = read.number('brightness', 0) / 100
       effectValues[6] = read.number('contrast', 0) / 100
-      effectValues[7] = DOTS_COLOR_MODE_IDS[read.text('color-mode', 'original')] ?? 0
+      effectValues[7] = DOTS_COLOR_MODE_IDS[read.text('color-mode', 'mono')] ?? 1
       effectColorA = read.color('foreground', '#ffffff')
       effectColorB = read.color('background', '#000000')
       break
@@ -539,7 +555,7 @@ export function compileGrainradEffectRuntime({
       effectValues[3] = read.boolean('invert')
       effectValues[4] = read.number('brightness', 0) / 100
       effectValues[5] = read.number('contrast', 0) / 100
-      effectValues[6] = CONTOUR_COLOR_MODE_IDS[read.text('color-mode', 'original')] ?? 1
+      effectValues[6] = CONTOUR_COLOR_MODE_IDS[read.text('color-mode', 'mono')] ?? 2
       effectColorA = read.color('line-color', '#000000')
       effectColorB = read.color('background', '#ffffff')
       break
@@ -560,8 +576,9 @@ export function compileGrainradEffectRuntime({
       effectValues[2] = read.number('border-width', 1)
       effectValues[3] = read.number('brightness', 0) / 100
       effectValues[4] = read.number('contrast', 0) / 100
-      effectValues[5] = BLOCKIFY_COLOR_MODE_IDS[read.text('color-mode', 'color')] ?? 0
-      effectColorA = read.color('border-color', '#000000')
+      effectValues[5] = BLOCKIFY_COLOR_MODE_IDS[read.text('color-mode', 'mono')] ?? 1
+      effectColorA = read.color('foreground', '#ffffff')
+      effectColorB = read.color('background', '#000000')
       break
     case 'threshold':
       effectValues[0] = read.number('levels', 2)
@@ -570,7 +587,7 @@ export function compileGrainradEffectRuntime({
       effectValues[3] = read.number('brightness', 0) / 100
       effectValues[4] = read.number('contrast', 0) / 100
       effectValues[5] = read.boolean('invert')
-      effectValues[6] = THRESHOLD_COLOR_MODE_IDS[read.text('color-mode', 'custom')] ?? 0
+      effectValues[6] = THRESHOLD_COLOR_MODE_IDS[read.text('color-mode', 'mono')] ?? 0
       effectColorA = read.color('foreground', '#ffffff')
       effectColorB = read.color('background', '#000000')
       break
@@ -581,7 +598,7 @@ export function compileGrainradEffectRuntime({
       effectValues[3] = EDGE_DETECTION_ALGORITHM_IDS[read.text('algorithm', 'sobel')] ?? 0
       effectValues[4] = read.number('brightness', 0) / 100
       effectValues[5] = read.number('contrast', 0) / 100
-      effectValues[6] = EDGE_DETECTION_COLOR_MODE_IDS[read.text('color-mode', 'custom')] ?? 0
+      effectValues[6] = EDGE_DETECTION_COLOR_MODE_IDS[read.text('color-mode', 'mono')] ?? 0
       effectColorA = read.color('edge-color', '#ffffff')
       effectColorB = read.color('background', '#000000')
       break
@@ -605,7 +622,7 @@ export function compileGrainradEffectRuntime({
       effectValues[4] = read.number('line-thickness', 0.4)
       effectValues[5] = read.number('brightness', 0) / 100
       effectValues[6] = read.number('contrast', 0) / 100
-      effectValues[7] = WAVE_LINES_COLOR_MODE_IDS[read.text('color-mode', 'original')] ?? 0
+      effectValues[7] = WAVE_LINES_COLOR_MODE_IDS[read.text('color-mode', 'mono')] ?? 1
       effectValues[8] = read.boolean('animate')
       effectColorA = read.color('line-color', '#ffffff')
       effectColorB = read.color('background', '#000000')
@@ -619,13 +636,13 @@ export function compileGrainradEffectRuntime({
       effectValues[5] = read.number('brightness', 0) / 100
       effectValues[6] = read.number('contrast', 0) / 100
       effectValues[7] = NOISE_FIELD_TYPE_IDS[read.text('noise-type', 'perlin')] ?? 0
-      effectValues[8] = read.boolean('distort-only')
+      effectValues[8] = controls?.['distort-only'] === false ? 0 : 1
       break
     case 'voronoi':
       effectValues[0] = read.number('cell-size', 30)
       effectValues[1] = read.number('edge-width', 0.3)
       effectValues[2] = VORONOI_ENUM_IDS[read.text('edge-color', '0')] ?? 0
-      effectValues[3] = VORONOI_ENUM_IDS[read.text('color-mode', '0')] ?? 0
+      effectValues[3] = VORONOI_ENUM_IDS[read.text('cell-color-mode', '0')] ?? 0
       effectValues[4] = read.number('randomize', 0.8)
       effectValues[5] = read.number('brightness', 0) / 100
       effectValues[6] = read.number('contrast', 0) / 100
@@ -649,7 +666,7 @@ export function compileGrainradEffectRuntime({
   processingValues[5] = read.number('shape-matching', 0)
 
   postValues[0] = read.boolean('bloom')
-  postValues[1] = read.number('grain-intensity', 35) / 100
+  postValues[1] = read.number('grain-intensity', 0) / 100
   postValues[2] = read.number('grain-size', 2) / 10
   postValues[3] = read.number('grain-speed', 50) / 100
   postValues[4] = read.boolean('chromatic')

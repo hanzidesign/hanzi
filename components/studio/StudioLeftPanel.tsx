@@ -1,5 +1,7 @@
 'use client'
 
+import Image from 'next/image'
+import Link from 'next/link'
 import CharacterPanel from '@/components/studio/CharacterPanel'
 import TerminalSection from '@/components/studio/TerminalSection'
 import { TerminalRangeRow } from '@/components/studio/TerminalRows'
@@ -14,7 +16,18 @@ import classes from './StudioShell.module.css'
 export default function StudioLeftPanel() {
   return (
     <>
-      <div className={classes.brandRow}>Hanzi Studio</div>
+      <div className={classes.brandRow}>
+        <Link href="/" className={classes.brandLink}>
+          <Image
+            src="/images/logo.svg"
+            alt=""
+            aria-hidden
+            width={24}
+            height={24}
+          />
+          <span>Hanzi Studio</span>
+        </Link>
+      </div>
       <TerminalSection id="input" title="Input">
         <div className={classes.inputLabel}>Character</div>
         <CharacterPanel />

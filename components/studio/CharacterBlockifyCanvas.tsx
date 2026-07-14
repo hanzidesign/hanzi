@@ -23,6 +23,7 @@ import {
   type ShaderMaterial,
 } from 'three'
 import { useStudioStore } from '@/app/studio/studio-store'
+import { withoutSharedControllerValues } from './grainrad-shared-controls'
 import { computeEffectiveAnimationTime } from '@/components/studio/animation-time'
 import {
   applyBlockifyUniforms,
@@ -172,7 +173,7 @@ function CharacterBlockifyScene({
   }, [material])
 
   useEffect(() => {
-    applyBlockifyUniforms(material, controls)
+applyBlockifyUniforms(material, withoutSharedControllerValues(controls))
   }, [controls, material])
 
   useEffect(() => {

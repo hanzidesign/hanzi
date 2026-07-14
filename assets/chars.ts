@@ -426,6 +426,7 @@ const sc: Chars = {
 
 const meaning: Chars = {
   jp: {
+    2024: 'Gold',
     2023: 'Tax',
     2022: 'Battle',
     2021: 'Gold',
@@ -457,6 +458,7 @@ const meaning: Chars = {
     1995: 'Earthquake',
   },
   int: {
+    2024: 'Change',
     2023: 'Danger',
     2022: 'War',
     2021: 'Pandemic',
@@ -477,6 +479,7 @@ const meaning: Chars = {
     2006: 'Chaos',
   },
   cn: {
+    2024: 'Wisdom',
     2023: 'Revitalization',
     2022: 'Stabilize',
     2021: 'Governance',
@@ -497,6 +500,7 @@ const meaning: Chars = {
     2006: 'Hype',
   },
   tw: {
+    2024: 'Greed',
     2023: 'Shortage',
     2022: 'Rise',
     2021: 'Stay Home',
@@ -515,6 +519,7 @@ const meaning: Chars = {
     2008: 'Chaos',
   },
   cs: {
+    2024: 'Conflict',
     2023: 'Harmony',
     2022: 'Think',
     2021: 'Difficult',
@@ -533,6 +538,7 @@ const meaning: Chars = {
     2008: 'Earthquake',
   },
   aw: {
+    2024: 'Collapse',
     2023: 'Competition',
     2022: 'Blew up',
     2021: 'Stable',
@@ -550,6 +556,7 @@ const meaning: Chars = {
     2009: 'Start',
   },
   my: {
+    2024: 'Rise',
     2023: 'Expensive',
     2022: 'Rise (cost of living)',
     2021: 'Look forward to',
@@ -565,6 +572,7 @@ const meaning: Chars = {
     2011: 'Shift',
   },
   sg: {
+    2024: 'Disaster',
     2023: 'Scam',
     2022: 'Rise (cost of living)',
     2021: 'Look forward to',
@@ -593,6 +601,7 @@ const meaning: Chars = {
     2012: 'Expensive',
   },
   hk: {
+    2024: 'Love',
     2023: 'Boom',
     2022: 'Through',
     2021: 'Pandemic',
@@ -605,6 +614,7 @@ const meaning: Chars = {
     2013: 'Harmony',
   },
   us: {
+    2024: 'Danger',
     2023: 'Birth and growth (Al)',
     2022: 'Gaslighting',
     2021: 'Rise',
@@ -614,6 +624,7 @@ const meaning: Chars = {
     2017: 'Crazy',
   },
   fr: {
+    2024: 'Confusion',
     2022: 'Look forward to',
     2021: 'Torment',
     2020: 'Wiling to give up',

@@ -2,7 +2,7 @@
 
 import { type CSSProperties, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { chars, sortedChars } from '@/assets/chars'
+import { chars, meaning, sortedChars } from '@/assets/chars'
 import { countries } from '@/assets/list'
 import {
   getCharacterDisplayState,
@@ -21,6 +21,7 @@ export default function CharacterPanel() {
   const setCharacter = useStudioStore((store) => store.setCharacter)
   const { country, year, isTc } = character
   const { ch } = getCharacterDisplayState(character)
+  const characterMeaning = meaning[country]?.[year]
   const list = isTc ? sortedChars.tc : sortedChars.sc
 
   useEffect(() => {
@@ -151,7 +152,10 @@ export default function CharacterPanel() {
           setOpen(!open)
         }}
       >
-        <span className={classes.characterTriggerGlyph}>{ch}</span>
+        <span className={classes.characterTriggerValue}>
+          <span className={classes.characterTriggerGlyph}>{ch}</span>
+          <span className={classes.characterTriggerMeaning}>{characterMeaning}</span>
+        </span>
         <span className={classes.characterTriggerChevron} aria-hidden>
           {open ? '−' : '+'}
         </span>

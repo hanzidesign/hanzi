@@ -49,10 +49,7 @@ export function TerminalRowGroup({
   return (
     <div className={classes.rowGroup}>
       {title ? (
-        <h3 className={classes.groupTitle}>
-          <span className={classes.groupChevron} aria-hidden>⌄</span>
-          {title}
-        </h3>
+        <h3 className={classes.groupTitle}>{title}</h3>
       ) : null}
       {children}
     </div>
@@ -117,14 +114,16 @@ export function TerminalSelectRow<T extends string>({
   value,
   options,
   onChange,
+  onReset,
 }: {
   label: string
   value: T
   options: Array<TerminalSelectOption<T>>
   onChange: (value: T) => void
+  onReset?: () => void
 }) {
   return (
-    <TerminalRowShell label={label} value="" >
+    <TerminalRowShell label={label} value="" onReset={onReset}>
       <select
         aria-label={label}
         className={classes.selectInput}
@@ -146,11 +145,13 @@ export function TerminalDropdownRow<T extends string>({
   value,
   options,
   onChange,
+  onReset,
 }: {
   label: string
   value: T
   options: Array<TerminalSelectOption<T>>
   onChange: (value: T) => void
+  onReset?: () => void
 }) {
   const [open, setOpen] = useState(false)
   const rootRef = useRef<HTMLDivElement>(null)
@@ -182,7 +183,7 @@ export function TerminalDropdownRow<T extends string>({
   }, [open])
 
   return (
-    <TerminalRowShell label={label} value="" >
+    <TerminalRowShell label={label} value="" onReset={onReset}>
       <div ref={rootRef} className={classes.dropdownControl}>
         <button
           type="button"
@@ -226,13 +227,15 @@ export function TerminalColorRow({
   label,
   value,
   onChange,
+  onReset,
 }: {
   label: string
   value: string
   onChange: (value: string) => void
+  onReset?: () => void
 }) {
   return (
-    <TerminalRowShell label={label} value="" >
+    <TerminalRowShell label={label} value="" onReset={onReset}>
       <div className={classes.colorControl}>
         <input
           aria-label={`${label} color`}

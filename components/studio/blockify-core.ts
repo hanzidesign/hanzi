@@ -1,6 +1,6 @@
 export type BlockifyRgb = readonly [number, number, number]
 export type BlockifyStyle = 'full' | 'shaded' | 'outline'
-export type BlockifyColorMode = 'color' | 'grayscale'
+export type BlockifyColorMode = 'color' | 'mono'
 
 export type BlockifySettings = Readonly<{
   style: BlockifyStyle
@@ -9,7 +9,8 @@ export type BlockifySettings = Readonly<{
   brightness: number
   contrast: number
   colorMode: BlockifyColorMode
-  borderColor: BlockifyRgb
+  foreground: BlockifyRgb
+  background: BlockifyRgb
 }>
 
 export type BlockifyReferenceInput = Readonly<{
@@ -32,8 +33,9 @@ export const DEFAULT_BLOCKIFY_SETTINGS: BlockifySettings = {
   borderWidth: 1,
   brightness: 0,
   contrast: 0,
-  colorMode: 'color',
-  borderColor: [0, 0, 0],
+  colorMode: 'mono',
+  foreground: [255, 255, 255],
+  background: [0, 0, 0],
 }
 
 /**
@@ -88,7 +90,8 @@ export function renderBlockifyReference({
   assertInput(rgb, width, height, settings)
 
   const data = new Uint8ClampedArray(width * height * 3)
-  const borderColor = normalizeRgb(settings.borderColor)
+  const foreground = normalizeRgb(settings.foreground)
+  const background = normalizeRgb(settings.background)
 
   for (let y = 0; y < height; y += 1) {
     for (let x = 0; x < width; x += 1) {
@@ -106,12 +109,12 @@ export function renderBlockifyReference({
         blockCenterY / height,
       )
       const adjusted = adjustSource(sampled, settings.brightness, settings.contrast)
-      const baseColor = settings.colorMode === 'grayscale'
-        ? grayscale(adjusted)
+      const baseColor = settings.colorMode === 'mono'
+        ? paletteColor(adjusted, foreground, background)
         : adjusted
       const localX = pixelX - blockX * settings.blockSize
       const localY = pixelY - blockY * settings.blockSize
-      const color = applyStyle(baseColor, localX, localY, borderColor, settings)
+      const color = applyStyle(baseColor, localX, localY, background, settings)
       const offset = (y * width + x) * 3
 
       data[offset] = clamp01(color[0]) * 255
@@ -127,7 +130,7 @@ function applyStyle(
   color: BlockifyRgb,
   localX: number,
   localY: number,
-  borderColor: BlockifyRgb,
+  background: BlockifyRgb,
   settings: BlockifySettings,
 ): BlockifyRgb {
   if (settings.style === 'outline') {
@@ -136,7 +139,7 @@ function applyStyle(
       localY,
       settings.blockSize,
       settings.borderWidth,
-    ) ? borderColor : color
+    ) ? color : background
   }
 
   if (settings.style === 'shaded') {
@@ -160,9 +163,17 @@ function adjustSource(source: BlockifyRgb, brightness: number, contrast: number)
   return [adjust(source[0]), adjust(source[1]), adjust(source[2])]
 }
 
-function grayscale(color: BlockifyRgb): BlockifyRgb {
+function paletteColor(
+  color: BlockifyRgb,
+  foreground: BlockifyRgb,
+  background: BlockifyRgb,
+): BlockifyRgb {
   const luminance = color[0] * 0.299 + color[1] * 0.587 + color[2] * 0.114
-  return [luminance, luminance, luminance]
+  return [
+    mix(background[0], foreground[0], luminance),
+    mix(background[1], foreground[1], luminance),
+    mix(background[2], foreground[2], luminance),
+  ]
 }
 
 function sampleTexel(
@@ -197,8 +208,8 @@ function assertSettings(settings: BlockifySettings) {
   if (!(['full', 'shaded', 'outline'] as const).includes(settings.style)) {
     throw new RangeError('Blockify style must be full, shaded, or outline')
   }
-  if (!(['color', 'grayscale'] as const).includes(settings.colorMode)) {
-    throw new RangeError('Blockify color mode must be color or grayscale')
+  if (!(['color', 'mono'] as const).includes(settings.colorMode)) {
+    throw new RangeError('Blockify color mode must be color or mono')
   }
   assertRange('blockSize', settings.blockSize, 4, 20)
   if (!Number.isInteger(settings.blockSize)) {
@@ -210,7 +221,8 @@ function assertSettings(settings: BlockifySettings) {
   }
   assertRange('brightness', settings.brightness, -100, 100)
   assertRange('contrast', settings.contrast, -100, 100)
-  assertColor('borderColor', settings.borderColor)
+  assertColor('foreground', settings.foreground)
+  assertColor('background', settings.background)
 }
 
 function assertRange(name: string, value: number, min: number, max: number) {

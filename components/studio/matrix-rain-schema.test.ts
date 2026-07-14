@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import {
   createDefaultGrainradEffectControls,
+  getGrainradControlDefaultValue,
   getGrainradEffectById,
   isGrainradControlVisible,
 } from './grainrad-effects'
@@ -32,7 +33,7 @@ describe('Grainrad Matrix Rain schema', () => {
       'brightness',
       'contrast',
       'threshold',
-      'rain-color',
+      'foreground', 'rain-color', 'background',
     ])
   })
 
@@ -76,12 +77,24 @@ describe('Grainrad Matrix Rain schema', () => {
         { value: 'right', label: 'Right' },
       ],
     })
-    expect(controls.glow).toMatchObject({ defaultValue: 1, min: 0, max: 2, step: 0.1 })
-    expect(controls['bg-opacity']).toMatchObject({ defaultValue: 0.3, min: 0, max: 1, step: 0.05 })
+    expect(controls.glow).toMatchObject({ defaultValue: 1, min: 0, max: 4, step: 0.1 })
+    expect(controls['bg-opacity']).toMatchObject({
+      label: 'Rain Opacity',
+      defaultValue: 0.5,
+      min: 0,
+      max: 1,
+      step: 0.05,
+    })
     expect(controls.brightness).toMatchObject({ defaultValue: 0, min: -100, max: 100, step: 1 })
     expect(controls.contrast).toMatchObject({ defaultValue: 0, min: -100, max: 100, step: 1 })
     expect(controls.threshold).toMatchObject({ defaultValue: 0, min: 0, max: 0.5, step: 0.01 })
+    expect(controls.foreground).toMatchObject({ kind: 'color', label: 'Foreground', defaultValue: '#ffffff' })
+    expect(getGrainradControlDefaultValue(controls.foreground, 'light')).toBe('#15c15d')
+    expect(getGrainradControlDefaultValue(controls.foreground, 'dark')).toBe('#f4f1e8')
     expect(controls['rain-color']).toMatchObject({ kind: 'color', defaultValue: '#00ff00' })
+    expect(controls.background).toMatchObject({ kind: 'color', label: 'Background', defaultValue: '#000000' })
+    expect(getGrainradControlDefaultValue(controls.background, 'dark')).toBe('#000000')
+    expect(getGrainradControlDefaultValue(controls.background, 'light')).toBe('#f4f1e8')
     expect(controls.density).toBeUndefined()
   })
 

@@ -17,13 +17,14 @@ import {
   Group,
   Mesh,
   MeshStandardMaterial,
+  PerspectiveCamera,
   Scene,
   Vector2,
   WebGLRenderTarget,
   type ShaderMaterial,
 } from 'three'
 import { useStudioStore } from '@/app/studio/studio-store'
-import { computeEffectiveAnimationTime } from '@/components/studio/animation-time'
+import { withoutSharedControllerValues } from './grainrad-shared-controls'
 import {
   createCharacterMeshGeometries,
   type CharacterMeshGeometryResult,
@@ -90,7 +91,7 @@ function CharacterContourScene({
   svgData: string
   svgLoadError: string | null
 }) {
-  const { camera, gl, size } = useThree()
+  const { gl, size } = useThree()
   const meshSettings = useStudioStore((store) => store.mesh)
   const animation = useStudioStore((store) => store.animation)
   const controls = useStudioStore((store) => store.grainradEffect.controls.contour)
@@ -172,7 +173,7 @@ function CharacterContourScene({
   }, [material])
 
   useEffect(() => {
-    applyContourUniforms(material, controls)
+    applyContourUniforms(material, withoutSharedControllerValues(controls))
   }, [controls, material])
 
   useEffect(() => {
@@ -190,7 +191,7 @@ function CharacterContourScene({
     source.group.scale.setScalar(meshSettings.scale)
   }, [geometryResult, meshSettings.position, meshSettings.rotation, meshSettings.scale])
 
-  useFrame(({ clock }, delta) => {
+  useFrame((_, delta) => {
     const source = sourceRef.current
     if (!source) {
       return
@@ -211,23 +212,19 @@ function CharacterContourScene({
     if (renderTarget.width !== width || renderTarget.height !== height) {
       renderTarget.setSize(width, height)
     }
+    source.camera.aspect = width / height
+    source.camera.updateProjectionMatrix()
 
     const previousTarget = gl.getRenderTarget()
     gl.setRenderTarget(renderTarget)
     gl.clear()
-    gl.render(source.scene, camera)
+    gl.render(source.scene, source.camera)
     gl.setRenderTarget(previousTarget)
 
     const activeMaterial = materialRef.current
     if (activeMaterial) {
       activeMaterial.uniforms.u_sourceSize.value.set(width, height)
       activeMaterial.uniforms.u_resolution.value.set(width, height)
-      activeMaterial.uniforms.u_time.value = computeEffectiveAnimationTime({
-        elapsedSeconds: clock.getElapsedTime(),
-        speed: animation.playing ? animation.speed : 0,
-        timeOffset: animation.timeOffset,
-        playing: animation.playing,
-      })
     }
   }, -1)
 
@@ -243,6 +240,7 @@ function CharacterContourScene({
 }
 
 type ContourSourceScene = {
+  camera: PerspectiveCamera
   scene: Scene
   group: Group
   dispose: () => void
@@ -252,17 +250,19 @@ function createContourSourceScene(
   geometryResult: CharacterMeshGeometryResult,
 ): ContourSourceScene {
   const scene = new Scene()
+  const camera = new PerspectiveCamera(50, 1, 0.1, 1000)
+  camera.position.set(0, 0, 5)
   const group = new Group()
   const material = new MeshStandardMaterial({
     color: new Color('#ffffff'),
     roughness: 0.72,
     metalness: 0.05,
   })
-  const directional = new DirectionalLight('#ffffff', 1.4)
-  directional.position.set(2, 3, 4)
+  const directional = new DirectionalLight('#ffffff', 1)
+  directional.position.set(5, 5, 5)
 
   scene.background = new Color('#000000')
-  scene.add(new AmbientLight('#ffffff', 0.85), directional)
+  scene.add(new AmbientLight('#ffffff', 0.6), directional)
 
   for (const geometry of geometryResult.geometries) {
     group.add(new Mesh(geometry, material))
@@ -270,6 +270,7 @@ function createContourSourceScene(
   scene.add(group)
 
   return {
+    camera,
     scene,
     group,
     dispose: () => material.dispose(),

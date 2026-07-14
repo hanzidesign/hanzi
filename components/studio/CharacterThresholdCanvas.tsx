@@ -23,6 +23,7 @@ import {
   type ShaderMaterial,
 } from 'three'
 import { useStudioStore } from '@/app/studio/studio-store'
+import { withoutSharedControllerValues } from './grainrad-shared-controls'
 import { computeEffectiveAnimationTime } from '@/components/studio/animation-time'
 import {
   applyThresholdUniforms,
@@ -172,7 +173,7 @@ function CharacterThresholdScene({
   }, [material])
 
   useEffect(() => {
-    applyThresholdUniforms(material, controls)
+applyThresholdUniforms(material, withoutSharedControllerValues(controls))
   }, [controls, material])
 
   useEffect(() => {

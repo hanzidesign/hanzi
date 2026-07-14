@@ -14,7 +14,7 @@ describe('Wave Lines CPU reference', () => {
       animate: true,
       background: [0, 0, 0],
       brightness: 0,
-      colorMode: 'original',
+      colorMode: 'mono',
       contrast: 0,
       direction: 'horizontal',
       frequency: 1,
@@ -83,7 +83,7 @@ describe('Wave Lines CPU reference', () => {
     }))
   })
 
-  it('returns adjusted Original or grayscale Mono on lines, raw Background outside, and never Line Color', () => {
+  it('returns adjusted Original or Line Color in Mono, with raw Background outside', () => {
     const settings = {
       amplitude: 5,
       animate: true,
@@ -108,8 +108,8 @@ describe('Wave Lines CPU reference', () => {
     }, -Math.PI)
 
     expect(original).toEqual([255, 0, 0])
-    expect(mono).toEqual([76, 76, 76])
-    expect(changedLineColor).toEqual(mono)
+    expect(mono).toEqual([1, 2, 3])
+    expect(changedLineColor).toEqual([240, 230, 220])
     expect(outside).toEqual(settings.background)
   })
 
@@ -147,7 +147,7 @@ describe('Wave Lines CPU reference', () => {
     expect(() => render({ settings: { contrast: 101 } })).toThrow('between -100 and 100')
     expect(() => render({ settings: { direction: 'diagonal' as 'horizontal' } })).toThrow('direction')
     expect(() => render({ settings: { animate: 1 as unknown as boolean } })).toThrow('boolean')
-    expect(() => render({ settings: { colorMode: 'mono' as 'custom' } })).toThrow('colorMode')
+    expect(() => render({ settings: { colorMode: 'grayscale' as 'custom' } })).toThrow('colorMode')
     expect(() => render({ settings: { lineColor: [0, 0, 256] } })).toThrow('color channel')
     expect(() => traceWaveLinesAt(makeInput(), -1, 0)).toThrow('in-bounds')
   })
@@ -216,9 +216,8 @@ describe('Wave Lines CPU reference', () => {
     const phaseNodeLarge = renderPixel([180, 180, 180], common, -Math.PI)
     expect(phaseNodeLarge).toEqual(phaseNodeSmall)
 
-    const grayOriginal = renderPixel([180, 180, 180], { ...common, colorMode: 'original' }, -Math.PI)
     const grayMono = renderPixel([180, 180, 180], { ...common, colorMode: 'custom' }, -Math.PI)
-    expect(grayMono).toEqual(grayOriginal)
+    expect(grayMono).toEqual(DEFAULT_WAVE_LINES_SETTINGS.lineColor)
 
     const square = solidRgb(20, 20, [180, 180, 180])
     expect(render({ height: 20, rgb: square, settings: { ...common, direction: 'horizontal' }, width: 20 }).data)

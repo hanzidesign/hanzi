@@ -9,6 +9,7 @@ import {
   sampleMatrixGlyphMask,
   selectMatrixGlyphIndex,
   type MatrixGlyphMask,
+  type MatrixRgb,
   type MatrixRainDirection,
   type MatrixRainSettings,
 } from './matrix-rain-core'
@@ -35,7 +36,7 @@ describe('Matrix Rain deterministic equations', () => {
   it('uses exactly three seeded drops with Grainrad speed, phase, length, and square falloff', () => {
     expect(getMatrixRainIntensity({
       columnIndex: 1,
-      direction: 'down',
+      direction: 'up',
       rowPosition: 0.03,
       speed: 1.2,
       time: 0,
@@ -47,11 +48,11 @@ describe('Matrix Rain deterministic equations', () => {
   })
 
   it.each([
-    ['down', 0.404_769_868_036_380_04],
-    ['up', 0.195_923_386_852_061_15],
-    ['left', 0.195_923_386_852_061_15],
-    ['right', 0.404_769_868_036_380_04],
-  ] as const)('wraps %s trail distance in its Grainrad direction', (direction, intensity) => {
+    ['down', 0.195_923_386_852_061_15],
+    ['up', 0.404_769_868_036_380_04],
+    ['left', 0.404_769_868_036_380_04],
+    ['right', 0.195_923_386_852_061_15],
+  ] as const)('wraps %s trail distance toward its selected destination', (direction, intensity) => {
     expect(getMatrixRainIntensity({
       columnIndex: 2,
       direction,
@@ -67,7 +68,7 @@ describe('Matrix Rain deterministic equations', () => {
 
     expect(getMatrixRainIntensity({
       columnIndex: 2,
-      direction: 'down',
+      direction: 'up',
       rowPosition: phase - 0.019,
       speed: 0,
       time: 0,
@@ -75,7 +76,7 @@ describe('Matrix Rain deterministic equations', () => {
     }).isHead).toBe(true)
     expect(getMatrixRainIntensity({
       columnIndex: 2,
-      direction: 'down',
+      direction: 'up',
       rowPosition: phase - 0.021,
       speed: 0,
       time: 0,
@@ -110,6 +111,10 @@ describe('Matrix Rain deterministic equations', () => {
 })
 
 describe('Matrix Rain CPU reference', () => {
+  it('uses the visible Rain Opacity default', () => {
+    expect(DEFAULT_MATRIX_RAIN_SETTINGS.bgOpacity).toBe(0.5)
+  })
+
   it('returns opaque RGB output and rejects malformed source or glyph data', () => {
     const output = render({ width: 4, height: 4 })
     expect(output).toMatchObject({ channels: 3, width: 4, height: 4 })
@@ -128,42 +133,86 @@ describe('Matrix Rain CPU reference', () => {
     )
   })
 
-  it('uses the raw source for cell activation, threshold, edge strength, and tint', () => {
-    const base = render({
-      rgb: solidRgb(8, 8, [96, 96, 96]),
-      settings: { threshold: 0.3, bgOpacity: 0 },
-    }).data
-    const adjusted = render({
-      rgb: solidRgb(8, 8, [96, 96, 96]),
-      settings: { brightness: -100, contrast: 100, threshold: 0.3, bgOpacity: 0 },
+  it('uses the configured Background color wherever no model or rain glyph is present', () => {
+    const black = render({ glyphs: [EMPTY_GLYPH] }).data
+    const light = render({
+      glyphs: [EMPTY_GLYPH],
+      settings: { background: [244, 241, 232] },
     }).data
 
-    expect(adjusted).toEqual(base)
+    expect(sum(black)).toBe(0)
+    expect(pixelAt(light, 8, 4, 4)).toEqual([244, 241, 232])
   })
 
-  it('uses adjusted source only for the faint background hint', () => {
-    const dark = pixelAt(render({
-      glyphs: [EMPTY_GLYPH],
-      rgb: solidRgb(8, 8, [128, 64, 32]),
+  it('keeps Foreground model glyphs and background rain visible on a light Background', () => {
+    const lightBackground: MatrixRgb = [255, 255, 255]
+    const model = render({
+      rgb: solidRgb(8, 8, [32, 32, 32]),
+      settings: {
+        background: lightBackground,
+        foreground: [16, 16, 16],
+        rainColor: [0, 0, 0],
+      },
+    }).data
+    const rain = render({
+      rgb: solidRgb(8, 8, [0, 0, 0]),
+      settings: {
+        background: lightBackground,
+        bgOpacity: 1,
+        rainColor: [0, 122, 51],
+      },
+    }).data
+
+    expect(maxPixelDistanceFrom(model, lightBackground)).toBeGreaterThan(128)
+    expect(maxPixelDistanceFrom(rain, lightBackground)).toBeGreaterThan(48)
+  })
+
+  it('applies Brightness, Contrast, and Threshold to background rain', () => {
+    const base = render({
+      rgb: solidRgb(8, 8, [0, 0, 0]),
       settings: { bgOpacity: 1 },
+    }).data
+    const brighter = render({
+      rgb: solidRgb(8, 8, [0, 0, 0]),
+      settings: { bgOpacity: 1, brightness: 35 },
+    }).data
+    const contrasted = render({
+      rgb: solidRgb(8, 8, [0, 0, 0]),
+      settings: { bgOpacity: 1, contrast: 65 },
+    }).data
+    const thresholded = render({
+      rgb: solidRgb(8, 8, [0, 0, 0]),
+      settings: { bgOpacity: 1, threshold: 0.01 },
+    }).data
+
+    expect(sum(base)).toBeGreaterThan(0)
+    expect(brighter).not.toEqual(base)
+    expect(contrasted).not.toEqual(base)
+    expect(sum(thresholded)).toBe(0)
+  })
+
+  it('uses adjusted source only inside the model glyph mask', () => {
+    const dark = pixelAt(render({
+      rgb: solidRgb(8, 8, [128, 64, 32]),
+      settings: { bgOpacity: 1, foreground: [255, 0, 0], rainColor: [0, 0, 0] },
     }).data, 8, 4, 4)
     const bright = pixelAt(render({
-      glyphs: [EMPTY_GLYPH],
       rgb: solidRgb(8, 8, [128, 64, 32]),
-      settings: { bgOpacity: 1, brightness: 25 },
+      settings: { bgOpacity: 1, brightness: 25, foreground: [255, 0, 0], rainColor: [0, 0, 0] },
     }).data, 8, 4, 4)
-    const contrast = pixelAt(render({
+    const empty = pixelAt(render({
       glyphs: [EMPTY_GLYPH],
       rgb: solidRgb(8, 8, [128, 64, 32]),
-      settings: { bgOpacity: 1, contrast: 100 },
+      settings: { bgOpacity: 1, foreground: [255, 0, 0], rainColor: [0, 0, 0] },
     }).data, 8, 4, 4)
 
-    expect(dark).toEqual([13, 6, 3])
-    expect(bright).toEqual([19, 13, 10])
-    expect(contrast).not.toEqual(dark)
+    expect(dark[0]).toBeGreaterThan(0)
+    expect(dark.slice(1)).toEqual([0, 0])
+    expect(bright[0]).toBeGreaterThan(dark[0])
+    expect(empty).toEqual([0, 0, 0])
   })
 
-  it('treats threshold as inclusive raw Rec.601 cell-center luminance', () => {
+  it('keeps background rain at threshold zero while source threshold remains inclusive', () => {
     const redLuminance = 0.299
     const atThreshold = render({
       rgb: solidRgb(8, 8, [255, 0, 0]),
@@ -175,12 +224,18 @@ describe('Matrix Rain CPU reference', () => {
     }).data
     const blackAtZero = render({
       rgb: solidRgb(8, 8, [0, 0, 0]),
-      settings: { threshold: 0, bgOpacity: 0 },
+      settings: { threshold: 0, bgOpacity: 1 },
     }).data
 
     expect(sum(atThreshold)).toBeGreaterThan(0)
     expect(sum(aboveThreshold)).toBe(0)
+    const blackWithOtherForeground = render({
+      rgb: solidRgb(8, 8, [0, 0, 0]),
+      settings: { threshold: 0, bgOpacity: 1, foreground: [255, 0, 255] },
+    }).data
+
     expect(sum(blackAtZero)).toBeGreaterThan(0)
+    expect(blackWithOtherForeground).toEqual(blackAtZero)
   })
 
   it('keeps cell period at cellSize * (1 + spacing) and margin at .05 + spacing * .15', () => {
@@ -243,21 +298,40 @@ describe('Matrix Rain CPU reference', () => {
     expect(noHeadGlow).toEqual(noHead)
   })
 
-  it('uses BG Opacity only as adjusted source * opacity * .1 while keeping RGB output opaque', () => {
-    const hidden = render({ glyphs: [EMPTY_GLYPH], settings: { bgOpacity: 0 } }).data
-    const visible = render({ glyphs: [EMPTY_GLYPH], settings: { bgOpacity: 1 } }).data
-    expect(sum(hidden)).toBe(0)
-    expect(sum(visible)).toBeGreaterThan(0)
+  it('uses BG Opacity only for background rain, not Foreground model glyphs', () => {
+    const modelAtZero = render({
+      rgb: solidRgb(8, 8, [192, 192, 192]),
+      settings: { bgOpacity: 0, foreground: [255, 0, 0], rainColor: [0, 0, 0] },
+    }).data
+    const modelAtFull = render({
+      rgb: solidRgb(8, 8, [192, 192, 192]),
+      settings: { bgOpacity: 1, foreground: [255, 0, 0], rainColor: [0, 0, 0] },
+    }).data
+    const backgroundAtZero = render({
+      rgb: solidRgb(8, 8, [0, 0, 0]),
+      settings: { bgOpacity: 0 },
+    }).data
+    const backgroundAtFull = render({
+      rgb: solidRgb(8, 8, [0, 0, 0]),
+      settings: { bgOpacity: 1 },
+    }).data
+
+    expect(sum(modelAtZero)).toBeGreaterThan(0)
+    expect(modelAtFull).toEqual(modelAtZero)
+    expect(sum(backgroundAtZero)).toBe(0)
+    expect(sum(backgroundAtFull)).toBeGreaterThan(0)
   })
 
-  it('composes rain, edge/static reveal, head, and background with the configured Rain Color', () => {
+  it('keeps Foreground model glyphs independent from animated Rain Color glyphs', () => {
     const source = edgeRgb(8, 8)
-    const green = render({ rgb: source, settings: { rainColor: [0, 255, 0], bgOpacity: 0 } }).data
-    const magenta = render({ rgb: source, settings: { rainColor: [255, 0, 255], bgOpacity: 0 } }).data
+    const green = render({ rgb: source, settings: { foreground: [255, 0, 0], rainColor: [0, 255, 0] } }).data
+    const magenta = render({ rgb: source, settings: { foreground: [255, 0, 0], rainColor: [255, 0, 255] } }).data
+    const cyanForeground = render({ rgb: source, settings: { foreground: [0, 255, 255], rainColor: [0, 255, 0] } }).data
     const empty = render({ glyphs: [EMPTY_GLYPH], rgb: source, settings: { bgOpacity: 0 } }).data
 
     expect(sum(green)).toBeGreaterThan(0)
     expect(magenta).not.toEqual(green)
+    expect(cyanForeground).not.toEqual(green)
     expect(sum(empty)).toBe(0)
   })
 
@@ -294,11 +368,12 @@ describe('Matrix Rain CPU reference', () => {
       { trailLength: 30 },
       { direction: 'left' },
       { glow: 0 },
-      { bgOpacity: 1 },
       { brightness: 35 },
       { contrast: 65 },
       { threshold: 0.5 },
+      { foreground: [255, 45, 120] },
       { rainColor: [255, 45, 120] },
+      { background: [244, 241, 232] },
     ]
 
     for (const settings of variants) {
@@ -387,4 +462,19 @@ function pixelAt(data: Uint8ClampedArray, width: number, x: number, y: number) {
 
 function sum(data: Uint8ClampedArray) {
   return data.reduce((total, value) => total + value, 0)
+}
+
+function maxPixelDistanceFrom(data: Uint8ClampedArray, color: MatrixRgb) {
+  let maximum = 0
+
+  for (let index = 0; index < data.length; index += 3) {
+    maximum = Math.max(
+      maximum,
+      Math.abs(data[index] - color[0]),
+      Math.abs(data[index + 1] - color[1]),
+      Math.abs(data[index + 2] - color[2]),
+    )
+  }
+
+  return maximum
 }

@@ -38,7 +38,7 @@ function createMemoryStorage(initialValue?: string) {
 }
 
 describe('Phase 5D Grainrad terminal Studio store', () => {
-  it('keeps all 22 Effect color settings independent across light and dark themes', () => {
+  it('keeps all 25 Effect color settings independent across dark and light themes', () => {
     const { storage } = createMemoryStorage()
     const store = createStudioStore(storage)
     const colorControls = GRAINRAD_EFFECTS.flatMap((effect) =>
@@ -51,7 +51,7 @@ describe('Phase 5D Grainrad terminal Studio store', () => {
     const lightColors = new Map<string, string>()
     const darkColors = new Map<string, string>()
 
-    expect(colorControls).toHaveLength(22)
+    expect(colorControls).toHaveLength(25)
 
     colorControls.forEach(({ effectId, control }, index) => {
       const value = control.kind === 'select'
@@ -67,7 +67,7 @@ describe('Phase 5D Grainrad terminal Studio store', () => {
 
     colorControls.forEach(({ effectId, control }) => {
       expect(store.getState().grainradEffect.controls[effectId][control.id]).toBe(
-        control.defaultValueByTheme.dark,
+        control.defaultValueByTheme.light,
       )
     })
 
@@ -106,25 +106,25 @@ describe('Phase 5D Grainrad terminal Studio store', () => {
     store.getState().setGrainradEffectControl('ascii', 'scale', 9)
     store.getState().toggleStudioTheme()
 
-    expect(store.getState().view.theme).toBe('dark')
+    expect(store.getState().view.theme).toBe('light')
     expect(store.getState().grainradEffect.controls.ascii).toMatchObject({
-      foreground: '#f4f1e8',
-      background: '#101010',
+      foreground: '#101010',
+      background: '#f4f1e8',
       scale: 9,
     })
     expect(store.getState().ascii).toMatchObject({
-      foregroundColor: '#f4f1e8',
-      backgroundColor: '#101010',
+      foregroundColor: '#101010',
+      backgroundColor: '#f4f1e8',
     })
 
     store.getState().setGrainradEffectControl('ascii', 'foreground', '#abcdef')
     store.getState().setGrainradEffectControl('ascii', 'background', '#010203')
     store.getState().toggleStudioTheme()
 
-    expect(store.getState().view.theme).toBe('light')
+    expect(store.getState().view.theme).toBe('dark')
     expect(store.getState().grainradEffect.controls.ascii).toMatchObject({
       foreground: '#123456',
-      background: '#f4f1e8',
+      background: '#101010',
       scale: 9,
     })
 
@@ -146,7 +146,7 @@ describe('Phase 5D Grainrad terminal Studio store', () => {
     store.getState().setGrainradEffectControl('ascii', 'foreground', '#abcdef')
     store.getState().resetSelectedEffectControls()
 
-    expect(store.getState().grainradEffect.controls.ascii.foreground).toBe('#f4f1e8')
+    expect(store.getState().grainradEffect.controls.ascii.foreground).toBe('#101010')
 
     store.getState().toggleStudioTheme()
 
@@ -163,7 +163,7 @@ describe('Phase 5D Grainrad terminal Studio store', () => {
 
     const reloadedStore = createStudioStore(storage)
 
-    expect(reloadedStore.getState().view.theme).toBe('dark')
+    expect(reloadedStore.getState().view.theme).toBe('light')
     expect(reloadedStore.getState().grainradEffect.controls.crosshatch['line-color']).toBe('#ddeeff')
 
     reloadedStore.getState().toggleStudioTheme()
@@ -202,12 +202,158 @@ describe('Phase 5D Grainrad terminal Studio store', () => {
     })
   })
 
-  it('starts with an effect-scoped storage key and light Studio theme', () => {
+  it('migrates corrected Matrix, Blockify, and Noise Field roles from version 3', () => {
+    const base = createInitialStudioStoreState()
+    const legacyMatrixControls = Object.fromEntries(
+      Object.entries(base.grainradEffect.controls['matrix-rain'])
+        .filter(([controlId]) => controlId !== 'foreground'),
+    )
+    const legacyBlockifyControls = Object.fromEntries(
+      Object.entries(base.grainradEffect.controls.blockify)
+        .filter(([controlId]) => controlId !== 'foreground' && controlId !== 'background'),
+    )
+    const makeLegacyThemeColors = (theme: 'light' | 'dark') => {
+      const themeColors = base.grainradEffect.colorControlsByTheme[theme]
+      const matrixRain = Object.fromEntries(
+        Object.entries(themeColors['matrix-rain'])
+          .filter(([controlId]) => controlId !== 'foreground'),
+      )
+      const blockify = Object.fromEntries(
+        Object.entries(themeColors.blockify)
+          .filter(([controlId]) => controlId !== 'foreground' && controlId !== 'background'),
+      )
+
+      return {
+        ...themeColors,
+        'matrix-rain': {
+          ...matrixRain,
+          'model-color': theme === 'light' ? '#111111' : '#222222',
+        },
+        blockify: {
+          ...blockify,
+          'border-color': theme === 'light' ? '#333333' : '#444444',
+        },
+      }
+    }
+    const legacyState = {
+      ...base,
+      grainradEffect: {
+        ...base.grainradEffect,
+        controls: {
+          ...base.grainradEffect.controls,
+          'matrix-rain': { ...legacyMatrixControls, 'model-color': '#222222' },
+          blockify: { ...legacyBlockifyControls, 'border-color': '#444444' },
+          'noise-field': {
+            ...base.grainradEffect.controls['noise-field'],
+            'distort-only': false,
+          },
+        },
+        colorControlsByTheme: {
+          light: makeLegacyThemeColors('light'),
+          dark: makeLegacyThemeColors('dark'),
+        },
+      },
+    }
+    const { storage } = createMemoryStorage(JSON.stringify({ state: legacyState, version: 3 }))
+    const store = createStudioStore(storage)
+
+    expect(store.getState().grainradEffect.controls['matrix-rain'].foreground).toBe('#222222')
+    expect(store.getState().grainradEffect.controls.blockify.foreground).toBe('#444444')
+    expect(store.getState().grainradEffect.controls.blockify.background).toBe('#101010')
+    expect(store.getState().grainradEffect.controls['noise-field']['distort-only']).toBe(true)
+
+    store.getState().toggleStudioTheme()
+    expect(store.getState().grainradEffect.controls['matrix-rain'].foreground).toBe('#111111')
+    expect(store.getState().grainradEffect.controls.blockify.foreground).toBe('#333333')
+    expect(store.getState().grainradEffect.controls.blockify.background).toBe('#f4f1e8')
+  })
+
+  it('migrates the former Matrix Brightness Map default to the neutral value', () => {
+    const base = createInitialStudioStoreState()
+    const persistedState = {
+      ...base,
+      grainradEffect: {
+        ...base.grainradEffect,
+        controls: {
+          ...base.grainradEffect.controls,
+          'matrix-rain': {
+            ...base.grainradEffect.controls['matrix-rain'],
+            'brightness-map': 3,
+          },
+        },
+      },
+    }
+    const { storage } = createMemoryStorage(JSON.stringify({ state: persistedState, version: 4 }))
+    const store = createStudioStore(storage)
+
+    expect(store.getState().grainradEffect.controls['matrix-rain']['brightness-map']).toBe(1)
+  })
+
+  it('migrates the former Light Matrix color and Rain Opacity defaults', () => {
+    const base = createInitialStudioStoreState()
+    const persistedState = {
+      ...base,
+      view: { ...base.view, theme: 'light' },
+      grainradEffect: {
+        ...base.grainradEffect,
+        controls: {
+          ...base.grainradEffect.controls,
+          'matrix-rain': {
+            ...base.grainradEffect.controls['matrix-rain'],
+            foreground: '#101010',
+            'bg-opacity': 0.3,
+          },
+        },
+        colorControlsByTheme: {
+          ...base.grainradEffect.colorControlsByTheme,
+          light: {
+            ...base.grainradEffect.colorControlsByTheme.light,
+            'matrix-rain': {
+              ...base.grainradEffect.colorControlsByTheme.light['matrix-rain'],
+              foreground: '#101010',
+            },
+          },
+        },
+      },
+    }
+    const { storage } = createMemoryStorage(JSON.stringify({ state: persistedState, version: 5 }))
+    const store = createStudioStore(storage)
+
+    expect(store.getState().grainradEffect.controls['matrix-rain']).toMatchObject({
+      foreground: '#15c15d',
+      'bg-opacity': 0.5,
+    })
+    expect(store.getState().grainradEffect.colorControlsByTheme.light['matrix-rain'].foreground)
+      .toBe('#15c15d')
+  })
+
+  it('uses the current Matrix visibility defaults through Light theme and Reset', () => {
+    const store = createStudioStore()
+
+    store.getState().setSelectedEffect('matrix-rain')
+    store.getState().toggleStudioTheme()
+
+    expect(store.getState().grainradEffect.controls['matrix-rain']).toMatchObject({
+      foreground: '#15c15d',
+      'bg-opacity': 0.5,
+    })
+
+    store.getState().setGrainradEffectControl('matrix-rain', 'foreground', '#123456')
+    store.getState().setGrainradEffectControl('matrix-rain', 'bg-opacity', 0.2)
+    store.getState().resetSelectedEffectControls()
+
+    expect(store.getState().grainradEffect.controls['matrix-rain']).toMatchObject({
+      foreground: '#15c15d',
+      'bg-opacity': 0.5,
+    })
+  })
+
+  it('starts with an effect-scoped storage key and dark Studio theme', () => {
     const initial = createInitialStudioStoreState()
 
     expect(STUDIO_STORE_STORAGE_KEY).toBe('hanzi-studio-grainrad-effects-v1')
     expect(initial.grainradEffect.controls.ascii['color-mode']).toBe('mono')
-    expect(initial.view.theme).toBe('light')
+    expect(initial.view.theme).toBe('dark')
     expect(initial.view.mobileTab).toBe('input')
     expect(initial.view.settingsOpen).toBe(false)
     expect(initial.view.expandedSections).toMatchObject({
@@ -378,8 +524,8 @@ describe('Phase 5D Grainrad terminal Studio store', () => {
       invert: false,
       brightness: 100,
       contrast: -100,
-      'color-mode': 'bw',
-      foreground: '#000000',
+      'color-mode': 'mono',
+      foreground: '#ffffff',
       background: '#123456',
     })
     expect(store.getState().grainradEffect.controls.ascii).toMatchObject({
@@ -437,12 +583,13 @@ describe('Phase 5D Grainrad terminal Studio store', () => {
       speed: 3,
       'trail-length': 5,
       direction: 'down',
-      glow: 2,
+      glow: 4,
       'bg-opacity': 0,
       brightness: 100,
       contrast: -100,
       threshold: 0.5,
-      'rain-color': '#007a33',
+      'rain-color': '#00ff00',
+      background: '#000000',
     })
     expect(store.getState().grainradEffect.controls['matrix-rain']['custom-chars']).toBe('雨'.repeat(128))
 
@@ -498,8 +645,8 @@ describe('Phase 5D Grainrad terminal Studio store', () => {
       invert: false,
       brightness: 100,
       contrast: -100,
-      'color-mode': 'original',
-      foreground: '#000000',
+      'color-mode': 'mono',
+      foreground: '#ffffff',
       background: '#123456',
     })
 
@@ -552,8 +699,8 @@ describe('Phase 5D Grainrad terminal Studio store', () => {
       invert: false,
       brightness: 100,
       contrast: -100,
-      'color-mode': 'original',
-      'line-color': '#000000',
+      'color-mode': 'mono',
+      'line-color': '#ffffff',
       background: '#123456',
     })
 
@@ -567,9 +714,9 @@ describe('Phase 5D Grainrad terminal Studio store', () => {
       invert: false,
       brightness: 0,
       contrast: 0,
-      'color-mode': 'original',
-      'line-color': '#000000',
-      background: '#ffffff',
+      'color-mode': 'mono',
+      'line-color': '#ffffff',
+      background: '#000000',
     })
     expect(store.getState().grainradEffect.controls.ascii.scale).toBe(9)
     expect(store.getState().grainradEffect.controls.dots.size).toBe(1.8)
@@ -611,7 +758,7 @@ describe('Phase 5D Grainrad terminal Studio store', () => {
 
     expect(store.getState().grainradEffect.controls['pixel-sort']).toMatchObject({
       direction: 'horizontal',
-      'sort-mode': 'brightness',
+      'sort-mode': 'hue',
       threshold: 0.5,
       'streak-length': 10,
       intensity: 1,
@@ -626,7 +773,7 @@ describe('Phase 5D Grainrad terminal Studio store', () => {
 
     expect(store.getState().grainradEffect.controls['pixel-sort']).toMatchObject({
       direction: 'horizontal',
-      'sort-mode': 'brightness',
+      'sort-mode': 'hue',
       threshold: 0.25,
       'streak-length': 100,
       intensity: 0.8,
@@ -677,8 +824,9 @@ describe('Phase 5D Grainrad terminal Studio store', () => {
       'border-width': 0,
       brightness: 100,
       contrast: -100,
-      'color-mode': 'color',
-      'border-color': '#000000',
+      'color-mode': 'mono',
+      foreground: '#f4f1e8',
+      background: '#101010',
     })
 
     store.getState().setGrainradEffectControl('blockify', 'style', 'outline')
@@ -690,8 +838,9 @@ describe('Phase 5D Grainrad terminal Studio store', () => {
       'border-width': 1,
       brightness: 0,
       contrast: 0,
-      'color-mode': 'color',
-      'border-color': '#000000',
+      'color-mode': 'mono',
+      foreground: '#f4f1e8',
+      background: '#101010',
     })
     expect(store.getState().grainradEffect.controls.ascii.scale).toBe(9)
     expect(store.getState().grainradEffect.controls['pixel-sort'].threshold).toBe(0.4)
@@ -738,8 +887,8 @@ describe('Phase 5D Grainrad terminal Studio store', () => {
       invert: false,
       brightness: 100,
       contrast: -100,
-      'color-mode': 'custom',
-      foreground: '#000000',
+      'color-mode': 'mono',
+      foreground: '#ffffff',
       background: '#123456',
     })
 
@@ -753,9 +902,9 @@ describe('Phase 5D Grainrad terminal Studio store', () => {
       invert: false,
       brightness: 0,
       contrast: 0,
-      'color-mode': 'custom',
-      foreground: '#000000',
-      background: '#ffffff',
+      'color-mode': 'mono',
+      foreground: '#ffffff',
+      background: '#000000',
     })
     expect(store.getState().grainradEffect.controls.ascii.scale).toBe(9)
     expect(store.getState().grainradEffect.controls.blockify['block-size']).toBe(16)
@@ -799,8 +948,8 @@ describe('Phase 5D Grainrad terminal Studio store', () => {
       invert: false,
       brightness: 100,
       contrast: -100,
-      'color-mode': 'custom',
-      'edge-color': '#000000',
+      'color-mode': 'mono',
+      'edge-color': '#ffffff',
       background: '#123456',
     })
 
@@ -814,9 +963,9 @@ describe('Phase 5D Grainrad terminal Studio store', () => {
       invert: false,
       brightness: 0,
       contrast: 0,
-      'color-mode': 'custom',
-      'edge-color': '#000000',
-      background: '#ffffff',
+      'color-mode': 'mono',
+      'edge-color': '#ffffff',
+      background: '#000000',
     })
     expect(store.getState().grainradEffect.controls.ascii.scale).toBe(9)
     expect(store.getState().grainradEffect.controls.threshold.levels).toBe(6)
@@ -862,7 +1011,7 @@ describe('Phase 5D Grainrad terminal Studio store', () => {
       invert: false,
       brightness: 100,
       contrast: -100,
-      'line-color': '#000000',
+      'line-color': '#ffffff',
       background: '#123456',
     })
 
@@ -879,8 +1028,8 @@ describe('Phase 5D Grainrad terminal Studio store', () => {
       invert: false,
       brightness: 0,
       contrast: 0,
-      'line-color': '#000000',
-      background: '#ffffff',
+      'line-color': '#ffffff',
+      background: '#000000',
     })
     expect(store.getState().grainradEffect.controls.threshold.levels).toBe(6)
     expect(store.getState().mesh.thickness).toBe(0.12)
@@ -926,8 +1075,8 @@ describe('Phase 5D Grainrad terminal Studio store', () => {
       animate: true,
       brightness: 100,
       contrast: -100,
-      'color-mode': 'custom',
-      'line-color': '#000000',
+      'color-mode': 'mono',
+      'line-color': '#ffffff',
       background: '#123456',
     })
 
@@ -944,9 +1093,9 @@ describe('Phase 5D Grainrad terminal Studio store', () => {
       animate: true,
       brightness: 0,
       contrast: 0,
-      'color-mode': 'original',
-      'line-color': '#000000',
-      background: '#ffffff',
+      'color-mode': 'mono',
+      'line-color': '#ffffff',
+      background: '#000000',
     })
     expect(store.getState().grainradEffect.controls.threshold.levels).toBe(6)
     expect(store.getState().mesh.bend).toBe(0.2)
@@ -991,7 +1140,7 @@ describe('Phase 5D Grainrad terminal Studio store', () => {
 
     expect(store.getState().grainradEffect.controls['noise-field']).toMatchObject({
       'noise-type': 'perlin', scale: 50, intensity: 1, octaves: 4, speed: 1,
-      animate: true, 'distort-only': false, brightness: 0, contrast: 0,
+      animate: true, 'distort-only': true, brightness: 0, contrast: 0,
     })
     expect(store.getState().grainradEffect.controls.threshold.levels).toBe(6)
     expect(store.getState().mesh.twist).toBe(0.2)
@@ -1025,15 +1174,15 @@ describe('Phase 5D Grainrad terminal Studio store', () => {
     const store = createStudioStore(storage)
 
     expect(store.getState().grainradEffect.controls.voronoi).toMatchObject({
-      'cell-size': 100, 'edge-width': 0, 'edge-color': '0', 'color-mode': '0',
+      'cell-size': 100, 'edge-width': 0, 'edge-color': '1', 'cell-color-mode': '0',
       randomize: 1, brightness: 100, contrast: -100,
     })
 
-    store.getState().setGrainradEffectControl('voronoi', 'color-mode', '2')
+    store.getState().setGrainradEffectControl('voronoi', 'cell-color-mode', '2')
     store.getState().resetSelectedEffectControls()
 
     expect(store.getState().grainradEffect.controls.voronoi).toMatchObject({
-      'cell-size': 30, 'edge-width': 0.3, 'edge-color': '0', 'color-mode': '0',
+      'cell-size': 30, 'edge-width': 0.3, 'edge-color': '1', 'cell-color-mode': '0',
       randomize: 0.8, brightness: 0, contrast: 0,
     })
     expect(store.getState().grainradEffect.controls.threshold.levels).toBe(6)

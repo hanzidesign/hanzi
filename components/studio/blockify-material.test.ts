@@ -33,8 +33,15 @@ describe('Blockify shader material', () => {
     expect(material.uniforms.u_borderWidth.value).toBe(1)
     expect(material.uniforms.u_brightness.value).toBe(0)
     expect(material.uniforms.u_contrast.value).toBe(0)
-    expect(material.uniforms.u_colorMode.value).toBe(0)
-    expect(material.uniforms.u_borderColor.value.getHexString()).toBe('000000')
+    expect(material.uniforms.u_colorMode.value).toBe(1)
+    expect(material.uniforms.u_foreground.value.getHexString()).toBe('ffffff')
+    expect(material.uniforms.u_background.value.getHexString()).toBe('000000')
+    expect(material.uniforms.u_processingInvert.value).toBe(0)
+    expect(material.uniforms.u_brightnessMap.value).toBe(1)
+    expect(material.uniforms.u_edgeEnhance.value).toBe(0)
+    expect(material.uniforms.u_blur.value).toBe(0)
+    expect(material.uniforms.u_quantizeColors.value).toBe(0)
+    expect(material.uniforms.u_shapeMatching.value).toBe(0)
   })
 
   it('maps every Blockify-local control in exact production units and ids', () => {
@@ -47,18 +54,20 @@ describe('Blockify shader material', () => {
       brightness: 40,
       contrast: -25,
       'color-mode': 'grayscale',
-      'border-color': '#123456',
+      foreground: '#123456',
+      background: '#abcdef',
     })
 
     expect(BLOCKIFY_STYLE_IDS).toEqual({ full: 0, shaded: 1, outline: 2 })
-    expect(BLOCKIFY_COLOR_MODE_IDS).toEqual({ color: 0, grayscale: 1 })
+    expect(BLOCKIFY_COLOR_MODE_IDS).toEqual({ color: 0, mono: 1, grayscale: 1 })
     expect(material.uniforms.u_style.value).toBe(2)
     expect(material.uniforms.u_blockSize.value).toBe(17)
     expect(material.uniforms.u_borderWidth.value).toBe(2.5)
     expect(material.uniforms.u_brightness.value).toBe(0.4)
     expect(material.uniforms.u_contrast.value).toBe(-0.25)
     expect(material.uniforms.u_colorMode.value).toBe(1)
-    expect(material.uniforms.u_borderColor.value.getHexString()).toBe('123456')
+    expect(material.uniforms.u_foreground.value.getHexString()).toBe('123456')
+    expect(material.uniforms.u_background.value.getHexString()).toBe('abcdef')
   })
 
   it('samples one linear-clamped block center and adjusts it before style and grayscale', () => {
@@ -73,7 +82,7 @@ describe('Blockify shader material', () => {
       'vec2 blockUv = blockCenter / u_resolution;',
     )
     expect(BLOCKIFY_FRAGMENT_SHADER).toContain(
-      'vec3 color = texture2D(u_sourceTexture, blockUv).rgb;',
+      'vec3 color = sampleBlockifySource(blockUv);',
     )
     expect(BLOCKIFY_FRAGMENT_SHADER).toContain('color = color + u_brightness;')
     expect(BLOCKIFY_FRAGMENT_SHADER).toContain(
@@ -83,11 +92,11 @@ describe('Blockify shader material', () => {
       'color = clamp((color - 0.5) * factor + 0.5, 0.0, 1.0);',
     )
     expect(BLOCKIFY_FRAGMENT_SHADER).toContain(
-      'float gray = dot(color, vec3(0.299, 0.587, 0.114));',
+      'float gray = blockifyLuminance(color);',
     )
   })
 
-  it('ports fixed shaded blocks and strict Outline edges with raw Border Color', () => {
+  it('ports fixed shaded blocks and strict Outline edges with Foreground/Background roles', () => {
     expect(BLOCKIFY_FRAGMENT_SHADER).toContain(
       'vec2 local = (pixelPos - blockPos * u_blockSize) / u_blockSize;',
     )
@@ -107,30 +116,40 @@ describe('Blockify shader material', () => {
     )
     expect(BLOCKIFY_FRAGMENT_SHADER).not.toContain('localPix.x <= u_borderWidth')
     expect(BLOCKIFY_FRAGMENT_SHADER).not.toContain('localPix.y <= u_borderWidth')
-    expect(BLOCKIFY_FRAGMENT_SHADER).toContain('effectColor = u_borderColor;')
+    expect(BLOCKIFY_FRAGMENT_SHADER).toContain('mix(u_background, u_foreground, gray)')
     expect(BLOCKIFY_FRAGMENT_SHADER.indexOf('color = color + u_brightness;')).toBeLessThan(
-      BLOCKIFY_FRAGMENT_SHADER.indexOf('effectColor = u_borderColor;'),
+      BLOCKIFY_FRAGMENT_SHADER.indexOf('mix(u_background, u_foreground, gray)'),
     )
   })
 
-  it('keeps Processing as a no-op and maps shared Post after Blockify', () => {
-    for (const processingUniform of [
-      'u_processingInvert',
-      'u_brightnessMap',
-      'u_edgeEnhance',
-      'u_blur',
-      'u_quantizeColors',
-      'u_shapeMatching',
-    ]) {
-      expect(BLOCKIFY_FRAGMENT_SHADER).not.toContain(processingUniform)
-    }
+  it('maps and consumes every Processing control before shared Post', () => {
+    expect(BLOCKIFY_FRAGMENT_SHADER).toContain('vec3 sampleBlockifySource')
+    expect(BLOCKIFY_FRAGMENT_SHADER).toContain('vec2 blurTexel = texel * min(u_blur, 12.0);')
+    expect(BLOCKIFY_FRAGMENT_SHADER).toContain('vec3 applyBlockifyProcessing')
+    expect(BLOCKIFY_FRAGMENT_SHADER).toContain('mix(color, 1.0 - color, u_processingInvert)')
+    expect(BLOCKIFY_FRAGMENT_SHADER).toContain('color *= u_brightnessMap;')
+    expect(BLOCKIFY_FRAGMENT_SHADER).toContain('u_edgeEnhance * 8.0')
+    expect(BLOCKIFY_FRAGMENT_SHADER).toContain('if (u_quantizeColors > 0.0)')
+    expect(BLOCKIFY_FRAGMENT_SHADER).toContain(
+      'float levels = max(floor(u_quantizeColors + 0.5), 2.0);',
+    )
+    expect(BLOCKIFY_FRAGMENT_SHADER).toContain('u_shapeMatching')
     expect(BLOCKIFY_FRAGMENT_SHADER).toContain('vec3 applyBlockifyPostProcessing')
-    expect(BLOCKIFY_FRAGMENT_SHADER.indexOf('effectColor = u_borderColor;')).toBeLessThan(
+    expect(BLOCKIFY_FRAGMENT_SHADER.indexOf('mix(u_background, u_foreground, gray)')).toBeLessThan(
+      BLOCKIFY_FRAGMENT_SHADER.indexOf('effectColor = applyBlockifyProcessing('),
+    )
+    expect(BLOCKIFY_FRAGMENT_SHADER.indexOf('effectColor = applyBlockifyProcessing(')).toBeLessThan(
       BLOCKIFY_FRAGMENT_SHADER.indexOf('applyBlockifyPostProcessing(effectColor'),
     )
 
     const { material } = createFixture()
     applyBlockifyUniforms(material, {
+      'processing-invert': true,
+      'brightness-map': 1.75,
+      'edge-enhance': 0.35,
+      blur: 4.5,
+      'quantize-colors': 1,
+      'shape-matching': 0.6,
       bloom: true,
       'grain-intensity': 61,
       'grain-size': 4,
@@ -142,6 +161,12 @@ describe('Blockify shader material', () => {
       phosphor: true,
     })
 
+    expect(material.uniforms.u_processingInvert.value).toBe(1)
+    expect(material.uniforms.u_brightnessMap.value).toBe(1.75)
+    expect(material.uniforms.u_edgeEnhance.value).toBe(0.35)
+    expect(material.uniforms.u_blur.value).toBe(4.5)
+    expect(material.uniforms.u_quantizeColors.value).toBe(1)
+    expect(material.uniforms.u_shapeMatching.value).toBe(0.6)
     expect(material.uniforms.u_bloom.value).toBe(1)
     expect(material.uniforms.u_grainIntensity.value).toBe(61)
     expect(material.uniforms.u_grainSize.value).toBe(4)

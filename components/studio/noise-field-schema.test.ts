@@ -33,13 +33,13 @@ describe('Grainrad Noise Field schema', () => {
     expect(controls.octaves).toMatchObject({ defaultValue: 4, min: 1, max: 8, step: 1 })
     expect(controls.speed).toMatchObject({ defaultValue: 1, min: 0.1, max: 3, step: 0.1 })
     expect(controls.animate).toMatchObject({ kind: 'toggle', defaultValue: true })
-    expect(controls['distort-only']).toMatchObject({ kind: 'toggle', defaultValue: false })
+    expect(controls['distort-only']).toMatchObject({ kind: 'toggle', defaultValue: true })
     expect(controls.brightness).toMatchObject({ defaultValue: 0, min: -100, max: 100, step: 1 })
     expect(controls.contrast).toMatchObject({ defaultValue: 0, min: -100, max: 100, step: 1 })
     expect(Object.values(controls).every((control) => control.visibleWhen === undefined)).toBe(true)
     expect(createDefaultGrainradEffectControls()['noise-field']).toMatchObject({
       'noise-type': 'perlin', scale: 50, intensity: 1, octaves: 4, speed: 1,
-      animate: true, 'distort-only': false, brightness: 0, contrast: 0,
+      animate: true, 'distort-only': true, brightness: 0, contrast: 0,
     })
   })
 })

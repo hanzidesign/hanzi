@@ -165,8 +165,8 @@ const ditheringPaletteOptions = [
 ]
 
 const blockifyColorModeOptions = [
+  { value: 'mono', label: 'Mono' },
   { value: 'color', label: 'Preserve Colors' },
-  { value: 'grayscale', label: 'Grayscale' },
 ]
 
 const shapeOptions = [
@@ -184,14 +184,32 @@ export const GRAINRAD_COMMON_PROCESSING_GROUPS: GrainradSettingGroup[] = [
   {
     controls: [
       toggleControl('processing-invert', 'Invert', false),
-      rangeControl('brightness-map', 'Brightness Map', 1, 0, 2, 0.01),
-      rangeControl('edge-enhance', 'Edge Enhance', 0, 0, 1, 0.01),
-      rangeControl('blur', 'Blur', 0, 0, 12, 0.1),
-      rangeControl('quantize-colors', 'Quantize Colors', 0, 0, 16, 1),
+      rangeControl('brightness-map', 'Brightness Map', 1, 0, 4, 0.01),
+      rangeControl('edge-enhance', 'Edge Enhance', 0, 0, 4, 0.01),
+      rangeControl('blur', 'Blur', 0, 0, 64, 1),
+      rangeControl('quantize-colors', 'Quantize Colors', 0, 0, 64, 1),
       rangeControl('shape-matching', 'Shape Matching', 0, 0, 1, 0.01),
     ],
   },
 ]
+
+const MATRIX_RAIN_PROCESSING_GROUPS: GrainradSettingGroup[] =
+  GRAINRAD_COMMON_PROCESSING_GROUPS.map((group) => ({
+    ...group,
+    controls: group.controls.map((control) =>
+      control.kind === 'range' && control.id === 'brightness-map'
+        ? { ...control, defaultValue: 1, min: 0, max: 6 }
+        : control
+    ),
+  }))
+
+export function getGrainradProcessingGroups(
+  effectId: GrainradEffectId,
+): GrainradSettingGroup[] {
+  return effectId === 'matrix-rain'
+    ? MATRIX_RAIN_PROCESSING_GROUPS
+    : GRAINRAD_COMMON_PROCESSING_GROUPS
+}
 
 export const GRAINRAD_COMMON_POST_PROCESSING_GROUPS: GrainradSettingGroup[] = [
   {
@@ -202,7 +220,7 @@ export const GRAINRAD_COMMON_POST_PROCESSING_GROUPS: GrainradSettingGroup[] = [
   {
     title: 'Grain',
     controls: [
-      rangeControl('grain-intensity', 'Intensity', 35, 0, 100, 1),
+      rangeControl('grain-intensity', 'Intensity', 0, 0, 100, 1),
       rangeControl('grain-size', 'Size', 2, 1, 10, 1),
       rangeControl('grain-speed', 'Speed', 50, 0, 100, 1),
     ],
@@ -433,19 +451,19 @@ export const GRAINRAD_EFFECTS: GrainradEffectDefinition[] = [
       {
         title: 'Color',
         controls: [
-          selectControl('color-mode', 'Mode', 'bw', [
-            { value: 'bw', label: 'Mono' },
+          selectControl('color-mode', 'Mode', 'mono', [
+            { value: 'mono', label: 'Mono' },
             { value: 'color', label: 'Original' },
           ]),
           colorControl('foreground', 'Foreground', '#ffffff', { light: '#000000', dark: '#ffffff' }, {
             controlId: 'color-mode',
             operator: 'equals',
-            value: 'bw',
+            value: 'mono',
           }),
           colorControl('background', 'Background', '#000000', { light: '#ffffff', dark: '#000000' }, {
             controlId: 'color-mode',
             operator: 'equals',
-            value: 'bw',
+            value: 'mono',
           }),
         ],
       },
@@ -476,8 +494,8 @@ export const GRAINRAD_EFFECTS: GrainradEffectDefinition[] = [
             { value: 'left', label: 'Left' },
             { value: 'right', label: 'Right' },
           ]),
-          rangeControl('glow', 'Glow', 1, 0, 2, 0.1),
-          rangeControl('bg-opacity', 'BG Opacity', 0.3, 0, 1, 0.05),
+          rangeControl('glow', 'Glow', 1, 0, 4, 0.1),
+          rangeControl('bg-opacity', 'Rain Opacity', 0.5, 0, 1, 0.05),
         ],
       },
       {
@@ -490,7 +508,11 @@ export const GRAINRAD_EFFECTS: GrainradEffectDefinition[] = [
       },
       {
         title: 'Color',
-        controls: [colorControl('rain-color', 'Rain Color', '#00ff00', { light: '#007a33', dark: '#00ff00' })],
+        controls: [
+          colorControl('foreground', 'Foreground', '#ffffff', { light: '#15c15d', dark: '#f4f1e8' }),
+          colorControl('rain-color', 'Rain Color', '#00ff00', { light: '#007a33', dark: '#00ff00' }),
+          colorControl('background', 'Background', '#000000', { light: '#f4f1e8', dark: '#000000' }),
+        ],
       },
     ],
   },
@@ -519,19 +541,19 @@ export const GRAINRAD_EFFECTS: GrainradEffectDefinition[] = [
           rangeControl('contrast', 'Contrast', 0, -100, 100, 1),
         ],
       },
-      colorModeGroup('original', [
-        { value: 'custom', label: 'Mono' },
+      colorModeGroup('mono', [
+        { value: 'mono', label: 'Mono' },
         { value: 'original', label: 'Original' },
       ], [
         colorControl('foreground', 'Dot Color', '#ffffff', { light: '#000000', dark: '#ffffff' }, {
           controlId: 'color-mode',
           operator: 'equals',
-          value: 'custom',
+          value: 'mono',
         }),
         colorControl('background', 'Background', '#000000', { light: '#ffffff', dark: '#000000' }, {
           controlId: 'color-mode',
           operator: 'equals',
-          value: 'custom',
+          value: 'mono',
         }),
       ]),
     ],
@@ -560,19 +582,19 @@ export const GRAINRAD_EFFECTS: GrainradEffectDefinition[] = [
           rangeControl('contrast', 'Contrast', 0, -100, 100, 1),
         ],
       },
-      colorModeGroup('original', [
-        { value: 'custom', label: 'Mono' },
+      colorModeGroup('mono', [
+        { value: 'mono', label: 'Mono' },
         { value: 'original', label: 'Original' },
       ], [
         colorControl('line-color', 'Line Color', '#000000', { light: '#000000', dark: '#ffffff' }, {
           controlId: 'color-mode',
           operator: 'equals',
-          value: 'custom',
+          value: 'mono',
         }),
         colorControl('background', 'Background', '#ffffff', { light: '#ffffff', dark: '#000000' }, {
           controlId: 'color-mode',
           operator: 'equals',
-          value: 'custom',
+          value: 'mono',
         }),
       ]),
     ],
@@ -589,7 +611,7 @@ export const GRAINRAD_EFFECTS: GrainradEffectDefinition[] = [
             ...directionOptions,
             { value: 'diagonal', label: 'Diagonal' },
           ]),
-          selectControl('sort-mode', 'Sort Mode', 'brightness', [
+          selectControl('sort-mode', 'Sort Mode', 'hue', [
             { value: 'brightness', label: 'Brightness' },
             { value: 'hue', label: 'Hue' },
             { value: 'saturation', label: 'Saturation' },
@@ -637,11 +659,16 @@ export const GRAINRAD_EFFECTS: GrainradEffectDefinition[] = [
       {
         title: 'Color',
         controls: [
-          selectControl('color-mode', 'Mode', 'color', blockifyColorModeOptions),
-          colorControl('border-color', 'Border Color', '#000000', { light: '#000000', dark: '#ffffff' }, {
-            controlId: 'border-width',
-            operator: 'greater-than',
-            value: 0,
+          selectControl('color-mode', 'Mode', 'mono', blockifyColorModeOptions),
+          colorControl('foreground', 'Foreground', '#ffffff', { light: '#101010', dark: '#f4f1e8' }, {
+            controlId: 'color-mode',
+            operator: 'equals',
+            value: 'mono',
+          }),
+          colorControl('background', 'Background', '#000000', { light: '#f4f1e8', dark: '#101010' }, {
+            controlId: 'color-mode',
+            operator: 'equals',
+            value: 'mono',
           }),
         ],
       },
@@ -671,19 +698,19 @@ export const GRAINRAD_EFFECTS: GrainradEffectDefinition[] = [
       {
         title: 'Color',
         controls: [
-          selectControl('color-mode', 'Mode', 'custom', [
-            { value: 'custom', label: 'Mono' },
+          selectControl('color-mode', 'Mode', 'mono', [
+            { value: 'mono', label: 'Mono' },
             { value: 'color', label: 'Original' },
           ]),
           colorControl('foreground', 'Foreground', '#ffffff', { light: '#000000', dark: '#ffffff' }, {
             controlId: 'color-mode',
             operator: 'equals',
-            value: 'custom',
+            value: 'mono',
           }),
           colorControl('background', 'Background', '#000000', { light: '#ffffff', dark: '#000000' }, {
             controlId: 'color-mode',
             operator: 'equals',
-            value: 'custom',
+            value: 'mono',
           }),
         ],
       },
@@ -717,19 +744,19 @@ export const GRAINRAD_EFFECTS: GrainradEffectDefinition[] = [
       {
         title: 'Color',
         controls: [
-          selectControl('color-mode', 'Mode', 'custom', [
-            { value: 'custom', label: 'Mono' },
+          selectControl('color-mode', 'Mode', 'mono', [
+            { value: 'mono', label: 'Mono' },
             { value: 'original', label: 'Original' },
           ]),
           colorControl('edge-color', 'Edge Color', '#ffffff', { light: '#000000', dark: '#ffffff' }, {
             controlId: 'color-mode',
             operator: 'equals',
-            value: 'custom',
+            value: 'mono',
           }),
           colorControl('background', 'Background', '#000000', { light: '#ffffff', dark: '#000000' }, {
             controlId: 'color-mode',
             operator: 'equals',
-            value: 'custom',
+            value: 'mono',
           }),
         ],
       },
@@ -793,19 +820,19 @@ export const GRAINRAD_EFFECTS: GrainradEffectDefinition[] = [
       {
         title: 'Color',
         controls: [
-          selectControl('color-mode', 'Mode', 'original', [
-            { value: 'custom', label: 'Mono' },
+          selectControl('color-mode', 'Mode', 'mono', [
+            { value: 'mono', label: 'Mono' },
             { value: 'original', label: 'Original' },
           ]),
           colorControl('line-color', 'Line Color', '#ffffff', { light: '#000000', dark: '#ffffff' }, {
             controlId: 'color-mode',
             operator: 'equals',
-            value: 'custom',
+            value: 'mono',
           }),
           colorControl('background', 'Background', '#000000', { light: '#ffffff', dark: '#000000' }, {
             controlId: 'color-mode',
             operator: 'equals',
-            value: 'custom',
+            value: 'mono',
           }),
         ],
       },
@@ -829,7 +856,7 @@ export const GRAINRAD_EFFECTS: GrainradEffectDefinition[] = [
           rangeControl('octaves', 'Octaves', 4, 1, 8, 1),
           rangeControl('speed', 'Speed', 1, 0.1, 3, 0.1),
           toggleControl('animate', 'Animate', true),
-          toggleControl('distort-only', 'Distort Only', false),
+          toggleControl('distort-only', 'Distort Only', true),
         ],
       },
       {
@@ -856,7 +883,7 @@ export const GRAINRAD_EFFECTS: GrainradEffectDefinition[] = [
             { value: '1', label: 'White' },
             { value: '2', label: 'Darkened' },
           ]),
-          selectControl('color-mode', 'Color Mode', '0', [
+          selectControl('cell-color-mode', 'Cell Color Source', '0', [
             { value: '0', label: 'Cell Average' },
             { value: '1', label: 'Center Sample' },
             { value: '2', label: 'Gradient' },
@@ -946,7 +973,7 @@ export function createDefaultGrainradEffectControls(theme: 'light' | 'dark' = 'l
       effect.id,
       Object.fromEntries(
         flattenGroups(effect.settingGroups)
-          .concat(flattenGroups(GRAINRAD_COMMON_PROCESSING_GROUPS))
+          .concat(flattenGroups(getGrainradProcessingGroups(effect.id)))
           .concat(flattenGroups(GRAINRAD_COMMON_POST_PROCESSING_GROUPS))
           .map((control) => [control.id, getGrainradControlDefaultValue(control, theme)]),
       ),

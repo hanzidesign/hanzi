@@ -60,9 +60,9 @@ describe('Grainrad Dots schema', () => {
     expect(controls.contrast).toMatchObject({ defaultValue: 0, min: -100, max: 100, step: 1 })
     expect(controls['color-mode']).toMatchObject({
       kind: 'select',
-      defaultValue: 'original',
+      defaultValue: 'mono',
       options: [
-        { value: 'custom', label: 'Mono' },
+        { value: 'mono', label: 'Mono' },
         { value: 'original', label: 'Original' },
       ],
     })
@@ -70,16 +70,16 @@ describe('Grainrad Dots schema', () => {
     expect(controls.background).toMatchObject({ kind: 'color', label: 'Background', defaultValue: '#000000' })
   })
 
-  it('shows Dot Color and Background only in Mono/custom mode', () => {
+  it('shows Dot Color and Background only in Mono mode', () => {
     const definition = getGrainradEffectById('dots')
     const controls = definition.settingGroups.flatMap((group) => group.controls)
     const defaults = createDefaultGrainradEffectControls().dots
     const foreground = controls.find((control) => control.id === 'foreground')!
     const background = controls.find((control) => control.id === 'background')!
 
-    expect(isGrainradControlVisible(foreground, defaults)).toBe(false)
-    expect(isGrainradControlVisible(background, defaults)).toBe(false)
-    expect(isGrainradControlVisible(foreground, { ...defaults, 'color-mode': 'custom' })).toBe(true)
-    expect(isGrainradControlVisible(background, { ...defaults, 'color-mode': 'custom' })).toBe(true)
+    expect(isGrainradControlVisible(foreground, defaults)).toBe(true)
+    expect(isGrainradControlVisible(background, defaults)).toBe(true)
+    expect(isGrainradControlVisible(foreground, { ...defaults, 'color-mode': 'original' })).toBe(false)
+    expect(isGrainradControlVisible(background, { ...defaults, 'color-mode': 'original' })).toBe(false)
   })
 })

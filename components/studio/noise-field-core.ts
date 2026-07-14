@@ -49,7 +49,7 @@ export const DEFAULT_NOISE_FIELD_SETTINGS: NoiseFieldSettings = {
   octaves: 4,
   speed: 1,
   animate: true,
-  distortOnly: false,
+  distortOnly: true,
   brightness: 0,
   contrast: 0,
 }

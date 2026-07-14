@@ -23,7 +23,8 @@ describe('Grainrad Blockify schema', () => {
       'brightness',
       'contrast',
       'color-mode',
-      'border-color',
+      'foreground',
+      'background',
     ])
   })
 
@@ -48,17 +49,23 @@ describe('Grainrad Blockify schema', () => {
     expect(controls.contrast).toMatchObject({ defaultValue: 0, min: -100, max: 100, step: 1 })
     expect(controls['color-mode']).toMatchObject({
       kind: 'select',
-      defaultValue: 'color',
+      defaultValue: 'mono',
       options: [
+        { value: 'mono', label: 'Mono' },
         { value: 'color', label: 'Preserve Colors' },
-        { value: 'grayscale', label: 'Grayscale' },
       ],
     })
-    expect(controls['border-color']).toMatchObject({
+    expect(controls.foreground).toMatchObject({
       kind: 'color',
-      label: 'Border Color',
+      label: 'Foreground',
+      defaultValue: '#ffffff',
+      visibleWhen: { controlId: 'color-mode', operator: 'equals', value: 'mono' },
+    })
+    expect(controls.background).toMatchObject({
+      kind: 'color',
+      label: 'Background',
       defaultValue: '#000000',
-      visibleWhen: { controlId: 'border-width', operator: 'greater-than', value: 0 },
+      visibleWhen: { controlId: 'color-mode', operator: 'equals', value: 'mono' },
     })
     expect(createDefaultGrainradEffectControls().blockify).toMatchObject({
       style: 'full',
@@ -66,21 +73,25 @@ describe('Grainrad Blockify schema', () => {
       'border-width': 1,
       brightness: 0,
       contrast: 0,
-      'color-mode': 'color',
-      'border-color': '#000000',
+      'color-mode': 'mono',
+      foreground: '#101010',
+      background: '#f4f1e8',
     })
   })
 
-  it('shows Border Color exactly when Border Width is positive, independent of style', () => {
+  it('shows Foreground and Background exactly in Mono mode', () => {
     const definition = getGrainradEffectById('blockify')
-    const borderColor = definition.settingGroups
+    const foreground = definition.settingGroups
       .flatMap((group) => group.controls)
-      .find((control) => control.id === 'border-color')!
+      .find((control) => control.id === 'foreground')!
+    const background = definition.settingGroups
+      .flatMap((group) => group.controls)
+      .find((control) => control.id === 'background')!
     const defaults = createDefaultGrainradEffectControls().blockify
 
-    expect(isGrainradControlVisible(borderColor, defaults)).toBe(true)
-    expect(isGrainradControlVisible(borderColor, { ...defaults, 'border-width': 0 })).toBe(false)
-    expect(isGrainradControlVisible(borderColor, { ...defaults, style: 'full' })).toBe(true)
-    expect(isGrainradControlVisible(borderColor, { ...defaults, style: 'shaded' })).toBe(true)
+    expect(isGrainradControlVisible(foreground, defaults)).toBe(true)
+    expect(isGrainradControlVisible(background, defaults)).toBe(true)
+    expect(isGrainradControlVisible(foreground, { ...defaults, 'color-mode': 'color' })).toBe(false)
+    expect(isGrainradControlVisible(background, { ...defaults, 'color-mode': 'color' })).toBe(false)
   })
 })

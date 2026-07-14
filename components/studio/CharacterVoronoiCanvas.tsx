@@ -23,6 +23,7 @@ import {
   type ShaderMaterial,
 } from 'three'
 import { useStudioStore } from '@/app/studio/studio-store'
+import { withoutSharedControllerValues } from './grainrad-shared-controls'
 import { computeEffectiveAnimationTime } from '@/components/studio/animation-time'
 import {
   applyVoronoiUniforms,
@@ -172,7 +173,7 @@ function CharacterVoronoiScene({
   }, [material])
 
   useEffect(() => {
-    applyVoronoiUniforms(material, controls)
+applyVoronoiUniforms(material, withoutSharedControllerValues(controls))
   }, [controls, material])
 
   useEffect(() => {
@@ -302,4 +303,3 @@ function disposeCurrentGeometryResult(
   disposeGeometryResult(resultRef.current)
   resultRef.current = null
 }
-

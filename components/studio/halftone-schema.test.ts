@@ -31,15 +31,15 @@ describe('Grainrad Halftone schema', () => {
     expect(controls.brightness).toMatchObject({ defaultValue: 0, min: -100, max: 100, step: 1 })
     expect(controls.contrast).toMatchObject({ defaultValue: 0, min: -100, max: 100, step: 1 })
     expect(controls['color-mode']).toMatchObject({
-      defaultValue: 'bw',
+      defaultValue: 'mono',
       options: [
-        { value: 'bw', label: 'Mono' },
+        { value: 'mono', label: 'Mono' },
         { value: 'color', label: 'Original' },
       ],
     })
   })
 
-  it('shows Mono colors only in bw mode', () => {
+  it('shows Mono colors only in mono mode', () => {
     const definition = getGrainradEffectById('halftone')
     const controls = definition.settingGroups.flatMap((group) => group.controls)
     const defaults = createDefaultGrainradEffectControls().halftone

@@ -40,7 +40,11 @@ describe('Matrix Rain shader material', () => {
     expect(material.uniforms.u_spacing.value).toBe(0)
     expect(material.uniforms.u_speed.value).toBe(1)
     expect(material.uniforms.u_trailLength.value).toBe(15)
+    expect(material.uniforms.u_backgroundOpacity.value).toBe(0.5)
+    expect(material.uniforms.u_brightnessMap.value).toBe(1)
+    expect(material.uniforms.u_foreground.value.getHexString()).toBe('ffffff')
     expect(material.uniforms.u_rainColor.value.getHexString()).toBe('00ff00')
+    expect(material.uniforms.u_background.value.getHexString()).toBe('000000')
   })
 
   it('maps every Matrix-local control in exact Grainrad units', () => {
@@ -53,25 +57,29 @@ describe('Matrix Rain shader material', () => {
       'contrast': -42,
       'direction': 'left',
       'glow': 1.7,
+      'foreground': '#654321',
       'rain-color': '#12abef',
+      'background': '#fedcba',
       'spacing': 0.35,
       'speed': 2.4,
       'threshold': 0.27,
       'trail-length': 24,
     }, glyphAtlas)
 
-    expect(MATRIX_RAIN_DIRECTION_IDS).toEqual({ down: 0, up: 1, left: 2, right: 3 })
+    expect(MATRIX_RAIN_DIRECTION_IDS).toEqual({ down: 1, up: 0, left: 3, right: 2 })
     expect(material.uniforms.u_cellSize.value).toBe(21)
     expect(material.uniforms.u_spacing.value).toBe(0.35)
     expect(material.uniforms.u_speed.value).toBe(2.4)
     expect(material.uniforms.u_trailLength.value).toBe(24)
-    expect(material.uniforms.u_direction.value).toBe(2)
+    expect(material.uniforms.u_direction.value).toBe(3)
     expect(material.uniforms.u_glowIntensity.value).toBe(1.7)
     expect(material.uniforms.u_backgroundOpacity.value).toBe(0.65)
     expect(material.uniforms.u_brightness.value).toBe(0.37)
     expect(material.uniforms.u_contrast.value).toBe(-0.42)
     expect(material.uniforms.u_threshold.value).toBe(0.27)
+    expect(material.uniforms.u_foreground.value.getHexString()).toBe('654321')
     expect(material.uniforms.u_rainColor.value.getHexString()).toBe('12abef')
+    expect(material.uniforms.u_background.value.getHexString()).toBe('fedcba')
   })
 
   it('can replace atlas bindings without rebuilding the material', () => {
@@ -132,8 +140,55 @@ describe('Matrix Rain shader material', () => {
     expect(MATRIX_RAIN_FRAGMENT_SHADER).toContain('float headPosition = fract(time * speed * dropSpeed * 0.15 + dropPhase);')
     expect(MATRIX_RAIN_FRAGMENT_SHADER).toContain('float trailLength = u_trailLength / 50.0;')
     expect(MATRIX_RAIN_FRAGMENT_SHADER).toContain('float characterAnimationIndex = floor(characterSeed * 50.0 + u_time * 2.0);')
-    expect(MATRIX_RAIN_FRAGMENT_SHADER).toContain('float aboveThreshold = step(u_threshold, cellBrightness);')
-    expect(MATRIX_RAIN_FRAGMENT_SHADER).toContain('vec3 backgroundColor = adjustedSourceColor * u_backgroundOpacity * 0.1;')
+    expect(MATRIX_RAIN_FRAGMENT_SHADER).toContain(
+      'float sourcePresence = step(0.0001, cellBrightness);',
+    )
+    expect(MATRIX_RAIN_FRAGMENT_SHADER).toContain(
+      'float rainThresholdMask = step(u_threshold, cellBrightness);',
+    )
+    expect(MATRIX_RAIN_FRAGMENT_SHADER).toContain(
+      'float modelThresholdMask = sourcePresence * rainThresholdMask;',
+    )
+    expect(MATRIX_RAIN_FRAGMENT_SHADER).toContain(
+      'float modelGlyphMask = characterPattern * modelThresholdMask;',
+    )
+    expect(MATRIX_RAIN_FRAGMENT_SHADER).toContain(
+      'float characterVisibility = characterPattern * rainThresholdMask;',
+    )
+    expect(MATRIX_RAIN_FRAGMENT_SHADER).toContain(
+      'float modelOpacity = clamp(modelGlyphMask, 0.0, 1.0);',
+    )
+    expect(MATRIX_RAIN_FRAGMENT_SHADER).not.toContain(
+      '(0.15 + thresholdedInfluence * 0.85)',
+    )
+    expect(MATRIX_RAIN_FRAGMENT_SHADER).toContain(
+      'vec3 modelCharacters = modelCharacterColor * modelOpacity;',
+    )
+    expect(MATRIX_RAIN_FRAGMENT_SHADER).toContain(
+      'float effectiveRain = rainIntensity * rainThresholdMask;',
+    )
+    expect(MATRIX_RAIN_FRAGMENT_SHADER).toContain(
+      'vec3 effectLayerColor = clamp(modelCharacters + characterColor, 0.0, 1.0);',
+    )
+    expect(MATRIX_RAIN_FRAGMENT_SHADER).toContain(
+      'u_background * (1.0 - effectOpacity) + effectLayerColor',
+    )
+    expect(MATRIX_RAIN_FRAGMENT_SHADER).toContain(
+      'float backgroundRainOpacity = mix(u_backgroundOpacity, 1.0, sourcePresence);',
+    )
+    expect(MATRIX_RAIN_FRAGMENT_SHADER).toContain(
+      'characterColor *= backgroundRainOpacity;',
+    )
+    expect(MATRIX_RAIN_FRAGMENT_SHADER).toContain(
+      'tintedRain = applyMatrixBrightnessContrast(tintedRain);',
+    )
+    expect(MATRIX_RAIN_FRAGMENT_SHADER).not.toContain(
+      'matrixRainLuminance(adjustedSourceColor) * u_backgroundOpacity',
+    )
+    expect(MATRIX_RAIN_FRAGMENT_SHADER).not.toContain(
+      'u_foreground * matrixRainLuminance(adjustedSourceColor)',
+    )
+    expect(MATRIX_RAIN_FRAGMENT_SHADER).not.toContain('staticCharacters')
     expect(MATRIX_RAIN_FRAGMENT_SHADER).toContain('headColor * characterVisibility * u_glowIntensity')
     expect(MATRIX_RAIN_FRAGMENT_SHADER).toContain('float margin = 0.05 + u_spacing * 0.15;')
   })
@@ -141,9 +196,13 @@ describe('Matrix Rain shader material', () => {
   it('runs the effect through Processing then Post-Processing and avoids built-in names', () => {
     expect(MATRIX_RAIN_FRAGMENT_SHADER).toContain('vec3 applyMatrixSharedProcessing')
     expect(MATRIX_RAIN_FRAGMENT_SHADER).toContain('vec3 applyMatrixSharedPostProcessing')
-    expect(MATRIX_RAIN_FRAGMENT_SHADER.indexOf('applyMatrixSharedProcessing(effectColor')).toBeLessThan(
+    expect(MATRIX_RAIN_FRAGMENT_SHADER.indexOf('applyMatrixSharedProcessing(effectLayerColor')).toBeLessThan(
+      MATRIX_RAIN_FRAGMENT_SHADER.indexOf('u_background * (1.0 - effectOpacity)'),
+    )
+    expect(MATRIX_RAIN_FRAGMENT_SHADER.indexOf('u_background * (1.0 - effectOpacity)')).toBeLessThan(
       MATRIX_RAIN_FRAGMENT_SHADER.indexOf('applyMatrixSharedPostProcessing(effectColor'),
     )
+    expect(MATRIX_RAIN_FRAGMENT_SHADER).not.toContain('applyMatrixSharedProcessing(effectColor')
     expect(MATRIX_RAIN_FRAGMENT_SHADER).not.toContain('float luminance(')
     expect(MATRIX_RAIN_FRAGMENT_SHADER).toContain('float matrixRainLuminance(')
   })

@@ -25,8 +25,9 @@ import {
 import {
   ASCII_OUTPUT_WIDTH_MAX,
   GRAINRAD_COMMON_POST_PROCESSING_GROUPS,
-  GRAINRAD_COMMON_PROCESSING_GROUPS,
+  getGrainradControlDefaultValue,
   getGrainradEffectById,
+  getGrainradProcessingGroups,
   isGrainradControlVisible,
   type GrainradControlValue,
   type GrainradEffectControl,
@@ -62,6 +63,7 @@ export default function StudioRightPanel({
   includeExport = true,
 }: StudioRightPanelProps) {
   const ascii = useStudioStore((store) => store.ascii)
+  const theme = useStudioStore((store) => store.view.theme)
   const selectedEffectId = useStudioStore((store) => store.grainradEffect.selectedEffectId)
   const effectControls = useStudioStore((store) => store.grainradEffect.controls[selectedEffectId])
   const setAsciiControl = useStudioStore((store) => store.setAsciiControl)
@@ -135,6 +137,7 @@ export default function StudioRightPanel({
                 value={ascii.charsetStyle}
                 options={characterSetOptions}
                 onChange={(charsetStyle) => setAsciiControl({ charsetStyle })}
+                onReset={() => setAsciiControl({ charsetStyle: DEFAULT_ASCII_STATE.charsetStyle })}
               />
               {ascii.charsetStyle === 'custom' ? (
                 <TerminalTextRow
@@ -211,16 +214,23 @@ export default function StudioRightPanel({
                 value={readStringControl(effectControls, 'color-mode', 'mono')}
                 options={colorModeOptions}
                 onChange={(value) => setGrainradEffectControl('ascii', 'color-mode', value)}
+                onReset={() => setGrainradEffectControl('ascii', 'color-mode', 'mono')}
               />
               <TerminalColorRow
                 label="Foreground"
                 value={ascii.foregroundColor}
                 onChange={setAsciiForegroundColor}
+                onReset={() => setAsciiForegroundColor(
+                  readThemeDefaultColor('ascii', 'foreground', theme),
+                )}
               />
               <TerminalColorRow
                 label="Background"
                 value={ascii.backgroundColor}
                 onChange={setAsciiBackgroundColor}
+                onReset={() => setAsciiBackgroundColor(
+                  readThemeDefaultColor('ascii', 'background', theme),
+                )}
               />
               <TerminalRangeRow
                 label="Intensity"
@@ -239,6 +249,7 @@ export default function StudioRightPanel({
             selectedEffectId,
             groups: selectedEffect.settingGroups,
             controls: effectControls,
+            theme,
             onChange: setGrainradEffectControl,
           })
         )}
@@ -247,8 +258,9 @@ export default function StudioRightPanel({
       <TerminalSection id="processing" title="Processing">
         {renderEffectSettings({
           selectedEffectId,
-          groups: GRAINRAD_COMMON_PROCESSING_GROUPS,
+          groups: getGrainradProcessingGroups(selectedEffectId),
           controls: effectControls,
+          theme,
           onChange: setGrainradEffectControl,
         })}
       </TerminalSection>
@@ -258,6 +270,7 @@ export default function StudioRightPanel({
           selectedEffectId,
           groups: GRAINRAD_COMMON_POST_PROCESSING_GROUPS,
           controls: effectControls,
+          theme,
           onChange: setGrainradEffectControl,
         })}
       </TerminalSection>
@@ -275,11 +288,13 @@ function renderEffectSettings({
   selectedEffectId,
   groups,
   controls,
+  theme,
   onChange,
 }: {
   selectedEffectId: GrainradEffectId
   groups: GrainradSettingGroup[]
   controls: Record<string, GrainradControlValue> | undefined
+  theme: 'light' | 'dark'
   onChange: (effectId: GrainradEffectId, controlId: string, value: GrainradControlValue) => void
 }) {
   return (
@@ -292,6 +307,7 @@ function renderEffectSettings({
               selectedEffectId,
               control,
               controls,
+              theme,
               onChange,
             }))}
         </TerminalRowGroup>
@@ -304,14 +320,17 @@ function renderEffectControl({
   selectedEffectId,
   control,
   controls,
+  theme,
   onChange,
 }: {
   selectedEffectId: GrainradEffectId
   control: GrainradEffectControl
   controls: Record<string, GrainradControlValue> | undefined
+  theme: 'light' | 'dark'
   onChange: (effectId: GrainradEffectId, controlId: string, value: GrainradControlValue) => void
 }) {
   const value = controls?.[control.id] ?? control.defaultValue
+  const defaultValue = getGrainradControlDefaultValue(control, theme)
 
   if (control.kind === 'range') {
     const numberValue = typeof value === 'number' ? value : control.defaultValue
@@ -331,7 +350,7 @@ function renderEffectControl({
           : formatControlValue(numberValue, control.unit)}
         allowOutOfRangeValue={numberValue < control.min || numberValue > control.max}
         onChange={(nextValue) => onChange(selectedEffectId, control.id, nextValue)}
-        onReset={() => onChange(selectedEffectId, control.id, control.defaultValue)}
+        onReset={() => onChange(selectedEffectId, control.id, defaultValue)}
       />
     )
   }
@@ -357,6 +376,7 @@ function renderEffectControl({
         value={stringValue}
         options={control.options}
         onChange={(nextValue) => onChange(selectedEffectId, control.id, nextValue)}
+        onReset={() => onChange(selectedEffectId, control.id, defaultValue)}
       />
     )
   }
@@ -370,7 +390,7 @@ function renderEffectControl({
         label={control.label}
         value={stringValue}
         onChange={(nextValue) => onChange(selectedEffectId, control.id, nextValue)}
-        onReset={() => onChange(selectedEffectId, control.id, control.defaultValue)}
+        onReset={() => onChange(selectedEffectId, control.id, defaultValue)}
       />
     )
   }
@@ -381,8 +401,23 @@ function renderEffectControl({
       label={control.label}
       value={typeof value === 'string' ? value : control.defaultValue}
       onChange={(nextValue) => onChange(selectedEffectId, control.id, nextValue)}
+      onReset={() => onChange(selectedEffectId, control.id, defaultValue)}
     />
   )
+}
+
+function readThemeDefaultColor(
+  effectId: GrainradEffectId,
+  controlId: string,
+  theme: 'light' | 'dark',
+) {
+  const control = getGrainradEffectById(effectId).settingGroups
+    .flatMap((group) => group.controls)
+    .find((candidate) => candidate.id === controlId)
+
+  return control && typeof getGrainradControlDefaultValue(control, theme) === 'string'
+    ? getGrainradControlDefaultValue(control, theme) as string
+    : '#000000'
 }
 
 function readNumberControl(

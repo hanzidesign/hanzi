@@ -15,6 +15,7 @@ export const CONTOUR_FILL_MODE_IDS = {
 
 export const CONTOUR_COLOR_MODE_IDS = {
   original: 1,
+  mono: 2,
   custom: 2,
 } as const
 
@@ -47,16 +48,6 @@ uniform vec3 u_lineColor;
 uniform vec3 u_background;
 uniform float u_colorMode;
 uniform float u_invert;
-uniform float u_time;
-uniform float u_bloom;
-uniform float u_grainIntensity;
-uniform float u_grainSize;
-uniform float u_grainSpeed;
-uniform float u_postChromatic;
-uniform float u_scanlines;
-uniform float u_vignette;
-uniform float u_crtCurve;
-uniform float u_phosphor;
 varying vec2 v_uv;
 
 float contourLuminance(vec3 color) {
@@ -71,26 +62,6 @@ vec3 applyContourBrightnessContrast(vec3 color) {
 float sampleContourBrightness(vec2 sourceUv) {
   vec3 sourceColor = texture2D(u_sourceTexture, sourceUv).rgb;
   return contourLuminance(applyContourBrightnessContrast(sourceColor));
-}
-
-float contourPostNoise(vec2 pixel) {
-  return fract(sin(dot(pixel, vec2(12.9898, 78.233))) * 43758.5453);
-}
-
-vec3 applyContourPostProcessing(vec3 color, float sourceLuminance, vec2 uv) {
-  vec2 centered = uv * 2.0 - 1.0;
-  float noiseScale = max(u_grainSize, 1.0);
-  float movingTime = floor(u_time * (1.0 + u_grainSpeed * 0.1));
-  color += (contourPostNoise(floor(gl_FragCoord.xy / noiseScale) + movingTime) - 0.5)
-    * (u_grainIntensity / 100.0);
-  color += smoothstep(0.65, 1.0, sourceLuminance) * u_bloom * 0.24;
-  color.r += (contourPostNoise(gl_FragCoord.xy + 13.0) - 0.5) * u_postChromatic * 0.08;
-  color.b -= (contourPostNoise(gl_FragCoord.xy + 29.0) - 0.5) * u_postChromatic * 0.08;
-  color *= 1.0 - sin(gl_FragCoord.y * 3.14159265) * u_scanlines * 0.12;
-  color *= mix(1.0, smoothstep(1.25, 0.25, length(centered)), u_vignette);
-  color *= mix(1.0, 1.0 - dot(centered, centered) * 0.1, u_crtCurve);
-  color = mix(color, color * vec3(0.9, 1.06, 0.92), u_phosphor);
-  return clamp(color, 0.0, 1.0);
 }
 
 void main() {
@@ -136,7 +107,6 @@ void main() {
     effectColor = vec3(quantizedBrightness);
   }
 
-  effectColor = applyContourPostProcessing(effectColor, sourceLuminance, v_uv);
   gl_FragColor = vec4(effectColor, 1.0);
 }
 `
@@ -162,18 +132,8 @@ export function createContourShaderMaterial({
       u_contrast: { value: 0 },
       u_lineColor: { value: new Color('#000000') },
       u_background: { value: new Color('#ffffff') },
-      u_colorMode: { value: CONTOUR_COLOR_MODE_IDS.original },
+      u_colorMode: { value: CONTOUR_COLOR_MODE_IDS.mono },
       u_invert: { value: 0 },
-      u_time: { value: 0 },
-      u_bloom: { value: 0 },
-      u_grainIntensity: { value: 35 },
-      u_grainSize: { value: 2 },
-      u_grainSpeed: { value: 50 },
-      u_postChromatic: { value: 0 },
-      u_scanlines: { value: 0 },
-      u_vignette: { value: 0 },
-      u_crtCurve: { value: 0 },
-      u_phosphor: { value: 0 },
     },
     vertexShader: CONTOUR_VERTEX_SHADER,
   })
@@ -200,18 +160,9 @@ export function applyContourUniforms(
   material.uniforms.u_colorMode.value = readEnum(
     controls['color-mode'],
     CONTOUR_COLOR_MODE_IDS,
-    'original',
+    'mono',
   )
   material.uniforms.u_invert.value = readBoolean(controls.invert)
-  material.uniforms.u_bloom.value = readBoolean(controls.bloom)
-  material.uniforms.u_grainIntensity.value = readNumber(controls['grain-intensity'], 35)
-  material.uniforms.u_grainSize.value = readNumber(controls['grain-size'], 2)
-  material.uniforms.u_grainSpeed.value = readNumber(controls['grain-speed'], 50)
-  material.uniforms.u_postChromatic.value = readBoolean(controls.chromatic)
-  material.uniforms.u_scanlines.value = readBoolean(controls.scanlines)
-  material.uniforms.u_vignette.value = readBoolean(controls.vignette)
-  material.uniforms.u_crtCurve.value = readBoolean(controls['crt-curve'])
-  material.uniforms.u_phosphor.value = readBoolean(controls.phosphor)
 }
 
 export function disposeContourShaderMaterial(material: ShaderMaterial) {

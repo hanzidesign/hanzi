@@ -50,6 +50,12 @@ uniform float u_colorMode;
 uniform vec3 u_foreground;
 uniform float u_invert;
 uniform float u_time;
+uniform float u_processingInvert;
+uniform float u_brightnessMap;
+uniform float u_edgeEnhance;
+uniform float u_blur;
+uniform float u_quantizeColors;
+uniform float u_shapeMatching;
 uniform float u_bloom;
 uniform float u_grainIntensity;
 uniform float u_grainSize;
@@ -68,6 +74,34 @@ float dotsLuminance(vec3 color) {
 vec3 applyDotsBrightnessContrast(vec3 color) {
   float contrastFactor = (1.0 + u_contrast) / (1.0 - u_contrast * 0.99);
   return clamp((color + u_brightness - 0.5) * contrastFactor + 0.5, 0.0, 1.0);
+}
+
+vec3 sampleDotsSource(vec2 sourceUv) {
+  vec3 center = texture2D(u_sourceTexture, sourceUv).rgb;
+  if (u_blur <= 0.0) {
+    return center;
+  }
+  vec2 texel = 1.0 / max(u_sourceSize, vec2(1.0));
+  vec2 blurTexel = texel * min(u_blur, 12.0);
+  return (
+    center * 4.0 +
+    texture2D(u_sourceTexture, sourceUv + vec2(blurTexel.x, 0.0)).rgb +
+    texture2D(u_sourceTexture, sourceUv - vec2(blurTexel.x, 0.0)).rgb +
+    texture2D(u_sourceTexture, sourceUv + vec2(0.0, blurTexel.y)).rgb +
+    texture2D(u_sourceTexture, sourceUv - vec2(0.0, blurTexel.y)).rgb
+  ) / 8.0;
+}
+
+vec3 applyDotsProcessing(vec3 color, float sourceLuminance) {
+  color = mix(color, 1.0 - color, u_processingInvert);
+  color *= u_brightnessMap;
+  color += length(fwidth(vec2(sourceLuminance))) * u_edgeEnhance * 8.0;
+  if (u_quantizeColors > 0.0) {
+    float levels = max(floor(u_quantizeColors + 0.5), 2.0);
+    color = floor(color * (levels - 1.0) + 0.5) / (levels - 1.0);
+  }
+  color = mix(color, vec3(step(0.5, sourceLuminance)), u_shapeMatching);
+  return clamp(color, 0.0, 1.0);
 }
 
 float dotsPostNoise(vec2 pixel) {
@@ -113,7 +147,7 @@ void main() {
 
   vec2 cellUv = cellCenter / u_resolution;
   vec3 adjustedColor = applyDotsBrightnessContrast(
-    texture2D(u_sourceTexture, cellUv).rgb
+    sampleDotsSource(cellUv)
   );
   float cellLuminance = dotsLuminance(adjustedColor);
   if (u_invert > 0.5) {
@@ -132,8 +166,9 @@ void main() {
     : (u_shape > 0.5 ? squareCheck : circleCheck);
 
   vec3 modeColor = u_colorMode < 0.5 ? adjustedColor : vec3(cellLuminance);
-  vec3 dotColor = u_colorMode > 1.5 ? u_foreground * cellLuminance : modeColor;
+  vec3 dotColor = u_colorMode > 0.5 ? u_foreground * cellLuminance : modeColor;
   vec3 dotsColor = inShape ? dotColor : u_background;
+  dotsColor = applyDotsProcessing(dotsColor, dotsLuminance(adjustedColor));
   dotsColor = applyDotsPostProcessing(dotsColor, dotsLuminance(adjustedColor), v_uv);
   gl_FragColor = vec4(dotsColor, 1.0);
 }
@@ -164,8 +199,14 @@ export function createDotsShaderMaterial({
       u_foreground: { value: new Color('#ffffff') },
       u_invert: { value: 0 },
       u_time: { value: 0 },
+      u_processingInvert: { value: 0 },
+      u_brightnessMap: { value: 1 },
+      u_edgeEnhance: { value: 0 },
+      u_blur: { value: 0 },
+      u_quantizeColors: { value: 0 },
+      u_shapeMatching: { value: 0 },
       u_bloom: { value: 0 },
-      u_grainIntensity: { value: 35 },
+      u_grainIntensity: { value: 0 },
       u_grainSize: { value: 2 },
       u_grainSpeed: { value: 50 },
       u_postChromatic: { value: 0 },
@@ -189,11 +230,18 @@ export function applyDotsUniforms(material: ShaderMaterial, controls: DotsContro
   material.uniforms.u_brightness.value = readNumber(controls.brightness, 0) / 100
   material.uniforms.u_contrast.value = readNumber(controls.contrast, 0) / 100
   material.uniforms.u_background.value.set(readString(controls.background, '#000000'))
-  material.uniforms.u_colorMode.value = controls['color-mode'] === 'custom' ? 1 : 0
+  material.uniforms.u_colorMode.value =
+    readString(controls['color-mode'], 'mono') === 'original' ? 0 : 1
   material.uniforms.u_foreground.value.set(readString(controls.foreground, '#ffffff'))
   material.uniforms.u_invert.value = controls.invert === true ? 1 : 0
+  material.uniforms.u_processingInvert.value = controls['processing-invert'] === true ? 1 : 0
+  material.uniforms.u_brightnessMap.value = readNumber(controls['brightness-map'], 1)
+  material.uniforms.u_edgeEnhance.value = readNumber(controls['edge-enhance'], 0)
+  material.uniforms.u_blur.value = readNumber(controls.blur, 0)
+  material.uniforms.u_quantizeColors.value = readNumber(controls['quantize-colors'], 0)
+  material.uniforms.u_shapeMatching.value = readNumber(controls['shape-matching'], 0)
   material.uniforms.u_bloom.value = controls.bloom === true ? 1 : 0
-  material.uniforms.u_grainIntensity.value = readNumber(controls['grain-intensity'], 35)
+  material.uniforms.u_grainIntensity.value = readNumber(controls['grain-intensity'], 0)
   material.uniforms.u_grainSize.value = readNumber(controls['grain-size'], 2)
   material.uniforms.u_grainSpeed.value = readNumber(controls['grain-speed'], 50)
   material.uniforms.u_postChromatic.value = controls.chromatic === true ? 1 : 0

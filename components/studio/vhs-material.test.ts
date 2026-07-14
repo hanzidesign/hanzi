@@ -34,6 +34,7 @@ describe('VHS shader material', () => {
     expect(material.uniforms.u_trackingError.value).toBe(0.2)
     expect(material.uniforms.u_brightness.value).toBe(0)
     expect(material.uniforms.u_contrast.value).toBe(0)
+    expect(material.uniforms.u_brightnessMap.value).toBe(1)
   })
 
   it('maps the exact uniform ABI units without clamping raw controls', () => {
@@ -47,6 +48,7 @@ describe('VHS shader material', () => {
       'tracking-error': 0.35,
       brightness: 40,
       contrast: -25,
+      'brightness-map': 1.4,
     })
 
     expect(material.uniforms.u_distortion.value).toBe(0.75)
@@ -56,6 +58,7 @@ describe('VHS shader material', () => {
     expect(material.uniforms.u_trackingError.value).toBe(0.35)
     expect(material.uniforms.u_brightness.value).toBe(0.4)
     expect(material.uniforms.u_contrast.value).toBe(-0.25)
+    expect(material.uniforms.u_brightnessMap.value).toBe(1.4)
   })
 
   it('keeps numeric VHS Scanlines independent from boolean shared Post Scanlines', () => {
@@ -181,22 +184,49 @@ describe('VHS shader material', () => {
     )
   })
 
-  it('keeps Processing absent and maps shared Post independently after VHS', () => {
-    for (const processingUniform of [
-      'u_processingInvert',
-      'u_brightnessMap',
-      'u_edgeEnhance',
-      'u_blur',
-      'u_quantizeColors',
-      'u_shapeMatching',
-    ]) {
-      expect(VHS_FRAGMENT_SHADER).not.toContain(processingUniform)
-    }
+  it('applies every shared Processing control after VHS and before shared Post', () => {
+    expect(VHS_FRAGMENT_SHADER).toContain('vec3 sampleVhsSource(vec2 uv)')
+    expect(VHS_FRAGMENT_SHADER).toContain('if (u_blur <= 0.0)')
+    expect(VHS_FRAGMENT_SHADER).toContain(
+      'vec2 blurTexel = min(u_blur, 12.0) / max(u_sourceSize, vec2(1.0));',
+    )
+    expect(VHS_FRAGMENT_SHADER).toContain(
+      'effectColor = sampleVhsSource(warpedUv);',
+    )
+    expect(VHS_FRAGMENT_SHADER).toContain(
+      'color = mix(color, 1.0 - color, u_processingInvert);',
+    )
+    expect(VHS_FRAGMENT_SHADER).toContain('color *= u_brightnessMap;')
+    expect(VHS_FRAGMENT_SHADER).toContain(
+      'length(fwidth(vec2(luminance))) * u_edgeEnhance * 8.0',
+    )
+    expect(VHS_FRAGMENT_SHADER).toContain('if (u_quantizeColors >= 1.0)')
+    expect(VHS_FRAGMENT_SHADER).toContain(
+      'float levels = max(u_quantizeColors, 2.0);',
+    )
+    expect(VHS_FRAGMENT_SHADER).toContain(
+      'color = mix(color, vec3(step(0.5, luminance)), u_shapeMatching);',
+    )
     expect(VHS_FRAGMENT_SHADER).toContain('vec3 applyVhsPostProcessing')
+    const effectIndex = VHS_FRAGMENT_SHADER.indexOf(
+      'effectColor = applyVhsBrightnessContrast(effectColor);',
+    )
+    const processingIndex = VHS_FRAGMENT_SHADER.lastIndexOf(
+      'effectColor = applyVhsProcessing(',
+    )
+    const postIndex = VHS_FRAGMENT_SHADER.lastIndexOf('applyVhsPostProcessing(')
+    expect(effectIndex).toBeLessThan(processingIndex)
+    expect(processingIndex).toBeLessThan(postIndex)
 
     const { material } = createFixture()
     applyVhsUniforms(material, {
       'vhs-scanlines': 0.7,
+      'processing-invert': true,
+      'brightness-map': 1.75,
+      'edge-enhance': 0.6,
+      blur: 3,
+      'quantize-colors': 1,
+      'shape-matching': 0.4,
       bloom: true,
       'grain-intensity': 61,
       'grain-size': 4,
@@ -209,6 +239,12 @@ describe('VHS shader material', () => {
     })
 
     expect(material.uniforms.u_vhsScanlines.value).toBe(0.7)
+    expect(material.uniforms.u_processingInvert.value).toBe(1)
+    expect(material.uniforms.u_brightnessMap.value).toBe(1.75)
+    expect(material.uniforms.u_edgeEnhance.value).toBe(0.6)
+    expect(material.uniforms.u_blur.value).toBe(3)
+    expect(material.uniforms.u_quantizeColors.value).toBe(1)
+    expect(material.uniforms.u_shapeMatching.value).toBe(0.4)
     expect(material.uniforms.u_bloom.value).toBe(1)
     expect(material.uniforms.u_grainIntensity.value).toBe(61)
     expect(material.uniforms.u_grainSize.value).toBe(4)

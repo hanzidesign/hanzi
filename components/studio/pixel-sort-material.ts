@@ -48,6 +48,12 @@ uniform float u_reverse;
 uniform float u_brightness;
 uniform float u_contrast;
 uniform float u_time;
+uniform float u_processingInvert;
+uniform float u_brightnessMap;
+uniform float u_edgeEnhance;
+uniform float u_blur;
+uniform float u_quantizeColors;
+uniform float u_shapeMatching;
 uniform float u_bloom;
 uniform float u_grainIntensity;
 uniform float u_grainSize;
@@ -112,6 +118,34 @@ vec3 applyPixelSortBrightnessContrast(vec3 color) {
   return clamp((result - 0.5) * contrastFactor + 0.5, 0.0, 1.0);
 }
 
+vec3 samplePixelSortSource(vec2 sourceUv) {
+  vec3 center = texture2D(u_sourceTexture, sourceUv).rgb;
+  if (u_blur <= 0.0) {
+    return center;
+  }
+  vec2 texel = 1.0 / max(u_sourceSize, vec2(1.0));
+  vec2 blurTexel = texel * min(u_blur, 12.0);
+  return (
+    center * 4.0 +
+    texture2D(u_sourceTexture, sourceUv + vec2(blurTexel.x, 0.0)).rgb +
+    texture2D(u_sourceTexture, sourceUv - vec2(blurTexel.x, 0.0)).rgb +
+    texture2D(u_sourceTexture, sourceUv + vec2(0.0, blurTexel.y)).rgb +
+    texture2D(u_sourceTexture, sourceUv - vec2(0.0, blurTexel.y)).rgb
+  ) / 8.0;
+}
+
+vec3 applyPixelSortProcessing(vec3 color, float sourceLuminance) {
+  color = mix(color, 1.0 - color, u_processingInvert);
+  color *= u_brightnessMap;
+  color += length(fwidth(vec2(sourceLuminance))) * u_edgeEnhance * 8.0;
+  if (u_quantizeColors > 0.0) {
+    float levels = max(floor(u_quantizeColors + 0.5), 2.0);
+    color = floor(color * (levels - 1.0) + 0.5) / (levels - 1.0);
+  }
+  color = mix(color, vec3(step(0.5, sourceLuminance)), u_shapeMatching);
+  return clamp(color, 0.0, 1.0);
+}
+
 float pixelSortPostNoise(vec2 pixel) {
   return fract(sin(dot(pixel, vec2(12.9898, 78.233))) * 43758.5453);
 }
@@ -151,7 +185,7 @@ void main() {
 
   float lineRand = pixelSortHash11(lineCoord * 0.173);
   float thresholdVar = u_threshold * (1.0 + (lineRand - 0.5) * u_randomness * 0.5);
-  vec3 currentColor = texture2D(u_sourceTexture, v_uv).rgb;
+  vec3 currentColor = samplePixelSortSource(v_uv);
   vec3 effectColor = currentColor;
 
   if (isPixelSortSpanStart(currentColor, thresholdVar)) {
@@ -166,7 +200,7 @@ void main() {
       if (checkUV.x < 0.0 || checkUV.x > 1.0 || checkUV.y < 0.0 || checkUV.y > 1.0) {
         break;
       }
-      vec3 checkColor = texture2D(u_sourceTexture, checkUV).rgb;
+      vec3 checkColor = samplePixelSortSource(checkUV);
       if (!isPixelSortSpanStart(checkColor, thresholdVar)) {
         break;
       }
@@ -182,7 +216,7 @@ void main() {
       if (checkUV.x < 0.0 || checkUV.x > 1.0 || checkUV.y < 0.0 || checkUV.y > 1.0) {
         break;
       }
-      vec3 checkColor = texture2D(u_sourceTexture, checkUV).rgb;
+      vec3 checkColor = samplePixelSortSource(checkUV);
       if (isPixelSortSpanEnd(checkColor, thresholdVar)) {
         break;
       }
@@ -205,7 +239,7 @@ void main() {
           float sampleOffset = float(-spanStartDist) + t * float(spanSize);
           vec2 sampleUV = v_uv + directionNormalized * sampleOffset;
           sampleUV = clamp(sampleUV, vec2(0.001), vec2(0.999));
-          vec3 sampleColor = texture2D(u_sourceTexture, sampleUV).rgb;
+          vec3 sampleColor = samplePixelSortSource(sampleUV);
           colors[i] = sampleColor;
           sortValues[i] = pixelSortLuminance(sampleColor);
         } else {
@@ -243,6 +277,10 @@ void main() {
   }
 
   effectColor = applyPixelSortBrightnessContrast(effectColor);
+  effectColor = applyPixelSortProcessing(
+    effectColor,
+    pixelSortLuminance(currentColor)
+  );
   effectColor = applyPixelSortPostProcessing(
     effectColor,
     pixelSortLuminance(currentColor),
@@ -276,8 +314,14 @@ export function createPixelSortShaderMaterial({
       u_brightness: { value: 0 },
       u_contrast: { value: 0 },
       u_time: { value: 0 },
+      u_processingInvert: { value: 0 },
+      u_brightnessMap: { value: 1 },
+      u_edgeEnhance: { value: 0 },
+      u_blur: { value: 0 },
+      u_quantizeColors: { value: 0 },
+      u_shapeMatching: { value: 0 },
       u_bloom: { value: 0 },
-      u_grainIntensity: { value: 35 },
+      u_grainIntensity: { value: 0 },
       u_grainSize: { value: 2 },
       u_grainSpeed: { value: 50 },
       u_postChromatic: { value: 0 },
@@ -305,7 +349,7 @@ export function applyPixelSortUniforms(
   material.uniforms.u_mode.value = readEnum(
     controls['sort-mode'],
     PIXEL_SORT_MODE_IDS,
-    'brightness',
+    'hue',
   )
   material.uniforms.u_threshold.value = readNumber(controls.threshold, 0.25)
   material.uniforms.u_streakLength.value = readNumber(controls['streak-length'], 100)
@@ -314,8 +358,14 @@ export function applyPixelSortUniforms(
   material.uniforms.u_reverse.value = readBoolean(controls.reverse)
   material.uniforms.u_brightness.value = readNumber(controls.brightness, 0) / 100
   material.uniforms.u_contrast.value = readNumber(controls.contrast, 0) / 100
+  material.uniforms.u_processingInvert.value = readBoolean(controls['processing-invert'])
+  material.uniforms.u_brightnessMap.value = readNumber(controls['brightness-map'], 1)
+  material.uniforms.u_edgeEnhance.value = readNumber(controls['edge-enhance'], 0)
+  material.uniforms.u_blur.value = readNumber(controls.blur, 0)
+  material.uniforms.u_quantizeColors.value = readNumber(controls['quantize-colors'], 0)
+  material.uniforms.u_shapeMatching.value = readNumber(controls['shape-matching'], 0)
   material.uniforms.u_bloom.value = readBoolean(controls.bloom)
-  material.uniforms.u_grainIntensity.value = readNumber(controls['grain-intensity'], 35)
+  material.uniforms.u_grainIntensity.value = readNumber(controls['grain-intensity'], 0)
   material.uniforms.u_grainSize.value = readNumber(controls['grain-size'], 2)
   material.uniforms.u_grainSpeed.value = readNumber(controls['grain-speed'], 50)
   material.uniforms.u_postChromatic.value = readBoolean(controls.chromatic)

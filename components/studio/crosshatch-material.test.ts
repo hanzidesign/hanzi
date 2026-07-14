@@ -31,6 +31,7 @@ describe('Crosshatch shader material', () => {
     expect(material.uniforms.u_angle.value).toBeCloseTo(Math.PI / 4)
     expect(material.uniforms.u_lineWidth.value).toBe(0.15)
     expect(material.uniforms.u_randomness.value).toBe(0)
+    expect(material.uniforms.u_brightnessMap.value).toBe(1)
     expect(material.uniforms.u_invert.value).toBe(0)
     expect(material.uniforms.u_brightness.value).toBe(0)
     expect(material.uniforms.u_contrast.value).toBe(0)
@@ -53,6 +54,7 @@ describe('Crosshatch shader material', () => {
       contrast: -25,
       'line-color': '#123456',
       background: '#abcdef',
+      'brightness-map': 1.4,
     })
 
     expect(material.uniforms.u_density.value).toBe(11)
@@ -65,6 +67,7 @@ describe('Crosshatch shader material', () => {
     expect(material.uniforms.u_contrast.value).toBe(-0.25)
     expect(material.uniforms.u_lineColor.value.getHexString()).toBe('123456')
     expect(material.uniforms.u_background.value.getHexString()).toBe('abcdef')
+    expect(material.uniforms.u_brightnessMap.value).toBe(1.4)
 
     applyCrosshatchUniforms(material, { 'line-width': 0.15 })
     expect(material.uniforms.u_lineWidth.value).toBe(0.15)
@@ -134,23 +137,35 @@ describe('Crosshatch shader material', () => {
     )
   })
 
-  it('keeps Processing absent and maps shared Post after Crosshatch', () => {
+  it('maps and consumes every Processing control between Crosshatch and Post', () => {
+    expect(CROSSHATCH_FRAGMENT_SHADER).toContain('vec3 crosshatchBlurredSource')
+    expect(CROSSHATCH_FRAGMENT_SHADER).toContain('crosshatchSourceSample(uv + vec2(blurTexel.x, 0.0))')
+    expect(CROSSHATCH_FRAGMENT_SHADER).toContain('crosshatchSourceSample(uv - vec2(blurTexel.x, 0.0))')
+    expect(CROSSHATCH_FRAGMENT_SHADER).toContain('crosshatchSourceSample(uv + vec2(0.0, blurTexel.y))')
+    expect(CROSSHATCH_FRAGMENT_SHADER).toContain('crosshatchSourceSample(uv - vec2(0.0, blurTexel.y))')
     for (const processingUniform of [
-      'u_processingInvert',
-      'u_brightnessMap',
-      'u_edgeEnhance',
-      'u_blur',
-      'u_quantizeColors',
-      'u_shapeMatching',
+      'u_processingInvert', 'u_brightnessMap', 'u_edgeEnhance', 'u_blur',
+      'u_quantizeColors', 'u_shapeMatching',
     ]) {
-      expect(CROSSHATCH_FRAGMENT_SHADER).not.toContain(processingUniform)
+      expect(CROSSHATCH_FRAGMENT_SHADER.split(processingUniform).length).toBeGreaterThan(2)
     }
+    expect(CROSSHATCH_FRAGMENT_SHADER).toContain('if (u_quantizeColors >= 1.0)')
+    expect(CROSSHATCH_FRAGMENT_SHADER).toContain('max(u_quantizeColors, 2.0)')
     expect(CROSSHATCH_FRAGMENT_SHADER.indexOf('hatchValue = max')).toBeLessThan(
+      CROSSHATCH_FRAGMENT_SHADER.indexOf('effectColor = applyCrosshatchProcessing'),
+    )
+    expect(CROSSHATCH_FRAGMENT_SHADER.indexOf('effectColor = applyCrosshatchProcessing')).toBeLessThan(
       CROSSHATCH_FRAGMENT_SHADER.indexOf('applyCrosshatchPostProcessing(effectColor'),
     )
 
     const { material } = createFixture()
     applyCrosshatchUniforms(material, {
+      'processing-invert': true,
+      'brightness-map': 1.4,
+      'edge-enhance': 0.35,
+      blur: 3,
+      'quantize-colors': 1,
+      'shape-matching': 0.25,
       bloom: true,
       'grain-intensity': 61,
       'grain-size': 4,
@@ -162,6 +177,12 @@ describe('Crosshatch shader material', () => {
       phosphor: true,
     })
 
+    expect(material.uniforms.u_processingInvert.value).toBe(1)
+    expect(material.uniforms.u_brightnessMap.value).toBe(1.4)
+    expect(material.uniforms.u_edgeEnhance.value).toBe(0.35)
+    expect(material.uniforms.u_blur.value).toBe(3)
+    expect(material.uniforms.u_quantizeColors.value).toBe(1)
+    expect(material.uniforms.u_shapeMatching.value).toBe(0.25)
     expect(material.uniforms.u_bloom.value).toBe(1)
     expect(material.uniforms.u_grainIntensity.value).toBe(61)
     expect(material.uniforms.u_grainSize.value).toBe(4)

@@ -35,6 +35,7 @@ describe('Voronoi shader material', () => {
     expect(material.uniforms.u_randomize.value).toBe(0.8)
     expect(material.uniforms.u_brightness.value).toBe(0)
     expect(material.uniforms.u_contrast.value).toBe(0)
+    expect(material.uniforms.u_brightnessMap.value).toBe(1)
     expect(material.uniforms.u_time.value).toBe(0)
   })
 
@@ -45,10 +46,11 @@ describe('Voronoi shader material', () => {
       'cell-size': 85,
       'edge-width': 0.65,
       'edge-color': '2',
-      'color-mode': '1',
+      'cell-color-mode': '1',
       randomize: 0.35,
       brightness: 40,
       contrast: -25,
+      'brightness-map': 1.4,
     })
 
     expect(VORONOI_EDGE_COLOR_IDS).toEqual({ '0': 0, '1': 1, '2': 2 })
@@ -60,6 +62,7 @@ describe('Voronoi shader material', () => {
     expect(material.uniforms.u_randomize.value).toBe(0.35)
     expect(material.uniforms.u_brightness.value).toBe(0.4)
     expect(material.uniforms.u_contrast.value).toBe(-0.25)
+    expect(material.uniforms.u_brightnessMap.value).toBe(1.4)
   })
 
   it('rejects numeric select values at the string control boundary and uses fallbacks', () => {
@@ -68,7 +71,7 @@ describe('Voronoi shader material', () => {
     applyVoronoiUniforms(material, {
       'cell-size': Number.NaN,
       'edge-color': 2,
-      'color-mode': 1,
+      'cell-color-mode': 1,
     })
 
     expect(material.uniforms.u_cellSize.value).toBe(30)
@@ -155,26 +158,50 @@ describe('Voronoi shader material', () => {
     )
   })
 
-  it('keeps Processing absent and maps shared Post after the complete effect', () => {
-    for (const processingUniform of [
-      'u_processingInvert',
-      'u_brightnessMap',
-      'u_edgeEnhance',
-      'u_blur',
-      'u_quantizeColors',
-      'u_shapeMatching',
-    ]) {
-      expect(VORONOI_FRAGMENT_SHADER).not.toContain(processingUniform)
-    }
+  it('applies every shared Processing control after the complete effect and before shared Post', () => {
+    expect(VORONOI_FRAGMENT_SHADER).toContain('vec3 sampleVoronoiMipZero(vec2 uv)')
+    expect(VORONOI_FRAGMENT_SHADER).toContain('if (u_blur <= 0.0)')
+    expect(VORONOI_FRAGMENT_SHADER).toContain(
+      'vec2 blurTexel = min(u_blur, 12.0) / max(u_sourceSize, vec2(1.0));',
+    )
+    expect(VORONOI_FRAGMENT_SHADER).toContain(
+      'vec3 currentColor = sampleVoronoiMipZero(v_uv);',
+    )
+    expect(VORONOI_FRAGMENT_SHADER).toContain(
+      'color = mix(color, 1.0 - color, u_processingInvert);',
+    )
+    expect(VORONOI_FRAGMENT_SHADER).toContain('color *= u_brightnessMap;')
+    expect(VORONOI_FRAGMENT_SHADER).toContain(
+      'length(fwidth(vec2(luminance))) * u_edgeEnhance * 8.0',
+    )
+    expect(VORONOI_FRAGMENT_SHADER).toContain('if (u_quantizeColors >= 1.0)')
+    expect(VORONOI_FRAGMENT_SHADER).toContain(
+      'float levels = max(u_quantizeColors, 2.0);',
+    )
+    expect(VORONOI_FRAGMENT_SHADER).toContain(
+      'color = mix(color, vec3(step(0.5, luminance)), u_shapeMatching);',
+    )
     expect(VORONOI_FRAGMENT_SHADER).toContain('vec3 applyVoronoiPostProcessing')
-    expect(
-      VORONOI_FRAGMENT_SHADER.indexOf(
-        'effectColor = applyVoronoiBrightnessContrast(effectColor);',
-      ),
-    ).toBeLessThan(VORONOI_FRAGMENT_SHADER.lastIndexOf('applyVoronoiPostProcessing('))
+    const effectIndex = VORONOI_FRAGMENT_SHADER.indexOf(
+      'effectColor = applyVoronoiBrightnessContrast(effectColor);',
+    )
+    const processingIndex = VORONOI_FRAGMENT_SHADER.lastIndexOf(
+      'effectColor = applyVoronoiProcessing(',
+    )
+    const postIndex = VORONOI_FRAGMENT_SHADER.lastIndexOf(
+      'applyVoronoiPostProcessing(',
+    )
+    expect(effectIndex).toBeLessThan(processingIndex)
+    expect(processingIndex).toBeLessThan(postIndex)
 
     const { material } = createFixture()
     applyVoronoiUniforms(material, {
+      'processing-invert': true,
+      'brightness-map': 1.75,
+      'edge-enhance': 0.6,
+      blur: 3,
+      'quantize-colors': 1,
+      'shape-matching': 0.4,
       bloom: true,
       'grain-intensity': 61,
       'grain-size': 4,
@@ -186,6 +213,12 @@ describe('Voronoi shader material', () => {
       phosphor: true,
     })
 
+    expect(material.uniforms.u_processingInvert.value).toBe(1)
+    expect(material.uniforms.u_brightnessMap.value).toBe(1.75)
+    expect(material.uniforms.u_edgeEnhance.value).toBe(0.6)
+    expect(material.uniforms.u_blur.value).toBe(3)
+    expect(material.uniforms.u_quantizeColors.value).toBe(1)
+    expect(material.uniforms.u_shapeMatching.value).toBe(0.4)
     expect(material.uniforms.u_bloom.value).toBe(1)
     expect(material.uniforms.u_grainIntensity.value).toBe(61)
     expect(material.uniforms.u_grainSize.value).toBe(4)

@@ -23,6 +23,7 @@ import {
   type ShaderMaterial,
 } from 'three'
 import { useStudioStore } from '@/app/studio/studio-store'
+import { withoutSharedControllerValues } from './grainrad-shared-controls'
 import { computeEffectiveAnimationTime } from '@/components/studio/animation-time'
 import {
   applyCrosshatchUniforms,
@@ -172,7 +173,7 @@ function CharacterCrosshatchScene({
   }, [material])
 
   useEffect(() => {
-    applyCrosshatchUniforms(material, controls)
+    applyCrosshatchUniforms(material, withoutSharedControllerValues(controls))
   }, [controls, material])
 
   useEffect(() => {
@@ -254,14 +255,14 @@ function createCrosshatchSourceScene(
   const scene = new Scene()
   const group = new Group()
   const material = new MeshStandardMaterial({
-    color: new Color('#ffffff'),
+    color: new Color('#000000'),
     roughness: 0.72,
     metalness: 0.05,
   })
   const directional = new DirectionalLight('#ffffff', 1.4)
   directional.position.set(2, 3, 4)
 
-  scene.background = new Color('#000000')
+  scene.background = new Color('#ffffff')
   scene.add(new AmbientLight('#ffffff', 0.85), directional)
 
   for (const geometry of geometryResult.geometries) {
@@ -302,4 +303,3 @@ function disposeCurrentGeometryResult(
   disposeGeometryResult(resultRef.current)
   resultRef.current = null
 }
-

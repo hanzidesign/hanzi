@@ -23,6 +23,7 @@ import {
   type ShaderMaterial,
 } from 'three'
 import { useStudioStore } from '@/app/studio/studio-store'
+import { withoutSharedControllerValues } from './grainrad-shared-controls'
 import { computeEffectiveAnimationTime } from '@/components/studio/animation-time'
 import {
   createCharacterMeshGeometries,
@@ -196,7 +197,7 @@ function CharacterMatrixRainScene({
   }, [material])
 
   useEffect(() => {
-    applyMatrixRainUniforms(material, controls, glyphAtlas)
+    applyMatrixRainUniforms(material, withoutSharedControllerValues(controls), glyphAtlas)
   }, [controls, glyphAtlas, material])
 
   useEffect(() => {

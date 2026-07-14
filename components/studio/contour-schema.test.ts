@@ -50,9 +50,9 @@ describe('Grainrad Contour schema', () => {
     expect(controls.contrast).toMatchObject({ defaultValue: 0, min: -100, max: 100, step: 1 })
     expect(controls['color-mode']).toMatchObject({
       kind: 'select',
-      defaultValue: 'original',
+      defaultValue: 'mono',
       options: [
-        { value: 'custom', label: 'Mono' },
+        { value: 'mono', label: 'Mono' },
         { value: 'original', label: 'Original' },
       ],
     })
@@ -67,9 +67,23 @@ describe('Grainrad Contour schema', () => {
     const lineColor = controls.find((control) => control.id === 'line-color')!
     const background = controls.find((control) => control.id === 'background')!
 
-    expect(isGrainradControlVisible(lineColor, defaults)).toBe(false)
-    expect(isGrainradControlVisible(background, defaults)).toBe(false)
-    expect(isGrainradControlVisible(lineColor, { ...defaults, 'color-mode': 'custom' })).toBe(true)
-    expect(isGrainradControlVisible(background, { ...defaults, 'color-mode': 'custom' })).toBe(true)
+    expect(isGrainradControlVisible(lineColor, defaults)).toBe(true)
+    expect(isGrainradControlVisible(background, defaults)).toBe(true)
+    expect(isGrainradControlVisible(lineColor, { ...defaults, 'color-mode': 'original' })).toBe(false)
+    expect(isGrainradControlVisible(background, { ...defaults, 'color-mode': 'original' })).toBe(false)
+  })
+
+  it('does not expose ASCII or guessed geometry controls', () => {
+    const definition = getGrainradEffectById('contour')
+    const controlIds = definition.settingGroups.flatMap((group) =>
+      group.controls.map((control) => control.id),
+    )
+
+    expect(controlIds).not.toContain('source-mode')
+    expect(controlIds).not.toContain('line-style')
+    expect(controlIds).not.toContain('character-set')
+    expect(controlIds).not.toContain('custom-chars')
+    expect(controlIds).not.toContain('character-scale')
+    expect(controlIds).not.toContain('character-spacing')
   })
 })

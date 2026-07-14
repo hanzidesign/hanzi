@@ -43,6 +43,12 @@ uniform float u_randomize;
 uniform float u_brightness;
 uniform float u_contrast;
 uniform float u_time;
+uniform float u_processingInvert;
+uniform float u_brightnessMap;
+uniform float u_edgeEnhance;
+uniform float u_blur;
+uniform float u_quantizeColors;
+uniform float u_shapeMatching;
 uniform float u_bloom;
 uniform float u_grainIntensity;
 uniform float u_grainSize;
@@ -90,10 +96,20 @@ vec4 findVoronoiCell(vec2 p, float randomness) {
 }
 
 vec3 sampleVoronoiMipZero(vec2 uv) {
-  return texture2D(
-    u_sourceTexture,
-    clamp(uv, vec2(0.0), vec2(1.0))
-  ).rgb;
+  vec2 sourceUv = clamp(uv, vec2(0.0), vec2(1.0));
+  vec3 center = texture2D(u_sourceTexture, sourceUv).rgb;
+  if (u_blur <= 0.0) {
+    return center;
+  }
+
+  vec2 blurTexel = min(u_blur, 12.0) / max(u_sourceSize, vec2(1.0));
+  return (
+    center * 4.0 +
+    texture2D(u_sourceTexture, clamp(sourceUv + vec2(blurTexel.x, 0.0), vec2(0.0), vec2(1.0))).rgb +
+    texture2D(u_sourceTexture, clamp(sourceUv - vec2(blurTexel.x, 0.0), vec2(0.0), vec2(1.0))).rgb +
+    texture2D(u_sourceTexture, clamp(sourceUv + vec2(0.0, blurTexel.y), vec2(0.0), vec2(1.0))).rgb +
+    texture2D(u_sourceTexture, clamp(sourceUv - vec2(0.0, blurTexel.y), vec2(0.0), vec2(1.0))).rgb
+  ) / 8.0;
 }
 
 vec3 applyVoronoiBrightnessContrast(vec3 color) {
@@ -105,6 +121,18 @@ vec3 applyVoronoiBrightnessContrast(vec3 color) {
 
 float voronoiLuminance(vec3 color) {
   return dot(color, vec3(0.299, 0.587, 0.114));
+}
+
+vec3 applyVoronoiProcessing(vec3 color, float luminance) {
+  color = mix(color, 1.0 - color, u_processingInvert);
+  color *= u_brightnessMap;
+  color += length(fwidth(vec2(luminance))) * u_edgeEnhance * 8.0;
+  if (u_quantizeColors >= 1.0) {
+    float levels = max(u_quantizeColors, 2.0);
+    color = floor(color * (levels - 1.0) + 0.5) / (levels - 1.0);
+  }
+  color = mix(color, vec3(step(0.5, luminance)), u_shapeMatching);
+  return clamp(color, 0.0, 1.0);
 }
 
 float voronoiPostNoise(vec2 pixel) {
@@ -157,7 +185,7 @@ void main() {
     cellColor = sampleVoronoiMipZero(centerUv);
   } else {
     vec2 centerUv = (closestCell + 0.5) * u_cellSize / u_resolution;
-    vec3 currentColor = texture2D(u_sourceTexture, v_uv).rgb;
+    vec3 currentColor = sampleVoronoiMipZero(v_uv);
     vec3 centerColor = sampleVoronoiMipZero(centerUv);
     float gradientAmount = smoothstep(0.0, 0.7, closestDistance);
     cellColor = mix(centerColor, currentColor, gradientAmount * 0.5);
@@ -174,6 +202,10 @@ void main() {
 
   vec3 effectColor = mix(edgePixelColor, cellColor, interiorMask);
   effectColor = applyVoronoiBrightnessContrast(effectColor);
+  effectColor = applyVoronoiProcessing(
+    effectColor,
+    voronoiLuminance(effectColor)
+  );
   effectColor = applyVoronoiPostProcessing(
     effectColor,
     voronoiLuminance(effectColor),
@@ -205,8 +237,14 @@ export function createVoronoiShaderMaterial({
       u_brightness: { value: 0 },
       u_contrast: { value: 0 },
       u_time: { value: 0 },
+      u_processingInvert: { value: 0 },
+      u_brightnessMap: { value: 1 },
+      u_edgeEnhance: { value: 0 },
+      u_blur: { value: 0 },
+      u_quantizeColors: { value: 0 },
+      u_shapeMatching: { value: 0 },
       u_bloom: { value: 0 },
-      u_grainIntensity: { value: 35 },
+      u_grainIntensity: { value: 0 },
       u_grainSize: { value: 2 },
       u_grainSpeed: { value: 50 },
       u_postChromatic: { value: 0 },
@@ -234,15 +272,21 @@ export function applyVoronoiUniforms(
     '0',
   )
   material.uniforms.u_colorMode.value = readEnum(
-    controls['color-mode'],
+    controls['cell-color-mode'],
     VORONOI_COLOR_MODE_IDS,
     '0',
   )
   material.uniforms.u_randomize.value = readNumber(controls.randomize, 0.8)
   material.uniforms.u_brightness.value = readNumber(controls.brightness, 0) / 100
   material.uniforms.u_contrast.value = readNumber(controls.contrast, 0) / 100
+  material.uniforms.u_processingInvert.value = readBoolean(controls['processing-invert'])
+  material.uniforms.u_brightnessMap.value = readNumber(controls['brightness-map'], 1)
+  material.uniforms.u_edgeEnhance.value = readNumber(controls['edge-enhance'], 0)
+  material.uniforms.u_blur.value = readNumber(controls.blur, 0)
+  material.uniforms.u_quantizeColors.value = readNumber(controls['quantize-colors'], 0)
+  material.uniforms.u_shapeMatching.value = readNumber(controls['shape-matching'], 0)
   material.uniforms.u_bloom.value = readBoolean(controls.bloom)
-  material.uniforms.u_grainIntensity.value = readNumber(controls['grain-intensity'], 35)
+  material.uniforms.u_grainIntensity.value = readNumber(controls['grain-intensity'], 0)
   material.uniforms.u_grainSize.value = readNumber(controls['grain-size'], 2)
   material.uniforms.u_grainSpeed.value = readNumber(controls['grain-speed'], 50)
   material.uniforms.u_postChromatic.value = readBoolean(controls.chromatic)

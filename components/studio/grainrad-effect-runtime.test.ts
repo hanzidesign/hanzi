@@ -5,6 +5,7 @@ import {
   GRAINRAD_COMMON_PROCESSING_GROUPS,
   GRAINRAD_EFFECTS,
   createDefaultGrainradEffectControls,
+  getGrainradProcessingGroups,
   isGrainradThemeColorControl,
   type GrainradControlValue,
   type GrainradEffectControl,
@@ -59,12 +60,15 @@ describe('Phase 5F Grainrad runtime effect compiler', () => {
       'dithering.background',
       'halftone.foreground',
       'halftone.background',
+      'matrix-rain.foreground',
       'matrix-rain.rain-color',
+      'matrix-rain.background',
       'dots.foreground',
       'dots.background',
       'contour.line-color',
       'contour.background',
-      'blockify.border-color',
+      'blockify.foreground',
+      'blockify.background',
       'threshold.foreground',
       'threshold.background',
       'edge-detection.edge-color',
@@ -132,12 +136,12 @@ describe('Phase 5F Grainrad runtime effect compiler', () => {
 
   it('changes runtime signature when any shared Processing or Post-Processing control changes', () => {
     const defaults = createDefaultGrainradEffectControls()
-    const sharedControls = [
-      ...GRAINRAD_COMMON_PROCESSING_GROUPS,
-      ...GRAINRAD_COMMON_POST_PROCESSING_GROUPS,
-    ].flatMap((group) => group.controls)
 
     for (const effect of GRAINRAD_EFFECTS) {
+      const sharedControls = [
+        ...getGrainradProcessingGroups(effect.id),
+        ...GRAINRAD_COMMON_POST_PROCESSING_GROUPS,
+      ].flatMap((group) => group.controls)
       const baseControls = defaults[effect.id]
       const baseSignature = signatureFor(effect.id, baseControls)
 
@@ -339,7 +343,9 @@ describe('Phase 5F Grainrad runtime effect compiler', () => {
         brightness: 40,
         contrast: -25,
         threshold: 0.18,
+        'foreground': '#654321',
         'rain-color': '#12ab34',
+        'background': '#f4f1e8',
       },
     })
 
@@ -349,7 +355,7 @@ describe('Phase 5F Grainrad runtime effect compiler', () => {
       0.35,
       2.4,
       27,
-      2,
+      3,
       1.6,
       0.65,
       0.4,
@@ -357,9 +363,24 @@ describe('Phase 5F Grainrad runtime effect compiler', () => {
       0.18,
     ])
     expect(runtime.effectColorA).toEqual([0x12 / 255, 0xab / 255, 0x34 / 255])
+    expect(runtime.effectColorB).toEqual([0x65 / 255, 0x43 / 255, 0x21 / 255])
+    expect(runtime.effectValues.slice(11, 14)).toEqual([
+      0xf4 / 255,
+      0xf1 / 255,
+      0xe8 / 255,
+    ])
     expect(runtime.customGlyphChars).toBe('雨電01')
     expect(runtime.customGlyphCount).toBe(4)
     expect(runtime.customGlyphHash).toBeGreaterThan(0)
+  })
+
+  it('uses the Matrix Rain Opacity fallback when controls are absent', () => {
+    const runtime = compileGrainradEffectRuntime({
+      selectedEffectId: 'matrix-rain',
+      controls: {},
+    })
+
+    expect(runtime.effectValues[7]).toBe(0.5)
   })
 
   it('packs Dots controls in the exact production uniform units and ids', () => {
@@ -424,6 +445,8 @@ describe('Phase 5F Grainrad runtime effect compiler', () => {
     ])
     expect(runtime.effectColorA).toEqual([0x12 / 255, 0x34 / 255, 0x56 / 255])
     expect(runtime.effectColorB).toEqual([0xab / 255, 0xcd / 255, 0xef / 255])
+    expect(runtime.customGlyphChars).toBe('')
+    expect(runtime.customGlyphCount).toBe(0)
   })
 
   it('packs Pixel Sort controls in the exact production uniform units and ids', () => {
@@ -469,7 +492,8 @@ describe('Phase 5F Grainrad runtime effect compiler', () => {
         brightness: 40,
         contrast: -25,
         'color-mode': 'grayscale',
-        'border-color': '#123456',
+        'foreground': '#123456',
+        'background': '#abcdef',
       },
     })
 
@@ -482,6 +506,7 @@ describe('Phase 5F Grainrad runtime effect compiler', () => {
       1,
     ])
     expect(runtime.effectColorA).toEqual([0x12 / 255, 0x34 / 255, 0x56 / 255])
+    expect(runtime.effectColorB).toEqual([0xab / 255, 0xcd / 255, 0xef / 255])
   })
 
   it('packs Threshold controls in the exact production uniform units and ids', () => {
@@ -648,7 +673,7 @@ describe('Phase 5F Grainrad runtime effect compiler', () => {
         'cell-size': 85,
         'edge-width': 0.65,
         'edge-color': '2',
-        'color-mode': '1',
+        'cell-color-mode': '1',
         randomize: 0.35,
         brightness: 40,
         contrast: -25,

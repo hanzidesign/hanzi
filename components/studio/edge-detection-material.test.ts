@@ -11,10 +11,12 @@ import {
 describe('Edge Detection shader material', () => {
   it('maps exact production ids, raw units, normalized adjustments, and colors', () => {
     const material = createEdgeDetectionShaderMaterial({ controls: {}, sourceTexture: new Texture() })
+    expect(material.uniforms.u_brightnessMap.value).toBe(1)
     applyEdgeDetectionUniforms(material, {
       algorithm: 'laplacian', threshold: 0.65, 'line-width': 3.5, invert: true,
       brightness: 40, contrast: -25, 'edge-color': '#123456', background: '#abcdef',
       'color-mode': 'original',
+      'brightness-map': 1.4,
     })
     expect(material.uniforms.u_algorithm.value).toBe(2)
     expect(material.uniforms.u_threshold.value).toBe(0.65)
@@ -23,6 +25,7 @@ describe('Edge Detection shader material', () => {
     expect(material.uniforms.u_brightness.value).toBe(0.4)
     expect(material.uniforms.u_contrast.value).toBe(-0.25)
     expect(material.uniforms.u_colorMode.value).toBe(1)
+    expect(material.uniforms.u_brightnessMap.value).toBe(1.4)
     expect(material.uniforms.u_edgeColor.value.getHexString()).toBe('123456')
     expect(material.uniforms.u_background.value.getHexString()).toBe('abcdef')
   })
@@ -55,14 +58,39 @@ describe('Edge Detection shader material', () => {
     expect(EDGE_DETECTION_FRAGMENT_SHADER).toContain('mix(u_background, foreground, mask)')
   })
 
-  it('keeps Processing absent and runs shared Post last', () => {
-    for (const name of ['u_processingInvert', 'u_blur', 'u_quantize']) {
-      expect(EDGE_DETECTION_FRAGMENT_SHADER).not.toContain(name)
+  it('maps and consumes every Processing control between Edge Detection and Post', () => {
+    expect(EDGE_DETECTION_FRAGMENT_SHADER).toContain('vec3 edgeSourceSample')
+    expect(EDGE_DETECTION_FRAGMENT_SHADER).toContain('edgeSourceSample(uv + vec2(blurTexel.x, 0.0))')
+    expect(EDGE_DETECTION_FRAGMENT_SHADER).toContain('edgeSourceSample(uv - vec2(blurTexel.x, 0.0))')
+    expect(EDGE_DETECTION_FRAGMENT_SHADER).toContain('edgeSourceSample(uv + vec2(0.0, blurTexel.y))')
+    expect(EDGE_DETECTION_FRAGMENT_SHADER).toContain('edgeSourceSample(uv - vec2(0.0, blurTexel.y))')
+    for (const name of [
+      'u_processingInvert', 'u_brightnessMap', 'u_edgeEnhance', 'u_blur',
+      'u_quantizeColors', 'u_shapeMatching',
+    ]) {
+      expect(EDGE_DETECTION_FRAGMENT_SHADER.split(name).length).toBeGreaterThan(2)
     }
+    expect(EDGE_DETECTION_FRAGMENT_SHADER).toContain('if (u_quantizeColors >= 1.0)')
+    expect(EDGE_DETECTION_FRAGMENT_SHADER).toContain('max(u_quantizeColors, 2.0)')
     expect(EDGE_DETECTION_FRAGMENT_SHADER).toContain('applyEdgeDetectionPostProcessing')
     expect(EDGE_DETECTION_FRAGMENT_SHADER.indexOf('mix(u_background, foreground, mask)')).toBeLessThan(
+      EDGE_DETECTION_FRAGMENT_SHADER.indexOf('effectColor = applyEdgeDetectionProcessing'),
+    )
+    expect(EDGE_DETECTION_FRAGMENT_SHADER.indexOf('effectColor = applyEdgeDetectionProcessing')).toBeLessThan(
       EDGE_DETECTION_FRAGMENT_SHADER.lastIndexOf('applyEdgeDetectionPostProcessing(effectColor'),
     )
+
+    const material = createEdgeDetectionShaderMaterial({ controls: {}, sourceTexture: new Texture() })
+    applyEdgeDetectionUniforms(material, {
+      'processing-invert': true, 'brightness-map': 1.4, 'edge-enhance': 0.35,
+      blur: 3, 'quantize-colors': 1, 'shape-matching': 0.25,
+    })
+    expect(material.uniforms.u_processingInvert.value).toBe(1)
+    expect(material.uniforms.u_brightnessMap.value).toBe(1.4)
+    expect(material.uniforms.u_edgeEnhance.value).toBe(0.35)
+    expect(material.uniforms.u_blur.value).toBe(3)
+    expect(material.uniforms.u_quantizeColors.value).toBe(1)
+    expect(material.uniforms.u_shapeMatching.value).toBe(0.25)
   })
 
   it('maps shared Post uniforms and disposes once', () => {

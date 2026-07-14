@@ -12,6 +12,10 @@ import {
 } from './pixel-sort-core'
 
 describe('Pixel Sort deterministic equations', () => {
+  it('defaults Sort Mode to hue', () => {
+    expect(DEFAULT_PIXEL_SORT_SETTINGS.mode).toBe('hue')
+  })
+
   it('matches the per-line Grainrad hash and ±25% Randomness threshold range', () => {
     expect(hashPixelSort11(0)).toBe(0)
     expect(hashPixelSort11(0.173)).toBeCloseTo(0.707_578_868_380_525, 12)
@@ -62,7 +66,7 @@ describe('Pixel Sort deterministic equations', () => {
     const trace = tracePixelSortSpan({
       height: 1,
       rgb,
-      settings: { ...DEFAULT_PIXEL_SORT_SETTINGS, randomness: 0, streakLength: 10 },
+      settings: { ...DEFAULT_PIXEL_SORT_SETTINGS, mode: 'brightness', randomness: 0, streakLength: 10 },
       width: 5,
       x: 2,
       y: 0,
@@ -84,7 +88,7 @@ describe('Pixel Sort deterministic equations', () => {
     const short = tracePixelSortSpan({
       height: 1,
       rgb,
-      settings: { ...DEFAULT_PIXEL_SORT_SETTINGS, randomness: 0, streakLength: 10 },
+      settings: { ...DEFAULT_PIXEL_SORT_SETTINGS, mode: 'brightness', randomness: 0, streakLength: 10 },
       width: 100,
       x: 50,
       y: 0,
@@ -92,7 +96,7 @@ describe('Pixel Sort deterministic equations', () => {
     const long = tracePixelSortSpan({
       height: 1,
       rgb,
-      settings: { ...DEFAULT_PIXEL_SORT_SETTINGS, randomness: 0, streakLength: 100 },
+      settings: { ...DEFAULT_PIXEL_SORT_SETTINGS, mode: 'brightness', randomness: 0, streakLength: 100 },
       width: 100,
       x: 50,
       y: 0,
@@ -191,7 +195,7 @@ describe('Pixel Sort CPU reference', () => {
 
   it('makes each remaining Pixel Sort output setting observable on mixed spans', () => {
     const source = stripedRgb(32, 24)
-    const baseSettings = { randomness: 0.3, streakLength: 30, threshold: 0.4 }
+    const baseSettings = { mode: 'brightness' as const, randomness: 0.3, streakLength: 30, threshold: 0.4 }
     const base = render({ height: 24, rgb: source, settings: baseSettings, width: 32 }).data
     const variants: ReadonlyArray<Partial<PixelSortSettings>> = [
       { direction: 'vertical' },

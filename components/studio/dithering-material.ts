@@ -186,8 +186,9 @@ vec3 applySharedProcessing(vec3 color, float luminance) {
   color *= u_brightnessMap;
   float edge = length(fwidth(vec2(luminance))) * u_edgeEnhance * 8.0;
   color += edge;
-  if (u_quantizeColors > 1.0) {
-    color = floor(color * (u_quantizeColors - 1.0) + 0.5) / (u_quantizeColors - 1.0);
+  if (u_quantizeColors > 0.0) {
+    float quantizeLevels = max(u_quantizeColors, 2.0);
+    color = floor(color * (quantizeLevels - 1.0) + 0.5) / (quantizeLevels - 1.0);
   }
   color = mix(color, vec3(step(0.5, luminance)), u_shapeMatching);
   return clamp(color, 0.0, 1.0);
@@ -367,7 +368,7 @@ export function createDitheringShaderMaterial({
       u_quantizeColors: { value: 0 },
       u_shapeMatching: { value: 0 },
       u_bloom: { value: 0 },
-      u_grainIntensity: { value: 35 },
+      u_grainIntensity: { value: 0 },
       u_grainSize: { value: 2 },
       u_grainSpeed: { value: 50 },
       u_postChromatic: { value: 0 },
@@ -449,7 +450,7 @@ export function applyDitheringUniforms(
   material.uniforms.u_quantizeColors.value = readNumber(controls['quantize-colors'], 0)
   material.uniforms.u_shapeMatching.value = readNumber(controls['shape-matching'], 0)
   material.uniforms.u_bloom.value = readBoolean(controls.bloom)
-  material.uniforms.u_grainIntensity.value = readNumber(controls['grain-intensity'], 35)
+  material.uniforms.u_grainIntensity.value = readNumber(controls['grain-intensity'], 0)
   material.uniforms.u_grainSize.value = readNumber(controls['grain-size'], 2)
   material.uniforms.u_grainSpeed.value = readNumber(controls['grain-speed'], 50)
   material.uniforms.u_postChromatic.value = readBoolean(controls.chromatic)

@@ -43,21 +43,21 @@ describe('Grainrad Threshold schema', () => {
     expect(controls.contrast).toMatchObject({ defaultValue: 0, min: -100, max: 100, step: 1 })
     expect(controls['color-mode']).toMatchObject({
       kind: 'select',
-      defaultValue: 'custom',
+      defaultValue: 'mono',
       options: [
-        { value: 'custom', label: 'Mono' },
+        { value: 'mono', label: 'Mono' },
         { value: 'color', label: 'Original' },
       ],
     })
     expect(controls.foreground).toMatchObject({
       kind: 'color',
       defaultValue: '#ffffff',
-      visibleWhen: { controlId: 'color-mode', operator: 'equals', value: 'custom' },
+      visibleWhen: { controlId: 'color-mode', operator: 'equals', value: 'mono' },
     })
     expect(controls.background).toMatchObject({
       kind: 'color',
       defaultValue: '#000000',
-      visibleWhen: { controlId: 'color-mode', operator: 'equals', value: 'custom' },
+      visibleWhen: { controlId: 'color-mode', operator: 'equals', value: 'mono' },
     })
     expect(createDefaultGrainradEffectControls().threshold).toMatchObject({
       levels: 2,
@@ -66,13 +66,13 @@ describe('Grainrad Threshold schema', () => {
       invert: false,
       brightness: 0,
       contrast: 0,
-      'color-mode': 'custom',
+      'color-mode': 'mono',
       foreground: '#000000',
       background: '#ffffff',
     })
   })
 
-  it('shows Foreground and Background only in Mono/custom mode', () => {
+  it('shows Foreground and Background only in Mono mode', () => {
     const definition = getGrainradEffectById('threshold')
     const controls = definition.settingGroups.flatMap((group) => group.controls)
     const defaults = createDefaultGrainradEffectControls().threshold

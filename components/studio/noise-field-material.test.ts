@@ -36,7 +36,8 @@ describe('Noise Field shader material', () => {
     expect(material.uniforms.u_brightness.value).toBe(0)
     expect(material.uniforms.u_contrast.value).toBe(0)
     expect(material.uniforms.u_noiseType.value).toBe(0)
-    expect(material.uniforms.u_distortOnly.value).toBe(0)
+    expect(material.uniforms.u_distortOnly.value).toBe(1)
+    expect(material.uniforms.u_brightnessMap.value).toBe(1)
   })
 
   it('maps the exact uniform ABI units and ids without clamping raw controls', () => {
@@ -52,6 +53,7 @@ describe('Noise Field shader material', () => {
       'distort-only': true,
       brightness: 40,
       contrast: -25,
+      'brightness-map': 1.4,
     })
 
     expect(NOISE_FIELD_TYPE_IDS).toEqual({ perlin: 0, simplex: 1, worley: 2 })
@@ -64,6 +66,7 @@ describe('Noise Field shader material', () => {
     expect(material.uniforms.u_distortOnly.value).toBe(1)
     expect(material.uniforms.u_brightness.value).toBe(0.4)
     expect(material.uniforms.u_contrast.value).toBe(-0.25)
+    expect(material.uniforms.u_brightnessMap.value).toBe(1.4)
   })
 
   it('keeps missing Animate enabled and exact production fallbacks', () => {
@@ -149,7 +152,7 @@ describe('Noise Field shader material', () => {
       '* 2.0 * u_intensity * 0.02;',
     )
     expect(NOISE_FIELD_FRAGMENT_SHADER).toContain(
-      'clamp(displacedUv, vec2(0.0), vec2(1.0))',
+      'vec2 sourceUv = clamp(uv, vec2(0.0), vec2(1.0));',
     )
   })
 
@@ -176,24 +179,50 @@ describe('Noise Field shader material', () => {
     expect(overlayIndex).toBeLessThan(finalClampIndex)
   })
 
-  it('keeps Processing absent and maps shared Post after the complete effect', () => {
-    for (const processingUniform of [
-      'u_processingInvert',
-      'u_brightnessMap',
-      'u_edgeEnhance',
-      'u_blur',
-      'u_quantizeColors',
-      'u_shapeMatching',
-    ]) {
-      expect(NOISE_FIELD_FRAGMENT_SHADER).not.toContain(processingUniform)
-    }
-    expect(NOISE_FIELD_FRAGMENT_SHADER).toContain('vec3 applyNoiseFieldPostProcessing')
-    expect(NOISE_FIELD_FRAGMENT_SHADER.indexOf('effectColor = clamp(effectColor')).toBeLessThan(
-      NOISE_FIELD_FRAGMENT_SHADER.lastIndexOf('applyNoiseFieldPostProcessing('),
+  it('applies every shared Processing control after the complete effect and before shared Post', () => {
+    expect(NOISE_FIELD_FRAGMENT_SHADER).toContain('vec3 sampleNoiseFieldSource(vec2 uv)')
+    expect(NOISE_FIELD_FRAGMENT_SHADER).toContain('if (u_blur <= 0.0)')
+    expect(NOISE_FIELD_FRAGMENT_SHADER).toContain(
+      'vec2 blurTexel = min(u_blur, 12.0) / max(u_sourceSize, vec2(1.0));',
     )
+    expect(NOISE_FIELD_FRAGMENT_SHADER).toContain(
+      'vec3 effectColor = sampleNoiseFieldSource(displacedUv);',
+    )
+    expect(NOISE_FIELD_FRAGMENT_SHADER).toContain(
+      'color = mix(color, 1.0 - color, u_processingInvert);',
+    )
+    expect(NOISE_FIELD_FRAGMENT_SHADER).toContain('color *= u_brightnessMap;')
+    expect(NOISE_FIELD_FRAGMENT_SHADER).toContain(
+      'length(fwidth(vec2(luminance))) * u_edgeEnhance * 8.0',
+    )
+    expect(NOISE_FIELD_FRAGMENT_SHADER).toContain('if (u_quantizeColors >= 1.0)')
+    expect(NOISE_FIELD_FRAGMENT_SHADER).toContain(
+      'float levels = max(u_quantizeColors, 2.0);',
+    )
+    expect(NOISE_FIELD_FRAGMENT_SHADER).toContain(
+      'color = mix(color, vec3(step(0.5, luminance)), u_shapeMatching);',
+    )
+    expect(NOISE_FIELD_FRAGMENT_SHADER).toContain('vec3 applyNoiseFieldPostProcessing')
+    const effectIndex = NOISE_FIELD_FRAGMENT_SHADER.indexOf(
+      'effectColor = clamp(effectColor',
+    )
+    const processingIndex = NOISE_FIELD_FRAGMENT_SHADER.lastIndexOf(
+      'effectColor = applyNoiseFieldProcessing(',
+    )
+    const postIndex = NOISE_FIELD_FRAGMENT_SHADER.lastIndexOf(
+      'applyNoiseFieldPostProcessing(',
+    )
+    expect(effectIndex).toBeLessThan(processingIndex)
+    expect(processingIndex).toBeLessThan(postIndex)
 
     const { material } = createFixture()
     applyNoiseFieldUniforms(material, {
+      'processing-invert': true,
+      'brightness-map': 1.75,
+      'edge-enhance': 0.6,
+      blur: 3,
+      'quantize-colors': 1,
+      'shape-matching': 0.4,
       bloom: true,
       'grain-intensity': 61,
       'grain-size': 4,
@@ -205,6 +234,12 @@ describe('Noise Field shader material', () => {
       phosphor: true,
     })
 
+    expect(material.uniforms.u_processingInvert.value).toBe(1)
+    expect(material.uniforms.u_brightnessMap.value).toBe(1.75)
+    expect(material.uniforms.u_edgeEnhance.value).toBe(0.6)
+    expect(material.uniforms.u_blur.value).toBe(3)
+    expect(material.uniforms.u_quantizeColors.value).toBe(1)
+    expect(material.uniforms.u_shapeMatching.value).toBe(0.4)
     expect(material.uniforms.u_bloom.value).toBe(1)
     expect(material.uniforms.u_grainIntensity.value).toBe(61)
     expect(material.uniforms.u_grainSize.value).toBe(4)

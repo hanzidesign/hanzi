@@ -27,17 +27,23 @@ describe('Blockify CPU reference', () => {
     expect(() => render({ settings: { style: 'tiles' as BlockifySettings['style'] } })).toThrow(
       'style',
     )
-    expect(() => render({ settings: { colorMode: 'mono' as BlockifySettings['colorMode'] } })).toThrow(
+    expect(() => render({ settings: { colorMode: 'grayscale' as BlockifySettings['colorMode'] } })).toThrow(
       'color mode',
     )
-    expect(() => render({ settings: { borderColor: [0, 0, 256] } })).toThrow('color channel')
+    expect(() => render({ settings: { foreground: [0, 0, 256] } })).toThrow('color channel')
+    expect(() => render({ settings: { background: [0, -1, 0] } })).toThrow('color channel')
   })
 
   it('samples exactly one block center with a linear clamp sampler', () => {
     const rgb = rowRgb([[0, 0, 0], [64, 0, 0], [128, 0, 0], [255, 0, 0]])
 
     expect(sampleBlockifySourceLinear(rgb, 4, 1, 0.5, 0.5)).toEqual([96 / 255, 0, 0])
-    const output = render({ height: 1, rgb, settings: { blockSize: 4 }, width: 4 })
+    const output = render({
+      height: 1,
+      rgb,
+      settings: { blockSize: 4, colorMode: 'color' },
+      width: 4,
+    })
     expect(Array.from(output.data)).toEqual([
       96, 0, 0,
       96, 0, 0,
@@ -50,7 +56,12 @@ describe('Blockify CPU reference', () => {
     const rgb = rowRgb([
       [0, 0, 0], [64, 0, 0], [128, 0, 0], [160, 0, 0], [200, 0, 0], [250, 0, 0],
     ])
-    const output = render({ height: 1, rgb, settings: { blockSize: 4 }, width: 6 })
+    const output = render({
+      height: 1,
+      rgb,
+      settings: { blockSize: 4, colorMode: 'color' },
+      width: 6,
+    })
 
     expect(pixelAt(output.data, 6, 3, 0)).toEqual([96, 0, 0])
     expect(pixelAt(output.data, 6, 4, 0)).toEqual([250, 0, 0])
@@ -61,29 +72,36 @@ describe('Blockify CPU reference', () => {
     const output = render({
       height: 1,
       rgb: solidRgb(1, 1, [64, 128, 192]),
-      settings: { brightness: 25, contrast: 50 },
+      settings: { brightness: 25, colorMode: 'color', contrast: 50 },
       width: 1,
     })
 
     expect(pixelAt(output.data, 1, 0, 0)).toEqual([128, 255, 255])
   })
 
-  it('applies Rec.601 grayscale after brightness and contrast', () => {
-    const output = render({
+  it('maps source luminance between the Background and Foreground colors in Mono', () => {
+    const foreground = render({
       height: 1,
-      rgb: solidRgb(1, 1, [255, 0, 0]),
-      settings: { colorMode: 'grayscale' },
+      rgb: solidRgb(1, 1, [255, 255, 255]),
+      settings: { background: [0, 0, 255], foreground: [255, 0, 0] },
+      width: 1,
+    })
+    const background = render({
+      height: 1,
+      rgb: solidRgb(1, 1, [0, 0, 0]),
+      settings: { background: [0, 0, 255], foreground: [255, 0, 0] },
       width: 1,
     })
 
-    expect(pixelAt(output.data, 1, 0, 0)).toEqual([76, 76, 76])
+    expect(pixelAt(foreground.data, 1, 0, 0)).toEqual([255, 0, 0])
+    expect(pixelAt(background.data, 1, 0, 0)).toEqual([0, 0, 255])
   })
 
   it('uses the fixed within-block radial multiplier for Shaded', () => {
     const output = render({
       height: 4,
       rgb: solidRgb(4, 4, [200, 200, 200]),
-      settings: { blockSize: 4, style: 'shaded' },
+      settings: { blockSize: 4, colorMode: 'color', style: 'shaded' },
       width: 4,
     })
 
@@ -92,7 +110,7 @@ describe('Blockify CPU reference', () => {
     expect(pixelAt(output.data, 4, 3, 3)).toEqual([185, 185, 185])
   })
 
-  it('uses strict Outline comparisons and returns raw border color', () => {
+  it('uses strict Outline comparisons and draws Foreground over Background', () => {
     expect(isBlockifyOutlinePixel(0.5, 0.5, 4, 0.5)).toBe(false)
     expect(isBlockifyOutlinePixel(3.5, 3.5, 4, 0.5)).toBe(false)
     expect(isBlockifyOutlinePixel(0.5, 1.5, 4, 1)).toBe(true)
@@ -100,50 +118,41 @@ describe('Blockify CPU reference', () => {
 
     const output = render({
       height: 4,
-      rgb: solidRgb(4, 4, [80, 120, 160]),
+      rgb: solidRgb(4, 4, [255, 255, 255]),
       settings: {
         blockSize: 4,
-        borderColor: [9, 19, 29],
+        background: [1, 2, 3],
         borderWidth: 1,
-        brightness: 100,
-        colorMode: 'grayscale',
-        contrast: 100,
+        foreground: [9, 19, 29],
         style: 'outline',
       },
       width: 4,
     })
 
     expect(pixelAt(output.data, 4, 0, 1)).toEqual([9, 19, 29])
-    expect(pixelAt(output.data, 4, 1, 1)).toEqual([255, 255, 255])
+    expect(pixelAt(output.data, 4, 1, 1)).toEqual([1, 2, 3])
   })
 
-  it('preserves production contextual no-ops', () => {
+  it('keeps the Foreground and Background palette inactive in Color mode', () => {
     const source = gradientRgb(24, 16)
-    const full = render({ height: 16, rgb: source, settings: { style: 'full' }, width: 24 }).data
-    const fullWithBorder = render({
+    const full = render({
       height: 16,
       rgb: source,
-      settings: { borderColor: [255, 0, 200], borderWidth: 3, style: 'full' },
+      settings: { colorMode: 'color', style: 'full' },
       width: 24,
     }).data
-    expect(fullWithBorder).toEqual(full)
-
-    const shaded = render({ height: 16, rgb: source, settings: { style: 'shaded' }, width: 24 }).data
-    const shadedWithBorder = render({
+    const recoloredPalette = render({
       height: 16,
       rgb: source,
-      settings: { borderColor: [255, 0, 200], borderWidth: 3, style: 'shaded' },
+      settings: {
+        background: [255, 0, 200],
+        colorMode: 'color',
+        foreground: [0, 255, 100],
+        style: 'full',
+      },
       width: 24,
     }).data
-    expect(shadedWithBorder).toEqual(shaded)
-
-    const outlineZero = render({
-      height: 16,
-      rgb: source,
-      settings: { borderColor: [255, 0, 200], borderWidth: 0, style: 'outline' },
-      width: 24,
-    }).data
-    expect(outlineZero).toEqual(full)
+    expect(recoloredPalette).toEqual(full)
   })
 
   it('makes every functional Blockify setting observable in its active context', () => {
@@ -154,7 +163,7 @@ describe('Blockify CPU reference', () => {
       { style: 'shaded' },
       { brightness: 35 },
       { contrast: 65 },
-      { colorMode: 'grayscale' },
+      { colorMode: 'color' },
     ]
 
     for (const settings of variants) {
@@ -179,7 +188,7 @@ describe('Blockify CPU reference', () => {
     const coloredOutline = render({
       height: 24,
       rgb: source,
-      settings: { blockSize: 8, borderColor: [255, 20, 100], borderWidth: 1, style: 'outline' },
+      settings: { blockSize: 8, borderWidth: 1, foreground: [255, 20, 100], style: 'outline' },
       width: 32,
     }).data
     expect(wideOutline).not.toEqual(outline)

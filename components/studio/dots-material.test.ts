@@ -35,9 +35,15 @@ describe('Dots shader material', () => {
     expect(material.uniforms.u_invert.value).toBe(0)
     expect(material.uniforms.u_brightness.value).toBe(0)
     expect(material.uniforms.u_contrast.value).toBe(0)
-    expect(material.uniforms.u_colorMode.value).toBe(0)
+    expect(material.uniforms.u_colorMode.value).toBe(1)
     expect(material.uniforms.u_foreground.value.getHexString()).toBe('ffffff')
     expect(material.uniforms.u_background.value.getHexString()).toBe('000000')
+    expect(material.uniforms.u_processingInvert.value).toBe(0)
+    expect(material.uniforms.u_brightnessMap.value).toBe(1)
+    expect(material.uniforms.u_edgeEnhance.value).toBe(0)
+    expect(material.uniforms.u_blur.value).toBe(0)
+    expect(material.uniforms.u_quantizeColors.value).toBe(0)
+    expect(material.uniforms.u_shapeMatching.value).toBe(0)
   })
 
   it('maps every Dots-local control in exact production units and ids', () => {
@@ -80,20 +86,45 @@ describe('Dots shader material', () => {
     expect(DOTS_FRAGMENT_SHADER).toContain('max(absoluteLocal.x, absoluteLocal.y) < radius')
     expect(DOTS_FRAGMENT_SHADER).toContain('absoluteLocal.x + absoluteLocal.y < radius * 1.4')
     expect(DOTS_FRAGMENT_SHADER).toContain('u_colorMode < 0.5 ? adjustedColor : vec3(cellLuminance)')
-    expect(DOTS_FRAGMENT_SHADER).toContain('u_colorMode > 1.5 ? u_foreground * cellLuminance : modeColor')
+    expect(DOTS_FRAGMENT_SHADER).toContain('u_colorMode > 0.5 ? u_foreground * cellLuminance : modeColor')
   })
 
-  it('keeps Grainrad Processing controls as Dots no-ops and applies Post after the effect', () => {
-    expect(DOTS_FRAGMENT_SHADER).not.toContain('u_processingInvert')
-    expect(DOTS_FRAGMENT_SHADER).not.toContain('u_brightnessMap')
-    expect(DOTS_FRAGMENT_SHADER).not.toContain('u_edgeEnhance')
-    expect(DOTS_FRAGMENT_SHADER).not.toContain('u_blur')
-    expect(DOTS_FRAGMENT_SHADER).not.toContain('u_quantizeColors')
-    expect(DOTS_FRAGMENT_SHADER).not.toContain('u_shapeMatching')
+  it('maps and consumes every Processing control before Post', () => {
+    expect(DOTS_FRAGMENT_SHADER).toContain('vec3 sampleDotsSource')
+    expect(DOTS_FRAGMENT_SHADER).toContain('vec2 blurTexel = texel * min(u_blur, 12.0);')
+    expect(DOTS_FRAGMENT_SHADER).toContain('vec3 applyDotsProcessing')
+    expect(DOTS_FRAGMENT_SHADER).toContain('mix(color, 1.0 - color, u_processingInvert)')
+    expect(DOTS_FRAGMENT_SHADER).toContain('color *= u_brightnessMap;')
+    expect(DOTS_FRAGMENT_SHADER).toContain('u_edgeEnhance * 8.0')
+    expect(DOTS_FRAGMENT_SHADER).toContain('if (u_quantizeColors > 0.0)')
+    expect(DOTS_FRAGMENT_SHADER).toContain(
+      'float levels = max(floor(u_quantizeColors + 0.5), 2.0);',
+    )
+    expect(DOTS_FRAGMENT_SHADER).toContain('u_shapeMatching')
     expect(DOTS_FRAGMENT_SHADER).toContain('vec3 applyDotsPostProcessing')
     expect(DOTS_FRAGMENT_SHADER.indexOf('vec3 dotsColor =')).toBeLessThan(
+      DOTS_FRAGMENT_SHADER.indexOf('dotsColor = applyDotsProcessing('),
+    )
+    expect(DOTS_FRAGMENT_SHADER.indexOf('dotsColor = applyDotsProcessing(')).toBeLessThan(
       DOTS_FRAGMENT_SHADER.indexOf('applyDotsPostProcessing(dotsColor'),
     )
+
+    const { material } = createFixture()
+    applyDotsUniforms(material, {
+      'processing-invert': true,
+      'brightness-map': 1.75,
+      'edge-enhance': 0.35,
+      blur: 4.5,
+      'quantize-colors': 1,
+      'shape-matching': 0.6,
+    })
+
+    expect(material.uniforms.u_processingInvert.value).toBe(1)
+    expect(material.uniforms.u_brightnessMap.value).toBe(1.75)
+    expect(material.uniforms.u_edgeEnhance.value).toBe(0.35)
+    expect(material.uniforms.u_blur.value).toBe(4.5)
+    expect(material.uniforms.u_quantizeColors.value).toBe(1)
+    expect(material.uniforms.u_shapeMatching.value).toBe(0.6)
   })
 
   it('maps the currently exposed shared Post controls without treating them as Dots settings', () => {
