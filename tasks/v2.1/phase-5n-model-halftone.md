@@ -21,7 +21,7 @@ The active 3D Character source uses one effect-independent geometry state:
 | Bevel | 0 | 0..0.3 | Enables real extrude bevel geometry |
 | Twist | 0° | -360..360° | Rotates cross-sections progressively through depth |
 | Taper | 0 | -0.8..0.8 | Changes cross-section scale through depth |
-| Bend | 0° | -120..120° | Curves the planar face into depth with sufficient subdivision |
+| Bend | 0° | -360..360° | Curves the planar face into depth with sufficient subdivision |
 
 ASCII, Dithering, Halftone, and every future 3D effect must consume these same geometry parameters. Rotation X/Y/Z and Speed remain in `3D Motion`.
 

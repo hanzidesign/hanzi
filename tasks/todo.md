@@ -6,6 +6,120 @@ Current status: Phase 5M now has all 15 Effects implemented as independent rende
 
 Keep this file as current-state tracking only. Historical phase logs belong in the superseded task docs or git history, not here.
 
+## Export Tooltip UX Correction - 2026-07-14
+
+Plan:
+
+- [x] Replace the disabled export format's native browser tooltip with Mantine `Tooltip`.
+- [x] Preserve the hoverable wrapper required by disabled buttons and keep unavailable reasons accessible.
+- [x] Run the focused contract test, TypeScript, ESLint, and diff hygiene; document the result.
+
+Review:
+
+- Export format restrictions now use Mantine `Tooltip` with an arrow and a short open delay instead of the browser-native `title` popup.
+- The wrapper remains hoverable when its button is disabled, and the unavailable reason remains the button's accessible label.
+- Verification passed: focused Vitest (`5` tests), TypeScript, focused ESLint, and `git diff --check`.
+
+## Crosshatch Line-Only Correction - 2026-07-14
+
+User contract:
+
+- Crosshatch must not render a solid model-color fill over the selected Character.
+- Dark Character regions must remain visibly crosshatched; the darkest source tone cannot collapse into a flat Line Color silhouette.
+- Hatch lines may extend outside the Character and across the Background field; do not clip the pattern to the model mask.
+- Background hatch lines have a subtle time-driven phase drift while Character hatch lines remain stable; the motion follows shared 3D Motion play/speed/time so it can pause and export consistently.
+- Crosshatch rendering logic must remain effect-local. Updates to another Effect must not alter its source, shader, controls, or renderer route through shared implementation leakage.
+- Crosshatch Line Width stores/uploads `0.01..0.5` with default `0.08`, while the UI multiplies by `100` and presents `1..50` with default `8`.
+- Crosshatch Adjustments Brightness UI defaults to Dark `4` and Light `-15`. Canonical state/runtime defaults remain Dark `-4` and Light `-15`.
+- Preserve source-luminance/hatch-density rendering. Dark reverses the UI sign (`99 → -99`, `-99 → 99`); Light uses the canonical sign (`99 → 99`, `-99 → -99`) because its black-on-white palette has the opposite polarity. In both themes, raising the displayed value makes hatch lines lighter.
+- Brightness must affect the background hatch in both slider directions; darkening may reduce its density, but the field must never collapse to a solid Background color.
+- Every control for all 15 Effects, including Settings, Processing, and Post-Processing, is stored independently for Light and Dark themes. Theme switching replaces the complete active control set; edit and Reset affect only the active theme.
+- Preserve Crosshatch controls, shared Model/3D Motion, Processing/Post, export, and every other Effect.
+
+Plan:
+
+- [x] RED: reproduce the solid-fill failure in the CPU oracle and shader contract with a focused regression.
+- [x] Audit renderer/store/export imports and recent history for cross-effect coupling; add an isolation contract at the real boundary.
+- [x] Remove the darkest-tone solid-fill path while preserving tone-mapped hatch layers and Line Color/Background roles.
+- [x] Preserve the unmasked tonal hatch field while removing only the solid model-fill path.
+- [x] Add subtle background-only hatch phase motion without masking, recoloring, or moving the Character hatch.
+- [x] Restore canonical Brightness to source luminance/hatch density and remove the incorrect final-color adjustment.
+- [x] Add a theme-aware UI display scale: Light `1`, Dark `-1`, with ordered bounds and a positive step.
+- [x] Make the nonzero background hatch floor respond to canonical Brightness instead of masking the darkening half of the range.
+- [x] Verify displayed defaults Dark `4` / Light `-15` and both displayed slider directions in the actual preview.
+- [x] Align Line Width schema, scaled UI presentation, CPU validation, runtime/store sanitization, and tests to stored `0.01..0.5` / displayed `1..50`.
+- [x] Align Crosshatch Brightness schema/oracle/material/runtime/reset to Dark `-4` and Light `-15`, and migrate only the old persisted default.
+- [x] Generalize theme state from color-only buckets to complete per-theme Effect control sets, preserving the current theme's legacy values and initializing the other theme from its own defaults.
+- [x] Verify CPU/material/color-role suites, TypeScript, ESLint, build, and diff hygiene.
+- [x] Review the final output contract and document root cause and evidence here.
+
+Review result:
+
+- Root cause: a broad multi-effect color-role correction inverted the Crosshatch source polarity while the shader still promoted the darkest tone to a solid fill. Removing only that solid fill restores visible hatch lines while intentionally preserving lines outside the Character.
+- Brightness keeps the original source-luminance/hatch-density behavior. Generic range presentation uses Light scale `1` and Dark scale `-1`; displayed defaults are Light `-15` and Dark `4`, with no persistence rewrite required.
+- The background phase advances by `.08` hatch cells per shared animation second and is blended only over raw white source pixels. Character hatch remains stable; shared 3D Motion Speed/play/time pauses and exports the motion through the existing timeline.
+- Crosshatch stays on its dedicated canvas/material route. A routing contract now verifies every dedicated Effect renderer imports only its own material, and store tests prove edits/resets in another Effect cannot mutate Crosshatch.
+- All Settings, Processing, and Post-Processing controls for all 15 Effects now have complete independent Light and Dark buckets. Theme switching swaps the complete control set; edits and Reset affect only the active theme. Shared Model and 3D Motion remain shared.
+- Crosshatch Line Width is stored as `0.01..0.5`, displayed as `1..50`, and defaults to stored `0.08` / displayed `8`. Brightness defaults to Dark `-4` and Light `-15`.
+- Production browser verification confirmed Dark default `4`, Light default `-15`, bounds `-100..100`, step `1`, and no console/page errors. Background hatch remained non-solid at both extremes. Dark Background average luminance rose `3.01 → 7.64 → 72.17` for displayed `-99 / 0 / 99`; Light rose `185.46 → 253.38 → 254.78`, confirming higher displayed values make lines lighter in both themes while the hatch remains source-driven.
+- Verification passed: full Vitest `105` files / `658` tests, TypeScript, ESLint, production build, and `git diff --check`. The only environment warning is Node 24.18.0 while the repository requests Node 22.x.
+
+## Pixel Sort Website-Parity Correction - 2026-07-14
+
+User contract:
+
+- Supersede both the current implementation and the proposed patch to its source mask/span logic.
+- Pixel Sort requires an independent effect renderer and independent render pipeline; the current shared effect-render framework cannot produce the target behavior.
+- Treat the pipeline as two explicit stages: render the complete 3D Hanzi scene to a 2D frame, then pass that frame to a separate 2D Pixel Sort renderer. Pixel Sort must not run as a mesh/material effect inside the 3D stage.
+- Match the website reference's Pixel Sort identity: coherent directional scanline runs, threshold-gated streak construction, and visibly reordered/displaced source pixels rather than repeated 3D slabs.
+- The supplied 2D target locks long horizontal grayscale streaks, black threshold gaps, hard scanline-local starts/ends, and independently sorted rows as the primary visual signature.
+- Keep the selected Hanzi as the local input and preserve the existing user-facing Pixel Sort controls unless the new renderer requires an explicitly documented contract correction.
+- Every visible controller must affect the correct stage: Model/3D Motion change the captured source frame; Pixel Sort settings change the independent 2D sorter; Processing/Post change the completed sorted frame exactly once.
+- Preserve shared Model, 3D Motion, export, and non-Pixel-Sort effects through adapters at the renderer boundary; do not force Pixel Sort back through an incompatible generic effect pipeline.
+
+Plan (approved and completed):
+
+- [x] Specify an independent Pixel Sort renderer: source capture, occupancy/luminance buffers, scanline-run construction, output composition, animation, resize, disposal, and export adapter.
+- [x] Build deterministic CPU and routing regressions that distinguish coherent directional scanline sorting from duplicated extruded silhouettes.
+- [x] Replace the current Pixel Sort canvas/material/oracle with the independent renderer without changing other effect renderers.
+- [x] Verify controls, Model/3D Motion integration, Processing/Post ownership, hidden-square export, focused/full tests, TypeScript, ESLint, production build, diff hygiene, and `/studio` visual output.
+- [x] Review visual parity against the supplied reference and document the root cause and final evidence here.
+
+Review result:
+
+- Root cause: the former Pixel Sort path was a 3D/fullscreen shader approximation that sampled a limited span independently for each fragment. It could duplicate displaced model silhouettes, but it could not perform a coherent one-to-one permutation of complete 2D scanline runs.
+- Pixel Sort now owns a two-stage renderer: a complete lit 3D Hanzi scene is captured into RGBA, then a dedicated Worker performs exact threshold-gated 2D scanline sorting before a minimal presentation pass. The old Pixel Sort effect material was removed.
+- The CPU renderer preserves RGBA pixel provenance, constructs deterministic horizontal/vertical/diagonal runs, honors all nine Pixel Sort controls, and runs outside the main UI thread. Preview work is resolution/rate bounded; export uses the requested exact dimensions and acknowledges only after the sorted texture is presented.
+- Model and 3D Motion feed the source capture. Pixel Sort Settings feed the Worker. Shared Processing/Post remains outside the dedicated renderer and is applied once to the finished sorted frame.
+- Browser verification on `/studio` confirmed a visible horizontal 2D streak result on black, no runtime exceptions, and a visibly different output after toggling Reverse. A texture-resize defect found during QA was fixed by replacing the `DataTexture` when dimensions change instead of mutating a previously uploaded 1x1 texture.
+- Verification passed: full Vitest `105` files / `654` tests, TypeScript, full ESLint, production build, and `git diff --check`. The existing environment warning remains Node 24.18.0 while the repository requests Node 22.x.
+
+## Pixel Sort Color Variation Proposal - 2026-07-14
+
+Design contract for approval before implementation:
+
+- Keep `Original` as the default so the accepted monochrome Pixel Sort result and exact source-pixel permutation do not change.
+- Add color as an effect-local stage inside the dedicated Pixel Sort Worker; do not route Pixel Sort back through the generic effect material framework.
+- Prefer a compact palette system over independent RGB correction sliders: `Color Mode`, `Palette`, `Mapping`, `Mix`, and conditional custom palette colors.
+- Proposed modes:
+  - `Original`: untouched sorted RGBA.
+  - `Palette`: recolor from a three-stop palette while retaining source luminance and black threshold gaps.
+- Proposed mappings:
+  - `Tone`: palette position from sorted pixel luminance; stable posterized/duotone character.
+  - `Streak`: palette position from the pixel's normalized position inside its sorted run; makes every streak visibly directional.
+  - `Scanline`: palette position from scanline index plus deterministic per-line phase; creates horizontal/vertical color bands without temporal noise.
+- Proposed presets: `Thermal` (violet/magenta/amber), `Signal` (cyan/blue/violet), `Acid` (lime/yellow/red), and `Custom` (three theme-scoped color pickers).
+- Interpolate the three-stop palette in OKLCH using the shorter hue path, then gamut-map to sRGB for the Worker output; this avoids muddy gray midpoints while preserving intentional luminance structure.
+- Apply `Mix` after palette mapping and before existing Brightness/Contrast. Processing/Post remains outside and still executes exactly once.
+
+Implementation plan (awaiting approval):
+
+- [ ] Lock schema/defaults/conditional controls and theme-scoped preset/custom-color behavior with focused tests.
+- [ ] Extend Worker settings and scanline metadata without changing `Original` output bytes.
+- [ ] Implement Tone, Streak, and Scanline mapping plus OKLCH interpolation/gamut mapping.
+- [ ] Prove black gaps remain untouched, mappings are deterministic, every new controller is observable, and Original preserves the current provenance invariant.
+- [ ] Verify focused/full tests, TypeScript, ESLint, build, diff hygiene, export, and browser screenshots for all mappings.
+
 ## Settings Static Arrow Cleanup - 2026-07-14
 
 Plan:
@@ -60,14 +174,14 @@ User contract:
 - Add a right-aligned `reset` action to both `Model` and `3D Motion`; each action resets every control in its own group and must not reset the other group.
 - Render the Character dropdown list in a portal-backed popover so opening it never creates horizontal overflow in the left panel.
 - Use `+` for collapsed Studio sections and `−` for expanded sections.
-- Store effect color controls separately for light and dark Studio themes. Clicking the Theme toggle must immediately switch every active effect color to the selected theme's saved color set without changing shared non-color settings.
+- Store every Effect control separately for light and dark Studio themes. Clicking the Theme toggle must immediately switch the complete active Effect control set to the selected theme's saved values.
 - Inventory every color setting across all 15 Effects. Every color picker plus Dithering Custom Palette and Voronoi Edge Color must define both a light default and a dark default.
 - Keep `/studio` fixed to the viewport with no document-level vertical scroll or trailing blank area. Desktop/mobile panels may retain their own intended internal scrolling.
 - Keep the existing Studio visual language, effect renderers, panel widths, and route-local scope.
 
 Implementation plan — completed:
 
-- [x] RED: add contract/store tests for group-local reset-all, portal Character popover, `+` / `−` section symbols, route-local fixed viewport layout, and theme-scoped effect colors.
+- [x] RED: add contract/store tests for group-local reset-all, portal Character popover, `+` / `−` section symbols, route-local fixed viewport layout, and theme-scoped complete Effect controls.
 - [x] Add compact label rows for `Model` and `3D Motion`, each with the existing terminal-style `reset` action aligned at the right.
   - `Model reset` restores Extrude, Thickness, Bevel, Twist, Taper, and Bend only.
   - `3D Motion reset` restores X/Y/Z rotation and Speed only.
@@ -77,7 +191,7 @@ Implementation plan — completed:
   - Position/flip within the viewport and remove the wide absolute child from the left panel scroll container.
   - Do not introduce a second visual system or change the Character selector content.
 - [x] Replace Studio accordion glyphs with the explicit state mapping: collapsed `+`, expanded `−`; update the matching source-contract tests.
-- [x] Add theme-scoped effect color state while keeping every non-color effect control shared.
+- [x] Add theme-scoped complete Effect control state for Settings, Processing, and Post-Processing.
   - Preserve `grainradEffect.controls` as the active resolved controls used by all existing renderers.
   - Add persisted, sanitized light/dark color buckets containing every theme-sensitive color value.
   - Give each schema color control explicit light and dark defaults; light defaults must retain readable dark-on-light contrast and dark defaults readable light-on-dark contrast while preserving effect-specific color intent.
@@ -85,14 +199,14 @@ Implementation plan — completed:
   - Editing a color updates only the active theme bucket and the active resolved controls.
   - Toggle to `light`: immediately replace every active effect color with its saved light color set.
   - Toggle to `dark`: immediately replace every active effect color with its saved dark color set.
-  - Theme switching must update the Settings color fields and Canvas output in the same state transition, without changing Scale, Brightness, geometry, Processing, Post-Processing, or other non-color values.
-  - Reset Settings restores the selected effect's colors only for the active theme and leaves the other theme's custom colors intact.
+  - Theme switching must update the complete Settings, Processing, Post-Processing, and Canvas state in the same transition; shared Model and 3D Motion remain effect-independent.
+  - Reset Settings restores the selected Effect only for the active theme and leaves the other theme's custom controls intact.
   - Keep ASCII `foregroundColor` / `backgroundColor` synchronized with its active resolved Grainrad controls on edit, reset, migration, and theme switch.
   - Make the preview fallback background theme-aware for effects without an explicit Background color control.
 - [x] Bump persisted Studio state version and implement a sequential migration.
   - Preserve the existing ASCII `original` to `mono` migration.
   - Treat the user's existing persisted colors as the current persisted theme's values; initialize the other theme from schema defaults.
-  - Reject invalid hex values, unknown effects, and non-color control ids from persisted color buckets.
+  - Reject invalid values, unknown Effects, and unknown control ids from persisted theme buckets.
 - [x] Lock `/studio` to the viewport with route-local fixed positioning (`inset: 0`) instead of changing global `body` behavior; preserve internal desktop/mobile panel scrolling.
 - [x] GREEN: run focused Studio contract/store/runtime tests, then `pnpm test`, `pnpm exec tsc --noEmit`, `pnpm lint`, `pnpm build`, and `git diff --check`.
 - [x] Elegance review: confirm theme color synchronization is centralized in store helpers/actions, no renderer receives theme-specific branching, and no duplicated reset logic can drift.
@@ -100,7 +214,7 @@ Implementation plan — completed:
 
 Review — implementation complete:
 
-- Added independent persisted light/dark sets for all 22 color settings found across all 15 Effects: 20 color pickers, Dithering Custom Palette, and Voronoi Edge Color. Theme toggle atomically updates active controls, ASCII's renderer-specific colors, Settings values, and Canvas output while preserving every non-color setting.
+- Added independent persisted light/dark sets for every control across all 15 Effects, including Settings, Processing, and Post-Processing. Theme toggle atomically replaces the complete active Effect control set while shared Model and 3D Motion remain independent.
 - Version 3 persistence migrates legacy colors into the theme active at save time and initializes the other theme from its explicit schema defaults. Invalid and unknown persisted color values do not enter active controls.
 - Added group-local Model and 3D Motion reset-all actions, a portal-backed Character popover, `+` / `−` section glyphs, theme-aware Canvas fallback, and a route-local fixed Studio viewport.
 - Verification passed after the final exhaustive color-set regression: 89 test files / 588 tests, TypeScript, ESLint, production build, and diff hygiene.
@@ -904,7 +1018,7 @@ Settings:
 
 Adjustments:
 
-- `Brightness`: shifts tonal input before hatch density.
+- `Brightness`: displayed values are sign-inverted before shifting source luminance and hatch density.
 - `Contrast`: changes tonal separation before hatch density.
 
 Color:
@@ -2305,3 +2419,24 @@ Review result:
 - Removed Contour's Source, Line Style, Character Set, Custom Chars, Glyph Scale, Glyph Spacing, glyph-atlas, SDF, and derivative-isoline paths. The shared atlas utility remains for ASCII, where it belongs.
 - Processing/Post stay downstream in the current Studio compositor and are applied once. Grainrad's default Grain explains part of the reference texture, but no glyph or directional-streak stage exists in the Contour shader.
 - Verification passed: focused Contour/store/routing/compositor suites `7` files / `78` tests, full Vitest `102` files / `640` tests, TypeScript, focused ESLint, production build, and staged/unstaged diff checks. Build still reports the existing Node engine warning because the active runtime is Node `24.18.0` while `package.json` requests `22.x`.
+
+## Model Twist axis and Bend range correction (2026-07-14)
+
+Specification:
+
+- Twist deforms the Character around the model Y axis; it must not rotate each extrusion slice in the X/Y plane around Z.
+- Bend keeps its existing geometry behavior but exposes a larger `-360°..360°` range consistently in UI and persisted-state sanitization.
+
+Checklist:
+
+- [x] RED: add geometry coverage that distinguishes a Y-axis Twist from the former Z-axis deformation.
+- [x] RED: update Model/store contract coverage for the expanded Bend range.
+- [x] GREEN: implement the Y-axis Twist and increase Bend UI/store bounds to `±360°`.
+- [x] Verify focused geometry, Model panel, and store tests; run TypeScript and `git diff --check`.
+- [x] Perform an elegance review and record the final result here.
+
+Review result:
+
+- Twist now progresses over the Character's normalized Y span and rotates X/Z coordinates, so it is a true Y-axis deformation. Twist also requests planar subdivision instead of unnecessary extrusion-depth steps, keeping the geometry work aligned with the new axis.
+- Bend now accepts and persists `-360°..360°`; the visible slider, sanitizer, tests, and phase specification share the same range.
+- Verification passed: focused `3` files / `45` tests, full Vitest `105` files / `658` tests, TypeScript, focused ESLint, and `git diff --check`.

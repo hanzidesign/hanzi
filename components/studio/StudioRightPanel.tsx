@@ -334,22 +334,22 @@ function renderEffectControl({
 
   if (control.kind === 'range') {
     const numberValue = typeof value === 'number' ? value : control.defaultValue
+    const displayScale = control.displayScaleByTheme?.[theme] ?? control.displayScale ?? 1
+    const displayNumberValue = numberValue * displayScale
+    const scaledMinimum = control.min * displayScale
+    const scaledMaximum = control.max * displayScale
 
     return (
       <TerminalRangeRow
         key={control.id}
         label={control.label}
-        value={numberValue}
-        min={control.min}
-        max={control.max}
-        step={control.step}
-        displayValue={selectedEffectId === 'crosshatch'
-          && control.id === 'line-width'
-          && numberValue === 0.15
-          ? numberValue.toFixed(1)
-          : formatControlValue(numberValue, control.unit)}
+        value={displayNumberValue}
+        min={Math.min(scaledMinimum, scaledMaximum)}
+        max={Math.max(scaledMinimum, scaledMaximum)}
+        step={Math.abs(control.step * displayScale)}
+        displayValue={formatControlValue(displayNumberValue, control.unit)}
         allowOutOfRangeValue={numberValue < control.min || numberValue > control.max}
-        onChange={(nextValue) => onChange(selectedEffectId, control.id, nextValue)}
+        onChange={(nextValue) => onChange(selectedEffectId, control.id, nextValue / displayScale)}
         onReset={() => onChange(selectedEffectId, control.id, defaultValue)}
       />
     )

@@ -23,6 +23,7 @@ describe('Studio shared Model panel contract', () => {
     expect(source).toContain('label="Twist"')
     expect(source).toContain('label="Taper"')
     expect(source).toContain('label="Bend"')
+    expect(source).toMatch(/label="Bend"[\s\S]*?min=\{-360\}[\s\S]*?max=\{360\}/)
     expect(source).toContain('function StudioModelReset')
     expect(source).toContain('function StudioMotionReset')
     expect(source.match(/Reset all/g)).toHaveLength(2)

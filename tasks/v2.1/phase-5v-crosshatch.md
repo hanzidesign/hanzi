@@ -19,15 +19,15 @@ Crosshatch is WebGPU-only in Grainrad. WebGL passes through the source and still
 | `density` | Density | `6` | `2..12`, step `1` |
 | `layers` | Layers | `3` | `1..4`, step `1` |
 | `angle` | Angle | `45°` | `0..90`, step `5` |
-| `line-width` | Line Width | **`0.15`** | **`0.5..3`, step `0.25`** |
+| `line-width` | Line Width | **`0.08`** (UI `8`) | **stored `0.01..0.5`, step `0.01`; UI `1..50`, step `1`** |
 | `randomness` | Randomness | `0` | `0..1`, step `0.05` |
 | `invert` | Invert | `false` | toggle |
 
-The below-minimum Line Width default is intentional production behavior. Reset must restore `0.15`; the GPU receives `0.15` until the user moves the slider into its declared range.
+Line Width stays canonical as `0.01..0.5` in state/runtime and is multiplied by `100` only in the UI. Reset restores stored `0.08`, displayed as `8`.
 
 ### Adjustments and Color
 
-- Brightness and Contrast: `0`, `-100..100`, step `1`.
+- Brightness UI defaults: Light `-15`, Dark `4`; `-100..100`, step `1`. Light uses canonical/display scale `1`; Dark uses display scale `-1`, so its UI `4` maps to canonical `-4`. Both themes therefore present higher values as lighter hatch lines while retaining source-luminance/hatch-density rendering. Contrast: `0`, `-100..100`, step `1`.
 - Line Color: `#000000`.
 - Background: `#ffffff`.
 - No selects or conditional rows.
@@ -49,38 +49,40 @@ The below-minimum Line Width default is intentional production behavior. Reset m
 
 ## Exact rendering logic
 
-1. Linear clamp source sample; apply Brightness then Contrast and clamp.
+1. Linear clamp source sample; apply canonical Brightness then Contrast for hatch-density calculation. Light UI uses the canonical sign; Dark UI negates it because the line/background palette polarity is reversed.
 2. Luminance uses production coefficients `0.2326, 0.7152, 0.0722` (the red coefficient is intentionally not Rec.709/Rec.601).
-3. Invert changes luminance only; `darkness=1-luminance`.
+3. Invert changes luminance only; `darkness=max(1-luminance,backgroundHatchFloor)`.
 4. Hatch rotation: `rotatedX=uv.x*cos(a)-uv.y*sin(a)`, `rotatedY=uv.x*sin(a)+uv.y*cos(a)`.
-5. `scaledX=rotatedX*resolution.x/spacing`; spacing and AA use width only.
+5. `scaledX=rotatedX*resolution.x/spacing+phase`; spacing and AA use width only.
 6. When Randomness is positive, deterministic hash/value noise adds phase wobble: `(noise-.5)*randomness*.4` from `vec2(floor(scaledX)*.1+seed*7,rotatedY*.02)*3`.
-7. Hatch distance is `abs(fract(scaledX+wobble)-.5)`; half width is `width*.5`; AA is `1.5/resolution.x`.
-8. Build six cumulative tonal-art-map patterns:
+7. Raw-source background pixels contribute a Brightness-responsive minimum darkness of `clamp(.04-canonicalBrightness*.2,.006,.2)` and a subtle `u_time*.08` hatch phase. Both UI directions change the field, it never becomes solid, and only the background moves while shared motion is playing.
+8. Hatch distance is `abs(fract(scaledX+phase+wobble)-.5)`; half width is `width*.5`; AA is `1.5/resolution.x`.
+9. Build six cumulative tonal-art-map patterns:
    - base angle, perpendicular, denser base/perpendicular, +45°, +135° with production spacing/width multipliers `.7/.8/.9` and `1.5/1/.85`.
-9. Layer collapse:
+10. Layer collapse:
    - Layers 1: all tone levels reuse base hatch.
    - Layers 2: high levels reuse the perpendicular composite.
    - Layers 3: highest level reuses the first diagonal composite.
    - Layers 4: all six cumulative patterns.
-10. Tone weights come from clamped `darkness*6` ramps and adjacent differences.
-11. `solidFill=smoothstep(.92,1,darkness)` and is maxed with the hatch value.
-12. Output is always `mix(background,lineColor,hatchValue)`.
-13. Processing is ignored; Bloom/Post run after Crosshatch.
+11. Tone weights come from clamped `darkness*6` ramps and adjacent differences.
+12. Darkest tones remain hatch-only; there is no solid model-color fill over the Character.
+13. Hatch output is intentionally not clipped to the Character mask; tonal lines may continue across the surrounding field.
+14. Output is `mix(background,lineColor,hatchValue)`; Processing and Post then run once.
 
 ## Production quirks/contextual no-ops
 
 - Density is actually pixel spacing: increasing it makes lines sparser.
 - Line Width is uploaded raw. Values around/above 1 saturate hatch cells, making several pattern controls contextual no-ops; do not divide by 10.
+- The former `solidFill` path was removed on 2026-07-14 because a dark Character source collapsed into a flat Line Color silhouette and hid the hatch lines.
 - Layers are luminance-gated TAM direction availability, not a direct count of six tone levels.
-- Randomness is deterministic spatial wobble and has no time animation.
-- B/C affect only mask luminance, never the chosen palette.
+- Randomness is deterministic spatial wobble; the separate subtle background phase is time-driven.
+- Canonical Brightness and Contrast affect mask luminance; Dark alone inverts the UI number for expected line-lightness direction.
 - Invert changes pattern placement without swapping colors.
-- Equal palette colors, fully bright/dark endpoints, zero Randomness, and saturated width create documented no-op contexts.
+- Equal palette colors, zero Randomness, and saturated width create documented no-op contexts; fully bright background source retains the intentional hatch floor.
 - Aspect ratio affects spacing and AA because only `resolution.x` is used.
 
 ## Hanzi Studio boundary
 
-- Dedicated `crosshatch` renderer, exact schema/runtime/store behavior including persistent `0.15` default, CPU oracle, material, canvas, and explicit route.
+- Dedicated `crosshatch` renderer, exact schema/runtime/store behavior including persistent `0.08` Line Width default, CPU oracle, material, canvas, and explicit route.
 - Preserve all Model deformation, transform, motion/time for shared Post, and deterministic disposal.
 - Do not reuse Dithering's `crosshatch` sub-algorithm or import prior effect materials/generic runtime.

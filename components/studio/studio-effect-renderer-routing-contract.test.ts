@@ -266,9 +266,14 @@ describe('Grainrad effect renderer routing contract', () => {
     expect(pixelSortCanvasSource).toContain('runtime.svgData')
     expect(pixelSortCanvasSource).toContain('<Canvas')
     expect(pixelSortCanvasSource).toContain('SVGLoader')
-    expect(pixelSortCanvasSource).toContain('createPixelSortShaderMaterial')
-    expect(pixelSortCanvasSource).toContain('applyPixelSortUniforms')
-    expect(pixelSortCanvasSource).toContain('disposePixelSortShaderMaterial')
+    expect(pixelSortCanvasSource).toContain('PixelSortWorkerClient')
+    expect(pixelSortCanvasSource).toContain('readRenderTargetPixelsAsync')
+    expect(pixelSortCanvasSource).toContain('createPixelSortPresentMaterial')
+    expect(pixelSortCanvasSource).toContain('createPixelSortTexture(')
+    expect(pixelSortCanvasSource).toContain('setPixelSortPresentFrame(')
+    expect(pixelSortCanvasSource).toContain('previousTexture.dispose()')
+    expect(pixelSortCanvasSource).not.toContain('createPixelSortShaderMaterial')
+    expect(pixelSortCanvasSource).not.toContain('PIXEL_SORT_SAMPLE_COUNT')
     expect(pixelSortCanvasSource).toContain('data-testid="character-pixel-sort-canvas"')
     for (const meshParam of [
       'extrusionDepth',
@@ -620,5 +625,39 @@ describe('Grainrad effect renderer routing contract', () => {
     expect(vhsCanvasSource).toContain('clock.getElapsedTime()')
     expect(vhsCanvasSource).toContain('animation.playing')
     expect(vhsCanvasSource).toContain('animation.speed')
+  })
+
+  it('keeps every dedicated Effect canvas isolated from every other Effect material', async () => {
+    const renderers = [
+      ['CharacterDitheringCanvas.tsx', 'dithering-material'],
+      ['CharacterHalftoneCanvas.tsx', 'halftone-material'],
+      ['CharacterMatrixRainCanvas.tsx', 'matrix-rain-material'],
+      ['CharacterDotsCanvas.tsx', 'dots-material'],
+      ['CharacterContourCanvas.tsx', 'contour-material'],
+      ['CharacterPixelSortCanvas.tsx', 'pixel-sort-present-material'],
+      ['CharacterBlockifyCanvas.tsx', 'blockify-material'],
+      ['CharacterThresholdCanvas.tsx', 'threshold-material'],
+      ['CharacterEdgeDetectionCanvas.tsx', 'edge-detection-material'],
+      ['CharacterCrosshatchCanvas.tsx', 'crosshatch-material'],
+      ['CharacterWaveLinesCanvas.tsx', 'wave-lines-material'],
+      ['CharacterNoiseFieldCanvas.tsx', 'noise-field-material'],
+      ['CharacterVoronoiCanvas.tsx', 'voronoi-material'],
+      ['CharacterVhsCanvas.tsx', 'vhs-material'],
+    ] as const
+    const materialModules = renderers.map(([, materialModule]) => materialModule)
+
+    for (const [rendererFile, ownMaterialModule] of renderers) {
+      const renderer = await readFile(join(studioDir, rendererFile), 'utf8')
+      expect(renderer, `${rendererFile} must import its own material`)
+        .toContain(ownMaterialModule)
+      expect(renderer, `${rendererFile} must not use the generic Effect runtime`)
+        .not.toContain('grainrad-effect-runtime')
+
+      for (const foreignMaterialModule of materialModules) {
+        if (foreignMaterialModule === ownMaterialModule) continue
+        expect(renderer, `${rendererFile} must not import ${foreignMaterialModule}`)
+          .not.toContain(foreignMaterialModule)
+      }
+    }
   })
 })

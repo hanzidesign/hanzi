@@ -57,7 +57,7 @@ export function createCharacterMeshGeometries({
     (shape) =>
       new ExtrudeGeometry(shape, {
         depth,
-        steps: twist === 0 && taper === 0 ? 1 : 8,
+        steps: taper === 0 ? 1 : 8,
         bevelEnabled: safeBevel > 0,
         bevelSize: sourceBevelSize,
         bevelThickness: Math.min(safeBevel, depth / 2),
@@ -82,9 +82,11 @@ export function createCharacterMeshGeometries({
       applyCharacterMeshThickness(geometry, thickness)
     }
 
+    const deformationBounds = getCombinedBounds(geometries)
+
     const subdivisionLevel = Math.max(
       sanitizeDisplacementSubdivisionLevel(displacementSubdivisionLevel),
-      bend === 0 ? 0 : 2,
+      twist === 0 && bend === 0 ? 0 : 2,
     )
     geometries = geometries.map((geometry) =>
       subdivideGeometryTriangles(
@@ -94,7 +96,15 @@ export function createCharacterMeshGeometries({
     )
 
     for (const geometry of geometries) {
-      applyCharacterMeshDeformation(geometry, depth, twist, taper, bend)
+      applyCharacterMeshDeformation(
+        geometry,
+        depth,
+        twist,
+        taper,
+        bend,
+        deformationBounds.min.y,
+        deformationBounds.max.y,
+      )
     }
 
     const normalizedBounds = getCombinedBounds(geometries)
@@ -131,6 +141,8 @@ function applyCharacterMeshDeformation(
   twistDegrees: number,
   taper: number,
   bendDegrees: number,
+  twistMinY: number,
+  twistMaxY: number,
 ) {
   if (twistDegrees === 0 && taper === 0 && bendDegrees === 0) {
     return
@@ -141,25 +153,29 @@ function applyCharacterMeshDeformation(
   const bendRadians = (bendDegrees * Math.PI) / 180
   const bendRadius = bendRadians === 0 ? 0 : 2 / Math.abs(bendRadians)
   const bendDirection = Math.sign(bendRadians)
+  const twistSpanY = Math.max(twistMaxY - twistMinY, Number.EPSILON)
 
   for (let index = 0; index < position.count; index += 1) {
     const x = position.getX(index)
     const y = position.getY(index)
     const z = position.getZ(index)
     const depthPosition = z / Math.max(depth, MIN_CHARACTER_EXTRUSION_DEPTH)
-    const angle = twistRadians * depthPosition
+    const twistPosition = (y - twistMinY) / twistSpanY
+    const angle = twistRadians * twistPosition
     const cosine = Math.cos(angle)
     const sine = Math.sin(angle)
     const taperedScale = Math.max(0.15, 1 + taper * depthPosition)
-    const twistedX = (x * cosine - y * sine) * taperedScale
-    const twistedY = (x * sine + y * cosine) * taperedScale
+    const taperedX = x * taperedScale
+    const twistedX = taperedX * cosine + z * sine
+    const twistedY = y * taperedScale
+    const twistedZ = -taperedX * sine + z * cosine
     const bendAngle = bendRadians * twistedX / 2
     const bentX = bendRadians === 0
       ? twistedX
       : Math.sin(bendAngle) * bendRadius
     const bentZ = bendRadians === 0
-      ? z
-      : z + (1 - Math.cos(bendAngle)) * bendRadius * bendDirection
+      ? twistedZ
+      : twistedZ + (1 - Math.cos(bendAngle)) * bendRadius * bendDirection
 
     position.setXYZ(
       index,

@@ -42,7 +42,7 @@ export function StudioRenderModeProvider({
 }
 
 export function StudioRenderCanvas(props: CanvasProps) {
-  const renderContext = useContext(StudioRenderContext)
+  const renderContext = useStudioRenderMode()
   const { exportRender } = renderContext
   const { children, dpr, ...canvasProps } = props
 
@@ -55,8 +55,18 @@ export function StudioRenderCanvas(props: CanvasProps) {
   )
 }
 
+export function useStudioRenderMode() {
+  return useContext(StudioRenderContext)
+}
+
 export function readLatestPreviewAnimationTime() {
   return latestPreviewAnimationTime
+}
+
+export function reportLatestPreviewAnimationTime(animationTime: number) {
+  if (Number.isFinite(animationTime)) {
+    latestPreviewAnimationTime = Math.max(0, animationTime)
+  }
 }
 
 function StudioRenderFrameObserver({
@@ -65,21 +75,23 @@ function StudioRenderFrameObserver({
   onFrameRendered,
 }: StudioRenderContextValue) {
   const animation = useStudioStore((store) => store.animation)
+  const selectedEffectId = useStudioStore((store) => store.grainradEffect.selectedEffectId)
   const acknowledgedRequestRef = useRef(0)
 
   useFrame(({ clock, gl }) => {
     if (!exportRender) {
-      latestPreviewAnimationTime = computeEffectiveAnimationTime({
+      reportLatestPreviewAnimationTime(computeEffectiveAnimationTime({
         elapsedSeconds: clock.getElapsedTime(),
         speed: animation.speed,
         timeOffset: animation.timeOffset,
         playing: animation.playing,
-      })
+      }))
       return
     }
 
     if (
-      requestId > 0
+      selectedEffectId !== 'pixel-sort'
+      && requestId > 0
       && requestId !== acknowledgedRequestRef.current
       && gl.info.render.calls > 0
     ) {

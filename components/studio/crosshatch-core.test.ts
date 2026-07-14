@@ -13,20 +13,20 @@ import {
 } from './crosshatch-core'
 
 describe('Crosshatch CPU reference', () => {
-  it('keeps the production defaults, including the below-slider-minimum Line Width', () => {
+  it('keeps the production defaults with Line Width inside its physical range', () => {
     expect(DEFAULT_CROSSHATCH_SETTINGS).toEqual({
       angle: 45,
       background: [255, 255, 255],
-      brightness: 0,
+      brightness: -4,
       contrast: 0,
       density: 6,
       invert: false,
       layers: 3,
       lineColor: [0, 0, 0],
-      lineWidth: 0.15,
+      lineWidth: 0.08,
       randomness: 0,
     })
-    expect(() => render({ settings: { lineWidth: 0.15 } })).not.toThrow()
+    expect(() => render({ settings: { lineWidth: 0.08 } })).not.toThrow()
   })
 
   it('ports production hash21 and smooth value noise exactly', () => {
@@ -80,12 +80,12 @@ describe('Crosshatch CPU reference', () => {
       uv,
       width,
     })
-    const expected0 = hatch(baseAngle, 9, 0.105, 0)
-    const expected1 = Math.max(expected0, hatch(baseAngle + Math.PI * 0.5, 9, 0.105, 1))
-    const expected2 = Math.max(expected1, hatch(baseAngle, 6, 0.12, 2))
-    const expected3 = Math.max(expected2, hatch(baseAngle + Math.PI * 0.5, 6, 0.12, 3))
-    const expected4 = Math.max(expected3, hatch(baseAngle + Math.PI * 0.25, 5.1, 0.135, 4))
-    const expected5 = Math.max(expected4, hatch(baseAngle + Math.PI * 0.75, 5.1, 0.135, 5))
+    const expected0 = hatch(baseAngle, 9, input.settings.lineWidth * 0.7, 0)
+    const expected1 = Math.max(expected0, hatch(baseAngle + Math.PI * 0.5, 9, input.settings.lineWidth * 0.7, 1))
+    const expected2 = Math.max(expected1, hatch(baseAngle, 6, input.settings.lineWidth * 0.8, 2))
+    const expected3 = Math.max(expected2, hatch(baseAngle + Math.PI * 0.5, 6, input.settings.lineWidth * 0.8, 3))
+    const expected4 = Math.max(expected3, hatch(baseAngle + Math.PI * 0.25, 5.1, input.settings.lineWidth * 0.9, 4))
+    const expected5 = Math.max(expected4, hatch(baseAngle + Math.PI * 0.75, 5.1, input.settings.lineWidth * 0.9, 5))
 
     expect(trace.patterns).toEqual([
       expected0,
@@ -124,8 +124,8 @@ describe('Crosshatch CPU reference', () => {
     expect(calculateTamWeights(1)).toEqual([0, 0, 0, 0, 0, 1])
   })
 
-  it('uses the production 0.2326 red luma bug after Brightness then Contrast', () => {
-    const red = trace({}, [255, 0, 0])
+  it('uses the production 0.2326 red luma bug after source Brightness then Contrast', () => {
+    const red = trace({ brightness: 0 }, [255, 0, 0])
     expect(red.adjustedSource).toEqual([1, 0, 0])
     expect(red.luminance).toBeCloseTo(0.2326, 12)
 
@@ -141,6 +141,7 @@ describe('Crosshatch CPU reference', () => {
   it('inverts luminance only and always mixes Background toward Line Color', () => {
     const settings = {
       background: [20, 40, 60] as const,
+      brightness: 0,
       lineColor: [220, 180, 140] as const,
     }
     const normalTrace = trace(settings, [180, 120, 60])
@@ -148,17 +149,60 @@ describe('Crosshatch CPU reference', () => {
     expect(invertedTrace.luminance).toBeCloseTo(1 - normalTrace.luminance, 12)
 
     const output = render({ height: 1, rgb: solidRgb(2, 1, [255, 255, 255]), settings, width: 2 })
-    expect(pixelAt(output.data, 2, 0, 0)).toEqual(settings.background)
-    expect(render({ height: 1, rgb: solidRgb(1, 1, [0, 0, 0]), settings, width: 1 }).data)
-      .toEqual(new Uint8ClampedArray(settings.lineColor))
+    const fieldPixel = pixelAt(output.data, 2, 0, 0)
+    expect(fieldPixel).not.toEqual(settings.background)
+    fieldPixel.forEach((value, index) => {
+      expect(value).toBeGreaterThanOrEqual(Math.min(settings.background[index], settings.lineColor[index]))
+      expect(value).toBeLessThanOrEqual(Math.max(settings.background[index], settings.lineColor[index]))
+    })
   })
 
-  it('maxes the weighted hatch with the very-dark smooth solid fill', () => {
-    expect(trace({}, [255, 255, 255]).solidFill).toBe(0)
-    expect(trace({}, [0, 0, 0]).solidFill).toBe(1)
-    const nearBlack = trace({}, [10, 10, 10])
-    expect(nearBlack.solidFill).toBeGreaterThan(0)
-    expect(nearBlack.hatchValue).toBeGreaterThanOrEqual(nearBlack.solidFill)
+  it('keeps hatch gaps visible instead of filling a dark Character with Line Color', () => {
+    const output = render({
+      height: 36,
+      rgb: solidRgb(48, 36, [0, 0, 0]),
+      width: 48,
+    }).data
+
+    expect(new Set(output).size).toBeGreaterThan(1)
+    expect(output).toContain(255)
+  })
+
+  it('allows negative Brightness to extend hatch lines across the source field', () => {
+    const output = render({
+      height: 64,
+      rgb: solidRgb(64, 64, [255, 255, 255]),
+      width: 64,
+    }).data
+
+    expect(new Set(output).size).toBeGreaterThan(1)
+    expect(output).toContain(255)
+  })
+
+  it('keeps background hatch responsive when canonical Brightness increases', () => {
+    const source = solidRgb(64, 48, [255, 255, 255])
+    const neutral = render({ height: 48, rgb: source, settings: { brightness: 0 }, width: 64 }).data
+    const darkerUiDirection = render({
+      height: 48,
+      rgb: source,
+      settings: { brightness: 25 },
+      width: 64,
+    }).data
+
+    expect(darkerUiDirection).not.toEqual(neutral)
+    expect(new Set(darkerUiDirection).size).toBeGreaterThan(1)
+    expect(darkerUiDirection).toContain(255)
+  })
+
+  it('keeps canonical Brightness in source-luminance and hatch-density space', () => {
+    const source = solidRgb(64, 48, [192, 192, 192])
+    const atNegative = render({ height: 48, rgb: source, settings: { brightness: -25 }, width: 64 }).data
+    const atZero = render({ height: 48, rgb: source, settings: { brightness: 0 }, width: 64 }).data
+    const atPositive = render({ height: 48, rgb: source, settings: { brightness: 25 }, width: 64 }).data
+
+    expect(atNegative).not.toEqual(atZero)
+    expect(atPositive).not.toEqual(atZero)
+    expect(averageChannel(atNegative)).toBeLessThan(averageChannel(atPositive))
   })
 
   it('preserves documented contextual no-ops', () => {
@@ -166,25 +210,25 @@ describe('Crosshatch CPU reference', () => {
     const equalPalette = render({
       height: 24,
       rgb: source,
-      settings: { background: [77, 88, 99], lineColor: [77, 88, 99] },
+      settings: { background: [77, 88, 99], brightness: 0, lineColor: [77, 88, 99] },
       width: 36,
     }).data
     expect(new Set(equalPalette)).toEqual(new Set([77, 88, 99]))
 
     const bright = solidRgb(24, 16, [255, 255, 255])
-    expect(render({ height: 16, rgb: bright, settings: { angle: 0 }, width: 24 }).data)
-      .toEqual(render({ height: 16, rgb: bright, settings: { angle: 90, randomness: 1 }, width: 24 }).data)
+    expect(render({ height: 16, rgb: bright, settings: { angle: 0, brightness: 0 }, width: 24 }).data)
+      .not.toEqual(render({ height: 16, rgb: bright, settings: { angle: 90, brightness: 0, randomness: 1 }, width: 24 }).data)
 
     const dark = solidRgb(24, 16, [0, 0, 0])
     expect(render({ height: 16, rgb: dark, settings: { density: 2 }, width: 24 }).data)
-      .toEqual(render({ height: 16, rgb: dark, settings: { density: 12, layers: 4 }, width: 24 }).data)
+      .not.toEqual(render({ height: 16, rgb: dark, settings: { density: 12, layers: 4 }, width: 24 }).data)
 
     const gray = solidRgb(24, 16, [128, 128, 128])
-    expect(render({ height: 16, rgb: gray, settings: { angle: 0, lineWidth: 3 }, width: 24 }).data)
-      .toEqual(render({
+    expect(render({ height: 16, rgb: gray, settings: { angle: 0, lineWidth: 0.5 }, width: 24 }).data)
+      .not.toEqual(render({
         height: 16,
         rgb: gray,
-        settings: { angle: 90, density: 12, layers: 4, lineWidth: 3, randomness: 1 },
+        settings: { angle: 90, density: 12, layers: 4, lineWidth: 0.5, randomness: 1 },
         width: 24,
       }).data)
   })
@@ -222,7 +266,7 @@ describe('Crosshatch CPU reference', () => {
     expect(midpoint[2]).toBeCloseTo(120 / 255, 14)
   })
 
-  it('rejects malformed input and settings while allowing only the default Line Width exception', () => {
+  it('rejects malformed input and settings across the full Line Width range', () => {
     expect(() => renderCrosshatchReference({
       height: 1,
       rgb: new Uint8Array(2),
@@ -232,8 +276,9 @@ describe('Crosshatch CPU reference', () => {
     expect(() => render({ settings: { density: 2.5 } })).toThrow('integer')
     expect(() => render({ settings: { layers: 5 } })).toThrow('between 1 and 4')
     expect(() => render({ settings: { angle: 12 } })).toThrow('increments of 5')
-    expect(() => render({ settings: { lineWidth: 0.25 } })).toThrow('between 0.5 and 3')
-    expect(() => render({ settings: { lineWidth: 0.6 } })).toThrow('increments of 0.25')
+    expect(() => render({ settings: { lineWidth: 0 } })).toThrow('between 0.01 and 0.5')
+    expect(() => render({ settings: { lineWidth: 0.51 } })).toThrow('between 0.01 and 0.5')
+    expect(() => render({ settings: { lineWidth: 0.015 } })).toThrow('increments of 0.01')
     expect(() => render({ settings: { randomness: 0.03 } })).toThrow('increments of 0.05')
     expect(() => render({ settings: { brightness: 1.5 } })).toThrow('integer')
     expect(() => render({ settings: { invert: 1 as unknown as boolean } })).toThrow('boolean')
@@ -306,4 +351,8 @@ function gradientRgb(width: number, height: number) {
 function pixelAt(data: Uint8ClampedArray, width: number, x: number, y: number) {
   const offset = (y * width + x) * 3
   return [data[offset], data[offset + 1], data[offset + 2]]
+}
+
+function averageChannel(data: Uint8ClampedArray) {
+  return data.reduce((sum, value) => sum + value, 0) / data.length
 }

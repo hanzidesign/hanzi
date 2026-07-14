@@ -38,10 +38,13 @@ export type GrainradSelectOption<T extends string = string> = {
 export type GrainradRangeControl = GrainradControlBase & {
   kind: 'range'
   defaultValue: number
+  defaultValueByTheme?: Record<'light' | 'dark', number>
   min: number
   max: number
   step: number
   unit?: string
+  displayScale?: number
+  displayScaleByTheme?: Record<'light' | 'dark', number>
 }
 
 export type GrainradSelectControl = GrainradControlBase & {
@@ -60,6 +63,7 @@ export type GrainradTextControl = GrainradControlBase & {
 export type GrainradToggleControl = GrainradControlBase & {
   kind: 'toggle'
   defaultValue: boolean
+  defaultValueByTheme?: Record<'light' | 'dark', boolean>
 }
 
 export type GrainradColorControl = GrainradControlBase & {
@@ -773,7 +777,7 @@ export const GRAINRAD_EFFECTS: GrainradEffectDefinition[] = [
           rangeControl('density', 'Density', 6, 2, 12, 1),
           rangeControl('layers', 'Layers', 3, 1, 4, 1),
           rangeControl('angle', 'Angle', 45, 0, 90, 5, '°'),
-          rangeControl('line-width', 'Line Width', 0.15, 0.5, 3, 0.25),
+          scaledRangeControl('line-width', 'Line Width', 0.08, 0.01, 0.5, 0.01, 100),
           rangeControl('randomness', 'Randomness', 0, 0, 1, 0.05),
           toggleControl('invert', 'Invert', false),
         ],
@@ -781,7 +785,13 @@ export const GRAINRAD_EFFECTS: GrainradEffectDefinition[] = [
       {
         title: 'Adjustments',
         controls: [
-          rangeControl('brightness', 'Brightness', 0, -100, 100, 1),
+          {
+            ...themedRangeControl('brightness', 'Brightness', -4, -100, 100, 1, {
+              light: -15,
+              dark: -4,
+            }),
+            displayScaleByTheme: { light: 1, dark: -1 },
+          },
           rangeControl('contrast', 'Contrast', 0, -100, 100, 1),
         ],
       },
@@ -985,15 +995,25 @@ export function getGrainradControlDefaultValue(
   control: GrainradEffectControl,
   theme: 'light' | 'dark',
 ) {
-  return isGrainradThemeColorControl(control)
+  return hasGrainradThemeDefaultValue(control)
     ? control.defaultValueByTheme[theme]
     : control.defaultValue
+}
+
+export function hasGrainradThemeDefaultValue(
+  control: GrainradEffectControl,
+): control is GrainradEffectControl & {
+  defaultValueByTheme: Record<'light' | 'dark', GrainradControlValue>
+} {
+  return 'defaultValueByTheme' in control && control.defaultValueByTheme !== undefined
 }
 
 export function isGrainradThemeColorControl(
   control: GrainradEffectControl,
 ): control is GrainradThemeColorControl {
-  return 'defaultValueByTheme' in control && control.defaultValueByTheme !== undefined
+  return control.kind !== 'range'
+    && control.kind !== 'toggle'
+    && hasGrainradThemeDefaultValue(control)
 }
 
 function flattenGroups(groups: GrainradSettingGroup[]) {
@@ -1074,6 +1094,38 @@ function rangeControl(
     step,
     unit,
     visibleWhen,
+  }
+}
+
+function scaledRangeControl(
+  id: string,
+  label: string,
+  defaultValue: number,
+  min: number,
+  max: number,
+  step: number,
+  displayScale: number,
+  unit?: string,
+): GrainradRangeControl {
+  return {
+    ...rangeControl(id, label, defaultValue, min, max, step, unit),
+    displayScale,
+  }
+}
+
+function themedRangeControl(
+  id: string,
+  label: string,
+  defaultValue: number,
+  min: number,
+  max: number,
+  step: number,
+  defaultValueByTheme: Record<'light' | 'dark', number>,
+  unit?: string,
+): GrainradRangeControl {
+  return {
+    ...rangeControl(id, label, defaultValue, min, max, step, unit),
+    defaultValueByTheme,
   }
 }
 

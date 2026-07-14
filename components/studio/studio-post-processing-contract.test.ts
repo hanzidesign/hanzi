@@ -13,15 +13,16 @@ const offscreenSourceRenderers = [
   'CharacterHalftoneCanvas.tsx',
   'CharacterMatrixRainCanvas.tsx',
   'CharacterNoiseFieldCanvas.tsx',
-  'CharacterPixelSortCanvas.tsx',
   'CharacterThresholdCanvas.tsx',
   'CharacterVhsCanvas.tsx',
   'CharacterVoronoiCanvas.tsx',
   'CharacterWaveLinesCanvas.tsx',
 ]
+const independentRenderers = ['CharacterPixelSortCanvas.tsx']
 const sharedControllerRenderers = [
   'CharacterAsciiCanvas.tsx',
   ...offscreenSourceRenderers,
+  ...independentRenderers,
 ]
 
 describe('Studio shared post-processing compositor contract', () => {
@@ -49,12 +50,22 @@ describe('Studio shared post-processing compositor contract', () => {
     expect(renderContext).toContain('exportRender ? 2 : 0')
     expect(renderContext).not.toContain('gl.render(scene, camera)')
     expect(renderContext).toContain('onFrameRendered?.(requestId, gl.domElement)')
+    expect(renderContext).toContain("selectedEffectId !== 'pixel-sort'")
 
     for (const rendererFile of offscreenSourceRenderers) {
       const renderer = await readFile(join(studioDir, rendererFile), 'utf8')
       expect(renderer, `${rendererFile} must finish its source texture before composition`)
         .toContain('}, -1)')
     }
+
+    const pixelSortRenderer = await readFile(
+      join(studioDir, independentRenderers[0]),
+      'utf8',
+    )
+    expect(pixelSortRenderer).toContain('PixelSortWorkerClient')
+    expect(pixelSortRenderer).toContain('readRenderTargetPixelsAsync')
+    expect(pixelSortRenderer).toContain('pendingExportAckRef')
+    expect(pixelSortRenderer).toContain('renderMode.onFrameRendered?.(')
   })
 
   it('applies shared Processing and Post-Processing exactly once after every source renderer', async () => {

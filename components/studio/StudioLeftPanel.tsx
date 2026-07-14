@@ -148,8 +148,8 @@ export function StudioModelPanel() {
       <TerminalRangeRow
         label="Bend"
         value={mesh.bend}
-        min={-120}
-        max={120}
+        min={-360}
+        max={360}
         step={1}
         displayValue={`${Math.round(mesh.bend)}°`}
         onChange={(bend) => setMeshControl({ bend })}

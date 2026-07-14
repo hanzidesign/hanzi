@@ -47,4 +47,19 @@ describe('Phase 5D Grainrad terminal controller contract', () => {
     expect(characterPanel).not.toContain('SimpleGrid')
     expect(characterPanel).not.toContain('PanelBox')
   })
+
+  it('scales range presentation without changing persisted or renderer units', async () => {
+    const rightPanel = await readFile(join(studioDir, 'StudioRightPanel.tsx'), 'utf8')
+
+    expect(rightPanel).toContain(
+      'const displayScale = control.displayScaleByTheme?.[theme] ?? control.displayScale ?? 1',
+    )
+    expect(rightPanel).toContain('const displayNumberValue = numberValue * displayScale')
+    expect(rightPanel).toContain('const scaledMinimum = control.min * displayScale')
+    expect(rightPanel).toContain('const scaledMaximum = control.max * displayScale')
+    expect(rightPanel).toContain('min={Math.min(scaledMinimum, scaledMaximum)}')
+    expect(rightPanel).toContain('max={Math.max(scaledMinimum, scaledMaximum)}')
+    expect(rightPanel).toContain('step={Math.abs(control.step * displayScale)}')
+    expect(rightPanel).toContain('nextValue / displayScale')
+  })
 })

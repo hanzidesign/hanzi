@@ -1,5 +1,6 @@
 'use client'
 
+import { Tooltip } from '@mantine/core'
 import {
   useCallback,
   useEffect,
@@ -244,23 +245,30 @@ export default function StudioExportPanel() {
               : undefined
 
           return (
-            <span
+            <Tooltip
               key={option.value}
-              className={classes.exportFormatTooltip}
-              title={unavailableReason}
+              label={unavailableReason}
+              disabled={!unavailableReason}
+              openDelay={250}
+              position="top"
+              withArrow
             >
-              <button
-                type="button"
-                className={classes.exportFormatButton}
-                data-active={option.value === selectedFormat}
-                disabled={disabled}
-                aria-label={unavailableReason ?? `Export ${option.label}`}
-                onClick={() => void handleExport(option.value)}
+              <span
+                className={classes.exportFormatTooltip}
               >
-                <ExportFormatIcon icon={option.icon} />
-                <span>{option.label}</span>
-              </button>
-            </span>
+                <button
+                  type="button"
+                  className={classes.exportFormatButton}
+                  data-active={option.value === selectedFormat}
+                  disabled={disabled}
+                  aria-label={unavailableReason ?? `Export ${option.label}`}
+                  onClick={() => void handleExport(option.value)}
+                >
+                  <ExportFormatIcon icon={option.icon} />
+                  <span>{option.label}</span>
+                </button>
+              </span>
+            </Tooltip>
           )
         })}
       </div>

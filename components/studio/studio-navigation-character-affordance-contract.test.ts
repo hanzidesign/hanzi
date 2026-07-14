@@ -47,11 +47,14 @@ describe('Studio navigation, Character meaning, and interaction affordances', ()
     expect(styles).toContain('cursor: not-allowed')
   })
 
-  it('keeps the disabled PNG explanation on a hoverable wrapper', async () => {
+  it('uses a Mantine tooltip around the hoverable disabled export wrapper', async () => {
     const exportPanel = await readFile(join(studioDir, 'StudioExportPanel.tsx'), 'utf8')
 
+    expect(exportPanel).toContain("import { Tooltip } from '@mantine/core'")
+    expect(exportPanel).toContain('<Tooltip')
+    expect(exportPanel).toContain('label={unavailableReason}')
     expect(exportPanel).toContain('className={classes.exportFormatTooltip}')
     expect(exportPanel).toContain("'3D Motion Speed must be 0 to export PNG'")
-    expect(exportPanel).toContain('title={unavailableReason}')
+    expect(exportPanel).not.toContain('title={unavailableReason}')
   })
 })

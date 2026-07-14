@@ -40,7 +40,7 @@ import {
 } from '@/components/studio/grainrad-effects'
 
 export const STUDIO_STORE_STORAGE_KEY = 'hanzi-studio-grainrad-effects-v1'
-const STUDIO_STORE_STORAGE_VERSION = 6
+const STUDIO_STORE_STORAGE_VERSION = 7
 export const MAX_PATTERN_LAYERS = 3
 const DEFAULT_ART_PATTERN_LAYERS: Array<
   Pick<StudioPatternLayer, 'source' | 'target' | 'enabled' | 'intensity' | 'blendMode' | 'locked'>
@@ -149,7 +149,14 @@ export const ASCII_PALETTES = ['green', 'amber', 'noir', 'synthwave', 'custom'] 
 export type StudioAsciiCharsetStyle = GrainradCharacterSet
 export type StudioAsciiPalette = (typeof ASCII_PALETTES)[number]
 
-export type StudioThemeColorControls = Record<StudioTheme, Record<GrainradEffectId, Record<string, string>>>
+export type StudioThemeControls = Record<
+  StudioTheme,
+  Record<GrainradEffectId, Record<string, GrainradControlValue>>
+>
+type StudioThemeColorControls = Record<
+  StudioTheme,
+  Record<GrainradEffectId, Record<string, string>>
+>
 
 export type StudioAsciiState = {
   cellSize: number
@@ -336,7 +343,7 @@ export type StudioStoreState = {
   grainradEffect: {
     selectedEffectId: GrainradEffectId
     controls: Record<GrainradEffectId, Record<string, GrainradControlValue>>
-    colorControlsByTheme: StudioThemeColorControls
+    controlsByTheme: StudioThemeControls
   }
   ascii: StudioAsciiState
   rendererMode: StudioRendererMode
@@ -1007,18 +1014,16 @@ export function createStudioStore(storage?: StateStorage) {
             ...currentControls,
             [controlId]: sanitizedValue,
           }
-          const nextColorControlsByTheme = isGrainradThemeColorControl(control)
-            ? {
-                ...state.grainradEffect.colorControlsByTheme,
-                [state.view.theme]: {
-                  ...state.grainradEffect.colorControlsByTheme[state.view.theme],
-                  [effectId]: {
-                    ...state.grainradEffect.colorControlsByTheme[state.view.theme][effectId],
-                    [controlId]: sanitizedValue as string,
-                  },
-                },
-              }
-            : state.grainradEffect.colorControlsByTheme
+          const nextControlsByTheme = {
+            ...state.grainradEffect.controlsByTheme,
+            [state.view.theme]: {
+              ...state.grainradEffect.controlsByTheme[state.view.theme],
+              [effectId]: {
+                ...state.grainradEffect.controlsByTheme[state.view.theme][effectId],
+                [controlId]: sanitizedValue,
+              },
+            },
+          }
 
           set({
             ascii:
@@ -1031,7 +1036,7 @@ export function createStudioStore(storage?: StateStorage) {
                 ...state.grainradEffect.controls,
                 [effectId]: nextEffectControls,
               },
-              colorControlsByTheme: nextColorControlsByTheme,
+              controlsByTheme: nextControlsByTheme,
             },
           })
         },
@@ -1039,7 +1044,7 @@ export function createStudioStore(storage?: StateStorage) {
           const state = get()
           const selectedEffectId = state.grainradEffect.selectedEffectId
           const defaults = createDefaultGrainradEffectControls(state.view.theme)
-          const defaultThemeColors = createDefaultGrainradColorControls(state.view.theme)
+          const defaultThemeControls = createDefaultGrainradThemeControls(state.view.theme)
           const nextSelectedControls = defaults[selectedEffectId]
 
           set({
@@ -1053,11 +1058,11 @@ export function createStudioStore(storage?: StateStorage) {
                 ...state.grainradEffect.controls,
                 [selectedEffectId]: nextSelectedControls,
               },
-              colorControlsByTheme: {
-                ...state.grainradEffect.colorControlsByTheme,
+              controlsByTheme: {
+                ...state.grainradEffect.controlsByTheme,
                 [state.view.theme]: {
-                  ...state.grainradEffect.colorControlsByTheme[state.view.theme],
-                  [selectedEffectId]: defaultThemeColors[selectedEffectId],
+                  ...state.grainradEffect.controlsByTheme[state.view.theme],
+                  [selectedEffectId]: defaultThemeControls[selectedEffectId],
                 },
               },
             },
@@ -1087,12 +1092,12 @@ export function createStudioStore(storage?: StateStorage) {
                   ...colorUpdates,
                 },
               },
-              colorControlsByTheme: {
-                ...state.grainradEffect.colorControlsByTheme,
+              controlsByTheme: {
+                ...state.grainradEffect.controlsByTheme,
                 [state.view.theme]: {
-                  ...state.grainradEffect.colorControlsByTheme[state.view.theme],
+                  ...state.grainradEffect.controlsByTheme[state.view.theme],
                   ascii: {
-                    ...state.grainradEffect.colorControlsByTheme[state.view.theme].ascii,
+                    ...state.grainradEffect.controlsByTheme[state.view.theme].ascii,
                     ...colorUpdates,
                   },
                 },
@@ -1398,11 +1403,15 @@ function createDefaultGrainradEffectState(): StudioStoreState['grainradEffect'] 
   return {
     selectedEffectId: DEFAULT_GRAINRAD_EFFECT_ID,
     controls: createDefaultGrainradEffectControls(theme),
-    colorControlsByTheme: {
-      light: createDefaultGrainradColorControls('light'),
-      dark: createDefaultGrainradColorControls('dark'),
+    controlsByTheme: {
+      light: createDefaultGrainradThemeControls('light'),
+      dark: createDefaultGrainradThemeControls('dark'),
     },
   }
+}
+
+function createDefaultGrainradThemeControls(theme: StudioTheme) {
+  return createDefaultGrainradEffectControls(theme)
 }
 
 function createDefaultGrainradColorControls(theme: StudioTheme) {
@@ -1415,9 +1424,9 @@ function createDefaultGrainradColorControls(theme: StudioTheme) {
         effect.settingGroups
           .flatMap((group) => group.controls)
           .filter(isGrainradThemeColorControl)
-          .map((control) => [control.id, defaults[effect.id][control.id] as string])
+          .map((control) => [control.id, defaults[effect.id][control.id] as string]),
       ),
-    ])
+    ]),
   ) as Record<GrainradEffectId, Record<string, string>>
 }
 
@@ -1425,10 +1434,7 @@ function resolveStudioThemeState(
   state: StudioStore,
   theme: StudioTheme
 ): Pick<StudioStoreState, 'view' | 'grainradEffect' | 'ascii'> {
-  const controls = mergeGrainradThemeColors(
-    state.grainradEffect.controls,
-    state.grainradEffect.colorControlsByTheme[theme]
-  )
+  const controls = state.grainradEffect.controlsByTheme[theme]
 
   return {
     view: { ...state.view, theme },
@@ -1438,21 +1444,6 @@ function resolveStudioThemeState(
     },
     ascii: syncAsciiColorsFromControls(state.ascii, controls.ascii),
   }
-}
-
-function mergeGrainradThemeColors(
-  controls: Record<GrainradEffectId, Record<string, GrainradControlValue>>,
-  themeColors: Record<GrainradEffectId, Record<string, string>>
-) {
-  return Object.fromEntries(
-    GRAINRAD_EFFECTS.map((effect) => [
-      effect.id,
-      {
-        ...controls[effect.id],
-        ...themeColors[effect.id],
-      },
-    ])
-  ) as Record<GrainradEffectId, Record<string, GrainradControlValue>>
 }
 
 function syncAsciiColorsFromControls(
@@ -1927,7 +1918,88 @@ function migratePersistedStudioState(value: unknown, version: number): unknown {
     }
   }
 
+  if (version < 7) {
+    const grainradEffect = readRecord(persisted.grainradEffect)
+    const controls = readRecord(grainradEffect.controls)
+    const crosshatch = readRecord(controls.crosshatch)
+    const theme = sanitizeStudioTheme(readRecord(persisted.view).theme, 'dark')
+    const legacyColorsByTheme = readRecord(grainradEffect.colorControlsByTheme)
+    const controlsByTheme: StudioThemeControls = {
+      light: mergeLegacyColorsIntoThemeControls(
+        createDefaultGrainradThemeControls('light'),
+        legacyColorsByTheme.light,
+      ),
+      dark: mergeLegacyColorsIntoThemeControls(
+        createDefaultGrainradThemeControls('dark'),
+        legacyColorsByTheme.dark,
+      ),
+    }
+    controlsByTheme[theme] = mergeLegacyActiveControls(
+      controlsByTheme[theme],
+      controls,
+      readRecord(legacyColorsByTheme[theme]),
+    )
+    const migratedBrightness = crosshatch.brightness === 0
+      ? createDefaultGrainradEffectControls(theme).crosshatch.brightness
+      : crosshatch.brightness
+    const migratedLineWidth = crosshatch['line-width'] === 0.15
+      ? 0.08
+      : crosshatch['line-width']
+    controlsByTheme[theme].crosshatch.brightness = migratedBrightness as GrainradControlValue
+    controlsByTheme[theme].crosshatch['line-width'] = migratedLineWidth as GrainradControlValue
+
+    persisted = {
+      ...persisted,
+      grainradEffect: {
+        ...grainradEffect,
+        controls: {
+          ...controls,
+          crosshatch: {
+            ...crosshatch,
+            'line-width': migratedLineWidth,
+            brightness: migratedBrightness,
+          },
+        },
+        controlsByTheme,
+      },
+    }
+  }
+
   return persisted
+}
+
+function mergeLegacyActiveControls(
+  fallback: Record<GrainradEffectId, Record<string, GrainradControlValue>>,
+  legacyControls: Record<string, unknown>,
+  legacyColors: Record<string, unknown>,
+) {
+  return Object.fromEntries(
+    GRAINRAD_EFFECTS.map((effect) => [
+      effect.id,
+      {
+        ...fallback[effect.id],
+        ...readRecord(legacyControls[effect.id]),
+        ...readRecord(legacyColors[effect.id]),
+      },
+    ]),
+  ) as Record<GrainradEffectId, Record<string, GrainradControlValue>>
+}
+
+function mergeLegacyColorsIntoThemeControls(
+  fallback: Record<GrainradEffectId, Record<string, GrainradControlValue>>,
+  legacyColors: unknown,
+) {
+  const colors = readRecord(legacyColors)
+
+  return Object.fromEntries(
+    GRAINRAD_EFFECTS.map((effect) => [
+      effect.id,
+      {
+        ...fallback[effect.id],
+        ...readRecord(colors[effect.id]),
+      },
+    ]),
+  ) as Record<GrainradEffectId, Record<string, GrainradControlValue>>
 }
 
 function migrateGrainradColorRoleIds(value: unknown) {
@@ -2147,53 +2219,29 @@ function sanitizeGrainradEffectState(
   theme: StudioTheme
 ): StudioStoreState['grainradEffect'] {
   const record = readRecord(value)
-  const colorControlsByTheme = sanitizeGrainradColorControlsByTheme(
-    record.colorControlsByTheme,
-    fallback.colorControlsByTheme
+  const controlsByTheme = sanitizeGrainradControlsByTheme(
+    record.controlsByTheme,
+    fallback.controlsByTheme
   )
-  const controls = mergeGrainradThemeColors(
-    sanitizeGrainradEffectControls(record.controls, fallback.controls),
-    colorControlsByTheme[theme]
-  )
+  const controls = controlsByTheme[theme]
 
   return {
     selectedEffectId: sanitizeGrainradEffectId(record.selectedEffectId, fallback.selectedEffectId),
     controls,
-    colorControlsByTheme,
+    controlsByTheme,
   }
 }
 
-function sanitizeGrainradColorControlsByTheme(
+function sanitizeGrainradControlsByTheme(
   value: unknown,
-  fallback: StudioThemeColorControls
-): StudioThemeColorControls {
+  fallback: StudioThemeControls
+): StudioThemeControls {
   const record = readRecord(value)
 
   return {
-    light: sanitizeGrainradThemeColors(record.light, fallback.light),
-    dark: sanitizeGrainradThemeColors(record.dark, fallback.dark),
+    light: sanitizeGrainradEffectControls(record.light, fallback.light),
+    dark: sanitizeGrainradEffectControls(record.dark, fallback.dark),
   }
-}
-
-function sanitizeGrainradThemeColors(value: unknown, fallback: Record<GrainradEffectId, Record<string, string>>) {
-  const record = readRecord(value)
-
-  return Object.fromEntries(
-    GRAINRAD_EFFECTS.map((effect) => {
-      const effectRecord = readRecord(record[effect.id])
-      const colors = Object.fromEntries(
-        effect.settingGroups
-          .flatMap((group) => group.controls)
-          .filter(isGrainradThemeColorControl)
-          .map((control) => [
-            control.id,
-            sanitizeGrainradControlValue(control, effectRecord[control.id], fallback[effect.id][control.id]) as string,
-          ])
-      )
-
-      return [effect.id, colors]
-    })
-  ) as Record<GrainradEffectId, Record<string, string>>
 }
 
 function sanitizeGrainradEffectId(value: unknown, fallback: GrainradEffectId): GrainradEffectId {
@@ -2398,7 +2446,7 @@ function sanitizeMeshState(value: unknown, fallback: StudioStoreState['mesh']): 
     bevel: readClampedNumber(record.bevel, fallback.bevel, 0, 0.3),
     twist: readClampedNumber(record.twist, fallback.twist, -360, 360),
     taper: readClampedNumber(record.taper, fallback.taper, -0.8, 0.8),
-    bend: readClampedNumber(record.bend, fallback.bend, -120, 120),
+    bend: readClampedNumber(record.bend, fallback.bend, -360, 360),
     rotation: {
       x: readClampedNumber(rotation.x, fallback.rotation.x, -Math.PI, Math.PI),
       y: readClampedNumber(rotation.y, fallback.rotation.y, -Math.PI, Math.PI),

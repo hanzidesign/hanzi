@@ -69,7 +69,7 @@ describe('character mesh geometry helpers', () => {
     )
   })
 
-  it('twists the extruded SVG through its depth without changing the source Character', () => {
+  it('twists the extruded SVG around its Y axis', () => {
     const straight = createCharacterMeshGeometries({
       shapes: [rectangleShape(500, 250)],
       extrusionDepth: 0.4,
@@ -84,8 +84,11 @@ describe('character mesh geometry helpers', () => {
     expect(Array.from(twisted.geometries[0].attributes.position.array)).not.toEqual(
       Array.from(straight.geometries[0].attributes.position.array),
     )
-    expect(twisted.boundsMin.z).toBeCloseTo(straight.boundsMin.z)
-    expect(twisted.boundsMax.z).toBeCloseTo(straight.boundsMax.z)
+    expect(twisted.boundsMin.y).toBeCloseTo(straight.boundsMin.y)
+    expect(twisted.boundsMax.y).toBeCloseTo(straight.boundsMax.y)
+    expect(twisted.boundsMax.z - twisted.boundsMin.z).toBeGreaterThan(
+      straight.boundsMax.z - straight.boundsMin.z,
+    )
   })
 
   it('tapers the SVG model so its front and back faces have different spans', () => {

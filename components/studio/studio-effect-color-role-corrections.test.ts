@@ -97,6 +97,25 @@ describe('corrected Studio Effect color roles', () => {
     expect(canvas).toContain("scene.background = new Color('#ffffff')")
   })
 
+  it('keeps Crosshatch state unchanged when another Effect is edited and reset', () => {
+    const store = createStudioStore()
+    const beforeControls = structuredClone(store.getState().grainradEffect.controls.crosshatch)
+    const beforeThemeColors = {
+      light: structuredClone(store.getState().grainradEffect.controlsByTheme.light.crosshatch),
+      dark: structuredClone(store.getState().grainradEffect.controlsByTheme.dark.crosshatch),
+    }
+
+    store.getState().setSelectedEffect('vhs')
+    store.getState().setGrainradEffectControl('vhs', 'distortion', 0.9)
+    store.getState().resetSelectedEffectControls()
+
+    expect(store.getState().grainradEffect.controls.crosshatch).toEqual(beforeControls)
+    expect(store.getState().grainradEffect.controlsByTheme.light.crosshatch)
+      .toEqual(beforeThemeColors.light)
+    expect(store.getState().grainradEffect.controlsByTheme.dark.crosshatch)
+      .toEqual(beforeThemeColors.dark)
+  })
+
   it('uses Line Color for Wave Lines mono output', () => {
     expect(WAVE_LINES_FRAGMENT_SHADER).toContain(
       'u_colorMode > 0.5 ? u_lineColor : adjustedColor',

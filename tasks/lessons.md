@@ -23,6 +23,7 @@ Keep this file as evergreen guidance only. Historical phase notes, completed tas
 
 ## UI And Interaction
 
+- For Studio help text on disabled controls, use the existing Mantine `Tooltip` instead of native `title`; keep a hoverable wrapper around the disabled button.
 - Static Settings group headings must not show arrows or disclosure glyphs. Reserve open/close indicators for controls that actually expand or collapse.
 - When the user specifies a shared control default such as Grain Intensity for all Effects, verify every Effect receives it and update the schema, store/reset path, compiler fallback, and every renderer uniform fallback together so missing or reset values cannot restore an older default.
 - Matrix Rain Direction labels describe where the rain moves `to`, not where it comes `from`; keep Up/Down and Left/Right runtime mappings aligned with that destination meaning in the CPU oracle and every shader/compiler path.
@@ -85,6 +86,9 @@ Keep this file as evergreen guidance only. Historical phase notes, completed tas
 
 ## Character Surface v2.1
 
+- Model `Twist` means rotation around the Character's Y axis. Verify the rotated coordinate pair and the axis along which the twist angle progresses; rotating X/Y by extrusion depth is a Z-axis twist and violates the control label's intended geometry contract.
+- When expanding a Model control range such as Bend, update both the visible range and persisted-state sanitizer, then lock the new extrema with UI/store tests so reload cannot silently restore the old limit.
+
 - When the user asks for parity with Grainrad Contour, do not reinterpret the named effect as a custom mesh material. First verify the production input-to-output pipeline, exact shader equations, defaults, and post stages from the live bundle; then reproduce that image-space pass over the rendered 3D frame. Contour must not expose Character Set unless the reference effect does.
 - For Hanzi Studio Contour, Color Mode defaults to `mono` even though Grainrad production defaults to Original. Preserve the verified Contour algorithm while treating the user's explicit local default as the product contract.
 - When the user says the current Character Surface shader framework failed, stop extending the fullscreen-plane/fake-3D path and re-plan around true 3D SVG geometry, mesh rotation, mesh-attached shader materials, time/mouse uniforms, particles, and feedback passes before touching renderer code again.
@@ -100,6 +104,14 @@ Keep this file as evergreen guidance only. Historical phase notes, completed tas
 
 ## Shaders And Patterns
 
+- For Pixel Sort, keep two explicit renderer stages: first render the complete 3D Hanzi scene into a 2D frame, then hand that frame to an independent 2D Pixel Sort renderer. Do not implement Pixel Sort as a mesh/material effect or as another single fullscreen shader inside the generic effect framework, and do not try to rescue that incompatible path with source-mask or span patches. Verify long scanline-local pixel streaks with hard black gaps instead of offset gray slabs, locked by a visual or image-statistic regression.
+- Pixel Sort's independent renderer is not allowed to orphan shared Studio controls. Model and 3D Motion must affect the captured source; Direction, Sort Mode, Threshold, Streak Length, Intensity, Randomness, Reverse, Brightness, and Contrast must affect the 2D sorter; Processing and Post-Processing must affect the sorted frame exactly once. Prove every visible controller at its actual runtime boundary.
+- When one Studio Effect regresses after work on other Effects, do not stop at repairing the visible shader symptom. Audit renderer routing, imports, shared store/control transforms, source-frame construction, and export routing; add an effect-isolation contract so another Effect cannot silently replace or mutate its rendering logic.
+- When the user corrects an Effect control range or default, update the schema, CPU validator, material/runtime fallbacks, persisted-state sanitization expectations, reset contract, tests, and task specification together. If UX uses scaled display units, encode the scale in generic control presentation while keeping persisted/runtime units canonical. If a persisted old default would mask the correction, migrate only that exact old value and preserve explicit non-default values.
+- When all Effect Settings are theme-scoped, store complete per-theme control sets rather than adding one-off exceptions for colors or individual numeric controls. Theme switch must restore the whole target set; edits and Reset must mutate only the active theme; legacy single-set values belong to the theme active at migration time.
+- Crosshatch lines are intentionally allowed outside the Character. Fix solid model-fill regressions by removing the fill term only; do not add a Character/source mask that clips the surrounding hatch field.
+- When a source-luminance control drives opposite light/dark palettes, its UX transform may need to be theme-specific. For Crosshatch Brightness, preserve renderer math, use Light display scale `1` and Dark `-1`, reorder bounds for negative scales, keep step positive, and migrate only a corrected former default.
+- A minimum texture floor must not turn half of a control range into a no-op. For Crosshatch Background, modulate the nonzero hatch floor with canonical Brightness so both UI directions remain responsive while the background never becomes a flat solid.
 - When the user points to Efecto and says to focus on 3D ASCII Effect, make ASCII the first-class visual target. Do not dilute the next implementation slice with generic metal/glass/flow/particle effects before the rotating 3D ASCII character is proven.
 - Shader styles must be visibly different for the default colors. Do not implement dark foreground effects as pure color multiplication, because black multiplied by lighting remains visually black.
 - Pattern is not background in Hanzi Studio. Keep pattern controls/assets when removing background tooling because pattern is part of the effect system.

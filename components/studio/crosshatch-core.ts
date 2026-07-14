@@ -44,7 +44,6 @@ export type CrosshatchTrace = Readonly<{
   patterns: readonly [number, number, number, number, number, number]
   levels: readonly [number, number, number, number, number, number]
   weights: readonly [number, number, number, number, number, number]
-  solidFill: number
   hatchValue: number
 }>
 
@@ -52,10 +51,10 @@ export const DEFAULT_CROSSHATCH_SETTINGS: CrosshatchSettings = {
   density: 6,
   layers: 3,
   angle: 45,
-  lineWidth: 0.15,
+  lineWidth: 0.08,
   randomness: 0,
   invert: false,
-  brightness: 0,
+  brightness: -4,
   contrast: 0,
   lineColor: [0, 0, 0],
   background: [255, 255, 255],
@@ -171,16 +170,21 @@ function traceCrosshatchUnchecked(
   const { rgb, width, height, settings } = input
 
   const uv = [(x + 0.5) / width, (y + 0.5) / height] as const
+  const source = sampleCrosshatchSourceLinear(rgb, width, height, uv[0], uv[1])
   const adjustedSource = adjustSource(
-    sampleCrosshatchSourceLinear(rgb, width, height, uv[0], uv[1]),
+    source,
     settings.brightness,
     settings.contrast,
   )
-  let luminance = adjustedSource[0] * 0.2326
-    + adjustedSource[1] * 0.7152
-    + adjustedSource[2] * 0.0722
+  let luminance = crosshatchLuminance(adjustedSource)
   if (settings.invert) luminance = 1 - luminance
-  const darkness = 1 - luminance
+  const backgroundHatchStrength = Math.min(
+    0.2,
+    Math.max(0.006, 0.04 - settings.brightness / 100 * 0.2),
+  )
+  const backgroundHatchFloor = smoothstep(0.92, 0.995, crosshatchLuminance(source))
+    * backgroundHatchStrength
+  const darkness = Math.max(1 - luminance, backgroundHatchFloor)
   const baseAngle = settings.angle * Math.PI / 180
   const pattern = (angle: number, spacing: number, lineWidth: number, seed: number) => hatchPattern({
     angle,
@@ -234,19 +238,20 @@ function traceCrosshatchUnchecked(
     (sum, level, index) => sum + level * weights[index],
     0,
   )
-  const solidFill = smoothstep(0.92, 1, darkness)
-  const hatchValue = Math.max(weightedHatch, solidFill)
 
   return {
     adjustedSource,
     darkness,
-    hatchValue,
+    hatchValue: weightedHatch,
     levels,
     luminance,
     patterns,
-    solidFill,
     weights,
   }
+}
+
+function crosshatchLuminance(color: CrosshatchRgb) {
+  return color[0] * 0.2326 + color[1] * 0.7152 + color[2] * 0.0722
 }
 
 export function renderCrosshatchReference(
@@ -320,10 +325,8 @@ function assertInput(input: CrosshatchReferenceInput) {
   assertInteger('layers', settings.layers)
   assertRange('angle', settings.angle, 0, 90)
   assertStep('angle', settings.angle, 0, 5)
-  if (settings.lineWidth !== DEFAULT_CROSSHATCH_SETTINGS.lineWidth) {
-    assertRange('lineWidth', settings.lineWidth, 0.5, 3)
-    assertStep('lineWidth', settings.lineWidth, 0.5, 0.25)
-  }
+  assertRange('lineWidth', settings.lineWidth, 0.01, 0.5)
+  assertStep('lineWidth', settings.lineWidth, 0.01, 0.01)
   assertRange('randomness', settings.randomness, 0, 1)
   assertStep('randomness', settings.randomness, 0, 0.05)
   assertRange('brightness', settings.brightness, -100, 100)

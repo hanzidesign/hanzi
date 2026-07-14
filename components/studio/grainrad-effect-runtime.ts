@@ -606,8 +606,8 @@ export function compileGrainradEffectRuntime({
       effectValues[0] = read.number('density', 6)
       effectValues[1] = read.number('angle', 45) * Math.PI / 180
       effectValues[2] = read.number('layers', 3)
-      effectValues[3] = read.number('line-width', 0.15)
-      effectValues[4] = read.number('brightness', 0) / 100
+      effectValues[3] = read.number('line-width', 0.08)
+      effectValues[4] = read.number('brightness', -4) / 100
       effectValues[5] = read.number('contrast', 0) / 100
       effectValues[6] = read.boolean('invert')
       effectValues[7] = read.number('randomness', 0)

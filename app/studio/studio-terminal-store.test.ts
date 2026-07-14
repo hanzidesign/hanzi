@@ -98,7 +98,7 @@ describe('Phase 5D Grainrad terminal Studio store', () => {
     })
   })
 
-  it('switches every active color to the selected theme set while preserving shared controls', () => {
+  it('switches the complete active control set and preserves independent theme edits', () => {
     const { storage } = createMemoryStorage()
     const store = createStudioStore(storage)
 
@@ -110,7 +110,7 @@ describe('Phase 5D Grainrad terminal Studio store', () => {
     expect(store.getState().grainradEffect.controls.ascii).toMatchObject({
       foreground: '#101010',
       background: '#f4f1e8',
-      scale: 9,
+      scale: 4.3,
     })
     expect(store.getState().ascii).toMatchObject({
       foregroundColor: '#101010',
@@ -119,6 +119,7 @@ describe('Phase 5D Grainrad terminal Studio store', () => {
 
     store.getState().setGrainradEffectControl('ascii', 'foreground', '#abcdef')
     store.getState().setGrainradEffectControl('ascii', 'background', '#010203')
+    store.getState().setGrainradEffectControl('ascii', 'scale', 7)
     store.getState().toggleStudioTheme()
 
     expect(store.getState().view.theme).toBe('dark')
@@ -133,7 +134,55 @@ describe('Phase 5D Grainrad terminal Studio store', () => {
     expect(store.getState().grainradEffect.controls.ascii).toMatchObject({
       foreground: '#abcdef',
       background: '#010203',
-      scale: 9,
+      scale: 7,
+    })
+  })
+
+  it('stores every Effect control per theme and resets only the active theme', () => {
+    const store = createStudioStore()
+
+    for (const effect of GRAINRAD_EFFECTS) {
+      expect(Object.keys(store.getState().grainradEffect.controlsByTheme.light[effect.id]).sort())
+        .toEqual(Object.keys(store.getState().grainradEffect.controls[effect.id]).sort())
+      expect(Object.keys(store.getState().grainradEffect.controlsByTheme.dark[effect.id]).sort())
+        .toEqual(Object.keys(store.getState().grainradEffect.controls[effect.id]).sort())
+    }
+
+    store.getState().setSelectedEffect('crosshatch')
+    store.getState().setGrainradEffectControl('crosshatch', 'density', 8)
+    store.getState().setGrainradEffectControl('crosshatch', 'line-width', 0.2)
+    store.getState().setGrainradEffectControl('crosshatch', 'brightness', -20)
+    store.getState().toggleStudioTheme()
+
+    expect(store.getState().grainradEffect.controls.crosshatch).toMatchObject({
+      density: 6,
+      'line-width': 0.08,
+      brightness: -15,
+    })
+
+    store.getState().setGrainradEffectControl('crosshatch', 'density', 10)
+    store.getState().setGrainradEffectControl('crosshatch', 'line-width', 0.1)
+    store.getState().setGrainradEffectControl('crosshatch', 'brightness', -30)
+    store.getState().toggleStudioTheme()
+
+    expect(store.getState().grainradEffect.controls.crosshatch).toMatchObject({
+      density: 8,
+      'line-width': 0.2,
+      brightness: -20,
+    })
+
+    store.getState().resetSelectedEffectControls()
+    expect(store.getState().grainradEffect.controls.crosshatch).toMatchObject({
+      density: 6,
+      'line-width': 0.08,
+      brightness: -4,
+    })
+
+    store.getState().toggleStudioTheme()
+    expect(store.getState().grainradEffect.controls.crosshatch).toMatchObject({
+      density: 10,
+      'line-width': 0.1,
+      brightness: -30,
     })
   })
 
@@ -213,7 +262,7 @@ describe('Phase 5D Grainrad terminal Studio store', () => {
         .filter(([controlId]) => controlId !== 'foreground' && controlId !== 'background'),
     )
     const makeLegacyThemeColors = (theme: 'light' | 'dark') => {
-      const themeColors = base.grainradEffect.colorControlsByTheme[theme]
+      const themeColors = base.grainradEffect.controlsByTheme[theme]
       const matrixRain = Object.fromEntries(
         Object.entries(themeColors['matrix-rain'])
           .filter(([controlId]) => controlId !== 'foreground'),
@@ -305,11 +354,11 @@ describe('Phase 5D Grainrad terminal Studio store', () => {
           },
         },
         colorControlsByTheme: {
-          ...base.grainradEffect.colorControlsByTheme,
+          ...base.grainradEffect.controlsByTheme,
           light: {
-            ...base.grainradEffect.colorControlsByTheme.light,
+            ...base.grainradEffect.controlsByTheme.light,
             'matrix-rain': {
-              ...base.grainradEffect.colorControlsByTheme.light['matrix-rain'],
+              ...base.grainradEffect.controlsByTheme.light['matrix-rain'],
               foreground: '#101010',
             },
           },
@@ -323,8 +372,63 @@ describe('Phase 5D Grainrad terminal Studio store', () => {
       foreground: '#15c15d',
       'bg-opacity': 0.5,
     })
-    expect(store.getState().grainradEffect.colorControlsByTheme.light['matrix-rain'].foreground)
+    expect(store.getState().grainradEffect.controlsByTheme.light['matrix-rain'].foreground)
       .toBe('#15c15d')
+  })
+
+  it('migrates legacy single-set controls into only the active theme', () => {
+    const base = createInitialStudioStoreState()
+    const { controlsByTheme, ...legacyGrainradEffect } = base.grainradEffect
+    expect(controlsByTheme).toBeDefined()
+    const legacyColors = (theme: 'light' | 'dark') => Object.fromEntries(
+      GRAINRAD_EFFECTS.map((effect) => {
+        const colorIds = effect.settingGroups
+          .flatMap((group) => group.controls)
+          .filter(isGrainradThemeColorControl)
+          .map((control) => control.id)
+        return [effect.id, Object.fromEntries(
+          colorIds.map((controlId) => [
+            controlId,
+            base.grainradEffect.controlsByTheme[theme][effect.id][controlId],
+          ]),
+        )]
+      }),
+    )
+    const persistedState = {
+      ...base,
+      view: { ...base.view, theme: 'dark' as const },
+      grainradEffect: {
+        ...legacyGrainradEffect,
+        controls: {
+          ...legacyGrainradEffect.controls,
+          crosshatch: {
+            ...legacyGrainradEffect.controls.crosshatch,
+            density: 9,
+            'line-width': 0.15,
+            brightness: 0,
+          },
+        },
+        colorControlsByTheme: {
+          light: legacyColors('light'),
+          dark: legacyColors('dark'),
+        },
+      },
+    }
+    const { storage } = createMemoryStorage(JSON.stringify({ state: persistedState, version: 6 }))
+    const store = createStudioStore(storage)
+
+    expect(store.getState().grainradEffect.controls.crosshatch).toMatchObject({
+      density: 9,
+      'line-width': 0.08,
+      brightness: -4,
+    })
+
+    store.getState().toggleStudioTheme()
+    expect(store.getState().grainradEffect.controls.crosshatch).toMatchObject({
+      density: 6,
+      'line-width': 0.08,
+      brightness: -15,
+    })
   })
 
   it('uses the current Matrix visibility defaults through Light theme and Reset', () => {
@@ -514,7 +618,7 @@ describe('Phase 5D Grainrad terminal Studio store', () => {
       bevel: 0.3,
       twist: -360,
       taper: 0.8,
-      bend: -120,
+      bend: -360,
     })
     expect(store.getState().grainradEffect.controls.halftone).toMatchObject({
       shape: 'circle',
@@ -972,7 +1076,7 @@ describe('Phase 5D Grainrad terminal Studio store', () => {
     expect(store.getState().mesh.bevel).toBe(0.08)
   })
 
-  it('preserves Crosshatch production width 0.15 while clamping other invalid values and resetting only Crosshatch', () => {
+  it('keeps Crosshatch width in physical units while clamping invalid values and resetting only Crosshatch', () => {
     const base = createInitialStudioStoreState()
     const persistedState = {
       ...base,
@@ -1006,7 +1110,7 @@ describe('Phase 5D Grainrad terminal Studio store', () => {
       density: 12,
       layers: 1,
       angle: 90,
-      'line-width': 0.15,
+      'line-width': 0.08,
       randomness: 1,
       invert: false,
       brightness: 100,
@@ -1016,17 +1120,17 @@ describe('Phase 5D Grainrad terminal Studio store', () => {
     })
 
     store.getState().setGrainradEffectControl('crosshatch', 'line-width', 0.2)
-    expect(store.getState().grainradEffect.controls.crosshatch['line-width']).toBe(0.5)
+    expect(store.getState().grainradEffect.controls.crosshatch['line-width']).toBe(0.2)
     store.getState().resetSelectedEffectControls()
 
     expect(store.getState().grainradEffect.controls.crosshatch).toMatchObject({
       density: 6,
       layers: 3,
       angle: 45,
-      'line-width': 0.15,
+      'line-width': 0.08,
       randomness: 0,
       invert: false,
-      brightness: 0,
+      brightness: -4,
       contrast: 0,
       'line-color': '#ffffff',
       background: '#000000',

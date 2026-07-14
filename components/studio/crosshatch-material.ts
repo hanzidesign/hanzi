@@ -114,12 +114,12 @@ float crosshatchValueNoise(vec2 p) {
   );
 }
 
-float crosshatchPattern(vec2 uv, float angle, float spacing, float width, float seed) {
+float crosshatchPattern(vec2 uv, float angle, float spacing, float width, float seed, float phase) {
   float sine = sin(angle);
   float cosine = cos(angle);
   float rotatedX = uv.x * cosine - uv.y * sine;
   float rotatedY = uv.x * sine + uv.y * cosine;
-  float scaledX = rotatedX * u_resolution.x / spacing;
+  float scaledX = rotatedX * u_resolution.x / spacing + phase;
 
   float wobble = 0.0;
   if (u_randomness > 0.0) {
@@ -154,28 +154,33 @@ vec3 applyCrosshatchPostProcessing(vec3 color, float sourceLuminance, vec2 uv) {
 }
 
 void main() {
+  vec3 rawSourceColor = crosshatchSourceSample(v_uv);
   vec3 sourceColor = crosshatchBlurredSource(v_uv);
+  float backgroundMotionMask = smoothstep(0.92, 0.995, crosshatchLuminance(rawSourceColor));
+  float backgroundPhase = backgroundMotionMask * u_time * 0.08;
   vec3 adjustedColor = applyCrosshatchBrightnessContrast(clamp(sourceColor, 0.0, 1.0));
   float luminanceValue = crosshatchLuminance(adjustedColor);
   if (u_invert > 0.5) {
     luminanceValue = 1.0 - luminanceValue;
   }
-  float darkness = 1.0 - luminanceValue;
+  float backgroundHatchStrength = clamp(0.04 - u_brightness * 0.2, 0.006, 0.2);
+  float backgroundHatchFloor = backgroundMotionMask * backgroundHatchStrength;
+  float darkness = max(1.0 - luminanceValue, backgroundHatchFloor);
 
   float spacing = u_density;
   float width = u_lineWidth;
   float baseAngle = u_angle;
 
-  float hatch0 = crosshatchPattern(v_uv, baseAngle, spacing * 1.5, width * 0.7, 0.0);
-  float hatch1New = crosshatchPattern(v_uv, baseAngle + CROSSHATCH_PI * 0.5, spacing * 1.5, width * 0.7, 1.0);
+  float hatch0 = crosshatchPattern(v_uv, baseAngle, spacing * 1.5, width * 0.7, 0.0, backgroundPhase);
+  float hatch1New = crosshatchPattern(v_uv, baseAngle + CROSSHATCH_PI * 0.5, spacing * 1.5, width * 0.7, 1.0, backgroundPhase);
   float hatch1 = max(hatch0, hatch1New);
-  float hatch2New = crosshatchPattern(v_uv, baseAngle, spacing, width * 0.8, 2.0);
+  float hatch2New = crosshatchPattern(v_uv, baseAngle, spacing, width * 0.8, 2.0, backgroundPhase);
   float hatch2 = max(hatch1, hatch2New);
-  float hatch3New = crosshatchPattern(v_uv, baseAngle + CROSSHATCH_PI * 0.5, spacing, width * 0.8, 3.0);
+  float hatch3New = crosshatchPattern(v_uv, baseAngle + CROSSHATCH_PI * 0.5, spacing, width * 0.8, 3.0, backgroundPhase);
   float hatch3 = max(hatch2, hatch3New);
-  float hatch4New = crosshatchPattern(v_uv, baseAngle + CROSSHATCH_PI * 0.25, spacing * 0.85, width * 0.9, 4.0);
+  float hatch4New = crosshatchPattern(v_uv, baseAngle + CROSSHATCH_PI * 0.25, spacing * 0.85, width * 0.9, 4.0, backgroundPhase);
   float hatch4 = max(hatch3, hatch4New);
-  float hatch5New = crosshatchPattern(v_uv, baseAngle + CROSSHATCH_PI * 0.75, spacing * 0.85, width * 0.9, 5.0);
+  float hatch5New = crosshatchPattern(v_uv, baseAngle + CROSSHATCH_PI * 0.75, spacing * 0.85, width * 0.9, 5.0, backgroundPhase);
   float hatch5 = max(hatch4, hatch5New);
 
   float level0 = hatch0;
@@ -217,8 +222,6 @@ void main() {
     + level3 * weight3
     + level4 * weight4
     + level5 * weight5;
-  float solidFill = smoothstep(0.92, 1.0, darkness);
-  hatchValue = max(hatchValue, solidFill);
 
   vec3 effectColor = mix(u_background, u_lineColor, hatchValue);
   float effectLuminance = crosshatchLuminance(effectColor);
@@ -245,8 +248,8 @@ export function createCrosshatchShaderMaterial({
       u_density: { value: 6 },
       u_angle: { value: Math.PI / 4 },
       u_layers: { value: 3 },
-      u_lineWidth: { value: 0.15 },
-      u_brightness: { value: 0 },
+      u_lineWidth: { value: 0.08 },
+      u_brightness: { value: -0.04 },
       u_contrast: { value: 0 },
       u_invert: { value: 0 },
       u_lineColor: { value: new Color('#000000') },
@@ -283,8 +286,8 @@ export function applyCrosshatchUniforms(
   material.uniforms.u_density.value = readNumber(controls.density, 6)
   material.uniforms.u_angle.value = readNumber(controls.angle, 45) * (Math.PI / 180)
   material.uniforms.u_layers.value = readNumber(controls.layers, 3)
-  material.uniforms.u_lineWidth.value = readNumber(controls['line-width'], 0.15)
-  material.uniforms.u_brightness.value = readNumber(controls.brightness, 0) / 100
+  material.uniforms.u_lineWidth.value = readNumber(controls['line-width'], 0.08)
+  material.uniforms.u_brightness.value = readNumber(controls.brightness, -4) / 100
   material.uniforms.u_contrast.value = readNumber(controls.contrast, 0) / 100
   material.uniforms.u_invert.value = readBoolean(controls.invert)
   material.uniforms.u_lineColor.value.set(readString(controls['line-color'], '#000000'))

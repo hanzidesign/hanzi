@@ -41,6 +41,8 @@ describe('generated-image input and export layout contract', () => {
     expect(renderContext).toContain('dpr={exportRender ? 1 : dpr}')
     expect(renderContext).toContain('onFrameRendered?.(requestId, gl.domElement)')
     expect(renderContext).toContain('readLatestPreviewAnimationTime')
+    expect(renderContext).toContain('export function useStudioRenderMode()')
+    expect(renderContext).toContain('export function reportLatestPreviewAnimationTime(')
     expect(exportPanel).toContain('disabled={disabled}')
     expect(exportPanel).toContain('const pngAvailable = motionSpeed === 0')
     expect(exportPanel).toContain('PNG_EXPORT_SIZE = 2048')

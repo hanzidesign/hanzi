@@ -29,25 +29,25 @@ describe('Crosshatch shader material', () => {
     expect(material.uniforms.u_density.value).toBe(6)
     expect(material.uniforms.u_layers.value).toBe(3)
     expect(material.uniforms.u_angle.value).toBeCloseTo(Math.PI / 4)
-    expect(material.uniforms.u_lineWidth.value).toBe(0.15)
+    expect(material.uniforms.u_lineWidth.value).toBe(0.08)
     expect(material.uniforms.u_randomness.value).toBe(0)
     expect(material.uniforms.u_brightnessMap.value).toBe(1)
     expect(material.uniforms.u_invert.value).toBe(0)
-    expect(material.uniforms.u_brightness.value).toBe(0)
+    expect(material.uniforms.u_brightness.value).toBe(-0.04)
     expect(material.uniforms.u_contrast.value).toBe(0)
     expect(material.uniforms.u_lineColor.value.getHexString()).toBe('000000')
     expect(material.uniforms.u_background.value.getHexString()).toBe('ffffff')
     expect(material.uniforms.u_time.value).toBe(0)
   })
 
-  it('maps local controls in raw production units, including the below-range width', () => {
+  it('maps local controls in raw physical units', () => {
     const { material } = createFixture()
 
     applyCrosshatchUniforms(material, {
       density: 11,
       layers: 4,
       angle: 90,
-      'line-width': 2.25,
+      'line-width': 0.75,
       randomness: 0.65,
       invert: true,
       brightness: 40,
@@ -60,7 +60,7 @@ describe('Crosshatch shader material', () => {
     expect(material.uniforms.u_density.value).toBe(11)
     expect(material.uniforms.u_layers.value).toBe(4)
     expect(material.uniforms.u_angle.value).toBeCloseTo(Math.PI / 2)
-    expect(material.uniforms.u_lineWidth.value).toBe(2.25)
+    expect(material.uniforms.u_lineWidth.value).toBe(0.75)
     expect(material.uniforms.u_randomness.value).toBe(0.65)
     expect(material.uniforms.u_invert.value).toBe(1)
     expect(material.uniforms.u_brightness.value).toBe(0.4)
@@ -86,7 +86,7 @@ describe('Crosshatch shader material', () => {
       '(crosshatchValueNoise(noiseCoord * 3.0) - 0.5) * u_randomness * 0.4',
     )
     expect(CROSSHATCH_FRAGMENT_SHADER).toContain(
-      'float scaledX = rotatedX * u_resolution.x / spacing;',
+      'float scaledX = rotatedX * u_resolution.x / spacing + phase;',
     )
     expect(CROSSHATCH_FRAGMENT_SHADER).toContain('float aa = 1.5 / u_resolution.x;')
     const hatchFunction = CROSSHATCH_FRAGMENT_SHADER.slice(
@@ -94,6 +94,40 @@ describe('Crosshatch shader material', () => {
       CROSSHATCH_FRAGMENT_SHADER.indexOf('float crosshatchPostNoise'),
     )
     expect(hatchFunction).not.toContain('u_time')
+  })
+
+  it('moves only the unmasked background hatch with the shared animation timeline', () => {
+    expect(CROSSHATCH_FRAGMENT_SHADER).toContain(
+      'vec3 rawSourceColor = crosshatchSourceSample(v_uv);',
+    )
+    expect(CROSSHATCH_FRAGMENT_SHADER).toContain(
+      'float backgroundMotionMask = smoothstep(0.92, 0.995, crosshatchLuminance(rawSourceColor));',
+    )
+    expect(CROSSHATCH_FRAGMENT_SHADER).toContain(
+      'float backgroundPhase = backgroundMotionMask * u_time * 0.08;',
+    )
+    expect(CROSSHATCH_FRAGMENT_SHADER).toContain(
+      'float backgroundHatchStrength = clamp(0.04 - u_brightness * 0.2, 0.006, 0.2);',
+    )
+    expect(CROSSHATCH_FRAGMENT_SHADER).toContain(
+      'float backgroundHatchFloor = backgroundMotionMask * backgroundHatchStrength;',
+    )
+    expect(CROSSHATCH_FRAGMENT_SHADER).toContain(
+      'float crosshatchPattern(vec2 uv, float angle, float spacing, float width, float seed, float phase)',
+    )
+    expect(CROSSHATCH_FRAGMENT_SHADER).not.toContain('hatchValue *= backgroundMotionMask')
+  })
+
+  it('applies canonical Brightness to source luminance before hatch density', () => {
+    expect(CROSSHATCH_FRAGMENT_SHADER).toContain(
+      'vec3 adjustedColor = applyCrosshatchBrightnessContrast',
+    )
+    expect(CROSSHATCH_FRAGMENT_SHADER).toContain(
+      'vec3 result = color + vec3(u_brightness);',
+    )
+    expect(CROSSHATCH_FRAGMENT_SHADER).not.toContain(
+      'effectColor = clamp(effectColor + vec3(u_brightness)',
+    )
   })
 
   it('builds all six cumulative TAM patterns with exact production multipliers', () => {
@@ -111,7 +145,7 @@ describe('Crosshatch shader material', () => {
     expect(CROSSHATCH_FRAGMENT_SHADER).toContain('float hatch5 = max(hatch4, hatch5New);')
   })
 
-  it('collapses layer availability and blends adjacent darkness ramps exactly', () => {
+  it('collapses layer availability and blends adjacent darkness ramps without a model fill', () => {
     expect(CROSSHATCH_FRAGMENT_SHADER).toContain('if (u_layers < 2.0)')
     expect(CROSSHATCH_FRAGMENT_SHADER).toContain('level5 = level0;')
     expect(CROSSHATCH_FRAGMENT_SHADER).toContain('else if (u_layers < 3.0)')
@@ -121,10 +155,9 @@ describe('Crosshatch shader material', () => {
     expect(CROSSHATCH_FRAGMENT_SHADER).toContain('float tone = darkness * 6.0;')
     expect(CROSSHATCH_FRAGMENT_SHADER).toContain('float weight0 = ramp0 - ramp1;')
     expect(CROSSHATCH_FRAGMENT_SHADER).toContain('float weight5 = ramp5;')
-    expect(CROSSHATCH_FRAGMENT_SHADER).toContain(
-      'float solidFill = smoothstep(0.92, 1.0, darkness);',
-    )
-    expect(CROSSHATCH_FRAGMENT_SHADER).toContain('hatchValue = max(hatchValue, solidFill);')
+    expect(CROSSHATCH_FRAGMENT_SHADER).not.toContain('solidFill')
+    expect(CROSSHATCH_FRAGMENT_SHADER).not.toContain('hatchValue = max')
+    expect(CROSSHATCH_FRAGMENT_SHADER).not.toContain('sourceMask')
   })
 
   it('keeps the buggy luma, luminance-only invert, and fixed palette mix', () => {
@@ -151,7 +184,7 @@ describe('Crosshatch shader material', () => {
     }
     expect(CROSSHATCH_FRAGMENT_SHADER).toContain('if (u_quantizeColors >= 1.0)')
     expect(CROSSHATCH_FRAGMENT_SHADER).toContain('max(u_quantizeColors, 2.0)')
-    expect(CROSSHATCH_FRAGMENT_SHADER.indexOf('hatchValue = max')).toBeLessThan(
+    expect(CROSSHATCH_FRAGMENT_SHADER.indexOf('float hatchValue =')).toBeLessThan(
       CROSSHATCH_FRAGMENT_SHADER.indexOf('effectColor = applyCrosshatchProcessing'),
     )
     expect(CROSSHATCH_FRAGMENT_SHADER.indexOf('effectColor = applyCrosshatchProcessing')).toBeLessThan(

@@ -571,12 +571,12 @@ describe('Phase 5F Grainrad runtime effect compiler', () => {
     expect(runtime.effectColorB).toEqual([0xab / 255, 0xcd / 255, 0xef / 255])
   })
 
-  it('packs Crosshatch controls in exact production units and preserves the below-minimum default width', () => {
+  it('packs Crosshatch controls in exact physical units', () => {
     const defaults = createDefaultGrainradEffectControls().crosshatch
     expect(compileGrainradEffectRuntime({
       selectedEffectId: 'crosshatch',
       controls: defaults,
-    }).effectValues[3]).toBe(0.15)
+    }).effectValues[3]).toBe(0.08)
 
     const runtime = compileGrainradEffectRuntime({
       selectedEffectId: 'crosshatch',
@@ -585,7 +585,7 @@ describe('Phase 5F Grainrad runtime effect compiler', () => {
         density: 11,
         angle: 90,
         layers: 4,
-        'line-width': 2.25,
+        'line-width': 0.75,
         brightness: 40,
         contrast: -25,
         invert: true,
@@ -599,7 +599,7 @@ describe('Phase 5F Grainrad runtime effect compiler', () => {
       11,
       Math.PI / 2,
       4,
-      2.25,
+      0.75,
       0.4,
       -0.25,
       1,
