@@ -421,9 +421,31 @@
   width: 42px;
 }
 
+.repeatSection {
+  position: relative;
+}
+
+.repeatSection > .inputGroupReset {
+  position: absolute;
+  z-index: 1;
+  top: 5px;
+  right: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.repeatSection[data-enabled='true'] > .inputGroupReset {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.repeatSection[data-enabled='true'] > .controlRow:first-of-type .controlValue {
+  color: transparent;
+}
+
 .motionPanel {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 104px;
+  grid-template-columns: minmax(0, 1fr) 80px;
   gap: 8px 12px;
   border: 1px solid var(--studio-border);
   padding: 8px;
@@ -431,70 +453,96 @@
 
 .motionControls .controlRow {
   min-height: 26px;
-  grid-template-columns: 38px 42px minmax(44px, 1fr);
-  gap: 4px;
+  grid-template-columns: 16px minmax(0, 1fr) 42px;
+  gap: 6px;
 }
 
 .motionControls .resetButton {
-  display: none;
+  width: 42px;
 }
 
-.motionPreview {
-  position: relative;
-  min-height: 132px;
-  overflow: hidden;
+.rotationController {
+  width: 80px;
+  height: 80px;
+  align-self: center;
+  justify-self: center;
+  overflow: visible;
+  outline: none;
+  touch-action: none;
+  user-select: none;
 }
 
-.motionCubeFront,
-.motionCubeBack {
-  position: absolute;
-  width: 68px;
-  height: 68px;
-  border: 1px dotted var(--studio-border-strong);
+.rotationSphere {
+  fill: color-mix(in srgb, var(--studio-text-bright) 4%, transparent);
+  stroke: var(--studio-border-strong);
+  stroke-width: 1.5;
+  transition: stroke 120ms ease;
 }
 
-.motionCubeFront {
-  left: 12px;
-  top: 34px;
+.rotationController:focus-visible .rotationSphere {
+  stroke: var(--studio-text-bright);
 }
 
-.motionCubeBack {
-  left: 26px;
-  top: 18px;
+.rotationAxisX,
+.rotationAxisY,
+.rotationAxisZ {
+  fill: none;
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  pointer-events: none;
 }
 
-.motionCubeFront::before,
-.motionCubeFront::after,
-.motionCubeBack::before,
-.motionCubeBack::after {
-  content: '';
-  position: absolute;
-  width: 22px;
-  border-top: 1px dotted var(--studio-border-strong);
-  transform: rotate(-45deg);
-  transform-origin: left center;
+.rotationAxisX {
+  stroke: #db3f5a;
 }
 
-.motionCubeFront::before,
-.motionCubeBack::before {
-  left: -1px;
-  top: -1px;
+.rotationAxisY {
+  stroke: #65b32e;
 }
 
-.motionCubeFront::after,
-.motionCubeBack::after {
-  right: -23px;
-  bottom: -1px;
+.rotationAxisZ {
+  stroke: #388bd1;
 }
 
-.motionGlyph {
-  position: absolute;
-  z-index: 2;
-  left: 32px;
-  top: 43px;
-  color: var(--studio-text-bright);
-  font-size: 42px;
-  line-height: 1;
+.rotationOrbitHit {
+  fill: transparent;
+  pointer-events: fill;
+  cursor: grab;
+}
+
+.rotationAxisHit {
+  fill: none;
+  stroke: transparent;
+  stroke-width: 14;
+  pointer-events: stroke;
+  cursor: grab;
+}
+
+.rotationController:active,
+.rotationController:active .rotationOrbitHit,
+.rotationController:active .rotationAxisHit {
+  cursor: grabbing;
+}
+
+.rotationCenter {
+  fill: var(--studio-text-bright);
+  pointer-events: none;
+}
+
+.motionScalarControls {
+  grid-column: 1 / -1;
+  border-top: 1px solid var(--studio-border);
+  padding-top: 6px;
+}
+
+.motionScalarControls .controlRow {
+  min-height: 26px;
+  grid-template-columns: 42px minmax(0, 1fr) 42px;
+  gap: 6px;
+}
+
+.motionScalarControls .resetButton {
+  width: 42px;
 }
 
 .motionActions {

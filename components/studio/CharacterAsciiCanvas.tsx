@@ -19,6 +19,7 @@ import {
 } from '@/components/studio/character-ascii-material'
 import { compileGrainradEffectRuntime } from '@/components/studio/grainrad-effect-runtime'
 import { applyDeltaRotation } from '@/components/studio/shader-canvas-math'
+import { createCharacterRepeatTransforms } from '@/components/studio/character-model-arrangement'
 
 export type CharacterAsciiStatus = {
   state: 'idle' | 'loading' | 'error'
@@ -163,6 +164,10 @@ function CharacterAsciiScene({
     selectedEffectId: 'ascii',
     controls: withoutSharedControllerValues(grainradEffect.controls.ascii),
   }), [grainradEffect])
+  const repeatTransforms = useMemo(
+    () => createCharacterRepeatTransforms(mesh.repeat),
+    [mesh.repeat],
+  )
 
   const material = useMemo(() => createAsciiShaderMaterial({
     ascii,
@@ -212,7 +217,7 @@ function CharacterAsciiScene({
       applyGrainradRuntimeUniforms(activeMaterial.uniforms, grainradRuntime)
     }
 
-    if (groupRef.current && mesh.autoRotate && animation.playing && animation.speed > 0) {
+    if (groupRef.current && mesh.autoRotate && animation.playing && animation.speed !== 0) {
       groupRef.current.rotation.y = applyDeltaRotation(
         groupRef.current.rotation.y,
         mesh.autoRotateSpeed * animation.speed,
@@ -234,8 +239,17 @@ function CharacterAsciiScene({
     >
       <ambientLight intensity={0.85} />
       <directionalLight position={[2, 3, 4]} intensity={1.4} />
-      {geometryResult.geometries.map((geometry) => (
-        <mesh key={geometry.uuid} geometry={geometry} material={material} />
+      {repeatTransforms.map((transform, copyIndex) => (
+        <group
+          key={copyIndex}
+          position={transform.position}
+          rotation={[0, transform.rotationY, 0]}
+          scale={transform.scale}
+        >
+          {geometryResult.geometries.map((geometry) => (
+            <mesh key={geometry.uuid} geometry={geometry} material={material} />
+          ))}
+        </group>
       ))}
     </group>
   )

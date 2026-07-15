@@ -15,7 +15,6 @@ import {
   Color,
   DirectionalLight,
   Group,
-  Mesh,
   MeshStandardMaterial,
   Scene,
   Vector2,
@@ -34,6 +33,10 @@ import {
   type CharacterMeshGeometryResult,
 } from '@/components/studio/character-mesh-geometry'
 import { applyDeltaRotation } from '@/components/studio/shader-canvas-math'
+import {
+  addCharacterModelCopies,
+  type CharacterRepeatSettings,
+} from '@/components/studio/character-model-arrangement'
 
 export default function CharacterVhsCanvas() {
   const svgData = useStudioStore((store) => store.runtime.svgData)
@@ -143,7 +146,9 @@ function CharacterVhsScene({
   }, [renderTarget])
 
   useEffect(() => {
-    const nextSource = geometryResult ? createVhsSourceScene(geometryResult) : null
+    const nextSource = geometryResult
+      ? createVhsSourceScene(geometryResult, meshSettings.repeat)
+      : null
     sourceRef.current = nextSource
 
     return () => {
@@ -152,7 +157,7 @@ function CharacterVhsScene({
       }
       nextSource?.dispose()
     }
-  }, [geometryResult])
+  }, [geometryResult, meshSettings.repeat])
 
   const material = useMemo(() => createVhsShaderMaterial({
     controls: {},
@@ -196,7 +201,7 @@ applyVhsUniforms(material, withoutSharedControllerValues(controls))
       return
     }
 
-    if (meshSettings.autoRotate && animation.playing && animation.speed > 0) {
+    if (meshSettings.autoRotate && animation.playing && animation.speed !== 0) {
       source.group.rotation.y = applyDeltaRotation(
         source.group.rotation.y,
         meshSettings.autoRotateSpeed * animation.speed,
@@ -245,6 +250,7 @@ type VhsSourceScene = {
 
 function createVhsSourceScene(
   geometryResult: CharacterMeshGeometryResult,
+  repeat: CharacterRepeatSettings,
 ): VhsSourceScene {
   const scene = new Scene()
   const group = new Group()
@@ -259,9 +265,7 @@ function createVhsSourceScene(
   scene.background = new Color('#000000')
   scene.add(new AmbientLight('#ffffff', 0.85), directional)
 
-  for (const geometry of geometryResult.geometries) {
-    group.add(new Mesh(geometry, material))
-  }
+  addCharacterModelCopies(group, geometryResult.geometries, material, repeat)
   scene.add(group)
 
   return {

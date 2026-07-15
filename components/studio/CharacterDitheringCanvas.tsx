@@ -15,7 +15,6 @@ import {
   Color,
   DirectionalLight,
   Group,
-  Mesh,
   MeshStandardMaterial,
   Scene,
   Vector2,
@@ -34,6 +33,10 @@ import {
   createDitheringShaderMaterial,
 } from '@/components/studio/dithering-material'
 import { applyDeltaRotation } from '@/components/studio/shader-canvas-math'
+import {
+  addCharacterModelCopies,
+  type CharacterRepeatSettings,
+} from '@/components/studio/character-model-arrangement'
 
 export default function CharacterDitheringCanvas() {
   const svgData = useStudioStore((store) => store.runtime.svgData)
@@ -143,7 +146,9 @@ function CharacterDitheringScene({
   }, [renderTarget])
 
   useEffect(() => {
-    const nextSource = geometryResult ? createDitheringSourceScene(geometryResult) : null
+    const nextSource = geometryResult
+      ? createDitheringSourceScene(geometryResult, meshSettings.repeat)
+      : null
     sourceRef.current = nextSource
 
     return () => {
@@ -152,7 +157,7 @@ function CharacterDitheringScene({
       }
       nextSource?.dispose()
     }
-  }, [geometryResult])
+  }, [geometryResult, meshSettings.repeat])
 
   const material = useMemo(() => createDitheringShaderMaterial({
     controls: {},
@@ -196,7 +201,7 @@ applyDitheringUniforms(material, withoutSharedControllerValues(controls))
       return
     }
 
-    if (meshSettings.autoRotate && animation.playing && animation.speed > 0) {
+    if (meshSettings.autoRotate && animation.playing && animation.speed !== 0) {
       source.group.rotation.y = applyDeltaRotation(
         source.group.rotation.y,
         meshSettings.autoRotateSpeed * animation.speed,
@@ -251,6 +256,7 @@ type DitheringSourceScene = {
 
 function createDitheringSourceScene(
   geometryResult: CharacterMeshGeometryResult,
+  repeat: CharacterRepeatSettings,
 ): DitheringSourceScene {
   const scene = new Scene()
   const group = new Group()
@@ -266,9 +272,7 @@ function createDitheringSourceScene(
   const directional = scene.children[1] as DirectionalLight
   directional.position.set(2, 3, 4)
 
-  for (const geometry of geometryResult.geometries) {
-    group.add(new Mesh(geometry, material))
-  }
+  addCharacterModelCopies(group, geometryResult.geometries, material, repeat)
   scene.add(group)
 
   return {

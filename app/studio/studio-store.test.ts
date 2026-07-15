@@ -59,6 +59,13 @@ describe('studio store', () => {
       extrusionDepth: expect.any(Number),
       thickness: expect.any(Number),
       autoRotate: true,
+      repeat: {
+        enabled: false,
+        count: 6,
+        radius: 1.25,
+        orientation: 90,
+        size: 0.5,
+      },
     })
     expect(state.displacement.patternUrl).toBe('/images/patterns/000.jpg')
     expect(state.displacement.subdivisionLevel).toBe(0)
@@ -140,6 +147,13 @@ describe('studio store', () => {
       twist: 90,
       taper: 0.6,
       bend: -45,
+      repeat: {
+        enabled: true,
+        count: 50,
+        radius: 2,
+        orientation: 180,
+        size: 2.5,
+      },
       scale: 1.6,
       autoRotate: true,
     })
@@ -155,10 +169,76 @@ describe('studio store', () => {
       twist: 0,
       taper: 0,
       bend: 0,
+      repeat: {
+        enabled: false,
+        count: 6,
+        radius: 1.25,
+        orientation: 90,
+        size: 0.5,
+      },
     })
     expect(store.getState().displacement.strength).toBe(0.35)
     expect(store.getState().view.backgroundColor).toBe('#202020')
     expect(store.getState().shader).toEqual(initial.shader)
+  })
+
+  it('sanitizes persisted Repeat controls without changing other mesh choices', () => {
+    const initial = createInitialStudioStoreState()
+    const persisted = {
+      ...initial,
+      mesh: {
+        ...initial.mesh,
+        scale: 1.7,
+        repeat: {
+          enabled: true,
+          count: 99,
+          radius: 99,
+          orientation: 999,
+          size: 99,
+        },
+      },
+    }
+    const { storage } = createMemoryStorage(
+      JSON.stringify({ state: persisted, version: 7 }),
+    )
+    const store = createStudioStore(storage)
+
+    expect(store.getState().mesh).toMatchObject({
+      scale: 1.7,
+      repeat: {
+        enabled: true,
+        count: 50,
+        radius: 50,
+        orientation: 360,
+        size: 3,
+      },
+    })
+  })
+
+  it('clamps 3D Motion Scale and Speed to their controller ranges', () => {
+    const initial = createInitialStudioStoreState()
+    const persisted = {
+      ...initial,
+      mesh: {
+        ...initial.mesh,
+        scale: 99,
+      },
+    }
+    const { storage } = createMemoryStorage(
+      JSON.stringify({ state: persisted, version: 7 }),
+    )
+    const store = createStudioStore(storage)
+
+    expect(store.getState().mesh.scale).toBe(10)
+
+    store.getState().setAnimationControl({ speed: 99 })
+    expect(store.getState().animation.speed).toBe(99)
+
+    store.getState().setAnimationControl({ speed: 101 })
+    expect(store.getState().animation.speed).toBe(100)
+
+    store.getState().setAnimationControl({ speed: -101 })
+    expect(store.getState().animation.speed).toBe(-100)
   })
 
   it('keeps uploaded displacement image data in runtime state only', () => {

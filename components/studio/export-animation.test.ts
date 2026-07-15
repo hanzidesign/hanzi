@@ -51,6 +51,26 @@ describe('Studio animated export plan', () => {
     expect(last.rotationY + Math.PI * 2 / plan.frameCount).toBeCloseTo(0.25 + Math.PI * 2)
   })
 
+  it('uses negative Motion Speed for a reverse full turn', () => {
+    const plan = createExportAnimationPlan({
+      format: 'mp4',
+      autoRotate: true,
+      autoRotateSpeed: 1,
+      motionSpeed: -1,
+    })
+    const frame = readExportFrame({
+      plan,
+      frameIndex: 1,
+      baseRotationY: 0.25,
+      baseTime: 3,
+      motionSpeed: -1,
+    })
+
+    expect(frame.rotationY).toBeLessThan(0.25)
+    expect(frame.animationTime).toBeLessThan(3)
+    expect(plan.durationSeconds).toBeCloseTo(Math.PI * 2, 1)
+  })
+
   it('rejects animation when the preview cannot rotate', () => {
     expect(() => createExportAnimationPlan({
       format: 'gif',

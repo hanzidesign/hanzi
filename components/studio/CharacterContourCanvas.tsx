@@ -15,7 +15,6 @@ import {
   Color,
   DirectionalLight,
   Group,
-  Mesh,
   MeshStandardMaterial,
   PerspectiveCamera,
   Scene,
@@ -35,6 +34,10 @@ import {
   disposeContourShaderMaterial,
 } from '@/components/studio/contour-material'
 import { applyDeltaRotation } from '@/components/studio/shader-canvas-math'
+import {
+  addCharacterModelCopies,
+  type CharacterRepeatSettings,
+} from '@/components/studio/character-model-arrangement'
 
 export default function CharacterContourCanvas() {
   const svgData = useStudioStore((store) => store.runtime.svgData)
@@ -144,7 +147,9 @@ function CharacterContourScene({
   }, [renderTarget])
 
   useEffect(() => {
-    const nextSource = geometryResult ? createContourSourceScene(geometryResult) : null
+    const nextSource = geometryResult
+      ? createContourSourceScene(geometryResult, meshSettings.repeat)
+      : null
     sourceRef.current = nextSource
 
     return () => {
@@ -153,7 +158,7 @@ function CharacterContourScene({
       }
       nextSource?.dispose()
     }
-  }, [geometryResult])
+  }, [geometryResult, meshSettings.repeat])
 
   const material = useMemo(() => createContourShaderMaterial({
     controls: {},
@@ -197,7 +202,7 @@ function CharacterContourScene({
       return
     }
 
-    if (meshSettings.autoRotate && animation.playing && animation.speed > 0) {
+    if (meshSettings.autoRotate && animation.playing && animation.speed !== 0) {
       source.group.rotation.y = applyDeltaRotation(
         source.group.rotation.y,
         meshSettings.autoRotateSpeed * animation.speed,
@@ -248,6 +253,7 @@ type ContourSourceScene = {
 
 function createContourSourceScene(
   geometryResult: CharacterMeshGeometryResult,
+  repeat: CharacterRepeatSettings,
 ): ContourSourceScene {
   const scene = new Scene()
   const camera = new PerspectiveCamera(50, 1, 0.1, 1000)
@@ -264,9 +270,7 @@ function createContourSourceScene(
   scene.background = new Color('#000000')
   scene.add(new AmbientLight('#ffffff', 0.6), directional)
 
-  for (const geometry of geometryResult.geometries) {
-    group.add(new Mesh(geometry, material))
-  }
+  addCharacterModelCopies(group, geometryResult.geometries, material, repeat)
   scene.add(group)
 
   return {

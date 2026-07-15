@@ -13,7 +13,7 @@ export function computeEffectiveAnimationTime({
 }: AnimationTimeInput) {
   const safeOffset = Number.isFinite(timeOffset) ? timeOffset : 0
 
-  if (!playing || !Number.isFinite(speed) || speed <= 0) {
+  if (!playing || !Number.isFinite(speed) || speed === 0) {
     return safeOffset
   }
 

@@ -15,7 +15,6 @@ import {
   Color,
   DirectionalLight,
   Group,
-  Mesh,
   MeshStandardMaterial,
   Scene,
   Vector2,
@@ -34,6 +33,10 @@ import {
   createHalftoneShaderMaterial,
 } from '@/components/studio/halftone-material'
 import { applyDeltaRotation } from '@/components/studio/shader-canvas-math'
+import {
+  addCharacterModelCopies,
+  type CharacterRepeatSettings,
+} from '@/components/studio/character-model-arrangement'
 
 export default function CharacterHalftoneCanvas() {
   const svgData = useStudioStore((store) => store.runtime.svgData)
@@ -143,7 +146,9 @@ function CharacterHalftoneScene({
   }, [renderTarget])
 
   useEffect(() => {
-    const nextSource = geometryResult ? createHalftoneSourceScene(geometryResult) : null
+    const nextSource = geometryResult
+      ? createHalftoneSourceScene(geometryResult, meshSettings.repeat)
+      : null
     sourceRef.current = nextSource
 
     return () => {
@@ -152,7 +157,7 @@ function CharacterHalftoneScene({
       }
       nextSource?.dispose()
     }
-  }, [geometryResult])
+  }, [geometryResult, meshSettings.repeat])
 
   const material = useMemo(() => createHalftoneShaderMaterial({
     controls: {},
@@ -196,7 +201,7 @@ applyHalftoneUniforms(material, withoutSharedControllerValues(controls))
       return
     }
 
-    if (meshSettings.autoRotate && animation.playing && animation.speed > 0) {
+    if (meshSettings.autoRotate && animation.playing && animation.speed !== 0) {
       source.group.rotation.y = applyDeltaRotation(
         source.group.rotation.y,
         meshSettings.autoRotateSpeed * animation.speed,
@@ -250,6 +255,7 @@ type HalftoneSourceScene = {
 
 function createHalftoneSourceScene(
   geometryResult: CharacterMeshGeometryResult,
+  repeat: CharacterRepeatSettings,
 ): HalftoneSourceScene {
   const scene = new Scene()
   const group = new Group()
@@ -264,9 +270,7 @@ function createHalftoneSourceScene(
   scene.background = new Color('#000000')
   scene.add(new AmbientLight('#ffffff', 0.85), directional)
 
-  for (const geometry of geometryResult.geometries) {
-    group.add(new Mesh(geometry, material))
-  }
+  addCharacterModelCopies(group, geometryResult.geometries, material, repeat)
   scene.add(group)
 
   return {

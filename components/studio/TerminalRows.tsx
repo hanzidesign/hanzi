@@ -27,14 +27,15 @@ function TerminalRowShell({
       <span className={classes.controlLabel}>{label}</span>
       {children}
       <span className={classes.controlValue}>{value}</span>
-      <button
-        type="button"
-        className={classes.resetButton}
-        onClick={onReset}
-        disabled={!onReset}
-      >
-        reset
-      </button>
+      {onReset ? (
+        <button
+          type="button"
+          className={classes.resetButton}
+          onClick={onReset}
+        >
+          reset
+        </button>
+      ) : null}
     </div>
   )
 }

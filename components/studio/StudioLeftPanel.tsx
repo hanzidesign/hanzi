@@ -3,11 +3,11 @@
 import Image from 'next/image'
 import Link from 'next/link'
 import CharacterPanel from '@/components/studio/CharacterPanel'
+import StudioRotationController from '@/components/studio/StudioRotationController'
 import TerminalSection from '@/components/studio/TerminalSection'
-import { TerminalRangeRow } from '@/components/studio/TerminalRows'
+import { TerminalRangeRow, TerminalToggleRow } from '@/components/studio/TerminalRows'
 import {
   DEFAULT_MESH_STATE,
-  getCharacterDisplayState,
   useStudioStore,
 } from '@/app/studio/studio-store'
 import { GRAINRAD_EFFECTS } from '@/components/studio/grainrad-effects'
@@ -36,6 +36,10 @@ export default function StudioLeftPanel() {
           <StudioModelReset />
         </div>
         <StudioModelPanel />
+        <div className={classes.inputGroupHeader}>
+          <div className={classes.inputLabel}>Model Deform</div>
+        </div>
+        <StudioModelDeformPanel />
         <div className={classes.inputGroupHeader}>
           <div className={classes.inputLabel}>3D Motion</div>
           <StudioMotionReset />
@@ -75,6 +79,27 @@ function StudioModelReset() {
   )
 }
 
+function StudioModelDeformReset() {
+  const setMeshControl = useStudioStore((store) => store.setMeshControl)
+  const repeat = useStudioStore((store) => store.mesh.repeat)
+
+  if (!repeat.enabled) {
+    return null
+  }
+
+  return (
+    <button
+      type="button"
+      className={classes.inputGroupReset}
+      onClick={() => setMeshControl({
+        repeat: { ...DEFAULT_MESH_STATE.repeat, enabled: true },
+      })}
+    >
+      Reset all
+    </button>
+  )
+}
+
 function StudioMotionReset() {
   const setAnimationControl = useStudioStore((store) => store.setAnimationControl)
   const setMeshControl = useStudioStore((store) => store.setMeshControl)
@@ -84,8 +109,11 @@ function StudioMotionReset() {
       type="button"
       className={classes.inputGroupReset}
       onClick={() => {
-        setMeshControl({ rotation: { ...DEFAULT_MESH_STATE.rotation } })
-        setAnimationControl({ speed: 1 })
+        setMeshControl({
+          rotation: { ...DEFAULT_MESH_STATE.rotation },
+          scale: DEFAULT_MESH_STATE.scale,
+        })
+        setAnimationControl({ playing: true, speed: 1 })
       }}
     >
       Reset all
@@ -159,6 +187,86 @@ export function StudioModelPanel() {
   )
 }
 
+export function StudioModelDeformPanel() {
+  const mesh = useStudioStore((store) => store.mesh)
+  const setMeshControl = useStudioStore((store) => store.setMeshControl)
+
+  return (
+    <div className={classes.modelPanel} data-studio-model-deform-panel>
+      <div
+        className={classes.repeatSection}
+        data-enabled={mesh.repeat.enabled}
+      >
+        <StudioModelDeformReset />
+        <TerminalToggleRow
+          label="Repeat"
+          checked={mesh.repeat.enabled}
+          onChange={(enabled) => setMeshControl({
+            repeat: { ...mesh.repeat, enabled },
+          })}
+        />
+        {mesh.repeat.enabled ? (
+          <>
+            <TerminalRangeRow
+              label="Count"
+              value={mesh.repeat.count}
+              min={1}
+              max={50}
+              step={1}
+              onChange={(count) => setMeshControl({
+                repeat: { ...mesh.repeat, count },
+              })}
+              onReset={() => setMeshControl({
+                repeat: { ...mesh.repeat, count: DEFAULT_MESH_STATE.repeat.count },
+              })}
+            />
+            <TerminalRangeRow
+              label="Radius"
+              value={mesh.repeat.radius}
+              min={0}
+              max={50}
+              step={0.01}
+              onChange={(radius) => setMeshControl({
+                repeat: { ...mesh.repeat, radius },
+              })}
+              onReset={() => setMeshControl({
+                repeat: { ...mesh.repeat, radius: DEFAULT_MESH_STATE.repeat.radius },
+              })}
+            />
+            <TerminalRangeRow
+              label="Orientation"
+              value={mesh.repeat.orientation}
+              min={0}
+              max={360}
+              step={1}
+              displayValue={`${Math.round(mesh.repeat.orientation)}°`}
+              onChange={(orientation) => setMeshControl({
+                repeat: { ...mesh.repeat, orientation },
+              })}
+              onReset={() => setMeshControl({
+                repeat: { ...mesh.repeat, orientation: DEFAULT_MESH_STATE.repeat.orientation },
+              })}
+            />
+            <TerminalRangeRow
+              label="Size"
+              value={mesh.repeat.size}
+              min={0.1}
+              max={3}
+              step={0.01}
+              onChange={(size) => setMeshControl({
+                repeat: { ...mesh.repeat, size },
+              })}
+              onReset={() => setMeshControl({
+                repeat: { ...mesh.repeat, size: DEFAULT_MESH_STATE.repeat.size },
+              })}
+            />
+          </>
+        ) : null}
+      </div>
+    </div>
+  )
+}
+
 export function StudioEffectsPanel() {
   const selectedEffectId = useStudioStore((store) => store.grainradEffect.selectedEffectId)
   const setSelectedEffect = useStudioStore((store) => store.setSelectedEffect)
@@ -187,10 +295,8 @@ export function StudioEffectsPanel() {
 export function StudioMotionPanel() {
   const animation = useStudioStore((store) => store.animation)
   const mesh = useStudioStore((store) => store.mesh)
-  const character = useStudioStore((store) => store.character)
   const setAnimationControl = useStudioStore((store) => store.setAnimationControl)
   const setMeshControl = useStudioStore((store) => store.setMeshControl)
-  const { ch } = getCharacterDisplayState(character)
   const setMeshRotation = (axis: 'x' | 'y' | 'z', degrees: number) => {
     setMeshControl({
       rotation: {
@@ -233,20 +339,35 @@ export function StudioMotionPanel() {
           onChange={(degrees) => setMeshRotation('z', degrees)}
           onReset={() => setMeshRotation('z', radiansToDegrees(DEFAULT_MESH_STATE.rotation.z))}
         />
+      </div>
+      <StudioRotationController
+        rotation={mesh.rotation}
+        onRotationChange={(rotation) => setMeshControl({ rotation })}
+      />
+      <div className={classes.motionScalarControls}>
+        <TerminalToggleRow
+          label="Play"
+          checked={animation.playing}
+          onChange={(playing) => setAnimationControl({ playing })}
+        />
+        <TerminalRangeRow
+          label="Scale"
+          value={mesh.scale}
+          min={0.1}
+          max={10}
+          step={0.01}
+          onChange={(scale) => setMeshControl({ scale })}
+          onReset={() => setMeshControl({ scale: DEFAULT_MESH_STATE.scale })}
+        />
         <TerminalRangeRow
           label="Speed"
           value={animation.speed}
-          min={0}
-          max={4}
+          min={-100}
+          max={100}
           step={0.01}
           onChange={(speed) => setAnimationControl({ speed })}
           onReset={() => setAnimationControl({ speed: 1 })}
         />
-      </div>
-      <div className={classes.motionPreview} aria-hidden>
-        <span className={classes.motionGlyph}>{ch}</span>
-        <span className={classes.motionCubeFront} />
-        <span className={classes.motionCubeBack} />
       </div>
     </div>
   )

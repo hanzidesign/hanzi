@@ -28,12 +28,12 @@ export function createExportAnimationPlan({
 }): ExportAnimationPlan {
   const angularSpeed = autoRotateSpeed * motionSpeed
 
-  if (!autoRotate || !Number.isFinite(angularSpeed) || angularSpeed <= 0) {
-    throw new Error('Set 3D Motion Speed above 0 before exporting animation')
+  if (!autoRotate || !Number.isFinite(angularSpeed) || angularSpeed === 0) {
+    throw new Error('Set 3D Motion Speed to a non-zero value before exporting animation')
   }
 
   const fps = EXPORT_FPS[format]
-  const exactDurationSeconds = (Math.PI * 2) / angularSpeed
+  const exactDurationSeconds = (Math.PI * 2) / Math.abs(angularSpeed)
   const frameCount = Math.max(1, Math.round(exactDurationSeconds * fps))
 
   return {
@@ -62,9 +62,10 @@ export function readExportFrame({
   }
 
   const progress = frameIndex / plan.frameCount
+  const direction = Math.sign(motionSpeed)
 
   return {
-    rotationY: baseRotationY + Math.PI * 2 * progress,
+    rotationY: baseRotationY + Math.PI * 2 * progress * direction,
     animationTime: baseTime + frameIndex * plan.frameDurationSeconds * motionSpeed,
   }
 }

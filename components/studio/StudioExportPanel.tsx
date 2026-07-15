@@ -63,6 +63,7 @@ export default function StudioExportPanel() {
   const selectedFormat = useStudioStore((store) => store.export.selectedFormat)
   const autoRotate = useStudioStore((store) => store.mesh.autoRotate)
   const autoRotateSpeed = useStudioStore((store) => store.mesh.autoRotateSpeed)
+  const motionPlaying = useStudioStore((store) => store.animation.playing)
   const motionSpeed = useStudioStore((store) => store.animation.speed)
   const setExportFormat = useStudioStore((store) => store.setExportFormat)
   const [message, setMessage] = useState('Ready')
@@ -72,8 +73,11 @@ export default function StudioExportPanel() {
   const abortControllerRef = useRef<AbortController | null>(null)
   const renderRequestIdRef = useRef(0)
   const pendingExportFrameRef = useRef<PendingExportFrame | null>(null)
-  const pngAvailable = motionSpeed === 0
-  const animationAvailable = autoRotate && autoRotateSpeed > 0 && motionSpeed > 0
+  const pngAvailable = !motionPlaying || motionSpeed === 0
+  const animationAvailable = motionPlaying
+    && autoRotate
+    && autoRotateSpeed > 0
+    && motionSpeed !== 0
   const exporting = modal?.status === 'exporting'
 
   const requestExportFrame = useCallback((size: number, signal?: AbortSignal) => {
@@ -239,9 +243,9 @@ export default function StudioExportPanel() {
           const disabled = exporting || pngExporting
             || (option.value === 'png' ? !pngAvailable : !animationAvailable)
           const unavailableReason = option.value === 'png' && !pngAvailable
-            ? '3D Motion Speed must be 0 to export PNG'
+            ? 'Turn Play off or set 3D Motion Speed to 0 to export PNG'
             : option.value !== 'png' && !animationAvailable
-              ? '3D Motion Speed must be above 0 to export animation'
+              ? 'Turn Play on and set a non-zero 3D Motion Speed to export animation'
               : undefined
 
           return (

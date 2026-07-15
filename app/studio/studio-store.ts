@@ -38,6 +38,17 @@ import {
   type GrainradEffectControl,
   type GrainradEffectId,
 } from '@/components/studio/grainrad-effects'
+import {
+  MAX_CHARACTER_REPEAT_COUNT,
+  MAX_CHARACTER_REPEAT_ORIENTATION,
+  MAX_CHARACTER_REPEAT_RADIUS,
+  MAX_CHARACTER_REPEAT_SIZE,
+  MIN_CHARACTER_REPEAT_COUNT,
+  MIN_CHARACTER_REPEAT_ORIENTATION,
+  MIN_CHARACTER_REPEAT_RADIUS,
+  MIN_CHARACTER_REPEAT_SIZE,
+  type CharacterRepeatSettings,
+} from '@/components/studio/character-model-arrangement'
 
 export const STUDIO_STORE_STORAGE_KEY = 'hanzi-studio-grainrad-effects-v1'
 const STUDIO_STORE_STORAGE_VERSION = 7
@@ -269,6 +280,13 @@ export const DEFAULT_MESH_STATE = {
   twist: 0,
   taper: 0,
   bend: 0,
+  repeat: {
+    enabled: false,
+    count: 6,
+    radius: 1.25,
+    orientation: 90,
+    size: 0.5,
+  } satisfies CharacterRepeatSettings,
   rotation: { x: 0, y: 0, z: 0 },
   scale: 1,
   position: { x: 0, y: 0 },
@@ -354,6 +372,7 @@ export type StudioStoreState = {
     twist: number
     taper: number
     bend: number
+    repeat: CharacterRepeatSettings
     rotation: { x: number; y: number; z: number }
     scale: number
     position: { x: number; y: number }
@@ -2204,7 +2223,7 @@ function sanitizeAnimationState(
 
   return {
     playing: typeof record.playing === 'boolean' ? record.playing : fallback.playing,
-    speed: readClampedNumber(record.speed, fallback.speed, 0, 4),
+    speed: readClampedNumber(record.speed, fallback.speed, -100, 100),
     timeOffset: readClampedNumber(record.timeOffset, fallback.timeOffset, 0, 3600),
     animateMorph: typeof record.animateMorph === 'boolean' ? record.animateMorph : fallback.animateMorph,
     animateShaders: typeof record.animateShaders === 'boolean' ? record.animateShaders : fallback.animateShaders,
@@ -2439,6 +2458,7 @@ function sanitizeMeshState(value: unknown, fallback: StudioStoreState['mesh']): 
   const record = readRecord(value)
   const rotation = readRecord(record.rotation)
   const position = readRecord(record.position)
+  const repeat = readRecord(record.repeat)
 
   return {
     extrusionDepth: readClampedNumber(record.extrusionDepth, fallback.extrusionDepth, 0.01, 1),
@@ -2447,12 +2467,39 @@ function sanitizeMeshState(value: unknown, fallback: StudioStoreState['mesh']): 
     twist: readClampedNumber(record.twist, fallback.twist, -360, 360),
     taper: readClampedNumber(record.taper, fallback.taper, -0.8, 0.8),
     bend: readClampedNumber(record.bend, fallback.bend, -360, 360),
+    repeat: {
+      enabled: typeof repeat.enabled === 'boolean' ? repeat.enabled : fallback.repeat.enabled,
+      count: Math.round(readClampedNumber(
+        repeat.count,
+        fallback.repeat.count,
+        MIN_CHARACTER_REPEAT_COUNT,
+        MAX_CHARACTER_REPEAT_COUNT,
+      )),
+      radius: readClampedNumber(
+        repeat.radius,
+        fallback.repeat.radius,
+        MIN_CHARACTER_REPEAT_RADIUS,
+        MAX_CHARACTER_REPEAT_RADIUS,
+      ),
+      orientation: readClampedNumber(
+        repeat.orientation,
+        fallback.repeat.orientation,
+        MIN_CHARACTER_REPEAT_ORIENTATION,
+        MAX_CHARACTER_REPEAT_ORIENTATION,
+      ),
+      size: readClampedNumber(
+        repeat.size,
+        fallback.repeat.size,
+        MIN_CHARACTER_REPEAT_SIZE,
+        MAX_CHARACTER_REPEAT_SIZE,
+      ),
+    },
     rotation: {
       x: readClampedNumber(rotation.x, fallback.rotation.x, -Math.PI, Math.PI),
       y: readClampedNumber(rotation.y, fallback.rotation.y, -Math.PI, Math.PI),
       z: readClampedNumber(rotation.z, fallback.rotation.z, -Math.PI, Math.PI),
     },
-    scale: readClampedNumber(record.scale, fallback.scale, 0.25, 3),
+    scale: readClampedNumber(record.scale, fallback.scale, 0.1, 10),
     position: {
       x: readClampedNumber(position.x, fallback.position.x, -4, 4),
       y: readClampedNumber(position.y, fallback.position.y, -4, 4),
@@ -2465,6 +2512,7 @@ function sanitizeMeshState(value: unknown, fallback: StudioStoreState['mesh']): 
 function createDefaultMeshState(): StudioStoreState['mesh'] {
   return {
     ...DEFAULT_MESH_STATE,
+    repeat: { ...DEFAULT_MESH_STATE.repeat },
     rotation: { ...DEFAULT_MESH_STATE.rotation },
     position: { ...DEFAULT_MESH_STATE.position },
   }

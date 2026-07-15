@@ -15,7 +15,6 @@ import {
   Color,
   DirectionalLight,
   Group,
-  Mesh,
   MeshStandardMaterial,
   Scene,
   Vector2,
@@ -35,6 +34,10 @@ import {
   disposeDotsShaderMaterial,
 } from '@/components/studio/dots-material'
 import { applyDeltaRotation } from '@/components/studio/shader-canvas-math'
+import {
+  addCharacterModelCopies,
+  type CharacterRepeatSettings,
+} from '@/components/studio/character-model-arrangement'
 
 export default function CharacterDotsCanvas() {
   const svgData = useStudioStore((store) => store.runtime.svgData)
@@ -144,7 +147,9 @@ function CharacterDotsScene({
   }, [renderTarget])
 
   useEffect(() => {
-    const nextSource = geometryResult ? createDotsSourceScene(geometryResult) : null
+    const nextSource = geometryResult
+      ? createDotsSourceScene(geometryResult, meshSettings.repeat)
+      : null
     sourceRef.current = nextSource
 
     return () => {
@@ -153,7 +158,7 @@ function CharacterDotsScene({
       }
       nextSource?.dispose()
     }
-  }, [geometryResult])
+  }, [geometryResult, meshSettings.repeat])
 
   const material = useMemo(() => createDotsShaderMaterial({
     controls: {},
@@ -197,7 +202,7 @@ applyDotsUniforms(material, withoutSharedControllerValues(controls))
       return
     }
 
-    if (meshSettings.autoRotate && animation.playing && animation.speed > 0) {
+    if (meshSettings.autoRotate && animation.playing && animation.speed !== 0) {
       source.group.rotation.y = applyDeltaRotation(
         source.group.rotation.y,
         meshSettings.autoRotateSpeed * animation.speed,
@@ -251,6 +256,7 @@ type DotsSourceScene = {
 
 function createDotsSourceScene(
   geometryResult: CharacterMeshGeometryResult,
+  repeat: CharacterRepeatSettings,
 ): DotsSourceScene {
   const scene = new Scene()
   const group = new Group()
@@ -265,9 +271,7 @@ function createDotsSourceScene(
   scene.background = new Color('#000000')
   scene.add(new AmbientLight('#ffffff', 0.85), directional)
 
-  for (const geometry of geometryResult.geometries) {
-    group.add(new Mesh(geometry, material))
-  }
+  addCharacterModelCopies(group, geometryResult.geometries, material, repeat)
   scene.add(group)
 
   return {
