@@ -98,15 +98,7 @@ void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor)
   }
 
   float centerLuma = processingLuminance(center.rgb);
-  float neighborLuma = processingLuminance(neighborMean);
-  float processedLuma = processingLuminance(color);
-  float shapeLuma = clamp(
-    processedLuma + (centerLuma - neighborLuma) * 2.0,
-    0.0,
-    1.0
-  );
-  vec3 shapeMatched = clamp(color + vec3(shapeLuma - processedLuma), 0.0, 1.0);
-  color = mix(color, shapeMatched, u_shapeMatching);
+  color = mix(color, vec3(step(0.5, centerLuma)), u_shapeMatching);
 
   outputColor = vec4(clamp(color, 0.0, 1.0), inputColor.a);
 }
@@ -192,10 +184,16 @@ function resolveQuantizeLevels(value: GrainradControlValue | undefined) {
     return STUDIO_PROCESSING_LIMITS.quantizeLevels.defaultValue
   }
 
-  return Math.round(Math.min(
-    Math.max(value, 2),
+  const strength = Math.min(
+    Math.max(value, STUDIO_PROCESSING_LIMITS.quantizeLevels.min + 1),
     STUDIO_PROCESSING_LIMITS.quantizeLevels.max,
-  ))
+  )
+  const maxLevels = STUDIO_PROCESSING_LIMITS.quantizeLevels.max
+  const minLevels = 2
+  const normalizedStrength = (strength - 1) / (maxLevels - 1)
+
+  // The control is a strength value; map it logarithmically to effective levels.
+  return Math.round(maxLevels * Math.pow(minLevels / maxLevels, normalizedStrength))
 }
 
 function readClampedControl(

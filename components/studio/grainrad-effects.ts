@@ -184,6 +184,14 @@ const directionOptions = [
   { value: 'vertical', label: 'Vertical' },
 ]
 
+const pixelSortDirectionOptions = [
+  { value: 'horizontal', label: 'Horizontal' },
+  { value: 'vertical', label: 'Vertical' },
+  { value: 'diagonal', label: '45°' },
+  { value: 'anti-diagonal', label: '-45°' },
+  { value: 'radial', label: 'Radial' },
+]
+
 export const GRAINRAD_COMMON_PROCESSING_GROUPS: GrainradSettingGroup[] = [
   {
     controls: [
@@ -751,8 +759,7 @@ export const GRAINRAD_EFFECTS: GrainradEffectDefinition[] = [
         title: 'Pixel Sort',
         controls: [
           selectControl('direction', 'Direction', 'horizontal', [
-            ...directionOptions,
-            { value: 'diagonal', label: 'Diagonal' },
+            ...pixelSortDirectionOptions,
           ]),
           selectControl('sort-mode', 'Sort Mode', 'hue', [
             { value: 'brightness', label: 'Brightness' },
@@ -923,12 +930,23 @@ export const GRAINRAD_EFFECTS: GrainradEffectDefinition[] = [
       {
         title: 'Crosshatch',
         controls: [
-          rangeControl('density', 'Density', 6, 2, 12, 1),
+          rangeControl('density', 'Density', 6, 1, 50, 1),
           rangeControl('layers', 'Layers', 3, 1, 4, 1),
           rangeControl('angle', 'Angle', 45, 0, 90, 5, '°'),
           scaledRangeControl('line-width', 'Line Width', 0.08, 0.01, 0.5, 0.01, 100),
           rangeControl('randomness', 'Randomness', 0, 0, 1, 0.05),
           toggleControl('invert', 'Invert', false),
+        ],
+      },
+      {
+        title: 'Background Lines',
+        controls: [
+          rangeControl('background-density', 'Density', 12, 1, 50, 1),
+          rangeControl('background-layers', 'Layers', 1, 1, 4, 1),
+          rangeControl('background-angle', 'Angle', 45, 0, 90, 5, '°'),
+          scaledRangeControl('background-line-width', 'Line Width', 0.08, 0.01, 0.5, 0.01, 100),
+          rangeControl('background-randomness', 'Randomness', 0, 0, 1, 0.05),
+          rangeControl('background-speed', 'Speed', 0.1, 0, 10, 0.1),
         ],
       },
       {

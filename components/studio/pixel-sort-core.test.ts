@@ -41,8 +41,8 @@ describe('Pixel Sort production contracts', () => {
     expect(() => render({ settings: { streakLength: 10.5 } })).toThrow('integer')
     expect(() => render({ settings: { intensity: 1.1 } })).toThrow('between 0 and 1')
     expect(() => render({
-      settings: { direction: 'radial' as PixelSortSettings['direction'] },
-    })).toThrow('direction')
+      settings: { direction: 'unknown' as PixelSortSettings['direction'] },
+    })).toThrow('horizontal, vertical, diagonal, anti-diagonal, or radial')
   })
 })
 
@@ -119,7 +119,7 @@ describe('Pixel Sort exact CPU scanline oracle', () => {
     expect(right).toMatchObject({ spanStart: 5, spanEnd: 9, spanSize: 5 })
   })
 
-  it.each<PixelSortDirection>(['horizontal', 'vertical', 'diagonal'])(
+  it.each<PixelSortDirection>(['horizontal', 'vertical', 'diagonal', 'anti-diagonal', 'radial'])(
     'never moves provenance across an integer %s scanline',
     (direction) => {
       const width = 7
@@ -140,10 +140,59 @@ describe('Pixel Sort exact CPU scanline oracle', () => {
           if (direction === 'horizontal') expect(sourceY).toBe(y)
           if (direction === 'vertical') expect(sourceX).toBe(x)
           if (direction === 'diagonal') expect(sourceX - sourceY).toBe(x - y)
+          if (direction === 'anti-diagonal') expect(sourceX + sourceY).toBe(x + y)
+          if (direction === 'radial') {
+            expect(radialSector(sourceX, sourceY, width, height)).toBe(
+              radialSector(x, y, width, height),
+            )
+          }
         }
       }
     },
   )
+
+  it('preserves radial sector provenance, center isolation, stable duplicates, and determinism', () => {
+    const width = 7
+    const height = 7
+    const source = row(Array.from({ length: width * height }, (_, index) => {
+      const x = index % width
+      const y = Math.floor(index / width)
+      const value = (x * 37 + y * 19) % 180 + 30
+      return [value, value, value, index + 1] as const
+    }))
+    const settings = exactSettings({ direction: 'radial', streakLength: 300 })
+    const first = render({ height, rgba: source, settings, width }).data
+    const second = render({ height, rgba: source, settings, width }).data
+
+    expect(second).toEqual(first)
+    expect(multiset(first)).toEqual(multiset(source))
+    for (let y = 0; y < height; y += 1) {
+      for (let x = 0; x < width; x += 1) {
+        const sourceTag = first[(y * width + x) * 4 + 3] - 1
+        const sourceX = sourceTag % width
+        const sourceY = Math.floor(sourceTag / width)
+        if (x === 3 && y === 3) {
+          expect(sourceTag).toBe(3 * width + 3)
+        } else {
+          expect(radialSector(sourceX, sourceY, width, height)).toBe(radialSector(x, y, width, height))
+        }
+      }
+    }
+
+    const centerTrace = tracePixelSortSpan({ height, rgba: source, settings, width, x: 3, y: 3 })
+    expect(centerTrace).toMatchObject({ linePosition: 0, lineCoordinate: expect.any(Number), spanSize: 1 })
+    expect(centerTrace.direction).toEqual([0, 0])
+
+    const rayTrace = tracePixelSortSpan({ height, rgba: source, settings, width, x: 6, y: 3 })
+    const expectedAngle = (radialSector(6, 3, width, height) + 0.5) * Math.PI * 2 / radialRayCount(width, height)
+    expect(rayTrace.direction[0]).toBeCloseTo(Math.cos(expectedAngle), 12)
+    expect(rayTrace.direction[1]).toBeCloseTo(Math.sin(expectedAngle), 12)
+
+    const equalLuminance = row(Array.from({ length: width * height }, (_, index) => (
+      [100, 100, 100, index + 1] as const
+    )))
+    expect(render({ height, rgba: equalLuminance, settings, width }).data).toEqual(equalLuminance)
+  })
 
   it('uses deterministic line randomness for threshold and anchored phase', () => {
     const source = taggedFixture(30, 4)
@@ -365,4 +414,14 @@ function multiset(data: Uint8Array | Uint8ClampedArray) {
 
 function spanIdentity(trace: ReturnType<typeof tracePixelSortSpan>) {
   return `${trace.blockStart}:${trace.blockEnd}:${trace.spanStart}:${trace.spanEnd}`
+}
+
+function radialRayCount(width: number, height: number) {
+  return Math.max(1, Math.ceil(Math.PI * Math.hypot(width - 1, height - 1)))
+}
+
+function radialSector(x: number, y: number, width: number, height: number) {
+  if (x === (width - 1) / 2 && y === (height - 1) / 2) return radialRayCount(width, height)
+  const angle = Math.atan2(y - (height - 1) / 2, x - (width - 1) / 2)
+  return Math.floor((angle < 0 ? angle + Math.PI * 2 : angle) / (Math.PI * 2) * radialRayCount(width, height))
 }

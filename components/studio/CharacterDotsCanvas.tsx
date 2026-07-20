@@ -8,7 +8,10 @@ import {
   type MutableRefObject,
 } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
-import { StudioRenderCanvas as Canvas } from '@/components/studio/studio-render-context'
+import {
+  StudioRenderCanvas as Canvas,
+  useStudioRenderMode,
+} from '@/components/studio/studio-render-context'
 import { SVGLoader } from 'three/addons/loaders/SVGLoader.js'
 import {
   AmbientLight,
@@ -102,6 +105,7 @@ function CharacterDotsScene({
   const { camera, gl, size } = useThree()
   const meshSettings = useStudioStore((store) => store.mesh)
   const animation = useStudioStore((store) => store.animation)
+  const { markExportContentReady, reportCharacterRotationY } = useStudioRenderMode()
   const controls = useStudioStore((store) => store.grainradEffect.controls.dots)
   const [geometryResult, setGeometryResult] = useState<CharacterMeshGeometryResult | null>(null)
   const geometryResultRef = useRef<CharacterMeshGeometryResult | null>(null)
@@ -207,7 +211,7 @@ applyDotsUniforms(material, withoutSharedControllerValues(controls))
 
   useFrame(({ clock }, delta) => {
     const source = sourceRef.current
-    if (!source) {
+    if (!source || geometryResult?.geometries.length === 0) {
       return
     }
 
@@ -218,6 +222,8 @@ applyDotsUniforms(material, withoutSharedControllerValues(controls))
         delta,
       )
     }
+
+    reportCharacterRotationY(source.group.rotation.y)
 
     const pixelRatio = gl.getPixelRatio()
     const width = Math.max(1, Math.round(size.width * pixelRatio))
@@ -232,6 +238,9 @@ applyDotsUniforms(material, withoutSharedControllerValues(controls))
     gl.clear()
     gl.render(source.scene, camera)
     gl.setRenderTarget(previousTarget)
+    if (geometryResult?.geometries.length) {
+      markExportContentReady()
+    }
 
     const activeMaterial = materialRef.current
     if (activeMaterial) {
@@ -246,7 +255,7 @@ applyDotsUniforms(material, withoutSharedControllerValues(controls))
     }
   }, -1)
 
-  if (!geometryResult) {
+  if (!geometryResult || geometryResult.geometries.length === 0) {
     return null
   }
 

@@ -14,7 +14,7 @@ describe('Pixel Sort independent renderer settings adapter', () => {
   })
   it('maps every visible Pixel Sort controller without generic runtime packing', () => {
     expect(readPixelSortSettings({
-      direction: 'diagonal',
+      direction: 'radial',
       'sort-mode': 'saturation',
       threshold: 0.45,
       'streak-length': 270,
@@ -29,7 +29,7 @@ describe('Pixel Sort independent renderer settings adapter', () => {
       highlight: '#708090',
       background: '#ffffff',
     })).toMatchObject({
-      direction: 'diagonal',
+      direction: 'radial',
       mode: 'saturation',
       threshold: 0.45,
       streakLength: 270,
@@ -48,9 +48,16 @@ describe('Pixel Sort independent renderer settings adapter', () => {
 
   it('uses the renderer defaults for missing or invalid controller values', () => {
     expect(readPixelSortSettings({
-      direction: 'radial',
+      direction: 'unknown',
       'sort-mode': 'color',
       threshold: Number.NaN,
     })).toMatchObject({ ...DEFAULT_PIXEL_SORT_SETTINGS, background: '#ffffff' })
   })
+
+  it.each(['horizontal', 'vertical', 'diagonal', 'anti-diagonal', 'radial'] as const)(
+    'accepts the %s direction value',
+    (direction) => {
+      expect(readPixelSortSettings({ direction }).direction).toBe(direction)
+    },
+  )
 })

@@ -2,7 +2,10 @@
 
 import { useEffect, useMemo, useRef, useState, type MutableRefObject } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
-import { StudioRenderCanvas as Canvas } from '@/components/studio/studio-render-context'
+import {
+  StudioRenderCanvas as Canvas,
+  useStudioRenderMode,
+} from '@/components/studio/studio-render-context'
 import { SVGLoader } from 'three/addons/loaders/SVGLoader.js'
 import { Group, Vector2, type ShaderMaterial } from 'three'
 import { useStudioStore } from '@/app/studio/studio-store'
@@ -96,6 +99,7 @@ function CharacterAsciiScene({
   const ascii = useStudioStore((store) => store.ascii)
   const animation = useStudioStore((store) => store.animation)
   const grainradEffect = useStudioStore((store) => store.grainradEffect)
+  const { markExportContentReady, reportCharacterRotationY } = useStudioRenderMode()
 
   useEffect(() => {
     if (svgLoadError) {
@@ -233,16 +237,24 @@ function CharacterAsciiScene({
       applyGrainradRuntimeUniforms(activeMaterial.uniforms, grainradRuntime)
     }
 
-    if (groupRef.current && mesh.autoRotate && animation.playing && animation.speed !== 0) {
-      groupRef.current.rotation.y = applyDeltaRotation(
-        groupRef.current.rotation.y,
-        mesh.autoRotateSpeed * animation.speed,
-        delta,
-      )
+    if (groupRef.current) {
+      if (mesh.autoRotate && animation.playing && animation.speed !== 0) {
+        groupRef.current.rotation.y = applyDeltaRotation(
+          groupRef.current.rotation.y,
+          mesh.autoRotateSpeed * animation.speed,
+          delta,
+        )
+      }
+
+      reportCharacterRotationY(groupRef.current.rotation.y)
+
+      if (geometryResult?.geometries.length) {
+        markExportContentReady()
+      }
     }
   })
 
-  if (!geometryResult) {
+  if (!geometryResult || geometryResult.geometries.length === 0) {
     return null
   }
 

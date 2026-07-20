@@ -8,6 +8,7 @@ const studioDir = join(process.cwd(), 'components', 'studio')
 describe('Phase 5D Grainrad terminal Studio layout contract', () => {
   it('uses a route-local terminal shell instead of the old AppShell workbench', async () => {
     const shellSource = await readFile(join(studioDir, 'StudioShell.tsx'), 'utf8')
+    const mobileHeader = await readFile(join(studioDir, 'StudioMobileHeader.tsx'), 'utf8')
     const shellStyles = await readFile(join(studioDir, 'StudioShell.module.css'), 'utf8')
     const mobileTabs = await readFile(join(studioDir, 'StudioMobileTabs.tsx'), 'utf8')
 
@@ -22,7 +23,12 @@ describe('Phase 5D Grainrad terminal Studio layout contract', () => {
     expect(shellSource).not.toContain('IoPauseOutline')
     expect(shellSource).not.toContain('IoPlayOutline')
     expect(shellSource).not.toContain('AppShell')
-    expect(shellSource).not.toContain('Burger')
+    expect(shellSource).toContain('StudioMobileHeader')
+    expect(mobileHeader).toContain('aria-controls={MENU_ID}')
+    expect(mobileHeader).toContain('aria-expanded={menuOpen}')
+    expect(mobileHeader).toContain('className={classes.mobileMenuOverlay}\n            tabIndex={-1}')
+    expect(mobileHeader).not.toContain('autoFocus')
+    expect(shellStyles).not.toContain(".mobileMenuAction[aria-pressed='true']")
     expect(shellSource).not.toContain('PageHeader')
     expect(shellStyles).toContain("data-studio-theme='light'")
     expect(shellStyles).toContain("data-studio-theme='dark'")
@@ -33,6 +39,26 @@ describe('Phase 5D Grainrad terminal Studio layout contract', () => {
     expect(shellStyles).toContain('--studio-bottom-rail-height: 60px')
     expect(shellSource).toContain('previewTopRail')
     expect(shellStyles).toContain('max-height: 40vh')
+  })
+
+  it('moves mobile viewport actions into a branded header menu', async () => {
+    const shellSource = await readFile(join(studioDir, 'StudioShell.tsx'), 'utf8')
+    const mobileHeader = await readFile(join(studioDir, 'StudioMobileHeader.tsx'), 'utf8')
+    const shellStyles = await readFile(join(studioDir, 'StudioShell.module.css'), 'utf8')
+
+    expect(mobileHeader).toContain("import Link from 'next/link'")
+    expect(mobileHeader).toContain('href="/"')
+    expect(mobileHeader).toContain("src={theme === 'dark' ? '/images/logo-dark.svg' : '/images/logo.svg'}")
+    expect(mobileHeader).toContain('IoMenuOutline')
+    expect(mobileHeader).toContain('<span>Theme</span>')
+    expect(mobileHeader).toContain('<span>Fullscreen</span>')
+    expect(mobileHeader).toContain('{Math.round(previewZoom * 100)}%')
+    expect(mobileHeader).toContain('>Reset</button>')
+    expect(mobileHeader).toContain('>Fit</button>')
+    expect(shellSource).toContain("handleFullscreen('[data-studio-terminal-shell]')")
+    expect(shellSource).toContain("handleFullscreen('[data-studio-preview]')")
+    expect(shellStyles).toMatch(/@media \(max-width: 900px\)[\s\S]*?\.previewTopRail,[\s\S]*?\.zoomHud \{[\s\S]*?display: none;/)
+    expect(shellStyles).toMatch(/@media \(max-width: 900px\)[\s\S]*?\.previewCanvasFrame \{[\s\S]*?inset: 0;/)
   })
 
   it('matches the generated desktop preview rails and compact terminal rows', async () => {

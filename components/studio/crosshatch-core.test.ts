@@ -25,6 +25,12 @@ describe('Crosshatch CPU reference', () => {
       lineColor: [0, 0, 0],
       lineWidth: 0.08,
       randomness: 0,
+      backgroundDensity: 12,
+      backgroundLayers: 1,
+      backgroundAngle: 45,
+      backgroundLineWidth: 0.08,
+      backgroundRandomness: 0,
+      backgroundSpeed: 0.1,
     })
     expect(() => render({ settings: { lineWidth: 0.08 } })).not.toThrow()
   })
@@ -217,7 +223,7 @@ describe('Crosshatch CPU reference', () => {
 
     const bright = solidRgb(24, 16, [255, 255, 255])
     expect(render({ height: 16, rgb: bright, settings: { angle: 0, brightness: 0 }, width: 24 }).data)
-      .not.toEqual(render({ height: 16, rgb: bright, settings: { angle: 90, brightness: 0, randomness: 1 }, width: 24 }).data)
+      .toEqual(render({ height: 16, rgb: bright, settings: { angle: 90, brightness: 0, randomness: 1 }, width: 24 }).data)
 
     const dark = solidRgb(24, 16, [0, 0, 0])
     expect(render({ height: 16, rgb: dark, settings: { density: 2 }, width: 24 }).data)
@@ -257,6 +263,113 @@ describe('Crosshatch CPU reference', () => {
     }
   })
 
+  it('applies each Background Lines control only to a white background context', () => {
+    const width = 96
+    const height = 72
+    const source = solidRgb(width, height, [255, 255, 255])
+    const base = render({ height, rgb: source, width }).data
+    const variants: ReadonlyArray<Partial<CrosshatchSettings>> = [
+      { backgroundDensity: 50 },
+      { backgroundLayers: 4 },
+      { backgroundAngle: 0 },
+      { backgroundLineWidth: 0.5 },
+      { backgroundRandomness: 1 },
+    ]
+
+    for (const settings of variants) {
+      expect(render({ height, rgb: source, settings, width }).data, JSON.stringify(settings))
+        .not.toEqual(base)
+    }
+  })
+
+  it('uses Background Lines Layers as a progressive direction count', () => {
+    const width = 96
+    const height = 72
+    const source = solidRgb(width, height, [255, 255, 255])
+    const renders = ([1, 2, 3, 4] as const).map((backgroundLayers) => render({
+      height,
+      rgb: source,
+      settings: { backgroundLayers, backgroundLineWidth: 0.3 },
+      width,
+    }).data)
+
+    expect(renders[1]).not.toEqual(renders[0])
+    expect(renders[2]).not.toEqual(renders[1])
+    expect(renders[3]).not.toEqual(renders[2])
+  })
+
+  it('animates Background Lines with time and freezes them at Speed 0', () => {
+    const width = 96
+    const height = 72
+    const source = solidRgb(width, height, [255, 255, 255])
+    const atZero = render({ height, rgb: source, width }).data
+    const atTime = render({
+      height,
+      rgb: source,
+      settings: { backgroundSpeed: 1 },
+      timeSeconds: 0,
+      width,
+    }).data
+    const atLaterTime = render({
+      height,
+      rgb: source,
+      settings: { backgroundSpeed: 1 },
+      timeSeconds: 9,
+      width,
+    }).data
+    expect(atTime).toEqual(atZero)
+    expect(atLaterTime).not.toEqual(atTime)
+
+    const moving = render({
+      height,
+      rgb: source,
+      settings: { backgroundSpeed: 1 },
+      timeSeconds: 9,
+      width,
+    }).data
+    const frozen = render({
+      height,
+      rgb: source,
+      settings: { backgroundSpeed: 0 },
+      timeSeconds: 9,
+      width,
+    }).data
+    expect(frozen).not.toEqual(moving)
+    expect(render({
+      height,
+      rgb: source,
+      settings: { backgroundSpeed: 0 },
+      timeSeconds: 0,
+      width,
+    }).data).toEqual(frozen)
+  })
+
+  it('keeps Character pixels on main controls and phase zero', () => {
+    const width = 96
+    const height = 72
+    const source = solidRgb(width, height, [0, 0, 0])
+    const base = render({ height, rgb: source, width }).data
+    expect(render({
+      height,
+      rgb: source,
+      settings: {
+        backgroundDensity: 50,
+        backgroundLayers: 4,
+        backgroundAngle: 0,
+        backgroundLineWidth: 0.5,
+        backgroundRandomness: 1,
+        backgroundSpeed: 10,
+      },
+      width,
+    }).data).toEqual(base)
+    expect(render({
+      height,
+      rgb: source,
+      settings: { backgroundSpeed: 0 },
+      width,
+    }).data).toEqual(base)
+  })
+
   it('uses clamp-to-edge linear source sampling', () => {
     const rgb = rowRgb([[0, 10, 20], [200, 210, 220]])
     expect(sampleCrosshatchSourceLinear(rgb, 2, 1, -1, 0.5)).toEqual([0, 10 / 255, 20 / 255])
@@ -273,6 +386,8 @@ describe('Crosshatch CPU reference', () => {
       settings: DEFAULT_CROSSHATCH_SETTINGS,
       width: 1,
     })).toThrow('width * height * 3')
+    expect(() => render({ settings: { density: 0 } })).toThrow('between 1 and 50')
+    expect(() => render({ settings: { density: 51 } })).toThrow('between 1 and 50')
     expect(() => render({ settings: { density: 2.5 } })).toThrow('integer')
     expect(() => render({ settings: { layers: 5 } })).toThrow('between 1 and 4')
     expect(() => render({ settings: { angle: 12 } })).toThrow('increments of 5')
@@ -280,6 +395,12 @@ describe('Crosshatch CPU reference', () => {
     expect(() => render({ settings: { lineWidth: 0.51 } })).toThrow('between 0.01 and 0.5')
     expect(() => render({ settings: { lineWidth: 0.015 } })).toThrow('increments of 0.01')
     expect(() => render({ settings: { randomness: 0.03 } })).toThrow('increments of 0.05')
+    expect(() => render({ settings: { backgroundDensity: 50.5 } })).toThrow('between 1 and 50')
+    expect(() => render({ settings: { backgroundLayers: 5 } })).toThrow('between 1 and 4')
+    expect(() => render({ settings: { backgroundAngle: 12 } })).toThrow('increments of 5')
+    expect(() => render({ settings: { backgroundLineWidth: 0.015 } })).toThrow('increments of 0.01')
+    expect(() => render({ settings: { backgroundRandomness: 0.03 } })).toThrow('increments of 0.05')
+    expect(() => render({ settings: { backgroundSpeed: 10.1 } })).toThrow('between 0 and 10')
     expect(() => render({ settings: { brightness: 1.5 } })).toThrow('integer')
     expect(() => render({ settings: { invert: 1 as unknown as boolean } })).toThrow('boolean')
     expect(() => render({ settings: { lineColor: [0, 0, 256] } })).toThrow('color channel')
@@ -298,6 +419,7 @@ function render(options: {
   height?: number
   rgb?: Uint8Array | Uint8ClampedArray
   settings?: Partial<CrosshatchSettings>
+  timeSeconds?: number
   width?: number
 } = {}) {
   return renderCrosshatchReference(makeInput(options))
@@ -307,6 +429,7 @@ function makeInput(options: {
   height?: number
   rgb?: Uint8Array | Uint8ClampedArray
   settings?: Partial<CrosshatchSettings>
+  timeSeconds?: number
   width?: number
 } = {}) {
   const width = options.width ?? 16
@@ -315,6 +438,7 @@ function makeInput(options: {
     height,
     rgb: options.rgb ?? gradientRgb(width, height),
     settings: { ...DEFAULT_CROSSHATCH_SETTINGS, ...options.settings },
+    timeSeconds: options.timeSeconds,
     width,
   }
 }

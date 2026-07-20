@@ -112,6 +112,7 @@ export const DEFAULT_VIEW_STATE = {
   expandedSections: {
     input: true,
     effects: true,
+    modelDeform: true,
     animation: false,
     presets: false,
     settings: true,
@@ -138,6 +139,7 @@ export type StudioMobileTab = 'input' | 'effects' | 'animation' | 'export'
 export type StudioSectionId =
   | 'input'
   | 'effects'
+  | 'modelDeform'
   | 'animation'
   | 'presets'
   | 'settings'
@@ -2675,6 +2677,7 @@ function sanitizeExpandedSections(
   return {
     input: typeof record.input === 'boolean' ? record.input : fallback.input,
     effects: typeof record.effects === 'boolean' ? record.effects : fallback.effects,
+    modelDeform: typeof record.modelDeform === 'boolean' ? record.modelDeform : fallback.modelDeform,
     animation: typeof record.animation === 'boolean' ? record.animation : fallback.animation,
     presets: typeof record.presets === 'boolean' ? record.presets : fallback.presets,
     settings: typeof record.settings === 'boolean' ? record.settings : fallback.settings,

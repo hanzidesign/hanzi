@@ -27,6 +27,12 @@ uniform float u_density;
 uniform float u_angle;
 uniform float u_layers;
 uniform float u_lineWidth;
+uniform float u_backgroundDensity;
+uniform float u_backgroundLayers;
+uniform float u_backgroundAngle;
+uniform float u_backgroundLineWidth;
+uniform float u_backgroundRandomness;
+uniform float u_backgroundSpeed;
 uniform float u_brightness;
 uniform float u_contrast;
 uniform float u_invert;
@@ -111,7 +117,7 @@ float crosshatchValueNoise(vec2 p) {
   );
 }
 
-float crosshatchPattern(vec2 uv, float angle, float spacing, float width, float seed, float phase) {
+float crosshatchPattern(vec2 uv, float angle, float spacing, float width, float seed, float phase, float randomness) {
   float sine = sin(angle);
   float cosine = cos(angle);
   float rotatedX = uv.x * cosine - uv.y * sine;
@@ -119,9 +125,9 @@ float crosshatchPattern(vec2 uv, float angle, float spacing, float width, float 
   float scaledX = rotatedX * u_resolution.x / spacing + phase;
 
   float wobble = 0.0;
-  if (u_randomness > 0.0) {
+  if (randomness > 0.0) {
     vec2 noiseCoord = vec2(floor(scaledX) * 0.1 + seed * 7.0, rotatedY * 0.02);
-    wobble = (crosshatchValueNoise(noiseCoord * 3.0) - 0.5) * u_randomness * 0.4;
+    wobble = (crosshatchValueNoise(noiseCoord * 3.0) - 0.5) * randomness * 0.4;
   }
 
   float distanceToLine = abs(fract(scaledX + wobble) - 0.5);
@@ -150,7 +156,7 @@ void main() {
   vec3 rawSourceColor = crosshatchSourceSample(v_uv);
   vec3 sourceColor = crosshatchBlurredSource(v_uv);
   float backgroundMotionMask = smoothstep(0.92, 0.995, crosshatchLuminance(rawSourceColor));
-  float backgroundPhase = backgroundMotionMask * u_time * 0.08;
+  float backgroundPhase = backgroundMotionMask * u_time * 0.08 * u_backgroundSpeed;
   vec3 adjustedColor = applyCrosshatchBrightnessContrast(clamp(sourceColor, 0.0, 1.0));
   float luminanceValue = crosshatchLuminance(adjustedColor);
   if (u_invert > 0.5) {
@@ -164,16 +170,16 @@ void main() {
   float width = u_lineWidth;
   float baseAngle = u_angle;
 
-  float hatch0 = crosshatchPattern(v_uv, baseAngle, spacing * 1.5, width * 0.7, 0.0, backgroundPhase);
-  float hatch1New = crosshatchPattern(v_uv, baseAngle + CROSSHATCH_PI * 0.5, spacing * 1.5, width * 0.7, 1.0, backgroundPhase);
+  float hatch0 = crosshatchPattern(v_uv, baseAngle, spacing * 1.5, width * 0.7, 0.0, 0.0, u_randomness);
+  float hatch1New = crosshatchPattern(v_uv, baseAngle + CROSSHATCH_PI * 0.5, spacing * 1.5, width * 0.7, 1.0, 0.0, u_randomness);
   float hatch1 = max(hatch0, hatch1New);
-  float hatch2New = crosshatchPattern(v_uv, baseAngle, spacing, width * 0.8, 2.0, backgroundPhase);
+  float hatch2New = crosshatchPattern(v_uv, baseAngle, spacing, width * 0.8, 2.0, 0.0, u_randomness);
   float hatch2 = max(hatch1, hatch2New);
-  float hatch3New = crosshatchPattern(v_uv, baseAngle + CROSSHATCH_PI * 0.5, spacing, width * 0.8, 3.0, backgroundPhase);
+  float hatch3New = crosshatchPattern(v_uv, baseAngle + CROSSHATCH_PI * 0.5, spacing, width * 0.8, 3.0, 0.0, u_randomness);
   float hatch3 = max(hatch2, hatch3New);
-  float hatch4New = crosshatchPattern(v_uv, baseAngle + CROSSHATCH_PI * 0.25, spacing * 0.85, width * 0.9, 4.0, backgroundPhase);
+  float hatch4New = crosshatchPattern(v_uv, baseAngle + CROSSHATCH_PI * 0.25, spacing * 0.85, width * 0.9, 4.0, 0.0, u_randomness);
   float hatch4 = max(hatch3, hatch4New);
-  float hatch5New = crosshatchPattern(v_uv, baseAngle + CROSSHATCH_PI * 0.75, spacing * 0.85, width * 0.9, 5.0, backgroundPhase);
+  float hatch5New = crosshatchPattern(v_uv, baseAngle + CROSSHATCH_PI * 0.75, spacing * 0.85, width * 0.9, 5.0, 0.0, u_randomness);
   float hatch5 = max(hatch4, hatch5New);
 
   float level0 = hatch0;
@@ -209,12 +215,31 @@ void main() {
   float weight4 = ramp4 - ramp5;
   float weight5 = ramp5;
 
-  float hatchValue = level0 * weight0
+  float characterHatchValue = level0 * weight0
     + level1 * weight1
     + level2 * weight2
     + level3 * weight3
     + level4 * weight4
     + level5 * weight5;
+
+  float backgroundSpacing = u_backgroundDensity * 1.5;
+  float backgroundWidth = u_backgroundLineWidth * 0.7;
+  float background0 = crosshatchPattern(v_uv, u_backgroundAngle, backgroundSpacing, backgroundWidth, 0.0, backgroundPhase, u_backgroundRandomness);
+  float background90 = crosshatchPattern(v_uv, u_backgroundAngle + CROSSHATCH_PI * 0.5, backgroundSpacing, backgroundWidth, 1.0, backgroundPhase, u_backgroundRandomness);
+  float background45 = crosshatchPattern(v_uv, u_backgroundAngle + CROSSHATCH_PI * 0.25, backgroundSpacing, backgroundWidth, 2.0, backgroundPhase, u_backgroundRandomness);
+  float background135 = crosshatchPattern(v_uv, u_backgroundAngle + CROSSHATCH_PI * 0.75, backgroundSpacing, backgroundWidth, 3.0, backgroundPhase, u_backgroundRandomness);
+  float backgroundPattern = background0;
+  if (u_backgroundLayers >= 2.0) {
+    backgroundPattern = max(backgroundPattern, background90);
+  }
+  if (u_backgroundLayers >= 3.0) {
+    backgroundPattern = max(backgroundPattern, background45);
+  }
+  if (u_backgroundLayers >= 4.0) {
+    backgroundPattern = max(backgroundPattern, background135);
+  }
+  float backgroundHatchValue = backgroundPattern * ramp0;
+  float hatchValue = mix(characterHatchValue, backgroundHatchValue, backgroundMotionMask);
 
   vec3 effectColor = mix(u_background, u_lineColor, hatchValue);
   float effectLuminance = crosshatchLuminance(effectColor);
@@ -242,6 +267,12 @@ export function createCrosshatchShaderMaterial({
       u_angle: { value: Math.PI / 4 },
       u_layers: { value: 3 },
       u_lineWidth: { value: 0.08 },
+      u_backgroundDensity: { value: 12 },
+      u_backgroundLayers: { value: 1 },
+      u_backgroundAngle: { value: Math.PI / 4 },
+      u_backgroundLineWidth: { value: 0.08 },
+      u_backgroundRandomness: { value: 0 },
+      u_backgroundSpeed: { value: 0.1 },
       u_brightness: { value: -0.04 },
       u_contrast: { value: 0 },
       u_invert: { value: 0 },
@@ -277,6 +308,12 @@ export function applyCrosshatchUniforms(
   material.uniforms.u_angle.value = readNumber(controls.angle, 45) * (Math.PI / 180)
   material.uniforms.u_layers.value = readNumber(controls.layers, 3)
   material.uniforms.u_lineWidth.value = readNumber(controls['line-width'], 0.08)
+  material.uniforms.u_backgroundDensity.value = readNumber(controls['background-density'], 12)
+  material.uniforms.u_backgroundLayers.value = readNumber(controls['background-layers'], 1)
+  material.uniforms.u_backgroundAngle.value = readNumber(controls['background-angle'], 45) * (Math.PI / 180)
+  material.uniforms.u_backgroundLineWidth.value = readNumber(controls['background-line-width'], 0.08)
+  material.uniforms.u_backgroundRandomness.value = readNumber(controls['background-randomness'], 0)
+  material.uniforms.u_backgroundSpeed.value = readNumber(controls['background-speed'], 0.1)
   material.uniforms.u_brightness.value = readNumber(controls.brightness, -4) / 100
   material.uniforms.u_contrast.value = readNumber(controls.contrast, 0) / 100
   material.uniforms.u_invert.value = readBoolean(controls.invert)

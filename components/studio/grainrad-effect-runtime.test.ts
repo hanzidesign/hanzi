@@ -478,7 +478,7 @@ describe('Phase 5F Grainrad runtime effect compiler', () => {
       selectedEffectId: 'pixel-sort',
       controls: {
         ...defaults,
-        direction: 'diagonal',
+        direction: 'radial',
         'sort-mode': 'saturation',
         threshold: 0.45,
         'streak-length': 270,
@@ -491,7 +491,7 @@ describe('Phase 5F Grainrad runtime effect compiler', () => {
     })
 
     expect(runtime.effectValues.slice(0, 9)).toEqual([
-      2,
+      4,
       2,
       0.45,
       270,
@@ -503,6 +503,13 @@ describe('Phase 5F Grainrad runtime effect compiler', () => {
     ])
     expect(runtime.effectColorA).toEqual([1, 1, 1])
     expect(runtime.effectColorB).toEqual([0, 0, 0])
+
+    expect(['horizontal', 'vertical', 'diagonal', 'anti-diagonal', 'radial'].map((direction) => (
+      compileGrainradEffectRuntime({
+        selectedEffectId: 'pixel-sort',
+        controls: { ...defaults, direction },
+      }).effectValues[0]
+    ))).toEqual([0, 1, 2, 3, 4])
   })
 
   it('packs Blockify controls in the exact production uniform units and ids', () => {
@@ -615,12 +622,18 @@ describe('Phase 5F Grainrad runtime effect compiler', () => {
         contrast: -25,
         invert: true,
         randomness: 0.75,
+        'background-density': 40,
+        'background-layers': 4,
+        'background-angle': 15,
+        'background-line-width': 0.24,
+        'background-randomness': 0.35,
+        'background-speed': 2.4,
         'line-color': '#123456',
         background: '#abcdef',
       },
     })
 
-    expect(runtime.effectValues.slice(0, 8)).toEqual([
+    expect(runtime.effectValues.slice(0, 14)).toEqual([
       11,
       Math.PI / 2,
       4,
@@ -629,6 +642,12 @@ describe('Phase 5F Grainrad runtime effect compiler', () => {
       -0.25,
       1,
       0.75,
+      40,
+      4,
+      Math.PI / 12,
+      0.24,
+      0.35,
+      2.4,
     ])
     expect(runtime.effectColorA).toEqual([0x12 / 255, 0x34 / 255, 0x56 / 255])
     expect(runtime.effectColorB).toEqual([0xab / 255, 0xcd / 255, 0xef / 255])

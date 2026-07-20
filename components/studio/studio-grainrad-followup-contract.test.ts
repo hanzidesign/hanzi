@@ -52,7 +52,9 @@ const liveDropdownOptionLabels = [
   '16x16 (Very Fine)',
   'Line',
   'Hexagonal Grid',
-  'Diagonal',
+  '45°',
+  '-45°',
+  'Radial',
   'Shaded',
   'Worley',
 ]

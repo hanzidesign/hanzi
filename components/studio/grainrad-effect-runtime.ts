@@ -274,6 +274,12 @@ const EFFECT_CONTROL_IDS: Record<GrainradEffectId, string[]> = {
     'line-width',
     'randomness',
     'invert',
+    'background-density',
+    'background-layers',
+    'background-angle',
+    'background-line-width',
+    'background-randomness',
+    'background-speed',
     'brightness',
     'contrast',
     'line-color',
@@ -416,6 +422,8 @@ const PIXEL_SORT_DIRECTION_IDS: Record<string, number> = {
   horizontal: 0,
   vertical: 1,
   diagonal: 2,
+  'anti-diagonal': 3,
+  radial: 4,
 }
 
 const PIXEL_SORT_MODE_IDS: Record<string, number> = {
@@ -647,6 +655,12 @@ export function compileGrainradEffectRuntime({
       effectValues[5] = read.number('contrast', 0) / 100
       effectValues[6] = read.boolean('invert')
       effectValues[7] = read.number('randomness', 0)
+      effectValues[8] = read.number('background-density', 12)
+      effectValues[9] = read.number('background-layers', 1)
+      effectValues[10] = read.number('background-angle', 45) * Math.PI / 180
+      effectValues[11] = read.number('background-line-width', 0.08)
+      effectValues[12] = read.number('background-randomness', 0)
+      effectValues[13] = read.number('background-speed', 0.1)
       effectColorA = read.color('line-color', '#000000')
       effectColorB = read.color('background', '#ffffff')
       break

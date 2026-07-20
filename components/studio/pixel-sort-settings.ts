@@ -12,7 +12,11 @@ export function readPixelSortSettings(
   theme: PixelSortTheme = 'light',
 ): PixelSortSettings {
   return {
-    direction: readEnum(controls.direction, ['horizontal', 'vertical', 'diagonal'], 'horizontal'),
+    direction: readEnum(
+      controls.direction,
+      ['horizontal', 'vertical', 'diagonal', 'anti-diagonal', 'radial'],
+      'horizontal',
+    ),
     mode: readEnum(controls['sort-mode'], ['brightness', 'hue', 'saturation'], 'hue'),
     threshold: readNumber(controls.threshold, DEFAULT_PIXEL_SORT_SETTINGS.threshold),
     streakLength: readNumber(controls['streak-length'], DEFAULT_PIXEL_SORT_SETTINGS.streakLength),

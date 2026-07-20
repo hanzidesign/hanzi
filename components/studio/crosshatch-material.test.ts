@@ -30,6 +30,12 @@ describe('Crosshatch shader material', () => {
     expect(material.uniforms.u_layers.value).toBe(3)
     expect(material.uniforms.u_angle.value).toBeCloseTo(Math.PI / 4)
     expect(material.uniforms.u_lineWidth.value).toBe(0.08)
+    expect(material.uniforms.u_backgroundDensity.value).toBe(12)
+    expect(material.uniforms.u_backgroundLayers.value).toBe(1)
+    expect(material.uniforms.u_backgroundAngle.value).toBeCloseTo(Math.PI / 4)
+    expect(material.uniforms.u_backgroundLineWidth.value).toBe(0.08)
+    expect(material.uniforms.u_backgroundRandomness.value).toBe(0)
+    expect(material.uniforms.u_backgroundSpeed.value).toBe(0.1)
     expect(material.uniforms.u_randomness.value).toBe(0)
     expect(material.uniforms.u_brightnessMap.value).toBe(1)
     expect(material.uniforms.u_invert.value).toBe(0)
@@ -48,6 +54,12 @@ describe('Crosshatch shader material', () => {
       layers: 4,
       angle: 90,
       'line-width': 0.75,
+      'background-density': 40,
+      'background-layers': 4,
+      'background-angle': 15,
+      'background-line-width': 0.24,
+      'background-randomness': 0.35,
+      'background-speed': 2.4,
       randomness: 0.65,
       invert: true,
       brightness: 40,
@@ -61,6 +73,12 @@ describe('Crosshatch shader material', () => {
     expect(material.uniforms.u_layers.value).toBe(4)
     expect(material.uniforms.u_angle.value).toBeCloseTo(Math.PI / 2)
     expect(material.uniforms.u_lineWidth.value).toBe(0.75)
+    expect(material.uniforms.u_backgroundDensity.value).toBe(40)
+    expect(material.uniforms.u_backgroundLayers.value).toBe(4)
+    expect(material.uniforms.u_backgroundAngle.value).toBeCloseTo(Math.PI / 12)
+    expect(material.uniforms.u_backgroundLineWidth.value).toBe(0.24)
+    expect(material.uniforms.u_backgroundRandomness.value).toBe(0.35)
+    expect(material.uniforms.u_backgroundSpeed.value).toBe(2.4)
     expect(material.uniforms.u_randomness.value).toBe(0.65)
     expect(material.uniforms.u_invert.value).toBe(1)
     expect(material.uniforms.u_brightness.value).toBe(0.4)
@@ -83,7 +101,7 @@ describe('Crosshatch shader material', () => {
       'vec2 noiseCoord = vec2(floor(scaledX) * 0.1 + seed * 7.0, rotatedY * 0.02);',
     )
     expect(CROSSHATCH_FRAGMENT_SHADER).toContain(
-      '(crosshatchValueNoise(noiseCoord * 3.0) - 0.5) * u_randomness * 0.4',
+      '(crosshatchValueNoise(noiseCoord * 3.0) - 0.5) * randomness * 0.4',
     )
     expect(CROSSHATCH_FRAGMENT_SHADER).toContain(
       'float scaledX = rotatedX * u_resolution.x / spacing + phase;',
@@ -104,7 +122,7 @@ describe('Crosshatch shader material', () => {
       'float backgroundMotionMask = smoothstep(0.92, 0.995, crosshatchLuminance(rawSourceColor));',
     )
     expect(CROSSHATCH_FRAGMENT_SHADER).toContain(
-      'float backgroundPhase = backgroundMotionMask * u_time * 0.08;',
+      'float backgroundPhase = backgroundMotionMask * u_time * 0.08 * u_backgroundSpeed;',
     )
     expect(CROSSHATCH_FRAGMENT_SHADER).toContain(
       'float backgroundHatchStrength = clamp(0.04 - u_brightness * 0.2, 0.006, 0.2);',
@@ -113,9 +131,30 @@ describe('Crosshatch shader material', () => {
       'float backgroundHatchFloor = backgroundMotionMask * backgroundHatchStrength;',
     )
     expect(CROSSHATCH_FRAGMENT_SHADER).toContain(
-      'float crosshatchPattern(vec2 uv, float angle, float spacing, float width, float seed, float phase)',
+      'float crosshatchPattern(vec2 uv, float angle, float spacing, float width, float seed, float phase, float randomness)',
     )
     expect(CROSSHATCH_FRAGMENT_SHADER).not.toContain('hatchValue *= backgroundMotionMask')
+    expect(CROSSHATCH_FRAGMENT_SHADER).toContain(
+      'float hatchValue = mix(characterHatchValue, backgroundHatchValue, backgroundMotionMask);',
+    )
+  })
+
+  it('uses Background Lines Layers as the exact progressive direction count', () => {
+    expect(CROSSHATCH_FRAGMENT_SHADER).toContain(
+      'float backgroundPattern = background0;',
+    )
+    expect(CROSSHATCH_FRAGMENT_SHADER).toContain('if (u_backgroundLayers >= 2.0)')
+    expect(CROSSHATCH_FRAGMENT_SHADER).toContain(
+      'backgroundPattern = max(backgroundPattern, background90);',
+    )
+    expect(CROSSHATCH_FRAGMENT_SHADER).toContain('if (u_backgroundLayers >= 3.0)')
+    expect(CROSSHATCH_FRAGMENT_SHADER).toContain(
+      'backgroundPattern = max(backgroundPattern, background45);',
+    )
+    expect(CROSSHATCH_FRAGMENT_SHADER).toContain('if (u_backgroundLayers >= 4.0)')
+    expect(CROSSHATCH_FRAGMENT_SHADER).toContain(
+      'backgroundPattern = max(backgroundPattern, background135);',
+    )
   })
 
   it('applies canonical Brightness to source luminance before hatch density', () => {

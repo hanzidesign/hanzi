@@ -45,7 +45,9 @@ describe('Grainrad Pixel Sort schema', () => {
       options: [
         { value: 'horizontal', label: 'Horizontal' },
         { value: 'vertical', label: 'Vertical' },
-        { value: 'diagonal', label: 'Diagonal' },
+        { value: 'diagonal', label: '45°' },
+        { value: 'anti-diagonal', label: '-45°' },
+        { value: 'radial', label: 'Radial' },
       ],
     })
     expect(controls['sort-mode']).toMatchObject({

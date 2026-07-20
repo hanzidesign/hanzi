@@ -22,6 +22,7 @@ import type {
 } from '@/components/studio/character-mesh-deform'
 import { resetCharacterMeshDeformFeature } from '@/components/studio/character-mesh-deform'
 import { GRAINRAD_EFFECTS } from '@/components/studio/grainrad-effects'
+import { useStudioRenderMode } from '@/components/studio/studio-render-context'
 import classes from './StudioShell.module.css'
 
 export default function StudioLeftPanel() {
@@ -50,10 +51,6 @@ export default function StudioLeftPanel() {
         </div>
         <StudioModelPanel />
         <div className={classes.inputGroupHeader}>
-          <div className={classes.inputLabel}>Model Deform</div>
-        </div>
-        <StudioModelDeformPanel />
-        <div className={classes.inputGroupHeader}>
           <div className={classes.inputLabel}>3D Motion</div>
           <StudioMotionReset />
         </div>
@@ -61,6 +58,9 @@ export default function StudioLeftPanel() {
       </TerminalSection>
       <TerminalSection id="effects" title="Effects">
         <StudioEffectsPanel />
+      </TerminalSection>
+      <TerminalSection id="modelDeform" title="Model Deform">
+        <StudioModelDeformPanel />
       </TerminalSection>
       <TerminalSection id="presets" title="Presets">
         <p className={classes.panelNote}>Effect-local presets will appear here.</p>
@@ -365,6 +365,21 @@ export function StudioMotionPanel() {
   const mesh = useStudioStore((store) => store.mesh)
   const setAnimationControl = useStudioStore((store) => store.setAnimationControl)
   const setMeshControl = useStudioStore((store) => store.setMeshControl)
+  const { readCharacterRotationY } = useStudioRenderMode()
+  const handlePlayingChange = (playing: boolean) => {
+    if (playing) {
+      setAnimationControl({ playing: true })
+      return
+    }
+
+    setMeshControl({
+      rotation: {
+        ...mesh.rotation,
+        y: readCharacterRotationY(mesh.rotation.y),
+      },
+    })
+    setAnimationControl({ playing: false })
+  }
   const setMeshRotation = (axis: 'x' | 'y' | 'z', degrees: number) => {
     setMeshControl({
       rotation: {
@@ -416,7 +431,7 @@ export function StudioMotionPanel() {
         <TerminalToggleRow
           label="Play"
           checked={animation.playing}
-          onChange={(playing) => setAnimationControl({ playing })}
+          onChange={handlePlayingChange}
         />
         <TerminalRangeRow
           label="Scale"

@@ -151,23 +151,31 @@ describe('Phase 5D Grainrad terminal Studio store', () => {
     store.getState().setSelectedEffect('crosshatch')
     store.getState().setGrainradEffectControl('crosshatch', 'density', 8)
     store.getState().setGrainradEffectControl('crosshatch', 'line-width', 0.2)
+    store.getState().setGrainradEffectControl('crosshatch', 'background-layers', 4)
+    store.getState().setGrainradEffectControl('crosshatch', 'background-speed', 8)
     store.getState().setGrainradEffectControl('crosshatch', 'brightness', -20)
     store.getState().toggleStudioTheme()
 
     expect(store.getState().grainradEffect.controls.crosshatch).toMatchObject({
       density: 6,
       'line-width': 0.08,
+      'background-layers': 1,
+      'background-speed': 0.1,
       brightness: -15,
     })
 
     store.getState().setGrainradEffectControl('crosshatch', 'density', 10)
     store.getState().setGrainradEffectControl('crosshatch', 'line-width', 0.1)
+    store.getState().setGrainradEffectControl('crosshatch', 'background-layers', 2)
+    store.getState().setGrainradEffectControl('crosshatch', 'background-speed', 3)
     store.getState().setGrainradEffectControl('crosshatch', 'brightness', -30)
     store.getState().toggleStudioTheme()
 
     expect(store.getState().grainradEffect.controls.crosshatch).toMatchObject({
       density: 8,
       'line-width': 0.2,
+      'background-layers': 4,
+      'background-speed': 8,
       brightness: -20,
     })
 
@@ -175,6 +183,8 @@ describe('Phase 5D Grainrad terminal Studio store', () => {
     expect(store.getState().grainradEffect.controls.crosshatch).toMatchObject({
       density: 6,
       'line-width': 0.08,
+      'background-layers': 1,
+      'background-speed': 0.1,
       brightness: -4,
     })
 
@@ -182,6 +192,8 @@ describe('Phase 5D Grainrad terminal Studio store', () => {
     expect(store.getState().grainradEffect.controls.crosshatch).toMatchObject({
       density: 10,
       'line-width': 0.1,
+      'background-layers': 2,
+      'background-speed': 3,
       brightness: -30,
     })
   })
@@ -536,6 +548,7 @@ describe('Phase 5D Grainrad terminal Studio store', () => {
     expect(initial.view.expandedSections).toMatchObject({
       input: true,
       effects: true,
+      modelDeform: true,
       settings: true,
       export: true,
     })
@@ -601,6 +614,24 @@ describe('Phase 5D Grainrad terminal Studio store', () => {
     expect(store.getState().patternLayers).toEqual(base.patternLayers)
     expect(store.getState().randomSeed).toBe(base.randomSeed)
     expect(store.getState().postFx).toEqual(base.postFx)
+  })
+
+  it('defaults a missing persisted Model Deform section state to expanded', () => {
+    const base = createInitialStudioStoreState()
+    const expandedSectionsWithoutModelDeform = Object.fromEntries(
+      Object.entries(base.view.expandedSections).filter(([sectionId]) => sectionId !== 'modelDeform'),
+    )
+    const persistedState = {
+      ...base,
+      view: {
+        ...base.view,
+        expandedSections: expandedSectionsWithoutModelDeform,
+      },
+    }
+    const { storage } = createMemoryStorage(JSON.stringify({ state: persistedState, version: 8 }))
+    const store = createStudioStore(storage)
+
+    expect(store.getState().view.expandedSections.modelDeform).toBe(true)
   })
 
   it('clamps ASCII Output Width to the visible 0-600 column range', () => {
@@ -914,7 +945,7 @@ describe('Phase 5D Grainrad terminal Studio store', () => {
           contour: { ...base.grainradEffect.controls.contour, levels: 12 },
           'pixel-sort': {
             ...base.grainradEffect.controls['pixel-sort'],
-            direction: 'radial',
+            direction: 'unknown',
             'sort-mode': 'black',
             threshold: 9,
             'streak-length': -1,
@@ -962,6 +993,45 @@ describe('Phase 5D Grainrad terminal Studio store', () => {
     expect(store.getState().grainradEffect.controls.ascii.scale).toBe(9)
     expect(store.getState().grainradEffect.controls.contour.levels).toBe(12)
     expect(store.getState().mesh.twist).toBe(65)
+  })
+
+  it('persists Pixel Sort anti-diagonal and radial directions across themes and reset', () => {
+    const base = createInitialStudioStoreState()
+    const persistedState = {
+      ...base,
+      view: { ...base.view, theme: 'dark' as const },
+      grainradEffect: {
+        ...base.grainradEffect,
+        selectedEffectId: 'pixel-sort' as const,
+        controlsByTheme: {
+          ...base.grainradEffect.controlsByTheme,
+          light: {
+            ...base.grainradEffect.controlsByTheme.light,
+            'pixel-sort': {
+              ...base.grainradEffect.controlsByTheme.light['pixel-sort'],
+              direction: 'anti-diagonal',
+            },
+          },
+          dark: {
+            ...base.grainradEffect.controlsByTheme.dark,
+            'pixel-sort': {
+              ...base.grainradEffect.controlsByTheme.dark['pixel-sort'],
+              direction: 'radial',
+            },
+          },
+        },
+      },
+    }
+    const { storage } = createMemoryStorage(JSON.stringify({ state: persistedState, version: 8 }))
+    const store = createStudioStore(storage)
+
+    expect(store.getState().grainradEffect.controls['pixel-sort'].direction).toBe('radial')
+    store.getState().toggleStudioTheme()
+    expect(store.getState().grainradEffect.controls['pixel-sort'].direction).toBe('anti-diagonal')
+    store.getState().resetSelectedEffectControls()
+    expect(store.getState().grainradEffect.controls['pixel-sort'].direction).toBe('horizontal')
+    store.getState().toggleStudioTheme()
+    expect(store.getState().grainradEffect.controls['pixel-sort'].direction).toBe('radial')
   })
 
   it('sanitizes persisted Blockify controls and resets only Blockify', () => {
@@ -1180,7 +1250,7 @@ describe('Phase 5D Grainrad terminal Studio store', () => {
     const store = createStudioStore(storage)
 
     expect(store.getState().grainradEffect.controls.crosshatch).toMatchObject({
-      density: 12,
+      density: 50,
       layers: 1,
       angle: 90,
       'line-width': 0.08,

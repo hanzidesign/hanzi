@@ -44,7 +44,7 @@ describe('StudioProcessingEffect', () => {
     expect(uniformValue(effect, 'u_shapeMatching')).toBe(0)
   })
 
-  it('clamps unsafe values and gives every minimum and maximum a distinct uniform mapping', () => {
+  it('clamps unsafe values and keeps quantize strength disabled at zero', () => {
     expect(resolveStudioProcessingValues({
       'processing-invert': true,
       'brightness-map': -10,
@@ -72,11 +72,30 @@ describe('StudioProcessingEffect', () => {
       brightnessMap: STUDIO_PROCESSING_LIMITS.brightnessMap.max,
       edgeEnhance: STUDIO_PROCESSING_LIMITS.edgeEnhance.max,
       blurRadius: STUDIO_PROCESSING_LIMITS.blurRadius.max,
-      quantizeLevels: STUDIO_PROCESSING_LIMITS.quantizeLevels.max,
+      quantizeLevels: 2,
       shapeMatching: STUDIO_PROCESSING_LIMITS.shapeMatching.max,
     })
 
-    expect(resolveStudioProcessingValues({ 'quantize-colors': 1 }).quantizeLevels).toBe(2)
+    expect(resolveStudioProcessingValues({ 'quantize-colors': 1 }).quantizeLevels).toBe(64)
+  })
+
+  it('maps quantize strength logarithmically from weak to strong', () => {
+    const levelsAtOne = resolveStudioProcessingValues({ 'quantize-colors': 1 }).quantizeLevels
+    const levelsAtMidpoint = resolveStudioProcessingValues({ 'quantize-colors': 32 }).quantizeLevels
+    const levelsAtMax = resolveStudioProcessingValues({ 'quantize-colors': 64 }).quantizeLevels
+
+    expect(resolveStudioProcessingValues({ 'quantize-colors': 0 }).quantizeLevels).toBe(0)
+    expect(levelsAtOne).toBe(64)
+    expect(levelsAtMidpoint).toBeLessThan(64)
+    expect(levelsAtOne).toBeGreaterThan(levelsAtMidpoint)
+    expect(levelsAtMidpoint).toBeGreaterThan(levelsAtMax)
+    expect(levelsAtMax).toBe(2)
+
+    for (let strength = 1; strength < 64; strength += 1) {
+      const current = resolveStudioProcessingValues({ 'quantize-colors': strength }).quantizeLevels
+      const next = resolveStudioProcessingValues({ 'quantize-colors': strength + 1 }).quantizeLevels
+      expect(current).toBeGreaterThanOrEqual(next)
+    }
   })
 
   it('updates all Processing uniforms from Grainrad controls', () => {
@@ -95,7 +114,9 @@ describe('StudioProcessingEffect', () => {
     expect(uniformValue(effect, 'u_brightnessMap')).toBe(3)
     expect(uniformValue(effect, 'u_edgeEnhance')).toBe(2.5)
     expect(uniformValue(effect, 'u_blurRadius')).toBe(32)
-    expect(uniformValue(effect, 'u_quantizeLevels')).toBe(12)
+    expect(uniformValue(effect, 'u_quantizeLevels')).toBe(
+      resolveStudioProcessingValues({ 'quantize-colors': 12 }).quantizeLevels,
+    )
     expect(uniformValue(effect, 'u_shapeMatching')).toBe(0.75)
   })
 
@@ -126,8 +147,13 @@ describe('StudioProcessingEffect', () => {
     expect(shader).toContain('vec3(1.0 / u_brightnessMap)')
     expect(shader).toContain('mix(color, 1.0 - color, u_processingInvert)')
     expect(shader).toContain('if (u_quantizeLevels >= 2.0)')
-    expect(shader).toContain('centerLuma - neighborLuma')
-    expect(shader).toContain('mix(color, shapeMatched, u_shapeMatching)')
+    expect(shader).toContain('float centerLuma = processingLuminance(center.rgb)')
+    expect(shader).toContain('vec3(step(0.5, centerLuma))')
+    expect(shader).toContain('mix(color, vec3(step(0.5, centerLuma)), u_shapeMatching)')
+    expect(shader).not.toContain('neighborLuma')
+    expect(shader).not.toContain('processedLuma')
+    expect(shader).not.toContain('shapeLuma')
+    expect(shader).not.toContain('shapeMatched')
     expect(shader).toContain('inputColor.a')
   })
 })

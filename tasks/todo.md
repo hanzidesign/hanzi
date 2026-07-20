@@ -6,6 +6,30 @@ Current status: Phase 5M now has all 15 Effects implemented as independent rende
 
 Keep this file as current-state tracking only. Historical phase logs belong in the superseded task docs or git history, not here.
 
+## Pixel Sort GPU Preview And Direction Expansion - 2026-07-20
+
+User contract:
+
+- Remove CPU Worker sorting, GPU readback, and replacement texture upload from interactive Pixel Sort preview while preserving exact CPU sorting for export.
+- Add effect-local Direction values: Horizontal, Vertical, 45°, -45°, and Radial. Horizontal remains the default.
+- Keep Model, 3D Motion, Processing/Post, theme persistence/reset, export sizing, and every non-Pixel-Sort renderer unchanged.
+
+Plan:
+
+- [x] Replace per-preview-frame CPU sorting with a bounded GPU presentation approximation and demand-driven source rendering.
+- [x] Extend schema, settings, runtime packing, exact CPU line traversal, persistence, and reset contracts to all five directions.
+- [x] Serialize exact export generations and acknowledge only the current exact result after presentation.
+- [x] Complete full tests, TypeScript, ESLint, production build, production-browser verification, diff hygiene, and final review.
+
+Review:
+
+- Interactive preview now samples the source render target directly in a bounded GPU pass. Production-browser instrumentation confirmed `0` Worker constructions and `0` GPU readbacks while previewing.
+- Exact PNG export remains Worker-backed and generation-guarded. Production-browser instrumentation confirmed `1` Worker construction and `1` GPU readback, followed by a successful 2048×2048 download acknowledgement.
+- Direction presents exactly Horizontal, Vertical, 45°, -45°, and Radial. Production screenshots for 45°, -45°, and Radial produced distinct image hashes with no console or page errors.
+- Shadow visibility correction maps preview colors across directional streak position instead of the mostly bright source luminance. Browser color-swap verification changed `38.8%` of foreground pixels, confirming Shadow now has a material visual contribution.
+- Final review caught and closed React Strict Mode coordinator disposal and stale pending-ack races; all invalidation paths now clear both the pending acknowledgement and last requested generation without permanently disabling the coordinator.
+- Verification passed: full Vitest (`115` files / `746` tests), TypeScript, full ESLint, production build, production Playwright smoke, and `git diff --check`.
+
 ## Export Tooltip UX Correction - 2026-07-14
 
 Plan:

@@ -1,7 +1,7 @@
 export type PixelSortRgb = readonly [number, number, number]
 export type PixelSortRgba = readonly [number, number, number, number]
 export type PixelSortVec2 = readonly [number, number]
-export type PixelSortDirection = 'horizontal' | 'vertical' | 'diagonal'
+export type PixelSortDirection = 'horizontal' | 'vertical' | 'diagonal' | 'anti-diagonal' | 'radial'
 export type PixelSortMode = 'brightness' | 'hue' | 'saturation' | 'dark'
 export type PixelSortTheme = 'light' | 'dark'
 
@@ -56,9 +56,19 @@ export type PixelSortSpanTrace = Readonly<{
 
 type ScanlineDescriptor = Readonly<{
   coordinate: number
+  direction: PixelSortVec2
   length: number
   indexAt: (position: number) => number
+  positionAt: (x: number, y: number) => number
 }>
+
+type RadialLayout = Readonly<{
+  lines: readonly ScanlineDescriptor[]
+  lineByPixel: Int32Array
+  positionByPixel: Int32Array
+}>
+
+let radialLayoutCache: { key: string; layout: RadialLayout } | null = null
 
 export const DEFAULT_PIXEL_SORT_SETTINGS: PixelSortSettings = {
   direction: 'horizontal',
@@ -187,7 +197,7 @@ export function tracePixelSortSpan({
   }
 
   const line = findScanline(width, height, settings.direction, x, y)
-  const linePosition = getLinePosition(settings.direction, x, y)
+  const linePosition = line.positionAt(x, y)
   const variedThreshold = getPixelSortThreshold(
     line.coordinate,
     settings.threshold,
@@ -223,7 +233,7 @@ export function tracePixelSortSpan({
   return {
     blockEnd,
     blockStart,
-    direction: directionVector(settings.direction),
+    direction: line.direction,
     lineCoordinate: line.coordinate,
     linePosition,
     sortable: spanSize >= 2,
@@ -301,6 +311,10 @@ function* createScanlines(
   height: number,
   direction: PixelSortDirection,
 ): Generator<ScanlineDescriptor> {
+  if (direction === 'radial') {
+    yield* getRadialLayout(width, height).lines
+    return
+  }
   if (direction === 'horizontal') {
     for (let y = 0; y < height; y += 1) {
       yield createScanline(width, height, direction, y)
@@ -314,7 +328,9 @@ function* createScanlines(
     return
   }
 
-  for (let coordinate = 1 - height; coordinate < width; coordinate += 1) {
+  const coordinateStart = direction === 'anti-diagonal' ? 0 : 1 - height
+  const coordinateEnd = direction === 'anti-diagonal' ? width + height - 1 : width
+  for (let coordinate = coordinateStart; coordinate < coordinateEnd; coordinate += 1) {
     yield createScanline(width, height, direction, coordinate)
   }
 }
@@ -326,7 +342,19 @@ function findScanline(
   x: number,
   y: number,
 ) {
-  const coordinate = direction === 'horizontal' ? y : direction === 'vertical' ? x : x - y
+  if (direction === 'radial') {
+    const layout = getRadialLayout(width, height)
+    const lineIndex = layout.lineByPixel[y * width + x]
+    if (lineIndex < 0) throw new RangeError('Pixel Sort radial layout does not contain trace coordinates')
+    return layout.lines[lineIndex]!
+  }
+  const coordinate = direction === 'horizontal'
+    ? y
+    : direction === 'vertical'
+      ? x
+      : direction === 'anti-diagonal'
+        ? x + y
+        : x - y
   return createScanline(width, height, direction, coordinate)
 }
 
@@ -337,10 +365,34 @@ function createScanline(
   coordinate: number,
 ): ScanlineDescriptor {
   if (direction === 'horizontal') {
-    return { coordinate, length: width, indexAt: (position) => coordinate * width + position }
+    return {
+      coordinate,
+      direction: [1, 0],
+      length: width,
+      indexAt: (position) => coordinate * width + position,
+      positionAt: (x) => x,
+    }
   }
   if (direction === 'vertical') {
-    return { coordinate, length: height, indexAt: (position) => position * width + coordinate }
+    return {
+      coordinate,
+      direction: [0, 1],
+      length: height,
+      indexAt: (position) => position * width + coordinate,
+      positionAt: (_x, y) => y,
+    }
+  }
+  if (direction === 'anti-diagonal') {
+    const startX = Math.max(0, coordinate - (height - 1))
+    const startY = coordinate - startX
+    const length = Math.min(width - startX, startY + 1)
+    return {
+      coordinate,
+      direction: [1, -1],
+      length,
+      indexAt: (position) => (startY - position) * width + startX + position,
+      positionAt: (x) => x - startX,
+    }
   }
 
   const startX = Math.max(0, coordinate)
@@ -348,13 +400,102 @@ function createScanline(
   const length = Math.min(width - startX, height - startY)
   return {
     coordinate,
+    direction: [1, 1],
     length,
     indexAt: (position) => (startY + position) * width + startX + position,
+    positionAt: (x) => x - startX,
   }
 }
 
-function getLinePosition(direction: PixelSortDirection, x: number, y: number) {
-  return direction === 'horizontal' ? x : direction === 'vertical' ? y : Math.min(x, y)
+function getRadialLayout(width: number, height: number): RadialLayout {
+  const key = `${width}x${height}`
+  if (radialLayoutCache?.key === key) return radialLayoutCache.layout
+
+  const centerX = (width - 1) / 2
+  const centerY = (height - 1) / 2
+  const rayCount = Math.max(1, Math.ceil(Math.PI * Math.hypot(width - 1, height - 1)))
+  const centerIndex = Number.isInteger(centerX) && Number.isInteger(centerY)
+    ? centerY * width + centerX
+    : -1
+  const pixelCount = width * height
+  const sectorForPixel = new Int32Array(pixelCount)
+  sectorForPixel.fill(-1)
+  const radiusSquared = new Float64Array(pixelCount)
+  const sectorCounts = new Int32Array(rayCount)
+
+  for (let index = 0; index < pixelCount; index += 1) {
+    if (index === centerIndex) continue
+    const x = index % width
+    const y = Math.floor(index / width)
+    const deltaX = x - centerX
+    const deltaY = y - centerY
+    const angle = Math.atan2(deltaY, deltaX)
+    const normalizedAngle = angle < 0 ? angle + Math.PI * 2 : angle
+    const sector = Math.min(
+      rayCount - 1,
+      Math.floor(normalizedAngle / (Math.PI * 2) * rayCount),
+    )
+    sectorForPixel[index] = sector
+    radiusSquared[index] = deltaX * deltaX + deltaY * deltaY
+    sectorCounts[sector] += 1
+  }
+
+  const sectorOffsets = new Int32Array(rayCount + 1)
+  for (let sector = 0; sector < rayCount; sector += 1) {
+    sectorOffsets[sector + 1] = sectorOffsets[sector]! + sectorCounts[sector]!
+  }
+  const sectorPixels = new Int32Array(sectorOffsets[rayCount]!)
+  const sectorCursors = new Int32Array(sectorOffsets)
+  for (let index = 0; index < pixelCount; index += 1) {
+    const sector = sectorForPixel[index]
+    if (sector >= 0) {
+      sectorPixels[sectorCursors[sector]!] = index
+      sectorCursors[sector] += 1
+    }
+  }
+
+  const lines: ScanlineDescriptor[] = []
+  const lineByPixel = new Int32Array(pixelCount)
+  lineByPixel.fill(-1)
+  const positionByPixel = new Int32Array(pixelCount)
+  positionByPixel.fill(-1)
+  for (let sector = 0; sector < rayCount; sector += 1) {
+    const start = sectorOffsets[sector]!
+    const end = sectorOffsets[sector + 1]!
+    const orderedPixels = Array.from(sectorPixels.subarray(start, end))
+    orderedPixels.sort((left, right) => radiusSquared[left]! - radiusSquared[right]! || left - right)
+    const pixels = Int32Array.from(orderedPixels)
+    const angle = (sector + 0.5) * Math.PI * 2 / rayCount
+    const line: ScanlineDescriptor = {
+      coordinate: sector,
+      direction: [Math.cos(angle), Math.sin(angle)],
+      length: pixels.length,
+      indexAt: (position) => pixels[position]!,
+      positionAt: (x, y) => positionByPixel[y * width + x] ?? -1,
+    }
+    lines.push(line)
+    pixels.forEach((pixelIndex, position) => {
+      lineByPixel[pixelIndex] = sector
+      positionByPixel[pixelIndex] = position
+    })
+  }
+
+  if (centerIndex >= 0) {
+    const centerLine: ScanlineDescriptor = {
+      coordinate: rayCount,
+      direction: [0, 0],
+      length: 1,
+      indexAt: () => centerIndex,
+      positionAt: () => 0,
+    }
+    lines.push(centerLine)
+    lineByPixel[centerIndex] = lines.length - 1
+    positionByPixel[centerIndex] = 0
+  }
+
+  const layout: RadialLayout = { lines, lineByPixel, positionByPixel }
+  radialLayoutCache = { key, layout }
+  return layout
 }
 
 function getBlockBounds(
@@ -386,14 +527,6 @@ function readRgb(
 ): PixelSortRgb {
   const offset = pixelIndex * 4
   return [source[offset] / 255, source[offset + 1] / 255, source[offset + 2] / 255]
-}
-
-function directionVector(direction: PixelSortDirection): PixelSortVec2 {
-  switch (direction) {
-    case 'horizontal': return [1, 0]
-    case 'vertical': return [0, 1]
-    case 'diagonal': return [1, 1]
-  }
 }
 
 function adjustSource(color: PixelSortRgb, brightness: number, contrast: number): PixelSortRgb {
@@ -523,8 +656,8 @@ function assertInput(
 }
 
 function assertSettings(settings: PixelSortSettings) {
-  if (!(['horizontal', 'vertical', 'diagonal'] as const).includes(settings.direction)) {
-    throw new RangeError('Pixel Sort direction must be horizontal, vertical, or diagonal')
+  if (!(['horizontal', 'vertical', 'diagonal', 'anti-diagonal', 'radial'] as const).includes(settings.direction)) {
+    throw new RangeError('Pixel Sort direction must be horizontal, vertical, diagonal, anti-diagonal, or radial')
   }
   if (!(['brightness', 'hue', 'saturation', 'dark'] as const).includes(settings.mode)) {
     throw new RangeError('Pixel Sort mode must be brightness, hue, saturation, or dark')

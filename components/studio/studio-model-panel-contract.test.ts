@@ -18,8 +18,16 @@ describe('Studio shared Model panel contract', () => {
     const styles = await readFile(join(studioDir, 'StudioShell.module.css'), 'utf8')
     const characterIndex = source.indexOf('>Character</div>')
     const modelIndex = source.indexOf('>Model</div>')
-    const deformIndex = source.indexOf('>Model Deform</div>')
     const motionIndex = source.indexOf('>3D Motion</div>')
+    const inputSource = source.slice(
+      source.indexOf('<TerminalSection id="input"'),
+      source.indexOf('<TerminalSection id="effects"'),
+    )
+    const effectsIndex = source.indexOf('<TerminalSection id="effects" title="Effects">')
+    const modelDeformSectionIndex = source.indexOf('<TerminalSection id="modelDeform" title="Model Deform">')
+    const presetsIndex = source.indexOf('<TerminalSection id="presets" title="Presets">')
+    const betweenEffectsAndModelDeform = source.slice(effectsIndex, modelDeformSectionIndex)
+    const modelDeformSectionSource = source.slice(modelDeformSectionIndex, presetsIndex)
     const modelSource = source.slice(
       source.indexOf('export function StudioModelPanel'),
       source.indexOf('export function StudioModelDeformPanel'),
@@ -38,8 +46,14 @@ describe('Studio shared Model panel contract', () => {
 
     expect(characterIndex).toBeGreaterThan(-1)
     expect(modelIndex).toBeGreaterThan(characterIndex)
-    expect(deformIndex).toBeGreaterThan(modelIndex)
-    expect(motionIndex).toBeGreaterThan(deformIndex)
+    expect(motionIndex).toBeGreaterThan(modelIndex)
+    expect(inputSource).not.toContain('Model Deform')
+    expect(inputSource).not.toContain('StudioModelDeformPanel')
+    expect(modelDeformSectionIndex).toBeGreaterThan(effectsIndex)
+    expect(modelDeformSectionIndex).toBeLessThan(presetsIndex)
+    expect(betweenEffectsAndModelDeform.match(/<TerminalSection/g)).toHaveLength(1)
+    expect(source).toContain('<TerminalSection id="modelDeform" title="Model Deform">')
+    expect(modelDeformSectionSource).toContain('<StudioModelDeformPanel />')
     expect(source).toContain('data-studio-model-panel')
     expect(source).toContain('data-studio-model-deform-panel')
     expect(source).toContain('label="Extrude"')
@@ -88,7 +102,11 @@ describe('Studio shared Model panel contract', () => {
     expect(styles).toContain('grid-template-columns: 16px minmax(0, 1fr) 42px;')
     expect(motionSource).toContain('label="Play"')
     expect(motionSource).toContain('checked={animation.playing}')
-    expect(motionSource).toContain('onChange={(playing) => setAnimationControl({ playing })}')
+    expect(motionSource).toContain('const { readCharacterRotationY } = useStudioRenderMode()')
+    expect(motionSource).toContain('const handlePlayingChange = (playing: boolean) => {')
+    expect(motionSource).toContain('onChange={handlePlayingChange}')
+    expect(motionSource).toContain('y: readCharacterRotationY(mesh.rotation.y),')
+    expect(motionSource).toContain('setAnimationControl({ playing: false })')
     expect(motionSource).toContain('label="Scale"')
     expect(motionSource).toContain('value={mesh.scale}')
     expect(motionSource).toContain('onChange={(scale) => setMeshControl({ scale })}')
@@ -206,6 +224,7 @@ describe('Studio shared Model panel contract', () => {
       }
 
       expect(source).toContain('animation.speed !== 0')
+      expect(source).toContain('reportCharacterRotationY(')
     }
   })
 })

@@ -54,11 +54,54 @@ describe('Grainrad effect renderer routing contract', () => {
     ])
   })
 
+  it('requires content readiness guards on every generic export renderer', async () => {
+    const genericCanvasFiles = [
+      'CharacterAsciiCanvas.tsx',
+      'CharacterBlockifyCanvas.tsx',
+      'CharacterContourCanvas.tsx',
+      'CharacterCrosshatchCanvas.tsx',
+      'CharacterDitheringCanvas.tsx',
+      'CharacterDotsCanvas.tsx',
+      'CharacterEdgeDetectionCanvas.tsx',
+      'CharacterHalftoneCanvas.tsx',
+      'CharacterMatrixRainCanvas.tsx',
+      'CharacterNoiseFieldCanvas.tsx',
+      'CharacterThresholdCanvas.tsx',
+      'CharacterVhsCanvas.tsx',
+      'CharacterVoronoiCanvas.tsx',
+      'CharacterWaveLinesCanvas.tsx',
+    ]
+
+    for (const fileName of genericCanvasFiles) {
+      const source = await readFile(join(studioDir, fileName), 'utf8')
+
+      expect(source, `${fileName} must report export content readiness`)
+        .toContain('markExportContentReady()')
+      expect(source, `${fileName} must reject empty geometry results`)
+        .toContain('geometryResult.geometries.length === 0')
+
+      if (fileName !== 'CharacterAsciiCanvas.tsx') {
+        const renderIndex = source.indexOf('gl.render(source.scene')
+        const restoreIndex = source.indexOf('gl.setRenderTarget(previousTarget)', renderIndex)
+        const readyIndex = source.indexOf('markExportContentReady()', restoreIndex)
+
+        expect(renderIndex, `${fileName} must render its source scene`).toBeGreaterThanOrEqual(0)
+        expect(restoreIndex, `${fileName} must restore its render target`).toBeGreaterThan(renderIndex)
+        expect(readyIndex, `${fileName} must mark readiness after source render restoration`)
+          .toBeGreaterThan(restoreIndex)
+      }
+    }
+  })
+
   it('routes each implemented effect to its own renderer and never falls back to ASCII', async () => {
     const studioCanvasSource = await readFile(join(studioDir, 'StudioCanvas.tsx'), 'utf8')
     const effectCanvasSource = await readFile(join(studioDir, 'StudioEffectCanvas.tsx'), 'utf8')
     const exportSurfaceSource = await readFile(
       join(studioDir, 'StudioExportRenderSurface.tsx'),
+      'utf8',
+    )
+    const asciiCanvasSource = await readFile(
+      join(studioDir, 'CharacterAsciiCanvas.tsx'),
       'utf8',
     )
     const ditheringCanvasSource = await readFile(
@@ -318,7 +361,14 @@ describe('Grainrad effect renderer routing contract', () => {
     expect(pixelSortCanvasSource).toContain('readRenderTargetPixelsAsync')
     expect(pixelSortCanvasSource).toContain('createPixelSortPresentMaterial')
     expect(pixelSortCanvasSource).toContain('createPixelSortTexture(')
-    expect(pixelSortCanvasSource).toContain('setPixelSortPresentFrame(')
+    expect(pixelSortCanvasSource).toContain('setPixelSortPreviewSource(')
+    expect(pixelSortCanvasSource).toContain('setPixelSortExactFrame(')
+    expect(pixelSortCanvasSource).toContain('setPixelSortPresentMode(')
+    expect(pixelSortCanvasSource).toContain('createPixelSortExportGenerationCoordinator')
+    expect(pixelSortCanvasSource).toContain('pendingExportAckRef')
+    expect(pixelSortCanvasSource).toContain('function invalidatePixelSortExport(')
+    expect(pixelSortCanvasSource.match(/generation\.invalidate\(\)/g)).toHaveLength(1)
+    expect(pixelSortCanvasSource).not.toContain('generation.dispose()')
     expect(pixelSortCanvasSource).toContain('previousTexture.dispose()')
     expect(pixelSortCanvasSource).not.toContain('createPixelSortShaderMaterial')
     expect(pixelSortCanvasSource).not.toContain('PIXEL_SORT_SAMPLE_COUNT')
@@ -673,6 +723,26 @@ describe('Grainrad effect renderer routing contract', () => {
     expect(vhsCanvasSource).toContain('clock.getElapsedTime()')
     expect(vhsCanvasSource).toContain('animation.playing')
     expect(vhsCanvasSource).toContain('animation.speed')
+
+    for (const rendererSource of [
+      asciiCanvasSource,
+      ditheringCanvasSource,
+      halftoneCanvasSource,
+      matrixRainCanvasSource,
+      dotsCanvasSource,
+      contourCanvasSource,
+      pixelSortCanvasSource,
+      blockifyCanvasSource,
+      thresholdCanvasSource,
+      edgeDetectionCanvasSource,
+      crosshatchCanvasSource,
+      waveLinesCanvasSource,
+      noiseFieldCanvasSource,
+      voronoiCanvasSource,
+      vhsCanvasSource,
+    ]) {
+      expect(rendererSource).toContain('reportCharacterRotationY(')
+    }
   })
 
   it('keeps every dedicated Effect canvas isolated from every other Effect material', async () => {

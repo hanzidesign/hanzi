@@ -6,6 +6,12 @@ export type CrosshatchSettings = Readonly<{
   angle: number
   lineWidth: number
   randomness: number
+  backgroundDensity: number
+  backgroundLayers: number
+  backgroundAngle: number
+  backgroundLineWidth: number
+  backgroundRandomness: number
+  backgroundSpeed: number
   invert: boolean
   brightness: number
   contrast: number
@@ -18,6 +24,7 @@ export type CrosshatchReferenceInput = Readonly<{
   width: number
   height: number
   settings: CrosshatchSettings
+  timeSeconds?: number
 }>
 
 export type CrosshatchReferenceOutput = Readonly<{
@@ -35,6 +42,7 @@ export type CrosshatchPatternInput = Readonly<{
   seed: number
   resolutionX: number
   randomness: number
+  phase?: number
 }>
 
 export type CrosshatchTrace = Readonly<{
@@ -53,6 +61,12 @@ export const DEFAULT_CROSSHATCH_SETTINGS: CrosshatchSettings = {
   angle: 45,
   lineWidth: 0.08,
   randomness: 0,
+  backgroundDensity: 12,
+  backgroundLayers: 1,
+  backgroundAngle: 45,
+  backgroundLineWidth: 0.08,
+  backgroundRandomness: 0,
+  backgroundSpeed: 0.1,
   invert: false,
   brightness: -4,
   contrast: 0,
@@ -99,12 +113,13 @@ export function hatchPattern({
   seed,
   resolutionX,
   randomness,
+  phase,
 }: CrosshatchPatternInput) {
   const sine = Math.sin(angle)
   const cosine = Math.cos(angle)
   const rotatedX = uv[0] * cosine - uv[1] * sine
   const rotatedY = uv[0] * sine + uv[1] * cosine
-  const scaledX = rotatedX * resolutionX / spacing
+  const scaledX = rotatedX * resolutionX / spacing + (phase ?? 0)
   let wobble = 0
 
   if (randomness > 0) {
@@ -182,8 +197,8 @@ function traceCrosshatchUnchecked(
     0.2,
     Math.max(0.006, 0.04 - settings.brightness / 100 * 0.2),
   )
-  const backgroundHatchFloor = smoothstep(0.92, 0.995, crosshatchLuminance(source))
-    * backgroundHatchStrength
+  const backgroundMotionMask = smoothstep(0.92, 0.995, crosshatchLuminance(source))
+  const backgroundHatchFloor = backgroundMotionMask * backgroundHatchStrength
   const darkness = Math.max(1 - luminance, backgroundHatchFloor)
   const baseAngle = settings.angle * Math.PI / 180
   const pattern = (angle: number, spacing: number, lineWidth: number, seed: number) => hatchPattern({
@@ -234,15 +249,40 @@ function traceCrosshatchUnchecked(
   }
 
   const weights = calculateTamWeights(darkness)
-  const weightedHatch = levels.reduce(
+  const characterHatchValue = levels.reduce(
     (sum, level, index) => sum + level * weights[index],
     0,
   )
+  const backgroundPhase = (input.timeSeconds ?? 0)
+    * 0.08
+    * settings.backgroundSpeed
+    * backgroundMotionMask
+  const backgroundPattern = (angleOffset: number, seed: number) => hatchPattern({
+    angle: settings.backgroundAngle * Math.PI / 180 + angleOffset,
+    phase: backgroundPhase,
+    randomness: settings.backgroundRandomness,
+    resolutionX: width,
+    seed,
+    spacing: settings.backgroundDensity * 1.5,
+    uv,
+    width: settings.backgroundLineWidth * 0.7,
+  })
+  let backgroundHatch = backgroundPattern(0, 0)
+  if (settings.backgroundLayers >= 2) {
+    backgroundHatch = Math.max(backgroundHatch, backgroundPattern(Math.PI * 0.5, 1))
+  }
+  if (settings.backgroundLayers >= 3) {
+    backgroundHatch = Math.max(backgroundHatch, backgroundPattern(Math.PI * 0.25, 2))
+  }
+  if (settings.backgroundLayers >= 4) {
+    backgroundHatch = Math.max(backgroundHatch, backgroundPattern(Math.PI * 0.75, 3))
+  }
+  const backgroundHatchValue = backgroundHatch * clamp01(darkness * 6)
 
   return {
     adjustedSource,
     darkness,
-    hatchValue: weightedHatch,
+    hatchValue: mix(characterHatchValue, backgroundHatchValue, backgroundMotionMask),
     levels,
     luminance,
     patterns,
@@ -319,7 +359,7 @@ function assertInput(input: CrosshatchReferenceInput) {
   if (rgb.length !== width * height * 3) {
     throw new RangeError('Crosshatch RGB input length must equal width * height * 3')
   }
-  assertRange('density', settings.density, 2, 12)
+  assertRange('density', settings.density, 1, 50)
   assertInteger('density', settings.density)
   assertRange('layers', settings.layers, 1, 4)
   assertInteger('layers', settings.layers)
@@ -329,6 +369,18 @@ function assertInput(input: CrosshatchReferenceInput) {
   assertStep('lineWidth', settings.lineWidth, 0.01, 0.01)
   assertRange('randomness', settings.randomness, 0, 1)
   assertStep('randomness', settings.randomness, 0, 0.05)
+  assertRange('backgroundDensity', settings.backgroundDensity, 1, 50)
+  assertInteger('backgroundDensity', settings.backgroundDensity)
+  assertRange('backgroundLayers', settings.backgroundLayers, 1, 4)
+  assertInteger('backgroundLayers', settings.backgroundLayers)
+  assertRange('backgroundAngle', settings.backgroundAngle, 0, 90)
+  assertStep('backgroundAngle', settings.backgroundAngle, 0, 5)
+  assertRange('backgroundLineWidth', settings.backgroundLineWidth, 0.01, 0.5)
+  assertStep('backgroundLineWidth', settings.backgroundLineWidth, 0.01, 0.01)
+  assertRange('backgroundRandomness', settings.backgroundRandomness, 0, 1)
+  assertStep('backgroundRandomness', settings.backgroundRandomness, 0, 0.05)
+  assertRange('backgroundSpeed', settings.backgroundSpeed, 0, 10)
+  assertStep('backgroundSpeed', settings.backgroundSpeed, 0, 0.1)
   assertRange('brightness', settings.brightness, -100, 100)
   assertInteger('brightness', settings.brightness)
   assertRange('contrast', settings.contrast, -100, 100)
