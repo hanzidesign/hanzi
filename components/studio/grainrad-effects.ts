@@ -219,23 +219,146 @@ export const GRAINRAD_COMMON_POST_PROCESSING_GROUPS: GrainradSettingGroup[] = [
   {
     controls: [
       toggleControl('bloom', 'Bloom', false),
+      rangeControl('bloom-threshold', 'Threshold', 0.5, 0, 1, 0.05, undefined, {
+        controlId: 'bloom',
+        operator: 'equals',
+        value: true,
+      }),
+      rangeControl('bloom-soft-threshold', 'Soft Threshold', 0.2, 0, 1, 0.05, undefined, {
+        controlId: 'bloom',
+        operator: 'equals',
+        value: true,
+      }),
+      rangeControl('bloom-intensity', 'Intensity', 1.5, 0, 2, 0.1, undefined, {
+        controlId: 'bloom',
+        operator: 'equals',
+        value: true,
+      }),
+      rangeControl('bloom-radius', 'Radius', 12, 1, 20, 1, undefined, {
+        controlId: 'bloom',
+        operator: 'equals',
+        value: true,
+      }),
     ],
   },
   {
-    title: 'Grain',
     controls: [
-      rangeControl('grain-intensity', 'Intensity', 0, 0, 100, 1),
-      rangeControl('grain-size', 'Size', 2, 1, 10, 1),
-      rangeControl('grain-speed', 'Speed', 50, 0, 100, 1),
+      toggleControl('grain', 'Grain', false),
+      selectControl('grain-mode', 'Mode', 'noise', [
+        { value: 'noise', label: 'Noise' },
+        { value: 'pixel', label: 'Pixel' },
+      ], {
+        controlId: 'grain',
+        operator: 'equals',
+        value: true,
+      }),
+      rangeControl('grain-intensity', 'Intensity', 5, 0, 200, 1, undefined, {
+        controlId: 'grain',
+        operator: 'equals',
+        value: true,
+      }),
+      rangeControl('grain-size', 'Size', 2, 1, 10, 1, undefined, {
+        controlId: 'grain',
+        operator: 'equals',
+        value: true,
+      }),
+      rangeControl('grain-speed', 'Speed', 50, 1, 200, 1, undefined, {
+        controlId: 'grain',
+        operator: 'equals',
+        value: true,
+      }),
     ],
   },
   {
     controls: [
       toggleControl('chromatic', 'Chromatic', false),
+      rangeControl('chromatic-offset', 'Offset', 5, 0, 50, 1, undefined, {
+        controlId: 'chromatic',
+        operator: 'equals',
+        value: true,
+      }),
+    ],
+  },
+  {
+    controls: [
       toggleControl('scanlines', 'Scanlines', false),
+      rangeControl('scanline-opacity', 'Opacity', 0.5, 0, 1, 0.05, undefined, {
+        controlId: 'scanlines',
+        operator: 'equals',
+        value: true,
+      }),
+      rangeControl('scanline-spacing', 'Line', 80, 1, 1000, 1, undefined, {
+        controlId: 'scanlines',
+        operator: 'equals',
+        value: true,
+      }),
+      rangeControl('scanline-offset', 'Offset', 0, 0, 20, 1, undefined, {
+        controlId: 'scanlines',
+        operator: 'equals',
+        value: true,
+      }),
+      rangeControl('scanline-speed', 'Speed', 1, 1, 10, 0.1, undefined, {
+        controlId: 'scanlines',
+        operator: 'equals',
+        value: true,
+      }),
+      selectControl('scanline-direction', 'Direction', 'down', [
+        { value: 'up', label: 'Up' },
+        { value: 'down', label: 'Down' },
+      ], {
+        controlId: 'scanlines',
+        operator: 'equals',
+        value: true,
+      }),
+    ],
+  },
+  {
+    controls: [
       toggleControl('vignette', 'Vignette', false),
+      rangeControl('vignette-intensity', 'Intensity', 0.5, 0, 1, 0.05, undefined, {
+        controlId: 'vignette',
+        operator: 'equals',
+        value: true,
+      }),
+      rangeControl('vignette-radius', 'Radius', 0.5, 0, 1, 0.05, undefined, {
+        controlId: 'vignette',
+        operator: 'equals',
+        value: true,
+      }),
+    ],
+  },
+  {
+    controls: [
       toggleControl('crt-curve', 'CRT Curve', false),
+      rangeControl('crt-amount', 'Amount', 0.1, 0, 0.5, 0.01, undefined, {
+        controlId: 'crt-curve',
+        operator: 'equals',
+        value: true,
+      }),
+    ],
+  },
+  {
+    controls: [
       toggleControl('phosphor', 'Phosphor', false),
+      selectControl('phosphor-color', 'Color', 'green', [
+        { value: 'green', label: 'Green' },
+        { value: 'amber', label: 'Amber' },
+        { value: 'white', label: 'White' },
+        { value: 'custom', label: 'Custom' },
+      ], {
+        controlId: 'phosphor',
+        operator: 'equals',
+        value: true,
+      }),
+      colorControl('phosphor-custom-color', 'Custom', '#00ff00', {
+        light: '#00ff00',
+        dark: '#00ff00',
+      }, {
+        all: [
+          { controlId: 'phosphor', operator: 'equals', value: true },
+          { controlId: 'phosphor-color', operator: 'equals', value: 'custom' },
+        ],
+      }),
     ],
   },
 ]
@@ -513,8 +636,8 @@ export const GRAINRAD_EFFECTS: GrainradEffectDefinition[] = [
       {
         title: 'Color',
         controls: [
-          colorControl('foreground', 'Foreground', '#ffffff', { light: '#15c15d', dark: '#f4f1e8' }),
-          colorControl('rain-color', 'Rain Color', '#00ff00', { light: '#007a33', dark: '#00ff00' }),
+          colorControl('foreground', 'Foreground', '#ffffff', { light: '#10da14', dark: '#36d00b' }),
+          colorControl('rain-color', 'Rain Color', '#00ff00', { light: '#24ee20', dark: '#00ff00' }),
           colorControl('background', 'Background', '#000000', { light: '#f4f1e8', dark: '#000000' }),
         ],
       },

@@ -8,6 +8,7 @@ type SortedChar = { [country: string]: SortedList }
 
 const tc: Chars = {
   jp: {
+    2025: '熊',
     2024: '金',
     2023: '稅',
     2022: '戰',
@@ -40,6 +41,7 @@ const tc: Chars = {
     1995: '震',
   },
   int: {
+    2025: '稅',
     2024: '變',
     2023: '危',
     2022: '戰',
@@ -61,6 +63,7 @@ const tc: Chars = {
     2006: '亂',
   },
   cn: {
+    2025: '韌',
     2024: '智',
     2023: '振',
     2022: '穩',
@@ -82,6 +85,7 @@ const tc: Chars = {
     2006: '炒',
   },
   tw: {
+    2025: '罷',
     2024: '貪',
     2023: '缺',
     2022: '漲',
@@ -101,6 +105,7 @@ const tc: Chars = {
     2008: '亂',
   },
   cs: {
+    2025: '勢',
     2024: '爭',
     2023: '融',
     2022: '思',
@@ -120,6 +125,7 @@ const tc: Chars = {
     2008: '震',
   },
   aw: {
+    2025: '幻',
     2024: '倒',
     2023: '競',
     2022: '爆',
@@ -138,6 +144,7 @@ const tc: Chars = {
     2009: '起',
   },
   my: {
+    2025: '稅',
     2024: '升',
     2023: '貴',
     2022: '漲',
@@ -154,6 +161,7 @@ const tc: Chars = {
     2011: '轉',
   },
   sg: {
+    2025: '蕩',
     2024: '災',
     2023: '詐',
     2022: '漲',
@@ -183,6 +191,7 @@ const tc: Chars = {
     2012: '貴',
   },
   hk: {
+    2025: '災',
     2024: '愛',
     2023: '興',
     2022: '通',
@@ -196,6 +205,7 @@ const tc: Chars = {
     2013: '和',
   },
   us: {
+    2025: '關',
     2024: '險',
     2023: '生',
     2022: '滅',
@@ -217,6 +227,7 @@ const tc: Chars = {
 
 const sc: Chars = {
   jp: {
+    2025: '熊',
     2024: '金',
     2023: '税',
     2022: '战',
@@ -249,6 +260,7 @@ const sc: Chars = {
     1995: '震',
   },
   int: {
+    2025: '税',
     2024: '变',
     2023: '危',
     2022: '战',
@@ -270,6 +282,7 @@ const sc: Chars = {
     2006: '乱',
   },
   cn: {
+    2025: '韧',
     2024: '智',
     2023: '振',
     2022: '稳',
@@ -291,6 +304,7 @@ const sc: Chars = {
     2006: '炒',
   },
   tw: {
+    2025: '罢',
     2024: '贪',
     2023: '缺',
     2022: '涨',
@@ -310,6 +324,7 @@ const sc: Chars = {
     2008: '乱',
   },
   cs: {
+    2025: '势',
     2024: '争',
     2023: '融',
     2022: '思',
@@ -329,6 +344,7 @@ const sc: Chars = {
     2008: '震',
   },
   aw: {
+    2025: '幻',
     2024: '倒',
     2023: '競',
     2022: '爆',
@@ -347,6 +363,7 @@ const sc: Chars = {
     2009: '起',
   },
   my: {
+    2025: '税',
     2024: '升',
     2023: '貴',
     2022: '涨',
@@ -363,6 +380,7 @@ const sc: Chars = {
     2011: '转',
   },
   sg: {
+    2025: '荡',
     2024: '灾',
     2023: '詐',
     2022: '涨',
@@ -392,6 +410,7 @@ const sc: Chars = {
     2012: '贵',
   },
   hk: {
+    2025: '灾',
     2024: '爱',
     2023: '興',
     2022: '通',
@@ -405,6 +424,7 @@ const sc: Chars = {
     2013: '和',
   },
   us: {
+    2025: '关',
     2024: '险',
     2023: '生',
     2022: '灭',
@@ -426,6 +446,7 @@ const sc: Chars = {
 
 const meaning: Chars = {
   jp: {
+    2025: 'Bear',
     2024: 'Gold',
     2023: 'Tax',
     2022: 'Battle',
@@ -458,6 +479,7 @@ const meaning: Chars = {
     1995: 'Earthquake',
   },
   int: {
+    2025: 'Tax',
     2024: 'Change',
     2023: 'Danger',
     2022: 'War',
@@ -479,6 +501,7 @@ const meaning: Chars = {
     2006: 'Chaos',
   },
   cn: {
+    2025: 'Resilience',
     2024: 'Wisdom',
     2023: 'Revitalization',
     2022: 'Stabilize',
@@ -500,6 +523,7 @@ const meaning: Chars = {
     2006: 'Hype',
   },
   tw: {
+    2025: 'Strike',
     2024: 'Greed',
     2023: 'Shortage',
     2022: 'Rise',
@@ -519,6 +543,7 @@ const meaning: Chars = {
     2008: 'Chaos',
   },
   cs: {
+    2025: 'Force',
     2024: 'Conflict',
     2023: 'Harmony',
     2022: 'Think',
@@ -538,6 +563,7 @@ const meaning: Chars = {
     2008: 'Earthquake',
   },
   aw: {
+    2025: 'Illusion',
     2024: 'Collapse',
     2023: 'Competition',
     2022: 'Blew up',
@@ -556,6 +582,7 @@ const meaning: Chars = {
     2009: 'Start',
   },
   my: {
+    2025: 'Tax',
     2024: 'Rise',
     2023: 'Expensive',
     2022: 'Rise (cost of living)',
@@ -572,6 +599,7 @@ const meaning: Chars = {
     2011: 'Shift',
   },
   sg: {
+    2025: 'Chaos',
     2024: 'Disaster',
     2023: 'Scam',
     2022: 'Rise (cost of living)',
@@ -601,6 +629,7 @@ const meaning: Chars = {
     2012: 'Expensive',
   },
   hk: {
+    2025: 'Disaster',
     2024: 'Love',
     2023: 'Boom',
     2022: 'Through',
@@ -614,6 +643,7 @@ const meaning: Chars = {
     2013: 'Harmony',
   },
   us: {
+    2025: 'Shutdown',
     2024: 'Danger',
     2023: 'Birth and growth (Al)',
     2022: 'Gaslighting',

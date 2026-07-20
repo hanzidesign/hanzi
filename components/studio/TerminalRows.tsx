@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { IoChevronDownOutline, IoChevronUpOutline } from 'react-icons/io5'
 import classes from './StudioShell.module.css'
 
 export type TerminalSelectOption<T extends string = string> = {
@@ -195,7 +196,9 @@ export function TerminalDropdownRow<T extends string>({
           onClick={() => setOpen((nextOpen) => !nextOpen)}
         >
           <span>{selectedOption?.label ?? value}</span>
-          <span className={classes.dropdownChevron}>{open ? '^' : 'v'}</span>
+          <span className={classes.dropdownChevron} aria-hidden>
+            {open ? <IoChevronUpOutline /> : <IoChevronDownOutline />}
+          </span>
         </button>
         {open ? (
           <div className={classes.dropdownMenu} role="listbox">
@@ -211,9 +214,6 @@ export function TerminalDropdownRow<T extends string>({
                   setOpen(false)
                 }}
               >
-                <span className={classes.selectedMark}>
-                  {option.value === value ? '✓' : ''}
-                </span>
                 <span>{option.label}</span>
               </button>
             ))}
@@ -286,13 +286,15 @@ export function TerminalToggleRow({
   label,
   checked,
   onChange,
+  onReset,
 }: {
   label: string
   checked: boolean
   onChange: (checked: boolean) => void
+  onReset?: () => void
 }) {
   return (
-    <TerminalRowShell label={label} value={checked ? 'ON' : 'OFF'}>
+    <TerminalRowShell label={label} value={checked ? 'ON' : 'OFF'} onReset={onReset}>
       <input
         aria-label={label}
         className={classes.toggleInput}

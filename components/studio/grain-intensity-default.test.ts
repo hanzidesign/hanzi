@@ -8,36 +8,36 @@ import {
 import { compileGrainradEffectRuntime } from './grainrad-effect-runtime'
 
 describe('Grain Intensity default', () => {
-  it('uses 0 in the shared schema and every effect control set', () => {
+  it('uses 5 in the shared schema and every effect control set', () => {
     const grainIntensity = GRAINRAD_COMMON_POST_PROCESSING_GROUPS
       .flatMap((group) => group.controls)
       .find((control) => control.id === 'grain-intensity')
     const defaults = createDefaultGrainradEffectControls()
 
-    expect(grainIntensity?.defaultValue).toBe(0)
+    expect(grainIntensity?.defaultValue).toBe(5)
     expect(Object.values(defaults)).toHaveLength(15)
 
     for (const controls of Object.values(defaults)) {
-      expect(controls['grain-intensity']).toBe(0)
+      expect(controls['grain-intensity']).toBe(5)
     }
   })
 
-  it('restores 0 when the selected effect is reset', () => {
+  it('restores 5 when the selected effect is reset', () => {
     const store = createStudioStore()
 
     store.getState().setGrainradEffectControl('ascii', 'grain-intensity', 42)
     expect(store.getState().grainradEffect.controls.ascii['grain-intensity']).toBe(42)
 
     store.getState().resetSelectedEffectControls()
-    expect(store.getState().grainradEffect.controls.ascii['grain-intensity']).toBe(0)
+    expect(store.getState().grainradEffect.controls.ascii['grain-intensity']).toBe(5)
   })
 
-  it('compiles a missing Grain Intensity value to 0', () => {
+  it('compiles a missing Grain Intensity value to 5 percent', () => {
     const runtime = compileGrainradEffectRuntime({
       selectedEffectId: 'ascii',
       controls: {},
     })
 
-    expect(runtime.postValues[1]).toBe(0)
+    expect(runtime.postValues[1]).toBe(0.05)
   })
 })

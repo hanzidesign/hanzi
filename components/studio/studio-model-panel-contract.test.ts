@@ -29,7 +29,7 @@ describe('Studio shared Model panel contract', () => {
       source.indexOf('export function StudioEffectsPanel'),
     )
     const deformResetSource = source.slice(
-      source.indexOf('function StudioModelDeformReset'),
+      source.indexOf('function StudioRepeatReset'),
       source.indexOf('function StudioMotionReset'),
     )
     const motionSource = source.slice(source.indexOf('export function StudioMotionPanel'))
@@ -60,18 +60,18 @@ describe('Studio shared Model panel contract', () => {
     expect(deformSource).toMatch(/label="Size"[\s\S]*?min=\{0\.1\}[\s\S]*?max=\{3\}/)
     expect(deformSource).toContain('displayValue={`${Math.round(mesh.repeat.orientation)}°`}')
     expect(deformSource).toMatch(/label="Radius"[\s\S]*?min=\{0\}[\s\S]*?max=\{50\}/)
-    expect(deformSource).toContain('className={classes.repeatSection}')
+    expect(deformSource).toContain('className={classes.meshDeformSection}')
     expect(deformSource).toContain('data-enabled={mesh.repeat.enabled}')
-    expect(deformSource).toContain('<StudioModelDeformReset />')
-    expect(styles).toContain(".repeatSection[data-enabled='true'] > .inputGroupReset")
-    expect(styles).toContain(".repeatSection[data-enabled='true'] > .controlRow:first-of-type .controlValue")
+    expect(deformSource).toContain('<StudioRepeatReset />')
+    expect(styles).toContain(".meshDeformSection[data-enabled='true']:hover > .inputGroupReset")
+    expect(styles).toContain(".meshDeformSection[data-enabled='true']:hover > .controlRow:first-of-type .controlValue")
     expect(deformResetSource).toContain('if (!repeat.enabled)')
     expect(deformResetSource).toContain('enabled: true')
     expect(source).toMatch(/label="Bend"[\s\S]*?min=\{-360\}[\s\S]*?max=\{360\}/)
     expect(source).toContain('function StudioModelReset')
-    expect(source).toContain('function StudioModelDeformReset')
+    expect(source).toContain('function StudioRepeatReset')
     expect(source).toContain('function StudioMotionReset')
-    expect(source.match(/Reset all/g)).toHaveLength(3)
+    expect(source.match(/Reset all/g)).toHaveLength(4)
     expect(source).toContain('repeat: { ...DEFAULT_MESH_STATE.repeat, enabled: true }')
     expect(source).toContain('rotation: { ...DEFAULT_MESH_STATE.rotation },')
     expect(source).toContain('scale: DEFAULT_MESH_STATE.scale,')
@@ -113,6 +113,73 @@ describe('Studio shared Model panel contract', () => {
     expect(ascii).toContain('scale={transform.scale}')
     expect(dithering).toContain('addCharacterModelCopies(')
     expect(dithering).toContain('meshSettings.repeat')
+  })
+
+  it('keeps Model Deform sections toggle-gated with Repeat first', async () => {
+    const source = await readFile(join(studioDir, 'StudioLeftPanel.tsx'), 'utf8')
+    const styles = await readFile(join(studioDir, 'StudioShell.module.css'), 'utf8')
+    const deformSource = source.slice(
+      source.indexOf('export function StudioModelDeformPanel'),
+      source.indexOf('export function StudioEffectsPanel'),
+    )
+    const sections = [
+      'aria-label="Repeat"',
+      '<BulgeSection',
+      '<SquashSection',
+      '<WaveSection',
+      '<NoiseSection',
+      '<InflateSection',
+      '<CurlSection',
+    ]
+    let previousIndex = -1
+
+    for (const section of sections) {
+      const index = deformSource.indexOf(section)
+      expect(index, `${section} must be present`).toBeGreaterThan(previousIndex)
+      previousIndex = index
+    }
+
+    expect(deformSource).toContain('function SectionFrame')
+    expect(deformSource).toContain('aria-label={label}')
+    expect(deformSource).toContain('data-enabled={value.enabled}')
+    expect(deformSource).toContain('checked={value.enabled}')
+    expect(deformSource).toContain('value.enabled ? children : null')
+    expect(deformSource).toContain('<section className={classes.meshDeformSection}')
+    expect(styles).toContain('border: 1px solid var(--studio-border);')
+    expect(styles).toContain('grid-template-columns: 112px minmax(0, 1fr) 42px;')
+    expect(deformSource).toContain('onReset={() => update({ preserveVolume: DEFAULT_MESH_STATE.deform.squashStretch.preserveVolume })}')
+    expect(deformSource).toContain('onReset={() => update({ uniform: DEFAULT_MESH_STATE.deform.inflate.uniform })}')
+    expect(deformSource).toContain('onReset={() => update({ deflate: DEFAULT_MESH_STATE.deform.inflate.deflate })}')
+    expect(deformSource).toContain('onReset={() => update({ clamp: DEFAULT_MESH_STATE.deform.curl.clamp })}')
+    expect(deformSource.match(/<TerminalDropdownRow/g)).toHaveLength(7)
+    expect(deformSource).not.toContain('TerminalSelectRow')
+    for (const [field, feature] of [
+      ['axis', 'bulgePinch'], ['profile', 'bulgePinch'], ['axis', 'squashStretch'], ['direction', 'wave'],
+      ['waveform', 'wave'], ['direction', 'surfaceNoise'], ['axis', 'curl'],
+    ]) {
+      expect(deformSource).toContain(`onReset={() => update({ ${field}: DEFAULT_MESH_STATE.deform.${feature}.${field} })}`)
+    }
+    expect(deformSource).toContain('label="Amplitude"')
+    expect(deformSource).toContain('label="Angle"')
+    expect(deformSource).toContain('label="Profile"')
+    expect(deformSource).toContain('label="Waveform"')
+    expect(deformSource).toContain('label="Contrast"')
+    expect(deformSource).toContain('label="Tightness"')
+    for (const controller of [
+      'Amount', 'Amplitude', 'Angle', 'Radius', 'Falloff', 'Center X', 'Center Y', 'Axis', 'Profile',
+      'Pivot', 'Preserve Volume', 'Secondary Scale', 'Frequency', 'Phase', 'Direction', 'Waveform',
+      'Offset', 'Decay', 'Scale', 'Seed', 'Detail', 'Roughness', 'Contrast', 'Offset X', 'Offset Y',
+      'Balance', 'Uniform', 'Deflate', 'Tightness', 'Turns', 'Clamp',
+    ]) {
+      expect(deformSource).toContain(`label="${controller}"`)
+    }
+    expect(deformSource).not.toContain('Animate')
+    expect(deformSource).toMatch(/label="Bulge"[\s\S]*?label="Amount"[\s\S]*?min=\{-10\}[\s\S]*?max=\{10\}/)
+    expect(deformSource).toMatch(/label="Bulge"[\s\S]*?label="Radius"[\s\S]*?min=\{0\.05\}[\s\S]*?max=\{5\}/)
+    expect(deformSource).toMatch(/label="Curl"[\s\S]*?label="Angle"[\s\S]*?min=\{-360\}[\s\S]*?max=\{360\}[\s\S]*?step=\{1\}/)
+    expect(deformSource).toMatch(/label="Noise"[\s\S]*?min=\{0\}[\s\S]*?max=\{2\}/)
+    expect(deformSource).toMatch(/label="Noise"[\s\S]*?label="Speed"[\s\S]*?min=\{1\}[\s\S]*?max=\{20\}[\s\S]*?step=\{0\.01\}/)
+    expect(deformSource).toMatch(/label="Inflate"[\s\S]*?label="Amount"[\s\S]*?min=\{0\}[\s\S]*?max=\{10\}/)
   })
 
   it('routes Repeat through every Effect while 3D Motion rotates the center group', async () => {

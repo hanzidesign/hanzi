@@ -32,7 +32,7 @@ export const GRAINRAD_EFFECT_SHADER_IDS: Record<GrainradEffectId, number> = {
 
 export const EFFECT_VALUE_SLOT_COUNT = 24
 export const PROCESSING_VALUE_SLOT_COUNT = 6
-export const POST_VALUE_SLOT_COUNT = 9
+export const POST_VALUE_SLOT_COUNT = 28
 
 export type GrainradEffectRuntime = {
   effectId: number
@@ -83,14 +83,31 @@ const SHARED_PROCESSING_CONTROL_IDS = [
 
 const SHARED_POST_CONTROL_IDS = [
   'bloom',
+  'bloom-threshold',
+  'bloom-soft-threshold',
+  'bloom-intensity',
+  'bloom-radius',
+  'grain',
+  'grain-mode',
   'grain-intensity',
   'grain-size',
   'grain-speed',
   'chromatic',
+  'chromatic-offset',
   'scanlines',
+  'scanline-opacity',
+  'scanline-spacing',
+  'scanline-offset',
+  'scanline-speed',
+  'scanline-direction',
   'vignette',
+  'vignette-intensity',
+  'vignette-radius',
   'crt-curve',
+  'crt-amount',
   'phosphor',
+  'phosphor-color',
+  'phosphor-custom-color',
 ]
 
 const EFFECT_CONTROL_IDS: Record<GrainradEffectId, string[]> = {
@@ -666,7 +683,7 @@ export function compileGrainradEffectRuntime({
   processingValues[5] = read.number('shape-matching', 0)
 
   postValues[0] = read.boolean('bloom')
-  postValues[1] = read.number('grain-intensity', 0) / 100
+  postValues[1] = read.number('grain-intensity', 5) / 100
   postValues[2] = read.number('grain-size', 2) / 10
   postValues[3] = read.number('grain-speed', 50) / 100
   postValues[4] = read.boolean('chromatic')
@@ -674,6 +691,28 @@ export function compileGrainradEffectRuntime({
   postValues[6] = read.boolean('vignette')
   postValues[7] = read.boolean('crt-curve')
   postValues[8] = read.boolean('phosphor')
+  postValues[9] = read.number('bloom-threshold', 0.5)
+  postValues[10] = read.number('bloom-soft-threshold', 0.2)
+  postValues[11] = read.number('bloom-intensity', 1.5)
+  postValues[12] = read.number('bloom-radius', 12) / 20
+  postValues[13] = read.boolean('grain')
+  postValues[14] = read.number('chromatic-offset', 5)
+  postValues[15] = read.number('scanline-opacity', 0.5)
+  postValues[16] = read.number('scanline-spacing', 80)
+  postValues[17] = read.number('vignette-intensity', 0.5)
+  postValues[18] = read.number('vignette-radius', 0.5)
+  postValues[19] = read.number('crt-amount', 0.1)
+  postValues[20] = read.select('phosphor-color')
+  {
+    const phosphorColor = read.color('phosphor-custom-color', '#00ff00')
+    postValues[21] = phosphorColor[0]
+    postValues[22] = phosphorColor[1]
+    postValues[23] = phosphorColor[2]
+  }
+  postValues[24] = read.number('scanline-offset', 0)
+  postValues[25] = read.number('scanline-speed', 1)
+  postValues[26] = read.select('scanline-direction')
+  postValues[27] = read.select('grain-mode')
 
   return {
     effectId: GRAINRAD_EFFECT_SHADER_IDS[selectedEffectId],

@@ -126,6 +126,8 @@ describe('Phase 5C ASCII shader material', () => {
     expect(ASCII_FRAGMENT_SHADER).not.toContain('applyGrainradVhs')
     expect(ASCII_FRAGMENT_SHADER).toContain('applyGrainradProcessing')
     expect(ASCII_FRAGMENT_SHADER).toContain('applyGrainradPostProcessing')
+    expect(ASCII_FRAGMENT_SHADER).not.toContain('float grainAmount = u_postB')
+    expect(ASCII_FRAGMENT_SHADER).toContain("* u_grain;")
     expect(ASCII_FRAGMENT_SHADER).toContain('u_asciiCellSize')
     expect(ASCII_FRAGMENT_SHADER).toContain('u_asciiCharsetStyle')
     expect(ASCII_FRAGMENT_SHADER).toContain('uniform sampler2D u_asciiGlyphAtlas')

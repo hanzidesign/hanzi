@@ -427,8 +427,6 @@ vec4 applyGrainradProcessing(vec4 effectColor, float brightness) {
 }
 
 vec3 applyGrainradPostProcessing(vec3 color, float brightness, vec2 screenUv, vec2 centered, vec2 cellId) {
-  float grainAmount = u_postB * (0.5 + u_postC) * (0.5 + u_postD);
-  color += (hash12(gl_FragCoord.xy * max(u_postC * 10.0, 1.0) + u_time * (8.0 + u_postD * 24.0)) - 0.5) * grainAmount;
   color += smoothstep(0.58, 1.0, brightness) * u_postA * 0.35;
   color.r += (hash12(cellId + 12.0) - 0.5) * u_postE * 0.1;
   color.b -= (hash12(cellId + 15.0) - 0.5) * u_postE * 0.1;

@@ -85,7 +85,10 @@ describe('Phase 5D Grainrad follow-up parity contract', () => {
 
     expect(terminalRows).toContain('TerminalDropdownRow')
     expect(terminalRows).toContain('dropdownMenu')
-    expect(terminalRows).toContain('selectedMark')
+    expect(terminalRows).toContain('aria-selected={option.value === value}')
+    expect(terminalRows).not.toContain('selectedMark')
+    expect(terminalRows).toContain('IoChevronDownOutline')
+    expect(terminalRows).toContain('IoChevronUpOutline')
     expect(rightPanel).toContain('TerminalDropdownRow')
     expect(rightPanel).toContain('Character Set')
     expect(rightPanel).not.toContain('TerminalSelectRow')

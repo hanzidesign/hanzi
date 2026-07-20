@@ -36,6 +36,7 @@ import {
   createCharacterMeshGeometries,
   type CharacterMeshGeometryResult,
 } from '@/components/studio/character-mesh-geometry'
+import { useCharacterMeshAnimation } from '@/components/studio/character-mesh-animation'
 import {
   type PixelSortSettings,
 } from '@/components/studio/pixel-sort-core'
@@ -182,6 +183,7 @@ function CharacterPixelSortScene({
         twist: meshSettings.twist,
         taper: meshSettings.taper,
         bend: meshSettings.bend,
+        deform: meshSettings.deform,
         displacementSubdivisionLevel: 0,
       })
 
@@ -197,6 +199,7 @@ function CharacterPixelSortScene({
     meshSettings.taper,
     meshSettings.thickness,
     meshSettings.twist,
+    meshSettings.deform,
     svgData,
     svgLoadError,
   ])
@@ -236,6 +239,8 @@ function CharacterPixelSortScene({
     source.group.scale.setScalar(meshSettings.scale)
     captureQueuedRef.current = true
   }, [geometryResult, meshSettings.position, meshSettings.rotation, meshSettings.scale])
+
+  useCharacterMeshAnimation(geometryResultRef, animation)
 
   useFrame(({ clock }, delta) => {
     const source = sourceRef.current

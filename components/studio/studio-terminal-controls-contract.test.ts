@@ -18,6 +18,11 @@ describe('Phase 5D Grainrad terminal controller contract', () => {
     expect(rowSource).toContain('TerminalSelectRow')
     expect(rowSource).toContain('TerminalDropdownRow')
     expect(rowSource).toContain('dropdownMenu')
+    expect(rowSource).toContain('IoChevronDownOutline')
+    expect(rowSource).toContain('IoChevronUpOutline')
+    expect(rowSource).not.toContain("{open ? '^' : 'v'}")
+    expect(rowSource).not.toContain("'✓'")
+    expect(rowSource).not.toContain('selectedMark')
     expect(rowSource).toContain('TerminalColorRow')
     expect(rowSource).toContain('TerminalToggleRow')
     expect(rowSource).toContain('TerminalOptionGrid')
@@ -61,5 +66,25 @@ describe('Phase 5D Grainrad terminal controller contract', () => {
     expect(rightPanel).toContain('max={Math.max(scaledMinimum, scaledMaximum)}')
     expect(rightPanel).toContain('step={Math.abs(control.step * displayScale)}')
     expect(rightPanel).toContain('nextValue / displayScale')
+  })
+
+  it('renders Scanlines Direction through the shared selector UI', async () => {
+    const effects = await readFile(join(studioDir, 'grainrad-effects.ts'), 'utf8')
+    const rightPanel = await readFile(join(studioDir, 'StudioRightPanel.tsx'), 'utf8')
+
+    expect(effects).toContain("selectControl('scanline-direction', 'Direction'")
+    expect(rightPanel).toContain("if (control.kind === 'select')")
+    expect(rightPanel).toContain('<TerminalDropdownRow')
+    expect(rightPanel).not.toContain('TerminalSelectRow')
+  })
+
+  it('lets dropdown menus widen for long option labels without leaving the viewport', async () => {
+    const styles = await readFile(join(studioDir, 'StudioShell.module.css'), 'utf8')
+
+    expect(styles).toContain('width: max-content;')
+    expect(styles).toContain('min-width: 100%;')
+    expect(styles).toContain('max-width: min(360px, calc(100vw - 24px));')
+    expect(styles).toContain('text-overflow: ellipsis;')
+    expect(styles).toContain('white-space: nowrap;')
   })
 })

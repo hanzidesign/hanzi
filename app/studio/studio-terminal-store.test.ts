@@ -369,11 +369,82 @@ describe('Phase 5D Grainrad terminal Studio store', () => {
     const store = createStudioStore(storage)
 
     expect(store.getState().grainradEffect.controls['matrix-rain']).toMatchObject({
-      foreground: '#15c15d',
+      foreground: '#10da14',
       'bg-opacity': 0.5,
     })
     expect(store.getState().grainradEffect.controlsByTheme.light['matrix-rain'].foreground)
-      .toBe('#15c15d')
+      .toBe('#10da14')
+  })
+
+  it('migrates former Matrix theme defaults without replacing custom colors', () => {
+    const base = createInitialStudioStoreState()
+    const persistedState = {
+      ...base,
+      grainradEffect: {
+        ...base.grainradEffect,
+        controlsByTheme: {
+          light: {
+            ...base.grainradEffect.controlsByTheme.light,
+            'matrix-rain': {
+              ...base.grainradEffect.controlsByTheme.light['matrix-rain'],
+              foreground: '#15c15d',
+              'rain-color': '#007a33',
+            },
+          },
+          dark: {
+            ...base.grainradEffect.controlsByTheme.dark,
+            'matrix-rain': {
+              ...base.grainradEffect.controlsByTheme.dark['matrix-rain'],
+              foreground: '#f4f1e8',
+            },
+          },
+        },
+      },
+    }
+    const { storage } = createMemoryStorage(JSON.stringify({ state: persistedState, version: 7 }))
+    const store = createStudioStore(storage)
+
+    expect(store.getState().grainradEffect.controlsByTheme.light['matrix-rain']).toMatchObject({
+      foreground: '#10da14',
+      'rain-color': '#24ee20',
+    })
+    expect(store.getState().grainradEffect.controlsByTheme.dark['matrix-rain']).toMatchObject({
+      foreground: '#36d00b',
+      'rain-color': '#00ff00',
+    })
+
+    const customState = {
+      ...persistedState,
+      grainradEffect: {
+        ...persistedState.grainradEffect,
+        controlsByTheme: {
+          light: {
+            ...persistedState.grainradEffect.controlsByTheme.light,
+            'matrix-rain': {
+              ...persistedState.grainradEffect.controlsByTheme.light['matrix-rain'],
+              foreground: '#123456',
+              'rain-color': '#234567',
+            },
+          },
+          dark: {
+            ...persistedState.grainradEffect.controlsByTheme.dark,
+            'matrix-rain': {
+              ...persistedState.grainradEffect.controlsByTheme.dark['matrix-rain'],
+              foreground: '#345678',
+            },
+          },
+        },
+      },
+    }
+    const { storage: customStorage } = createMemoryStorage(JSON.stringify({ state: customState, version: 7 }))
+    const customStore = createStudioStore(customStorage)
+
+    expect(customStore.getState().grainradEffect.controlsByTheme.light['matrix-rain']).toMatchObject({
+      foreground: '#123456',
+      'rain-color': '#234567',
+    })
+    expect(customStore.getState().grainradEffect.controlsByTheme.dark['matrix-rain'].foreground)
+      .toBe('#345678')
   })
 
   it('migrates legacy single-set controls into only the active theme', () => {
@@ -438,7 +509,8 @@ describe('Phase 5D Grainrad terminal Studio store', () => {
     store.getState().toggleStudioTheme()
 
     expect(store.getState().grainradEffect.controls['matrix-rain']).toMatchObject({
-      foreground: '#15c15d',
+      foreground: '#10da14',
+      'rain-color': '#24ee20',
       'bg-opacity': 0.5,
     })
 
@@ -447,7 +519,8 @@ describe('Phase 5D Grainrad terminal Studio store', () => {
     store.getState().resetSelectedEffectControls()
 
     expect(store.getState().grainradEffect.controls['matrix-rain']).toMatchObject({
-      foreground: '#15c15d',
+      foreground: '#10da14',
+      'rain-color': '#24ee20',
       'bg-opacity': 0.5,
     })
   })

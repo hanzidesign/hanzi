@@ -58,6 +58,8 @@
 
 .leftPanel {
   border-right: 1px solid var(--studio-border);
+  padding-bottom: 40px;
+  box-sizing: border-box;
 }
 
 .rightPanel {
@@ -66,6 +68,8 @@
 
 .rightContent {
   min-height: 100%;
+  padding-bottom: 40px;
+  box-sizing: border-box;
 }
 
 .brandRow {
@@ -413,7 +417,7 @@
 
 .modelPanel .controlRow {
   min-height: 26px;
-  grid-template-columns: 72px minmax(0, 1fr) 42px;
+  grid-template-columns: 112px minmax(0, 1fr) 42px;
   gap: 6px;
 }
 
@@ -421,11 +425,16 @@
   width: 42px;
 }
 
-.repeatSection {
+.meshDeformSection {
   position: relative;
+  margin: 6px 0;
+  border: 1px solid var(--studio-border);
+  padding: 6px 8px;
+  display: grid;
+  gap: 2px;
 }
 
-.repeatSection > .inputGroupReset {
+.meshDeformSection > .inputGroupReset {
   position: absolute;
   z-index: 1;
   top: 5px;
@@ -434,12 +443,14 @@
   pointer-events: none;
 }
 
-.repeatSection[data-enabled='true'] > .inputGroupReset {
+.meshDeformSection[data-enabled='true']:hover > .inputGroupReset,
+.meshDeformSection[data-enabled='true']:focus-within > .inputGroupReset {
   opacity: 1;
   pointer-events: auto;
 }
 
-.repeatSection[data-enabled='true'] > .controlRow:first-of-type .controlValue {
+.meshDeformSection[data-enabled='true']:hover > .controlRow:first-of-type .controlValue,
+.meshDeformSection[data-enabled='true']:focus-within > .controlRow:first-of-type .controlValue {
   color: transparent;
 }
 
@@ -678,6 +689,7 @@
 }
 
 .rowGroup {
+  position: relative;
   display: grid;
   gap: 6px;
 }
@@ -686,6 +698,45 @@
   margin-top: 14px;
   border-top: 1px solid var(--studio-border);
   padding-top: 14px;
+}
+
+.adjustmentsReset {
+  position: absolute;
+  top: 3px;
+  right: 0;
+}
+
+.postProcessingGroups {
+  display: grid;
+  gap: 6px;
+}
+
+.postProcessingGroup {
+  position: relative;
+  border: 1px solid var(--studio-border);
+  padding: 6px 8px;
+  display: grid;
+  gap: 6px;
+}
+
+.postProcessingGroup > .inputGroupReset {
+  position: absolute;
+  z-index: 1;
+  top: 5px;
+  right: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.postProcessingGroup[data-enabled='true']:hover > .inputGroupReset,
+.postProcessingGroup[data-enabled='true']:focus-within > .inputGroupReset {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.postProcessingGroup[data-enabled='true']:hover > .controlRow:first-of-type .controlValue,
+.postProcessingGroup[data-enabled='true']:focus-within > .controlRow:first-of-type .controlValue {
+  color: transparent;
 }
 
 .groupTitle {
@@ -843,8 +894,14 @@
 }
 
 .dropdownChevron {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 14px;
+  height: 14px;
   color: var(--studio-text-dim);
-  font-size: 12px;
+  font-size: 14px;
   line-height: 1;
 }
 
@@ -852,8 +909,11 @@
   position: absolute;
   z-index: 60;
   top: calc(100% + 3px);
-  left: 0;
+  left: auto;
   right: 0;
+  width: max-content;
+  min-width: 100%;
+  max-width: min(360px, calc(100vw - 24px));
   max-height: 320px;
   overflow-y: auto;
   border: 1px solid var(--studio-border-strong);
@@ -864,10 +924,8 @@
 .dropdownOption {
   width: 100%;
   min-height: 34px;
-  display: grid;
-  grid-template-columns: 22px minmax(0, 1fr);
+  display: flex;
   align-items: center;
-  gap: 8px;
   border: 0;
   background: transparent;
   color: var(--studio-text-dim);
@@ -884,11 +942,11 @@
   background: color-mix(in srgb, var(--studio-text-bright) 7%, transparent);
 }
 
-.selectedMark {
-  color: var(--studio-text-bright);
-  font-size: 12px;
-  line-height: 1;
-  text-align: center;
+.dropdownOption > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .colorControl {

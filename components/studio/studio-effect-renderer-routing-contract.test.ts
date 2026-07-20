@@ -1,4 +1,4 @@
-import { readFile } from 'node:fs/promises'
+import { readdir, readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 
 import { describe, expect, it } from 'vitest'
@@ -6,6 +6,52 @@ import { describe, expect, it } from 'vitest'
 const studioDir = join(process.cwd(), 'components', 'studio')
 
 describe('Grainrad effect renderer routing contract', () => {
+  it('routes Model Deform through every active geometry builder caller', async () => {
+    const candidateFiles = (await readdir(studioDir))
+      .filter((fileName) => /^Character(?:.*Canvas|Mesh)\.tsx$/.test(fileName))
+      .sort()
+    const builderCallers: string[] = []
+
+    for (const fileName of candidateFiles) {
+      const source = await readFile(join(studioDir, fileName), 'utf8')
+
+      if (!source.includes('createCharacterMeshGeometries')) {
+        continue
+      }
+
+      builderCallers.push(fileName)
+      expect(source, `${fileName} must install the shared Model Deform animation seam`)
+        .toContain('useCharacterMeshAnimation')
+      expect(source, `${fileName} must pass mesh.deform to the builder`)
+        .toMatch(fileName === 'CharacterMesh.tsx'
+          ? /deform,/
+          : /deform:\s*(?:meshSettings|mesh)\.deform/)
+      const deformReferences = source.match(/(?:meshSettings|mesh)\.deform/g) ?? []
+      expect(deformReferences.length, `${fileName} must propagate mesh.deform dependencies`)
+        .toBeGreaterThan(1)
+    }
+
+    expect(builderCallers).toHaveLength(16)
+    expect(builderCallers).toEqual([
+      'CharacterAsciiCanvas.tsx',
+      'CharacterBlockifyCanvas.tsx',
+      'CharacterContourCanvas.tsx',
+      'CharacterCrosshatchCanvas.tsx',
+      'CharacterDitheringCanvas.tsx',
+      'CharacterDotsCanvas.tsx',
+      'CharacterEdgeDetectionCanvas.tsx',
+      'CharacterHalftoneCanvas.tsx',
+      'CharacterMatrixRainCanvas.tsx',
+      'CharacterMesh.tsx',
+      'CharacterNoiseFieldCanvas.tsx',
+      'CharacterPixelSortCanvas.tsx',
+      'CharacterThresholdCanvas.tsx',
+      'CharacterVhsCanvas.tsx',
+      'CharacterVoronoiCanvas.tsx',
+      'CharacterWaveLinesCanvas.tsx',
+    ])
+  })
+
   it('routes each implemented effect to its own renderer and never falls back to ASCII', async () => {
     const studioCanvasSource = await readFile(join(studioDir, 'StudioCanvas.tsx'), 'utf8')
     const effectCanvasSource = await readFile(join(studioDir, 'StudioEffectCanvas.tsx'), 'utf8')

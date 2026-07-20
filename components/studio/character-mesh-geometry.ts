@@ -8,10 +8,20 @@ import {
   Vector3,
   type Shape,
 } from 'three'
+import {
+  DEFAULT_CHARACTER_MESH_DEFORM,
+  sanitizeCharacterMeshDeformSettings,
+  type CharacterMeshLegacyDeformSettings,
+  type CharacterMeshDeformSettings,
+  type CharacterMeshBulgeProfile,
+} from '@/components/studio/character-mesh-deform'
 
 export const MIN_CHARACTER_EXTRUSION_DEPTH = 0.01
 export const MIN_DISPLACEMENT_SUBDIVISION_LEVEL = 0
 export const MAX_DISPLACEMENT_SUBDIVISION_LEVEL = 2
+const CHARACTER_SURFACE_NOISE_MAX_DISPLACEMENT = 0.1
+
+export { DEFAULT_CHARACTER_MESH_DEFORM }
 
 type CreateCharacterMeshGeometriesOptions = {
   shapes: Shape[]
@@ -21,6 +31,7 @@ type CreateCharacterMeshGeometriesOptions = {
   twist?: number
   taper?: number
   bend?: number
+  deform?: CharacterMeshDeformSettings | CharacterMeshLegacyDeformSettings
   displacementSubdivisionLevel?: number
 }
 
@@ -30,6 +41,16 @@ export type CharacterMeshGeometryResult = {
   boundsMax: Vector3
   shaderBoundsMin: Vector3
   shaderBoundsMax: Vector3
+  /** Runtime-only data for advancing animated surface noise in-place. */
+  animationData?: CharacterMeshGeometryAnimationData
+}
+
+type CharacterMeshGeometryAnimationData = {
+  deform: CharacterMeshDeformSettings
+  bounds: Box3
+  stableSamples: readonly Float32Array[]
+  basePositions: readonly Float32Array[]
+  lastAnimationTime: number
 }
 
 export function clampCharacterExtrusionDepth(extrusionDepth: number) {
@@ -44,12 +65,14 @@ export function createCharacterMeshGeometries({
   twist = 0,
   taper = 0,
   bend = 0,
+  deform = DEFAULT_CHARACTER_MESH_DEFORM,
   displacementSubdivisionLevel = 0,
 }: CreateCharacterMeshGeometriesOptions): CharacterMeshGeometryResult {
   if (shapes.length === 0) {
     throw new Error('Character SVG contains no drawable SVG shapes.')
   }
 
+  const safeDeform = sanitizeCharacterMeshDeformSettings(deform)
   const depth = clampCharacterExtrusionDepth(extrusionDepth)
   const safeBevel = Math.max(0, bevel)
   const sourceBevelSize = safeBevel * getShapeSpan(shapes) / 2
@@ -82,18 +105,50 @@ export function createCharacterMeshGeometries({
       applyCharacterMeshThickness(geometry, thickness)
     }
 
-    const deformationBounds = getCombinedBounds(geometries)
-
-    const subdivisionLevel = Math.max(
-      sanitizeDisplacementSubdivisionLevel(displacementSubdivisionLevel),
-      twist === 0 && bend === 0 ? 0 : 2,
+    const sourceDeformationBounds = getCombinedBounds(geometries)
+    const requestedSubdivisionLevel = sanitizeDisplacementSubdivisionLevel(displacementSubdivisionLevel)
+    const totalCurlDegrees = safeDeform.curl.angle + safeDeform.curl.turns * 360
+    const bulgeSignal = safeDeform.bulgePinch.enabled ? safeDeform.bulgePinch.amount : 0
+    const squashSignal = safeDeform.squashStretch.enabled ? safeDeform.squashStretch.amount : 0
+    const waveSignal = safeDeform.wave.enabled ? safeDeform.wave.amplitude : 0
+    const noiseSignal = safeDeform.surfaceNoise.enabled ? safeDeform.surfaceNoise.amount : 0
+    const inflateSignal = safeDeform.inflate.enabled ? safeDeform.inflate.amount : 0
+    const curlSignal = safeDeform.curl.enabled ? totalCurlDegrees : 0
+    const advancedActive = bulgeSignal !== 0
+      || squashSignal !== 0
+      || waveSignal !== 0
+      || noiseSignal !== 0
+      || inflateSignal !== 0
+      || curlSignal !== 0
+    const nonNoiseNonlinearActive = (
+      bulgeSignal !== 0
+      || (squashSignal !== 0 && safeDeform.squashStretch.falloff > 0)
+      || waveSignal !== 0
+      || (inflateSignal !== 0 && !safeDeform.inflate.uniform)
+      || curlSignal !== 0
     )
+    const noiseOnlyAnimatedActive = noiseSignal !== 0
+      && safeDeform.surfaceNoise.speed > 0
+      && !nonNoiseNonlinearActive
+      && twist === 0
+      && bend === 0
+    const autoSubdivisionLevel = noiseOnlyAnimatedActive
+      ? 1
+      : nonNoiseNonlinearActive || noiseSignal !== 0 || twist !== 0 || bend !== 0
+        ? 2
+        : 0
+    const subdivisionLevel = Math.max(requestedSubdivisionLevel, autoSubdivisionLevel)
     geometries = geometries.map((geometry) =>
       subdivideGeometryTriangles(
         geometry,
         subdivisionLevel,
       ),
     )
+
+    const stableBounds = advancedActive ? getCombinedBounds(geometries) : sourceDeformationBounds
+    const stableSamples = advancedActive
+      ? captureStableSamples(geometries, stableBounds)
+      : undefined
 
     for (const geometry of geometries) {
       applyCharacterMeshDeformation(
@@ -102,9 +157,35 @@ export function createCharacterMeshGeometries({
         twist,
         taper,
         bend,
-        deformationBounds.min.y,
-        deformationBounds.max.y,
+        stableBounds.min.y,
+        stableBounds.max.y,
       )
+    }
+
+    const basePositions = advancedActive
+      ? geometries.map((geometry) => new Float32Array(geometry.attributes.position.array))
+      : undefined
+    const hasAnimatedNoise = safeDeform.surfaceNoise.enabled
+      && safeDeform.surfaceNoise.amount !== 0
+      && safeDeform.surfaceNoise.speed > 0
+      && stableSamples !== undefined
+      && basePositions !== undefined
+
+    if (advancedActive && stableSamples) {
+      geometries.forEach((geometry, geometryIndex) => {
+        applyCharacterMeshDeformations(
+          geometry,
+          safeDeform,
+          stableSamples[geometryIndex],
+          stableBounds,
+          0,
+        )
+      })
+      for (const geometry of geometries) {
+        geometry.computeVertexNormals()
+        geometry.computeBoundingBox()
+        geometry.computeBoundingSphere()
+      }
     }
 
     const normalizedBounds = getCombinedBounds(geometries)
@@ -122,12 +203,34 @@ export function createCharacterMeshGeometries({
       )
     }
 
+    if (hasAnimatedNoise) {
+      // Time-zero geometry may already be displaced by -maxNoiseDisplacement;
+      // reserve twice that amount so a later +maxNoiseDisplacement sample fits.
+      const maxNoiseDisplacement = safeDeform.surfaceNoise.amount * CHARACTER_SURFACE_NOISE_MAX_DISPLACEMENT
+      const animatedNoiseBoundsPadding = maxNoiseDisplacement * 2
+      for (const geometry of geometries) {
+        geometry.boundingBox?.expandByScalar(animatedNoiseBoundsPadding)
+        if (geometry.boundingSphere) {
+          geometry.boundingSphere.radius += animatedNoiseBoundsPadding
+        }
+      }
+    }
+
     return {
       geometries,
       boundsMin,
       boundsMax,
       shaderBoundsMin: shaderBounds.min,
       shaderBoundsMax: shaderBounds.max,
+      animationData: hasAnimatedNoise
+        ? {
+          deform: safeDeform,
+          bounds: stableBounds.clone(),
+          stableSamples,
+          basePositions,
+          lastAnimationTime: 0,
+        }
+        : undefined,
     }
   } catch (error) {
     disposeGeometries(geometries)
@@ -189,6 +292,335 @@ function applyCharacterMeshDeformation(
   geometry.computeVertexNormals()
   geometry.computeBoundingBox()
   geometry.computeBoundingSphere()
+}
+
+const STABLE_SAMPLE_STRIDE = 6
+
+function captureStableSamples(geometries: BufferGeometry[], bounds: Box3): Float32Array[] {
+  const center = bounds.getCenter(new Vector3())
+  const size = bounds.getSize(new Vector3())
+  const halfX = Math.max(size.x / 2, Number.EPSILON)
+  const halfY = Math.max(size.y / 2, Number.EPSILON)
+  const halfZ = Math.max(size.z / 2, Number.EPSILON)
+  const samples = geometries.map((geometry) => new Float32Array(geometry.attributes.position.count * STABLE_SAMPLE_STRIDE))
+  const normalSums = new Map<string, [number, number, number, number]>()
+
+  geometries.forEach((geometry, geometryIndex) => {
+    const position = geometry.attributes.position
+    const normal = geometry.attributes.normal
+    const packed = samples[geometryIndex]
+
+    for (let index = 0; index < position.count; index += 1) {
+      const x = position.getX(index)
+      const y = position.getY(index)
+      const z = position.getZ(index)
+      const offset = index * STABLE_SAMPLE_STRIDE
+      packed[offset] = (x - center.x) / halfX
+      packed[offset + 1] = (y - center.y) / halfY
+      packed[offset + 2] = clamp((z - center.z) / halfZ, -1, 1)
+
+      const key = stablePositionKey(x, y, z)
+      const sum = normalSums.get(key) ?? [0, 0, 0, 0]
+      sum[0] += normal.getX(index)
+      sum[1] += normal.getY(index)
+      sum[2] += normal.getZ(index)
+      sum[3] += 1
+      normalSums.set(key, sum)
+    }
+  })
+
+  geometries.forEach((geometry, geometryIndex) => {
+    const position = geometry.attributes.position
+    const packed = samples[geometryIndex]
+
+    for (let index = 0; index < position.count; index += 1) {
+      const offset = index * STABLE_SAMPLE_STRIDE
+      const sum = normalSums.get(stablePositionKey(
+        position.getX(index),
+        position.getY(index),
+        position.getZ(index),
+      ))
+      const normalLength = sum
+        ? Math.hypot(sum[0], sum[1], sum[2])
+        : 0
+      if (!sum || normalLength <= Number.EPSILON) {
+        packed[offset + 3] = 0
+        packed[offset + 4] = 0
+        packed[offset + 5] = 1
+      } else {
+        packed[offset + 3] = sum[0] / normalLength
+        packed[offset + 4] = sum[1] / normalLength
+        packed[offset + 5] = sum[2] / normalLength
+      }
+    }
+  })
+
+  return samples
+}
+
+function applyCharacterMeshDeformations(
+  geometry: BufferGeometry,
+  deform: CharacterMeshDeformSettings,
+  stableSamples: Float32Array,
+  bounds: Box3,
+  animationTime: number,
+) {
+  const position = geometry.attributes.position
+  const center = bounds.getCenter(new Vector3())
+  const size = bounds.getSize(new Vector3())
+  const halfX = Math.max(size.x / 2, Number.EPSILON)
+  const halfY = Math.max(size.y / 2, Number.EPSILON)
+  const halfZ = Math.max(size.z / 2, Number.EPSILON)
+  const totalCurlDegrees = deform.curl.angle + deform.curl.turns * 360
+
+  for (let index = 0; index < position.count; index += 1) {
+    const stableOffset = index * STABLE_SAMPLE_STRIDE
+    const u = stableSamples[stableOffset]
+    const v = stableSamples[stableOffset + 1]
+    const w = stableSamples[stableOffset + 2]
+    const nx = stableSamples[stableOffset + 3]
+    const ny = stableSamples[stableOffset + 4]
+    const nz = stableSamples[stableOffset + 5]
+    let x = position.getX(index)
+    let y = position.getY(index)
+    let z = position.getZ(index)
+
+    if (deform.bulgePinch.enabled && deform.bulgePinch.amount !== 0) {
+      const { amount, radius, falloff, centerX, centerY, axis, profile } = deform.bulgePinch
+      const dx = u - centerX
+      const dy = v - centerY
+      const distance = axis === 'radial' ? Math.hypot(dx, dy) : axis === 'x' ? Math.abs(dy) : Math.abs(dx)
+      const weight = profileWeight(distance, radius, falloff, profile)
+      const scale = Math.max(0.15, 1 + amount * 0.35 * weight)
+      if (axis === 'radial' || axis === 'x') {
+        x += dx * halfX * (scale - 1)
+      }
+      if (axis === 'radial' || axis === 'y') {
+        y += dy * halfY * (scale - 1)
+      }
+    }
+
+    if (deform.squashStretch.enabled && deform.squashStretch.amount !== 0) {
+      const { amount, axis, pivot, preserveVolume, secondaryScale, falloff } = deform.squashStretch
+      const selected = axis === 'x' ? u : axis === 'y' ? v : w
+      const half = axis === 'x' ? halfX : axis === 'y' ? halfY : halfZ
+      const pivotWorld = (axis === 'x' ? center.x : axis === 'y' ? center.y : center.z) + pivot * half
+      const weight = falloff === 0
+        ? 1
+        : 1 - smoothstep01(clamp(Math.abs(selected - pivot) / Math.max(falloff, Number.EPSILON), 0, 1))
+      const selectedScale = clamp(1 + amount * 0.55, 0.45, 1.55)
+      const localScale = 1 + (selectedScale - 1) * weight
+      if (axis === 'x') x = pivotWorld + (x - pivotWorld) * localScale
+      if (axis === 'y') y = pivotWorld + (y - pivotWorld) * localScale
+      if (axis === 'z') z = pivotWorld + (z - pivotWorld) * localScale
+      const secondary = preserveVolume
+        ? 1 / Math.sqrt(Math.max(localScale, Number.EPSILON))
+        : 1 + (secondaryScale - 1) * Math.abs(amount) * weight
+      if (axis !== 'x') x = center.x + (x - center.x) * secondary
+      if (axis !== 'y') y = center.y + (y - center.y) * secondary
+      if (axis !== 'z') z = center.z + (z - center.z) * secondary
+    }
+
+    if (deform.wave.enabled && deform.wave.amplitude !== 0) {
+      const { amplitude, frequency, phase, direction, waveform, offset, decay } = deform.wave
+      const coordinate = direction === 'x'
+        ? u
+        : direction === 'y'
+          ? v
+          : direction === 'diagonal'
+            ? (u + v) / Math.sqrt(2)
+            : Math.hypot(u, v)
+      const theta = Math.PI * 2 * frequency * (coordinate + offset) + phase * Math.PI / 180
+      const sine = Math.sin(theta)
+      const wave = waveform === 'triangle'
+        ? (2 / Math.PI) * Math.asin(sine)
+        : waveform === 'square' ? (sine >= 0 ? 1 : -1) : sine
+      const edge = clamp(Math.abs(coordinate), 0, 1)
+      const envelope = (1 - decay) + decay * (1 - smoothstep01(edge))
+      z += amplitude * 0.16 * wave * envelope
+    }
+
+    if (deform.surfaceNoise.enabled && deform.surfaceNoise.amount !== 0) {
+      const { amount, scale, seed, detail, roughness, direction, contrast, offsetX, offsetY } = deform.surfaceNoise
+      const xCoordinate = (u + offsetX) * scale + animationTime * deform.surfaceNoise.speed
+      const yCoordinate = (v + offsetY) * scale
+      const value = sampleCharacterMeshSurfaceNoise(xCoordinate, yCoordinate, seed, detail, roughness, contrast)
+      const magnitude = amount * CHARACTER_SURFACE_NOISE_MAX_DISPLACEMENT * value
+      if (direction === 'depth') {
+        z += magnitude
+      } else if (direction === 'radial') {
+        const radial = Math.hypot(u, v)
+        if (radial > Number.EPSILON) {
+          x += (u / radial) * magnitude
+          y += (v / radial) * magnitude
+        }
+      } else {
+        x += nx * magnitude
+        y += ny * magnitude
+        z += nz * magnitude
+      }
+    }
+
+    if (deform.inflate.enabled && deform.inflate.amount !== 0) {
+      const { amount, balance, radius, falloff, centerX, centerY, uniform, deflate } = deform.inflate
+      const sign = deflate ? -1 : 1
+      const dx = uniform ? u : u - centerX
+      const dy = uniform ? v : v - centerY
+      const distance = Math.hypot(dx, dy)
+      const weight = uniform ? 1 : profileWeight(distance, radius, falloff, 'smooth')
+      const xyAmount = sign * amount * (1 - balance) * 0.16 * weight
+      const depthAmount = sign * amount * balance * 0.8 * weight
+      x += dx * halfX * xyAmount
+      y += dy * halfY * xyAmount
+      z += w * halfZ * depthAmount
+    }
+
+    if (deform.curl.enabled && totalCurlDegrees !== 0) {
+      const { axis, tightness, pivot, offset, falloff, clamp: clampPhase } = deform.curl
+      const isAxisX = axis === 'x'
+      const isAxisY = axis === 'y'
+      const q = isAxisX ? v : u
+      const half = isAxisX ? halfY : halfX
+      const baseQ = q - pivot
+      const phaseCoordinate = clampPhase ? clamp(baseQ + offset, -1, 1) : baseQ + offset
+      const baselineCoordinate = clampPhase ? clamp(offset, -1, 1) : offset
+      const envelope = (value: number) => (1 - falloff) + falloff * (1 - smoothstep01(clamp(Math.abs(value), 0, 1)))
+      const curlSign = Math.sign(totalCurlDegrees)
+      const curlRadians = Math.abs(totalCurlDegrees * Math.PI / 180)
+      const phase = (value: number) => curlRadians * 0.5 * value * envelope(value)
+      const theta = phase(phaseCoordinate)
+      const theta0 = phase(baselineCoordinate)
+      const radius = (2 * half / Math.max(curlRadians, Number.EPSILON)) / tightness
+      const flatLongitudinal = baseQ * half
+      const curvedLongitudinal = (Math.sin(theta) - Math.sin(theta0)) * radius
+      const curvedDepth = (Math.cos(theta0) - Math.cos(theta)) * radius * curlSign
+      const longitudinalDelta = curvedLongitudinal - flatLongitudinal
+      if (isAxisX) {
+        y += longitudinalDelta
+        z += curvedDepth
+      } else if (isAxisY) {
+        x += longitudinalDelta
+        z += curvedDepth
+      } else {
+        x += longitudinalDelta
+        y += curvedDepth
+      }
+    }
+
+    position.setXYZ(index, x, y, z)
+  }
+
+  position.needsUpdate = true
+}
+
+/**
+ * Advances animated Noise without rebuilding React state or replacing geometry.
+ * The geometry is restored from its post-basic-deformation baseline before every
+ * sample, so each time is deterministic and independent of frame rate.
+ */
+export function updateCharacterMeshGeometryAnimation(
+  result: CharacterMeshGeometryResult | null | undefined,
+  animationTime: number,
+) {
+  const animation = result?.animationData
+  if (!animation || !Number.isFinite(animationTime) || animation.lastAnimationTime === animationTime) {
+    return false
+  }
+
+  result.geometries.forEach((geometry, geometryIndex) => {
+    const position = geometry.attributes.position
+    const basePositions = animation.basePositions[geometryIndex]
+    if (!basePositions || basePositions.length !== position.array.length) {
+      return
+    }
+
+    position.array.set(basePositions)
+    position.needsUpdate = true
+    applyCharacterMeshDeformations(
+      geometry,
+      animation.deform,
+      animation.stableSamples[geometryIndex],
+      animation.bounds,
+      animationTime,
+    )
+    geometry.computeVertexNormals()
+  })
+
+  animation.lastAnimationTime = animationTime
+  return true
+}
+
+function profileWeight(distance: number, radius: number, falloff: number, profile: CharacterMeshBulgeProfile) {
+  const t = clamp(distance / Math.max(radius, Number.EPSILON), 0, 1)
+  const smooth = 1 - t * t * (3 - 2 * t)
+  const profileValue = profile === 'sharp'
+    ? 1 - t
+    : profile === 'gaussian'
+      ? (Math.exp(-4 * t * t) - Math.exp(-4)) / (1 - Math.exp(-4))
+      : smooth
+  return Math.max(profileValue, 0) ** (0.5 + 3.5 * falloff)
+}
+
+function smoothstep01(value: number) {
+  const t = clamp(value, 0, 1)
+  return t * t * (3 - 2 * t)
+}
+
+export function sampleCharacterMeshSurfaceNoise(
+  x: number,
+  y: number,
+  seed: number,
+  detail: number,
+  roughness: number,
+  contrast: number,
+) {
+  return signedPower(fbmNoise(x, y, seed, detail, roughness), 2 ** (contrast - 1))
+}
+
+function fbmNoise(x: number, y: number, seed: number, detail: number, roughness: number) {
+  let frequency = 1
+  let amplitude = 1
+  let total = 0
+  let amplitudeTotal = 0
+  for (let octave = 0; octave < detail; octave += 1) {
+    total += valueNoise(x * frequency, y * frequency, seed) * amplitude
+    amplitudeTotal += amplitude
+    frequency *= 2
+    amplitude *= roughness
+  }
+  return amplitudeTotal > Number.EPSILON ? total / amplitudeTotal : 0
+}
+
+function valueNoise(x: number, y: number, seed: number) {
+  const x0 = Math.floor(x)
+  const y0 = Math.floor(y)
+  const tx = smoothstep01(x - x0)
+  const ty = smoothstep01(y - y0)
+  const n00 = latticeNoise(x0, y0, seed)
+  const n10 = latticeNoise(x0 + 1, y0, seed)
+  const n01 = latticeNoise(x0, y0 + 1, seed)
+  const n11 = latticeNoise(x0 + 1, y0 + 1, seed)
+  return lerp(lerp(n00, n10, tx), lerp(n01, n11, tx), ty)
+}
+
+function latticeNoise(x: number, y: number, seed: number) {
+  return fract(Math.sin(x * 127.1 + y * 311.7 + seed * 74.7) * 43758.5453123) * 2 - 1
+}
+
+function signedPower(value: number, exponent: number) {
+  return Math.sign(value) * Math.abs(value) ** exponent
+}
+
+function lerp(a: number, b: number, t: number) {
+  return a + (b - a) * t
+}
+
+function fract(value: number) {
+  return value - Math.floor(value)
+}
+
+function clamp(value: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, value))
 }
 
 function getShapeSpan(shapes: Shape[]) {
@@ -466,4 +898,8 @@ function normalizeUv(value: number, min: number, size: number) {
 
 function xyKey(x: number, y: number) {
   return `${roundNumber(x)}:${roundNumber(y)}`
+}
+
+function stablePositionKey(x: number, y: number, z: number) {
+  return `${roundNumber(x)}:${roundNumber(y)}:${roundNumber(z)}`
 }

@@ -13,6 +13,7 @@ import {
 } from './grainrad-effects'
 import {
   GRAINRAD_EFFECT_SHADER_IDS,
+  POST_VALUE_SLOT_COUNT,
   compileGrainradEffectRuntime,
   getUnmappedGrainradControls,
 } from './grainrad-effect-runtime'
@@ -706,6 +707,49 @@ describe('Phase 5F Grainrad runtime effect compiler', () => {
       0.8, 0.65, 0.4, 0.75, 0.55, 0.4, -0.25,
     ])
     expect(runtime.postValues[5]).toBe(1)
+  })
+
+  it('packs the expanded Post-Processing controls without changing legacy slots', () => {
+    expect(POST_VALUE_SLOT_COUNT).toBe(28)
+    const defaults = createDefaultGrainradEffectControls().ascii
+    const runtime = compileGrainradEffectRuntime({
+      selectedEffectId: 'ascii',
+      controls: {
+        ...defaults,
+        bloom: true,
+        'bloom-threshold': 0.7,
+        'bloom-soft-threshold': 0.35,
+        'bloom-intensity': 1.8,
+        'bloom-radius': 16,
+        grain: true,
+        'grain-mode': 'pixel',
+        'grain-intensity': 125,
+        'grain-size': 7,
+        'grain-speed': 150,
+        chromatic: true,
+        'chromatic-offset': 22,
+        scanlines: true,
+        'scanline-opacity': 0.65,
+        'scanline-spacing': 9,
+        'scanline-offset': 13,
+        'scanline-speed': 2.5,
+        'scanline-direction': 'up',
+        vignette: true,
+        'vignette-intensity': 0.8,
+        'vignette-radius': 0.3,
+        'crt-curve': true,
+        'crt-amount': 0.25,
+        phosphor: true,
+        'phosphor-color': 'custom',
+        'phosphor-custom-color': '#123456',
+      },
+    })
+
+    expect(runtime.postValues).toEqual([
+      1, 1.25, 0.7, 1.5, 1, 1, 1, 1, 1,
+      0.7, 0.35, 1.8, 0.8, 1, 22, 0.65, 9, 0.8, 0.3, 0.25, 3,
+      0x12 / 255, 0x34 / 255, 0x56 / 255, 13, 2.5, 0, 1,
+    ])
   })
 })
 

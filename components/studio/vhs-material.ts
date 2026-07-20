@@ -38,9 +38,6 @@ uniform float u_blur;
 uniform float u_quantizeColors;
 uniform float u_shapeMatching;
 uniform float u_bloom;
-uniform float u_grainIntensity;
-uniform float u_grainSize;
-uniform float u_grainSpeed;
 uniform float u_postChromatic;
 uniform float u_scanlines;
 uniform float u_vignette;
@@ -109,10 +106,6 @@ float vhsPostNoise(vec2 pixel) {
 
 vec3 applyVhsPostProcessing(vec3 color, float sourceLuminance, vec2 uv) {
   vec2 centered = uv * 2.0 - 1.0;
-  float noiseScale = max(u_grainSize, 1.0);
-  float movingTime = floor(u_time * (1.0 + u_grainSpeed * 0.1));
-  color += (vhsPostNoise(floor(gl_FragCoord.xy / noiseScale) + movingTime) - 0.5)
-    * (u_grainIntensity / 100.0);
   color += smoothstep(0.65, 1.0, sourceLuminance) * u_bloom * 0.24;
   color.r += (vhsPostNoise(gl_FragCoord.xy + 13.0) - 0.5) * u_postChromatic * 0.08;
   color.b -= (vhsPostNoise(gl_FragCoord.xy + 29.0) - 0.5) * u_postChromatic * 0.08;
@@ -248,9 +241,6 @@ export function createVhsShaderMaterial({
       u_quantizeColors: { value: 0 },
       u_shapeMatching: { value: 0 },
       u_bloom: { value: 0 },
-      u_grainIntensity: { value: 0 },
-      u_grainSize: { value: 2 },
-      u_grainSpeed: { value: 50 },
       u_postChromatic: { value: 0 },
       u_scanlines: { value: 0 },
       u_vignette: { value: 0 },
@@ -279,9 +269,6 @@ export function applyVhsUniforms(material: ShaderMaterial, controls: VhsControls
   material.uniforms.u_quantizeColors.value = readNumber(controls['quantize-colors'], 0)
   material.uniforms.u_shapeMatching.value = readNumber(controls['shape-matching'], 0)
   material.uniforms.u_bloom.value = readBoolean(controls.bloom)
-  material.uniforms.u_grainIntensity.value = readNumber(controls['grain-intensity'], 0)
-  material.uniforms.u_grainSize.value = readNumber(controls['grain-size'], 2)
-  material.uniforms.u_grainSpeed.value = readNumber(controls['grain-speed'], 50)
   material.uniforms.u_postChromatic.value = readBoolean(controls.chromatic)
   material.uniforms.u_scanlines.value = readBoolean(controls.scanlines)
   material.uniforms.u_vignette.value = readBoolean(controls.vignette)

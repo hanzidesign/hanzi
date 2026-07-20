@@ -86,6 +86,16 @@ export default function StudioRightPanel({
   const setAsciiBackgroundColor = (backgroundColor: string) => {
     setAsciiControl({ backgroundColor, palette: 'custom' })
   }
+  const resetAsciiAdjustments = () => {
+    setAsciiControl({
+      brightness: DEFAULT_ASCII_STATE.brightness,
+      contrast: DEFAULT_ASCII_STATE.contrast,
+      saturation: DEFAULT_ASCII_STATE.saturation,
+      hueRotation: DEFAULT_ASCII_STATE.hueRotation,
+      sharpness: DEFAULT_ASCII_STATE.sharpness,
+      gamma: DEFAULT_ASCII_STATE.gamma,
+    })
+  }
 
   return (
     <div className={classes.rightContent}>
@@ -150,6 +160,13 @@ export default function StudioRightPanel({
             </TerminalRowGroup>
 
             <TerminalRowGroup title="Adjustments">
+              <button
+                type="button"
+                className={`${classes.inputGroupReset} ${classes.adjustmentsReset}`}
+                onClick={resetAsciiAdjustments}
+              >
+                Reset all
+              </button>
               <TerminalRangeRow
                 label="Brightness"
                 value={ascii.brightness}
@@ -266,13 +283,15 @@ export default function StudioRightPanel({
       </TerminalSection>
 
       <TerminalSection id="postProcessing" title="Post-Processing">
-        {renderEffectSettings({
-          selectedEffectId,
-          groups: GRAINRAD_COMMON_POST_PROCESSING_GROUPS,
-          controls: effectControls,
-          theme,
-          onChange: setGrainradEffectControl,
-        })}
+        <div className={classes.postProcessingGroups}>
+          {renderPostProcessingSettings({
+            selectedEffectId,
+            groups: GRAINRAD_COMMON_POST_PROCESSING_GROUPS,
+            controls: effectControls,
+            theme,
+            onChange: setGrainradEffectControl,
+          })}
+        </div>
       </TerminalSection>
 
       {includeExport ? (
@@ -301,6 +320,21 @@ function renderEffectSettings({
     <>
       {groups.map((group, groupIndex) => (
         <TerminalRowGroup key={group.title ?? `group-${groupIndex}`} title={group.title}>
+          {group.title === 'Adjustments' ? (
+            <button
+              type="button"
+              className={`${classes.inputGroupReset} ${classes.adjustmentsReset}`}
+              onClick={() => group.controls.forEach((control) => {
+                onChange(
+                  selectedEffectId,
+                  control.id,
+                  getGrainradControlDefaultValue(control, theme),
+                )
+              })}
+            >
+              Reset all
+            </button>
+          ) : null}
           {group.controls
             .filter((control) => isGrainradControlVisible(control, controls))
             .map((control) => renderEffectControl({
@@ -314,6 +348,63 @@ function renderEffectSettings({
       ))}
     </>
   )
+}
+
+function renderPostProcessingSettings({
+  selectedEffectId,
+  groups,
+  controls,
+  theme,
+  onChange,
+}: {
+  selectedEffectId: GrainradEffectId
+  groups: GrainradSettingGroup[]
+  controls: Record<string, GrainradControlValue> | undefined
+  theme: 'light' | 'dark'
+  onChange: (effectId: GrainradEffectId, controlId: string, value: GrainradControlValue) => void
+}) {
+  return groups.map((group) => {
+    const toggle = group.controls[0]
+    if (!toggle || toggle.kind !== 'toggle') {
+      return null
+    }
+
+    const enabled = controls?.[toggle.id] === true
+
+    return (
+      <section
+        key={toggle.id}
+        className={classes.postProcessingGroup}
+        data-enabled={enabled}
+        aria-label={toggle.label}
+      >
+        {enabled ? (
+          <button
+            type="button"
+            className={classes.inputGroupReset}
+            onClick={() => group.controls.slice(1).forEach((control) => {
+              onChange(
+                selectedEffectId,
+                control.id,
+                getGrainradControlDefaultValue(control, theme),
+              )
+            })}
+          >
+            Reset all
+          </button>
+        ) : null}
+        {group.controls
+          .filter((control) => isGrainradControlVisible(control, controls))
+          .map((control) => renderEffectControl({
+            selectedEffectId,
+            control,
+            controls,
+            theme,
+            onChange,
+          }))}
+      </section>
+    )
+  })
 }
 
 function renderEffectControl({

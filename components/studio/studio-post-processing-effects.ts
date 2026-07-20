@@ -3,6 +3,7 @@ import { BlendFunction, Effect } from 'postprocessing'
 
 const GRAIN_FRAGMENT_SHADER = /* glsl */ `
 uniform float uIntensity;
+uniform float uMode;
 uniform float uSize;
 uniform float uSpeed;
 uniform float uTime;
@@ -15,9 +16,23 @@ float studioPostHash(vec2 value) {
 }
 
 void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor) {
-  vec2 grainCell = floor(uv * uResolution / max(uSize, 1.0));
-  float frame = floor(uTime * mix(2.0, 30.0, uSpeed));
-  float noise = studioPostHash(grainCell + vec2(frame * 0.7549, frame));
+  float noise;
+  if (uMode < 0.5) {
+    vec2 grainCell = floor(uv * uResolution / max(uSize, 1.0));
+    float normalizedSpeed = clamp(uSpeed / 100.0, 0.0, 2.0);
+    float frame = floor(uTime * mix(2.0, 30.0, normalizedSpeed));
+    noise = studioPostHash(grainCell + vec2(frame * 0.7549, frame));
+  } else {
+    vec2 pixel = floor(gl_FragCoord.xy / max(uSize, 1.0));
+    float pixelFrameRate = mix(
+      1.0,
+      60.0,
+      clamp((uSpeed - 1.0) / 199.0, 0.0, 1.0)
+    );
+    float movingTime = floor(uTime * pixelFrameRate);
+    pixel += movingTime;
+    noise = fract(sin(dot(pixel, vec2(12.9898, 78.233))) * 43758.5453);
+  }
   vec3 color = inputColor.rgb + (noise - 0.5) * uIntensity;
   outputColor = vec4(clamp(color, 0.0, 1.0), inputColor.a);
 }
@@ -39,17 +54,30 @@ void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor)
 }
 `
 
-const PHOSPHOR_FRAGMENT_SHADER = /* glsl */ `
-uniform float uIntensity;
+const SCANLINE_FRAGMENT_SHADER = /* glsl */ `
+uniform float uOpacity;
+uniform float uSpacing;
+uniform float uOffset;
+uniform float uSpeed;
+uniform float uTime;
 uniform vec2 uResolution;
 
 void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor) {
-  float stripe = mod(floor(uv.x * uResolution.x), 3.0);
-  vec3 phosphorMask = stripe < 1.0
-    ? vec3(1.65, 0.55, 0.55)
-    : (stripe < 2.0 ? vec3(0.55, 1.65, 0.55) : vec3(0.55, 0.55, 1.65));
-  vec3 graded = inputColor.rgb * phosphorMask;
-  outputColor = vec4(mix(inputColor.rgb, graded, uIntensity), inputColor.a);
+  float fragY = uv.y * uResolution.y;
+  float phase = mod(fragY + uOffset + uTime * uSpeed * uSpacing * 2.0, uSpacing * 2.0);
+  float scanlineMask = phase < uSpacing ? 1.0 : 0.0;
+  vec3 color = inputColor.rgb;
+  color *= 1.0 - uOpacity * scanlineMask;
+  outputColor = vec4(color, inputColor.a);
+}
+`
+
+const PHOSPHOR_FRAGMENT_SHADER = /* glsl */ `
+uniform vec3 uPhosphorColor;
+
+void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor) {
+  float luminance = dot(inputColor.rgb, vec3(0.299, 0.587, 0.114));
+  outputColor = vec4(uPhosphorColor * luminance, inputColor.a);
 }
 `
 
@@ -59,8 +87,9 @@ export class StudioGrainEffect extends Effect {
       blendFunction: BlendFunction.NORMAL,
       uniforms: new Map<string, Uniform>([
         ['uIntensity', new Uniform(0)],
+        ['uMode', new Uniform(0)],
         ['uSize', new Uniform(2)],
-        ['uSpeed', new Uniform(0.5)],
+        ['uSpeed', new Uniform(50)],
         ['uTime', new Uniform(0)],
         ['uResolution', new Uniform(new Vector2(1, 1))],
       ]),
@@ -69,18 +98,21 @@ export class StudioGrainEffect extends Effect {
 
   setParameters({
     intensity,
+    mode = 'noise',
     size,
     speed,
     time,
   }: {
     intensity: number
+    mode?: string
     size: number
     speed: number
     time: number
   }) {
-    this.uniforms.get('uIntensity')!.value = clamp(intensity, 0, 1)
+    this.uniforms.get('uIntensity')!.value = clamp(intensity, 0, 2)
+    this.uniforms.get('uMode')!.value = mode === 'pixel' ? 1 : 0
     this.uniforms.get('uSize')!.value = clamp(size, 1, 10)
-    this.uniforms.get('uSpeed')!.value = clamp(speed, 0, 1)
+    this.uniforms.get('uSpeed')!.value = clamp(speed, 1, 200)
     this.uniforms.get('uTime')!.value = Number.isFinite(time) ? time : 0
   }
 
@@ -101,8 +133,50 @@ export class StudioCrtCurveEffect extends Effect {
     })
   }
 
-  set amount(value: number) {
-    this.uniforms.get('uAmount')!.value = clamp(value, 0, 0.3)
+  setAmount(value: number) {
+    this.uniforms.get('uAmount')!.value = clamp(value, 0, 0.5)
+  }
+}
+
+export class StudioScanlineEffect extends Effect {
+  constructor() {
+    super('StudioScanlineEffect', SCANLINE_FRAGMENT_SHADER, {
+      blendFunction: BlendFunction.NORMAL,
+      uniforms: new Map<string, Uniform>([
+        ['uOpacity', new Uniform(0.5)],
+        ['uSpacing', new Uniform(80)],
+        ['uOffset', new Uniform(0)],
+        ['uSpeed', new Uniform(1)],
+        ['uTime', new Uniform(0)],
+        ['uResolution', new Uniform(new Vector2(1, 1))],
+      ]),
+    })
+  }
+
+  setParameters({
+    opacity,
+    spacing,
+    offset,
+    speed,
+  }: {
+    opacity: number
+    spacing: number
+    offset: number
+    speed: number
+  }) {
+    this.uniforms.get('uOpacity')!.value = clamp(opacity, 0, 1)
+    this.uniforms.get('uSpacing')!.value = clamp(spacing, 1, 1000)
+    this.uniforms.get('uOffset')!.value = clamp(offset, 0, 20)
+    this.uniforms.get('uSpeed')!.value = clamp(speed, 1, 10)
+  }
+
+  setTime(value: number) {
+    this.uniforms.get('uTime')!.value = Number.isFinite(value) ? value : 0
+  }
+
+  override setSize(width: number, height: number) {
+    const resolution = this.uniforms.get('uResolution')!.value as Vector2
+    resolution.set(Math.max(1, width), Math.max(1, height))
   }
 }
 
@@ -111,20 +185,42 @@ export class StudioPhosphorEffect extends Effect {
     super('StudioPhosphorEffect', PHOSPHOR_FRAGMENT_SHADER, {
       blendFunction: BlendFunction.NORMAL,
       uniforms: new Map<string, Uniform>([
-        ['uIntensity', new Uniform(0.42)],
-        ['uResolution', new Uniform(new Vector2(1, 1))],
+        ['uPhosphorColor', new Uniform([0, 1, 0])],
       ]),
     })
   }
 
-  set intensity(value: number) {
-    this.uniforms.get('uIntensity')!.value = clamp(value, 0, 1)
+  setColor(value: unknown) {
+    this.uniforms.get('uPhosphorColor')!.value = resolvePhosphorColor(value)
+  }
+}
+
+export function resolvePhosphorColor(value: unknown): [number, number, number] {
+  if (typeof value === 'string') {
+    const match = value.match(/^#?([0-9a-f]{6})$/i)
+    if (!match) {
+      return [0, 1, 0]
+    }
+
+    const color = Number.parseInt(match[1], 16)
+    return [
+      ((color >> 16) & 255) / 255,
+      ((color >> 8) & 255) / 255,
+      (color & 255) / 255,
+    ]
   }
 
-  override setSize(width: number, height: number) {
-    const resolution = this.uniforms.get('uResolution')!.value as Vector2
-    resolution.set(Math.max(1, width), Math.max(1, height))
+  if (!Array.isArray(value) || value.length !== 3 || !value.every(
+    (entry) => typeof entry === 'number' && Number.isFinite(entry),
+  )) {
+    return [0, 1, 0]
   }
+
+  return [
+    clamp(value[0], 0, 1),
+    clamp(value[1], 0, 1),
+    clamp(value[2], 0, 1),
+  ]
 }
 
 function clamp(value: number, min: number, max: number) {

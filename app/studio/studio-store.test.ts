@@ -8,6 +8,7 @@ import {
 } from './studio-store'
 import { createDefaultParams } from '@/shaders/uniforms'
 import { getDefaultShaderPreset, getShaderPresetById } from '@/shaders/registry'
+import { DEFAULT_CHARACTER_MESH_DEFORM } from '@/components/studio/character-mesh-deform'
 
 const OLD_STUDIO_STORE_STORAGE_KEY = 'hanzi-studio-shader-editor-v1'
 
@@ -48,7 +49,7 @@ describe('studio store', () => {
 
     expect(state.character).toEqual({
       country: 'int',
-      year: '2023',
+      year: '2025',
       isTc: true,
     })
     expect(state.shader).toEqual({
@@ -59,6 +60,7 @@ describe('studio store', () => {
       extrusionDepth: expect.any(Number),
       thickness: expect.any(Number),
       autoRotate: true,
+      deform: DEFAULT_CHARACTER_MESH_DEFORM,
       repeat: {
         enabled: false,
         count: 6,
@@ -70,6 +72,93 @@ describe('studio store', () => {
     expect(state.displacement.patternUrl).toBe('/images/patterns/000.jpg')
     expect(state.displacement.subdivisionLevel).toBe(0)
     expect(state.view.activePanel).toBe('character')
+  })
+
+  it('falls back and clamps persisted Model Deform controls', () => {
+    const initial = createInitialStudioStoreState()
+    const persisted = {
+      ...initial,
+      mesh: {
+        ...initial.mesh,
+        deform: {
+          bulgePinch: { enabled: true, amount: 99 },
+          squashStretch: { enabled: true, amount: -4 },
+          wave: { enabled: true, amount: 0.4 },
+          surfaceNoise: { enabled: true, amount: -2 },
+          inflate: { enabled: true, amount: 99 },
+          curl: { enabled: true, amount: 999 },
+        },
+      },
+    }
+    const { storage } = createMemoryStorage(
+      JSON.stringify({ state: persisted, version: 7 }),
+    )
+    const store = createStudioStore(storage)
+
+    expect(store.getState().mesh.deform).toEqual({
+      bulgePinch: { ...DEFAULT_CHARACTER_MESH_DEFORM.bulgePinch, enabled: true, amount: 10 },
+      squashStretch: { ...DEFAULT_CHARACTER_MESH_DEFORM.squashStretch, enabled: true, amount: -1 },
+      wave: { ...DEFAULT_CHARACTER_MESH_DEFORM.wave, enabled: true, amplitude: 0.4 },
+      surfaceNoise: { ...DEFAULT_CHARACTER_MESH_DEFORM.surfaceNoise, enabled: true, amount: 0 },
+      inflate: { ...DEFAULT_CHARACTER_MESH_DEFORM.inflate, enabled: true, amount: 10 },
+      curl: { ...DEFAULT_CHARACTER_MESH_DEFORM.curl, enabled: true, angle: 360 },
+    })
+
+    const legacyPersisted = {
+      ...initial,
+      mesh: { ...initial.mesh, deform: undefined },
+    }
+    const legacyMemory = createMemoryStorage(
+      JSON.stringify({ state: legacyPersisted, version: 7 }),
+    )
+    expect(createStudioStore(legacyMemory.storage).getState().mesh.deform).toEqual(
+      initial.mesh.deform,
+    )
+  })
+
+  it('publishes Model Deform changes once and ignores duplicate slider values', () => {
+    const { storage } = createMemoryStorage()
+    const store = createStudioStore(storage)
+    let updateCount = 0
+    const unsubscribe = store.subscribe(() => {
+      updateCount += 1
+    })
+
+    store.getState().setMeshDeformControl('curl', { enabled: true, amount: 45 })
+    const updatedMesh = store.getState().mesh
+    store.getState().setMeshDeformControl('curl', { amount: 45 })
+
+    expect(store.getState().mesh.deform.curl).toEqual({
+      ...DEFAULT_CHARACTER_MESH_DEFORM.curl,
+      enabled: true,
+      angle: 45,
+    })
+    expect(store.getState().mesh).toBe(updatedMesh)
+    expect(updateCount).toBe(1)
+    unsubscribe()
+  })
+
+  it('preserves advanced settings when a feature is switched OFF', () => {
+    const { storage } = createMemoryStorage()
+    const store = createStudioStore(storage)
+    store.getState().setMeshDeformControl('inflate', {
+      enabled: true,
+      amount: 0.8,
+      balance: 0.2,
+      radius: 1.6,
+      falloff: 0.7,
+      centerX: -0.4,
+      centerY: 0.3,
+      uniform: false,
+      deflate: true,
+    })
+    const configured = store.getState().mesh.deform.inflate
+    store.getState().setMeshDeformControl('inflate', { enabled: false })
+
+    expect(store.getState().mesh.deform.inflate).toEqual({
+      ...configured,
+      enabled: false,
+    })
   })
 
   it('uses a clean Grainrad ASCII storage key without reading old mesh or displacement state', () => {

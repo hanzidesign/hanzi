@@ -14,6 +14,9 @@ import {
   createCharacterMeshGeometries,
   type CharacterMeshGeometryResult,
 } from '@/components/studio/character-mesh-geometry'
+import { useCharacterMeshAnimation } from '@/components/studio/character-mesh-animation'
+import type { CharacterMeshDeformSettings } from '@/components/studio/character-mesh-deform'
+import { useStudioStore } from '@/app/studio/studio-store'
 import {
   IDLE_CHARACTER_MESH_STATUS,
   type CharacterMeshStatus,
@@ -33,6 +36,7 @@ type CharacterMeshProps = {
     rotation: { x: number; y: number; z: number }
     scale: number
     position: { x: number; y: number }
+    deform: CharacterMeshDeformSettings
     autoRotate: boolean
     autoRotateSpeed: number
   }
@@ -64,6 +68,7 @@ export default function CharacterMesh({
   const groupRef = useRef<Group>(null)
   const materialRef = useRef<ShaderMaterial | null>(null)
   const resultRef = useRef<CharacterMeshGeometryResult | null>(null)
+  const animation = useStudioStore((store) => store.animation)
   const [svgText, setSvgText] = useState<string | null>(null)
   const [geometryResult, setGeometryResult] =
     useState<CharacterMeshGeometryResult | null>(null)
@@ -152,6 +157,7 @@ export default function CharacterMesh({
         svgText,
         mesh.extrusionDepth,
         mesh.thickness,
+        mesh.deform,
         displacementSubdivisionLevel,
       )
       replaceGeometryResult(nextResult, resultRef, setGeometryResult)
@@ -169,6 +175,7 @@ export default function CharacterMesh({
     displacementSubdivisionLevel,
     mesh.extrusionDepth,
     mesh.thickness,
+    mesh.deform,
     onStatusChange,
     svgText,
   ])
@@ -191,6 +198,8 @@ export default function CharacterMesh({
       material?.dispose()
     }
   }, [material])
+
+  useCharacterMeshAnimation(resultRef, animation)
 
   useFrame(({ clock }, delta) => {
     const activeMaterial = materialRef.current
@@ -241,6 +250,7 @@ function createGeometryResult(
   svgText: string,
   extrusionDepth: number,
   thickness: number,
+  deform: CharacterMeshDeformSettings,
   displacementSubdivisionLevel: number,
 ) {
   const svg = new SVGLoader().parse(svgText)
@@ -250,6 +260,7 @@ function createGeometryResult(
     shapes,
     extrusionDepth,
     thickness,
+    deform,
     displacementSubdivisionLevel,
   })
 }

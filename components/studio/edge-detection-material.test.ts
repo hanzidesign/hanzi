@@ -100,7 +100,6 @@ describe('Edge Detection shader material', () => {
       chromatic: true, scanlines: true, vignette: true, 'crt-curve': true, phosphor: true,
     })
     expect(material.uniforms.u_bloom.value).toBe(1)
-    expect(material.uniforms.u_grainIntensity.value).toBe(20)
     expect(material.uniforms.u_postChromatic.value).toBe(1)
     const spy = vi.spyOn(material, 'dispose')
     disposeEdgeDetectionShaderMaterial(material)

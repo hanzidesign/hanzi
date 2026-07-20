@@ -49,9 +49,14 @@ import {
   MIN_CHARACTER_REPEAT_SIZE,
   type CharacterRepeatSettings,
 } from '@/components/studio/character-model-arrangement'
+import {
+  DEFAULT_CHARACTER_MESH_DEFORM,
+  sanitizeCharacterMeshDeformSettings,
+  type CharacterMeshDeformSettings,
+} from '@/components/studio/character-mesh-deform'
 
 export const STUDIO_STORE_STORAGE_KEY = 'hanzi-studio-grainrad-effects-v1'
-const STUDIO_STORE_STORAGE_VERSION = 7
+const STUDIO_STORE_STORAGE_VERSION = 8
 export const MAX_PATTERN_LAYERS = 3
 const DEFAULT_ART_PATTERN_LAYERS: Array<
   Pick<StudioPatternLayer, 'source' | 'target' | 'enabled' | 'intensity' | 'blendMode' | 'locked'>
@@ -83,7 +88,7 @@ const DEFAULT_ART_PATTERN_LAYERS: Array<
 ]
 
 const DEFAULT_COUNTRY = 'int'
-const DEFAULT_YEAR = '2023'
+const DEFAULT_YEAR = '2025'
 const DEFAULT_IS_TC = true
 
 export const DEFAULT_EFFECT_STATE = {
@@ -280,6 +285,7 @@ export const DEFAULT_MESH_STATE = {
   twist: 0,
   taper: 0,
   bend: 0,
+  deform: DEFAULT_CHARACTER_MESH_DEFORM satisfies CharacterMeshDeformSettings,
   repeat: {
     enabled: false,
     count: 6,
@@ -372,6 +378,7 @@ export type StudioStoreState = {
     twist: number
     taper: number
     bend: number
+    deform: CharacterMeshDeformSettings
     repeat: CharacterRepeatSettings
     rotation: { x: number; y: number; z: number }
     scale: number
@@ -423,6 +430,10 @@ export type StudioStoreActions = {
   resetParamsForPreset: (presetId?: string) => void
   updateParam: (paramId: string, value: ShaderParamValue) => void
   setMeshControl: (partial: Partial<StudioStoreState['mesh']>) => void
+  setMeshDeformControl: <K extends keyof CharacterMeshDeformSettings>(
+    key: K,
+    partial: Partial<CharacterMeshDeformSettings[K]> & { amount?: number },
+  ) => void
   resetMeshControls: () => void
   setDisplacementControl: (partial: Partial<StudioStoreState['displacement']>) => void
   setUploadedDisplacementImageData: (dataUrl: string) => void
@@ -552,6 +563,38 @@ export function createStudioStore(storage?: StateStorage) {
         },
         setMeshControl: (partial) => {
           set({ mesh: { ...get().mesh, ...partial } })
+        },
+        setMeshDeformControl: (key, partial) => {
+          const mesh = get().mesh
+          const currentControl = mesh.deform[key]
+          const legacyAmount = partial.amount
+          const normalizedPartial = key === 'wave' || key === 'curl'
+            ? (() => {
+                const partialWithoutLegacyAmount = Object.fromEntries(
+                  Object.entries(partial).filter(([field]) => field !== 'amount'),
+                ) as Omit<typeof partial, 'amount'>
+                return key === 'wave'
+                  ? { ...partialWithoutLegacyAmount, ...(legacyAmount === undefined ? {} : { amplitude: legacyAmount }) }
+                  : { ...partialWithoutLegacyAmount, ...(legacyAmount === undefined ? {} : { angle: legacyAmount }) }
+              })()
+            : partial
+          const nextControl = { ...currentControl, ...normalizedPartial }
+
+          if (Object.keys(nextControl).every((field) => (
+            nextControl[field as keyof typeof nextControl] === currentControl[field as keyof typeof currentControl]
+          ))) {
+            return
+          }
+
+          set({
+            mesh: {
+              ...mesh,
+              deform: {
+                ...mesh.deform,
+                [key]: nextControl,
+              },
+            },
+          })
         },
         resetMeshControls: () => {
           set({ mesh: createDefaultMeshState() })
@@ -1984,6 +2027,40 @@ function migratePersistedStudioState(value: unknown, version: number): unknown {
     }
   }
 
+  if (version < 8) {
+    const grainradEffect = readRecord(persisted.grainradEffect)
+    const controlsByTheme = readRecord(grainradEffect.controlsByTheme)
+    const lightControls = readRecord(controlsByTheme.light)
+    const lightMatrixRain = readRecord(lightControls['matrix-rain'])
+    const darkControls = readRecord(controlsByTheme.dark)
+    const darkMatrixRain = readRecord(darkControls['matrix-rain'])
+
+    persisted = {
+      ...persisted,
+      grainradEffect: {
+        ...grainradEffect,
+        controlsByTheme: {
+          ...controlsByTheme,
+          light: {
+            ...lightControls,
+            'matrix-rain': {
+              ...lightMatrixRain,
+              ...(lightMatrixRain.foreground === '#15c15d' ? { foreground: '#10da14' } : {}),
+              ...(lightMatrixRain['rain-color'] === '#007a33' ? { 'rain-color': '#24ee20' } : {}),
+            },
+          },
+          dark: {
+            ...darkControls,
+            'matrix-rain': {
+              ...darkMatrixRain,
+              ...(darkMatrixRain.foreground === '#f4f1e8' ? { foreground: '#36d00b' } : {}),
+            },
+          },
+        },
+      },
+    }
+  }
+
   return persisted
 }
 
@@ -2459,6 +2536,7 @@ function sanitizeMeshState(value: unknown, fallback: StudioStoreState['mesh']): 
   const rotation = readRecord(record.rotation)
   const position = readRecord(record.position)
   const repeat = readRecord(record.repeat)
+  const deform = readRecord(record.deform)
 
   return {
     extrusionDepth: readClampedNumber(record.extrusionDepth, fallback.extrusionDepth, 0.01, 1),
@@ -2467,6 +2545,7 @@ function sanitizeMeshState(value: unknown, fallback: StudioStoreState['mesh']): 
     twist: readClampedNumber(record.twist, fallback.twist, -360, 360),
     taper: readClampedNumber(record.taper, fallback.taper, -0.8, 0.8),
     bend: readClampedNumber(record.bend, fallback.bend, -360, 360),
+    deform: sanitizeCharacterMeshDeformSettings(deform, fallback.deform),
     repeat: {
       enabled: typeof repeat.enabled === 'boolean' ? repeat.enabled : fallback.repeat.enabled,
       count: Math.round(readClampedNumber(
@@ -2512,6 +2591,14 @@ function sanitizeMeshState(value: unknown, fallback: StudioStoreState['mesh']): 
 function createDefaultMeshState(): StudioStoreState['mesh'] {
   return {
     ...DEFAULT_MESH_STATE,
+    deform: {
+      bulgePinch: { ...DEFAULT_MESH_STATE.deform.bulgePinch },
+      squashStretch: { ...DEFAULT_MESH_STATE.deform.squashStretch },
+      wave: { ...DEFAULT_MESH_STATE.deform.wave },
+      surfaceNoise: { ...DEFAULT_MESH_STATE.deform.surfaceNoise },
+      inflate: { ...DEFAULT_MESH_STATE.deform.inflate },
+      curl: { ...DEFAULT_MESH_STATE.deform.curl },
+    },
     repeat: { ...DEFAULT_MESH_STATE.repeat },
     rotation: { ...DEFAULT_MESH_STATE.rotation },
     position: { ...DEFAULT_MESH_STATE.position },

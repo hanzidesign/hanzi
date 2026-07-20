@@ -32,6 +32,7 @@ import {
   createCharacterMeshGeometries,
   type CharacterMeshGeometryResult,
 } from '@/components/studio/character-mesh-geometry'
+import { useCharacterMeshAnimation } from '@/components/studio/character-mesh-animation'
 import { applyDeltaRotation } from '@/components/studio/shader-canvas-math'
 import {
   addCharacterModelCopies,
@@ -120,6 +121,7 @@ function CharacterVhsScene({
         twist: meshSettings.twist,
         taper: meshSettings.taper,
         bend: meshSettings.bend,
+        deform: meshSettings.deform,
         displacementSubdivisionLevel: 0,
       })
 
@@ -134,6 +136,7 @@ function CharacterVhsScene({
     meshSettings.taper,
     meshSettings.thickness,
     meshSettings.twist,
+    meshSettings.deform,
     svgData,
     svgLoadError,
   ])
@@ -194,6 +197,8 @@ applyVhsUniforms(material, withoutSharedControllerValues(controls))
     )
     source.group.scale.setScalar(meshSettings.scale)
   }, [geometryResult, meshSettings.position, meshSettings.rotation, meshSettings.scale])
+
+  useCharacterMeshAnimation(geometryResultRef, animation)
 
   useFrame(({ clock }, delta) => {
     const source = sourceRef.current

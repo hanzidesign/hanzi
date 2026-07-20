@@ -12,6 +12,7 @@ import {
   createCharacterMeshGeometries,
   type CharacterMeshGeometryResult,
 } from '@/components/studio/character-mesh-geometry'
+import { useCharacterMeshAnimation } from '@/components/studio/character-mesh-animation'
 import {
   applyGrainradRuntimeUniforms,
   createAsciiShaderMaterial,
@@ -126,6 +127,7 @@ function CharacterAsciiScene({
         twist: mesh.twist,
         taper: mesh.taper,
         bend: mesh.bend,
+        deform: mesh.deform,
         displacementSubdivisionLevel: 0,
       })
 
@@ -148,6 +150,7 @@ function CharacterAsciiScene({
     mesh.twist,
     mesh.taper,
     mesh.bend,
+    mesh.deform,
     onAsciiStatusChange,
     svgData,
     svgLoadError,
@@ -187,6 +190,8 @@ function CharacterAsciiScene({
       disposeAsciiShaderMaterial(material)
     }
   }, [material])
+
+  useCharacterMeshAnimation(geometryResultRef, animation)
 
   useFrame(({ clock, pointer }, delta) => {
     const activeMaterial = materialRef.current

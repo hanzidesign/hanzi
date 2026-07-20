@@ -143,9 +143,6 @@ describe('Dots shader material', () => {
     })
 
     expect(material.uniforms.u_bloom.value).toBe(1)
-    expect(material.uniforms.u_grainIntensity.value).toBe(61)
-    expect(material.uniforms.u_grainSize.value).toBe(4)
-    expect(material.uniforms.u_grainSpeed.value).toBe(72)
     expect(material.uniforms.u_postChromatic.value).toBe(1)
     expect(material.uniforms.u_scanlines.value).toBe(1)
     expect(material.uniforms.u_vignette.value).toBe(1)

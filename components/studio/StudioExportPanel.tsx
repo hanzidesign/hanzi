@@ -243,7 +243,7 @@ export default function StudioExportPanel() {
           const disabled = exporting || pngExporting
             || (option.value === 'png' ? !pngAvailable : !animationAvailable)
           const unavailableReason = option.value === 'png' && !pngAvailable
-            ? 'Turn Play off or set 3D Motion Speed to 0 to export PNG'
+            ? '3D Motion Play must be off to export PNG'
             : option.value !== 'png' && !animationAvailable
               ? 'Turn Play on and set a non-zero 3D Motion Speed to export animation'
               : undefined

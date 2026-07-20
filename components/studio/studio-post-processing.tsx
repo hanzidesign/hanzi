@@ -1,12 +1,11 @@
 'use client'
 
 import { useEffect, useMemo, type ReactElement } from 'react'
-import { useFrame } from '@react-three/fiber'
+import { useFrame, useThree } from '@react-three/fiber'
 import {
   Bloom,
   ChromaticAberration,
   EffectComposer,
-  Scanline,
   Vignette,
 } from '@react-three/postprocessing'
 import { Vector2 } from 'three'
@@ -16,18 +15,19 @@ import {
   StudioCrtCurveEffect,
   StudioGrainEffect,
   StudioPhosphorEffect,
+  StudioScanlineEffect,
 } from '@/components/studio/studio-post-processing-effects'
 import { StudioProcessingEffect } from '@/components/studio/studio-processing-effect'
 
-const CHROMATIC_OFFSET = new Vector2(0.0035, 0.0025)
-
 export default function StudioPostProcessing() {
+  const { gl, size } = useThree()
   const controls = useStudioStore((store) => (
     store.grainradEffect.controls[store.grainradEffect.selectedEffectId]
   ))
   const animation = useStudioStore((store) => store.animation)
   const processingEffect = useMemo(() => new StudioProcessingEffect(), [])
   const grainEffect = useMemo(() => new StudioGrainEffect(), [])
+  const scanlineEffect = useMemo(() => new StudioScanlineEffect(), [])
   const crtCurveEffect = useMemo(() => new StudioCrtCurveEffect(), [])
   const phosphorEffect = useMemo(() => new StudioPhosphorEffect(), [])
 
@@ -37,20 +37,70 @@ export default function StudioPostProcessing() {
   const vignetteEnabled = controls?.vignette === true
   const crtCurveEnabled = controls?.['crt-curve'] === true
   const phosphorEnabled = controls?.phosphor === true
-  const grainIntensity = readNumber(controls?.['grain-intensity'], 0) / 100
+  const grainEnabled = controls?.grain === true
+  const bloomThreshold = clamp(readNumber(controls?.['bloom-threshold'], 0.5), 0, 1)
+  const bloomSoftThreshold = clamp(readNumber(controls?.['bloom-soft-threshold'], 0.2), 0, 1)
+  const bloomIntensity = clamp(readNumber(controls?.['bloom-intensity'], 1.5), 0, 2)
+  const bloomRadius = clamp(readNumber(controls?.['bloom-radius'], 12) / 20, 0, 1)
+  const grainMode = readString(controls?.['grain-mode'], 'noise')
+  const grainIntensity = readNumber(controls?.['grain-intensity'], 5) / 100
   const grainSize = readNumber(controls?.['grain-size'], 2)
-  const grainSpeed = readNumber(controls?.['grain-speed'], 50) / 100
+  const grainSpeed = readNumber(controls?.['grain-speed'], 50)
+  const chromaticOffsetPixels = clamp(readNumber(controls?.['chromatic-offset'], 5), 0, 50)
+  const scanlineOpacity = clamp(readNumber(controls?.['scanline-opacity'], 0.5), 0, 1)
+  const scanlineSpacing = clamp(readNumber(controls?.['scanline-spacing'], 80), 1, 1000)
+  const scanlineOffset = clamp(readNumber(controls?.['scanline-offset'], 0), 0, 20)
+  const scanlineSpeed = clamp(readNumber(controls?.['scanline-speed'], 1), 1, 10)
+  const scanlineDirection = readString(controls?.['scanline-direction'], 'down')
+  const vignetteIntensity = clamp(readNumber(controls?.['vignette-intensity'], 0.5), 0, 1)
+  const vignetteRadius = clamp(readNumber(controls?.['vignette-radius'], 0.5), 0, 1)
+  const crtAmount = clamp(readNumber(controls?.['crt-amount'], 0.1), 0, 0.5)
+  const phosphorColorMode = readString(controls?.['phosphor-color'], 'green')
+  const phosphorCustomColor = controls?.['phosphor-custom-color']
+  const phosphorColor = useMemo(
+    () => resolvePhosphorColor(phosphorColorMode, phosphorCustomColor),
+    [phosphorColorMode, phosphorCustomColor],
+  )
+  const drawingWidth = Math.max(
+    1,
+    gl.domElement.width || Math.round(size.width * gl.getPixelRatio()),
+  )
+  const chromaticOffset = useMemo(
+    () => new Vector2(chromaticOffsetPixels / drawingWidth, 0),
+    [chromaticOffsetPixels, drawingWidth],
+  )
 
   useEffect(() => {
     processingEffect.updateFromControls(controls)
-  }, [controls, processingEffect])
+    scanlineEffect.setParameters({
+      opacity: scanlineOpacity,
+      spacing: scanlineSpacing,
+      offset: scanlineOffset,
+      speed: scanlineSpeed,
+    })
+    crtCurveEffect.setAmount(crtAmount)
+    phosphorEffect.setColor(phosphorColor)
+  }, [
+    controls,
+    crtAmount,
+    crtCurveEffect,
+    phosphorColor,
+    phosphorEffect,
+    processingEffect,
+    scanlineEffect,
+    scanlineOffset,
+    scanlineOpacity,
+    scanlineSpacing,
+    scanlineSpeed,
+  ])
 
   useEffect(() => () => {
     processingEffect.dispose()
     grainEffect.dispose()
+    scanlineEffect.dispose()
     crtCurveEffect.dispose()
     phosphorEffect.dispose()
-  }, [crtCurveEffect, grainEffect, phosphorEffect, processingEffect])
+  }, [crtCurveEffect, grainEffect, phosphorEffect, processingEffect, scanlineEffect])
 
   useFrame(({ clock }) => {
     const time = computeEffectiveAnimationTime({
@@ -62,10 +112,12 @@ export default function StudioPostProcessing() {
 
     grainEffect.setParameters({
       intensity: grainIntensity,
+      mode: grainMode,
       size: grainSize,
       speed: grainSpeed,
       time,
     })
+    scanlineEffect.setTime(scanlineDirection === 'up' ? -time : time)
   })
 
   const effects: ReactElement[] = [
@@ -78,9 +130,7 @@ export default function StudioPostProcessing() {
     effects.push(
       <ChromaticAberration
         key="chromatic"
-        offset={CHROMATIC_OFFSET}
-        radialModulation
-        modulationOffset={0.1}
+        offset={chromaticOffset}
       />,
     )
   }
@@ -89,24 +139,24 @@ export default function StudioPostProcessing() {
       <Bloom
         key="bloom"
         mipmapBlur
-        intensity={1.3}
-        radius={0.72}
-        luminanceThreshold={0.45}
-        luminanceSmoothing={0.2}
+        intensity={bloomIntensity}
+        radius={bloomRadius}
+        luminanceThreshold={bloomThreshold}
+        luminanceSmoothing={bloomSoftThreshold}
       />,
     )
   }
-  if (grainIntensity > 0) {
+  if (grainEnabled && grainIntensity > 0) {
     effects.push(<primitive key="grain" object={grainEffect} dispose={null} />)
   }
   if (scanlinesEnabled) {
-    effects.push(<Scanline key="scanlines" density={1.25} opacity={0.55} />)
+    effects.push(<primitive key="scanlines" object={scanlineEffect} dispose={null} />)
   }
   if (phosphorEnabled) {
     effects.push(<primitive key="phosphor" object={phosphorEffect} dispose={null} />)
   }
   if (vignetteEnabled) {
-    effects.push(<Vignette key="vignette" offset={0.25} darkness={0.68} />)
+    effects.push(<Vignette key="vignette" offset={vignetteRadius} darkness={vignetteIntensity} />)
   }
 
   return (
@@ -118,4 +168,40 @@ export default function StudioPostProcessing() {
 
 function readNumber(value: unknown, fallback: number) {
   return typeof value === 'number' && Number.isFinite(value) ? value : fallback
+}
+
+function readString(value: unknown, fallback: string) {
+  return typeof value === 'string' ? value : fallback
+}
+
+function clamp(value: number, min: number, max: number) {
+  if (!Number.isFinite(value)) {
+    return min
+  }
+
+  return Math.min(max, Math.max(min, value))
+}
+
+function resolvePhosphorColor(mode: string, customColor: unknown): [number, number, number] {
+  if (mode === 'amber') {
+    return [1, 0xbf / 255, 0]
+  }
+
+  if (mode === 'white') {
+    return [1, 1, 1]
+  }
+
+  if (mode === 'custom' && typeof customColor === 'string') {
+    const match = customColor.match(/^#?([0-9a-f]{6})$/i)
+    if (match) {
+      const value = Number.parseInt(match[1], 16)
+      return [
+        ((value >> 16) & 255) / 255,
+        ((value >> 8) & 255) / 255,
+        (value & 255) / 255,
+      ]
+    }
+  }
+
+  return [0, 1, 0]
 }
