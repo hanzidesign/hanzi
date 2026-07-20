@@ -13,7 +13,9 @@ import {
 } from './grainrad-effects'
 import {
   GRAINRAD_EFFECT_SHADER_IDS,
+  PIXEL_SORT_DEDICATED_CONTROL_IDS,
   POST_VALUE_SLOT_COUNT,
+  VORONOI_DEDICATED_COLOR_CONTROL_IDS,
   compileGrainradEffectRuntime,
   getUnmappedGrainradControls,
 } from './grainrad-effect-runtime'
@@ -68,6 +70,10 @@ describe('Phase 5F Grainrad runtime effect compiler', () => {
       'dots.background',
       'contour.line-color',
       'contour.background',
+      'pixel-sort.highlight',
+      'pixel-sort.midtone',
+      'pixel-sort.shadow',
+      'pixel-sort.background',
       'blockify.foreground',
       'blockify.background',
       'threshold.foreground',
@@ -78,7 +84,14 @@ describe('Phase 5F Grainrad runtime effect compiler', () => {
       'crosshatch.background',
       'wave-lines.line-color',
       'wave-lines.background',
+      'noise-field.foreground',
+      'noise-field.background',
+      'voronoi.cell-shadow',
+      'voronoi.cell-midtone',
+      'voronoi.cell-highlight',
+      'voronoi.background',
       'voronoi.edge-color',
+      'vhs.background',
     ])
   })
 
@@ -125,6 +138,15 @@ describe('Phase 5F Grainrad runtime effect compiler', () => {
       const baseSignature = signatureFor(effect.id, baseControls)
 
       for (const control of effect.settingGroups.flatMap((group) => group.controls)) {
+        if (
+          effect.id === 'voronoi' && VORONOI_DEDICATED_COLOR_CONTROL_IDS.includes(
+            control.id as typeof VORONOI_DEDICATED_COLOR_CONTROL_IDS[number],
+          )
+          || effect.id === 'pixel-sort'
+            && PIXEL_SORT_DEDICATED_CONTROL_IDS.includes(
+              control.id as typeof PIXEL_SORT_DEDICATED_CONTROL_IDS[number],
+            )
+        ) continue
         const nextControls = {
           ...baseControls,
           [control.id]: changedValueFor(control),
@@ -479,6 +501,8 @@ describe('Phase 5F Grainrad runtime effect compiler', () => {
       0.4,
       -0.25,
     ])
+    expect(runtime.effectColorA).toEqual([1, 1, 1])
+    expect(runtime.effectColorB).toEqual([0, 0, 0])
   })
 
   it('packs Blockify controls in the exact production uniform units and ids', () => {
@@ -657,12 +681,16 @@ describe('Phase 5F Grainrad runtime effect compiler', () => {
         brightness: 40,
         contrast: -25,
         'distort-only': true,
+        foreground: '#123456',
+        background: '#abcdef',
       },
     })
 
     expect(runtime.effectValues.slice(0, 9)).toEqual([
       85, 2.4, 1.7, 7, 0, 0.4, -0.25, 2, 1,
     ])
+    expect(runtime.effectColorA).toEqual([0x12 / 255, 0x34 / 255, 0x56 / 255])
+    expect(runtime.effectColorB).toEqual([0xab / 255, 0xcd / 255, 0xef / 255])
   })
 
   it('packs Voronoi controls in exact production units and numeric ids', () => {
@@ -673,17 +701,20 @@ describe('Phase 5F Grainrad runtime effect compiler', () => {
         ...defaults,
         'cell-size': 85,
         'edge-width': 0.65,
-        'edge-color': '2',
-        'cell-color-mode': '1',
+        'edge-color': '#123456',
+        'fill-canvas': true,
+        background: '#abcdef',
         randomize: 0.35,
         brightness: 40,
         contrast: -25,
       },
     })
 
-    expect(runtime.effectValues.slice(0, 7)).toEqual([
-      85, 0.65, 2, 1, 0.35, 0.4, -0.25,
+    expect(runtime.effectValues.slice(0, 6)).toEqual([
+      85, 0.65, 0.35, 0.4, -0.25, 1,
     ])
+    expect(runtime.effectColorA).toEqual([0x12 / 255, 0x34 / 255, 0x56 / 255])
+    expect(runtime.effectColorB).toEqual([0xab / 255, 0xcd / 255, 0xef / 255])
   })
 
   it('packs VHS controls in exact production units and does not confuse Post Scanlines', () => {
@@ -700,13 +731,20 @@ describe('Phase 5F Grainrad runtime effect compiler', () => {
         brightness: 40,
         contrast: -25,
         scanlines: true,
+        'chroma-blur': 0.25,
+        saturation: 1.25,
+        'red-gain': 1.4,
+        'green-gain': 0.85,
+        'blue-gain': 0.65,
+        background: '#abcdef',
       },
     })
 
-    expect(runtime.effectValues.slice(0, 7)).toEqual([
-      0.8, 0.65, 0.4, 0.75, 0.55, 0.4, -0.25,
+    expect(runtime.effectValues.slice(0, 12)).toEqual([
+      0.8, 0.65, 0.4, 0.75, 0.55, 0.4, -0.25, 0.25, 1.25, 1.4, 0.85, 0.65,
     ])
     expect(runtime.postValues[5]).toBe(1)
+    expect(runtime.effectColorB).toEqual([0xab / 255, 0xcd / 255, 0xef / 255])
   })
 
   it('packs the expanded Post-Processing controls without changing legacy slots', () => {

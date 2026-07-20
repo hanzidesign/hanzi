@@ -29,6 +29,7 @@ export type CharacterMeshSquashStretch = {
 export type CharacterMeshWave = {
   enabled: boolean
   amplitude: number
+  speed: number
   frequency: number
   phase: number
   direction: CharacterMeshWaveDirection
@@ -114,6 +115,7 @@ export const DEFAULT_CHARACTER_MESH_DEFORM: CharacterMeshDeformSettings = {
   wave: {
     enabled: false,
     amplitude: 0.2,
+    speed: 2,
     frequency: 3,
     phase: 0,
     direction: 'y',
@@ -217,6 +219,7 @@ function sanitizeWave(value: unknown, fallback: CharacterMeshWave): CharacterMes
   return {
     enabled: readBoolean(record.enabled, fallback.enabled),
     amplitude: readClamped(amplitudeValue, fallback.amplitude, -1, 1),
+    speed: readClamped(record.speed, fallback.speed, 1, 20),
     frequency: readClamped(record.frequency, fallback.frequency, 0.1, 12),
     phase: readClamped(record.phase, fallback.phase, -360, 360),
     direction: readEnum(record.direction, ['x', 'y', 'diagonal', 'radial'], fallback.direction),

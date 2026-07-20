@@ -15,6 +15,10 @@ import {
   type CharacterMeshGeometryResult,
 } from '@/components/studio/character-mesh-geometry'
 import { useCharacterMeshAnimation } from '@/components/studio/character-mesh-animation'
+import {
+  attachCharacterMeshGpuDeform,
+  type CharacterMeshGpuDeformBinding,
+} from '@/components/studio/character-mesh-gpu-deform'
 import type { CharacterMeshDeformSettings } from '@/components/studio/character-mesh-deform'
 import { useStudioStore } from '@/app/studio/studio-store'
 import {
@@ -68,6 +72,7 @@ export default function CharacterMesh({
   const groupRef = useRef<Group>(null)
   const materialRef = useRef<ShaderMaterial | null>(null)
   const resultRef = useRef<CharacterMeshGeometryResult | null>(null)
+  const gpuDeformRef = useRef<CharacterMeshGpuDeformBinding | null>(null)
   const animation = useStudioStore((store) => store.animation)
   const [svgText, setSvgText] = useState<string | null>(null)
   const [geometryResult, setGeometryResult] =
@@ -189,17 +194,25 @@ export default function CharacterMesh({
 
   useEffect(() => {
     materialRef.current = material
+    const gpuDeform = material && geometryResult?.gpuDeformActive
+      ? attachCharacterMeshGpuDeform(material, 'custom')
+      : null
+    gpuDeformRef.current = gpuDeform
 
     return () => {
       if (materialRef.current === material) {
         materialRef.current = null
       }
+      if (gpuDeformRef.current === gpuDeform) {
+        gpuDeformRef.current = null
+      }
 
+      gpuDeform?.dispose()
       material?.dispose()
     }
-  }, [material])
+  }, [geometryResult?.gpuDeformActive, material])
 
-  useCharacterMeshAnimation(resultRef, animation)
+  useCharacterMeshAnimation(gpuDeformRef, mesh.deform, animation)
 
   useFrame(({ clock }, delta) => {
     const activeMaterial = materialRef.current

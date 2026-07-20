@@ -34,6 +34,10 @@ import {
   type CharacterMeshGeometryResult,
 } from '@/components/studio/character-mesh-geometry'
 import { useCharacterMeshAnimation } from '@/components/studio/character-mesh-animation'
+import {
+  attachCharacterMeshGpuDeform,
+  type CharacterMeshGpuDeformBinding,
+} from '@/components/studio/character-mesh-gpu-deform'
 import { applyDeltaRotation } from '@/components/studio/shader-canvas-math'
 import {
   addCharacterModelCopies,
@@ -99,6 +103,12 @@ function CharacterNoiseFieldScene({
   const meshSettings = useStudioStore((store) => store.mesh)
   const animation = useStudioStore((store) => store.animation)
   const controls = useStudioStore((store) => store.grainradEffect.controls['noise-field'])
+  const sourceForeground = controls.foreground
+  const sourceBackground = controls.background
+  const sourceColors = useMemo(
+    () => getNoiseFieldSourceColors(sourceForeground, sourceBackground),
+    [sourceBackground, sourceForeground],
+  )
   const [geometryResult, setGeometryResult] = useState<CharacterMeshGeometryResult | null>(null)
   const geometryResultRef = useRef<CharacterMeshGeometryResult | null>(null)
   const sourceRef = useRef<NoiseFieldSourceScene | null>(null)
@@ -163,6 +173,13 @@ function CharacterNoiseFieldScene({
     }
   }, [geometryResult, meshSettings.repeat])
 
+  useEffect(() => {
+    const source = sourceRef.current
+    if (!source) return
+
+    applyNoiseFieldSourceColors(source, sourceColors)
+  }, [geometryResult, meshSettings.repeat, sourceColors])
+
   const material = useMemo(() => createNoiseFieldShaderMaterial({
     controls: {},
     sourceTexture: renderTarget.texture,
@@ -199,7 +216,7 @@ applyNoiseFieldUniforms(material, withoutSharedControllerValues(controls))
     source.group.scale.setScalar(meshSettings.scale)
   }, [geometryResult, meshSettings.position, meshSettings.rotation, meshSettings.scale])
 
-  useCharacterMeshAnimation(geometryResultRef, animation)
+  useCharacterMeshAnimation(sourceRef, meshSettings.deform, animation)
 
   useFrame(({ clock }, delta) => {
     const source = sourceRef.current
@@ -253,27 +270,41 @@ applyNoiseFieldUniforms(material, withoutSharedControllerValues(controls))
   )
 }
 
-type NoiseFieldSourceScene = {
+export type NoiseFieldSourceColors = {
+  foreground: string
+  background: string
+}
+
+export type NoiseFieldSourceScene = {
   scene: Scene
   group: Group
+  material: MeshStandardMaterial
+  gpuDeform: CharacterMeshGpuDeformBinding | null
   dispose: () => void
 }
 
-function createNoiseFieldSourceScene(
+export function createNoiseFieldSourceScene(
   geometryResult: CharacterMeshGeometryResult,
   repeat: CharacterRepeatSettings,
+  sourceColors: NoiseFieldSourceColors = {
+    foreground: '#ffffff',
+    background: '#000000',
+  },
 ): NoiseFieldSourceScene {
   const scene = new Scene()
   const group = new Group()
   const material = new MeshStandardMaterial({
-    color: new Color('#ffffff'),
+    color: new Color(sourceColors.foreground),
     roughness: 0.72,
     metalness: 0.05,
   })
+  const gpuDeform = geometryResult.gpuDeformActive
+    ? attachCharacterMeshGpuDeform(material, 'standard')
+    : null
   const directional = new DirectionalLight('#ffffff', 1.4)
   directional.position.set(2, 3, 4)
 
-  scene.background = new Color('#000000')
+  scene.background = new Color(sourceColors.background)
   scene.add(new AmbientLight('#ffffff', 0.85), directional)
 
   addCharacterModelCopies(group, geometryResult.geometries, material, repeat)
@@ -282,7 +313,34 @@ function createNoiseFieldSourceScene(
   return {
     scene,
     group,
-    dispose: () => material.dispose(),
+    material,
+    gpuDeform,
+    dispose: () => {
+      gpuDeform?.dispose()
+      material.dispose()
+    },
+  }
+}
+
+export function applyNoiseFieldSourceColors(
+  source: NoiseFieldSourceScene,
+  sourceColors: NoiseFieldSourceColors,
+) {
+  source.material.color.set(sourceColors.foreground)
+  if (source.scene.background instanceof Color) {
+    source.scene.background.set(sourceColors.background)
+  } else {
+    source.scene.background = new Color(sourceColors.background)
+  }
+}
+
+function getNoiseFieldSourceColors(
+  foreground: unknown,
+  background: unknown,
+): NoiseFieldSourceColors {
+  return {
+    foreground: typeof foreground === 'string' ? foreground : '#ffffff',
+    background: typeof background === 'string' ? background : '#000000',
   }
 }
 

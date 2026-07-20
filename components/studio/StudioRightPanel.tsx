@@ -3,7 +3,9 @@
 import {
   DEFAULT_ASCII_STATE,
   useStudioStore,
+  type StudioAsciiState,
   type StudioAsciiCharsetStyle,
+  type StudioTheme,
 } from '@/app/studio/studio-store'
 import StudioExportPanel from '@/components/studio/StudioExportPanel'
 import TerminalSection from '@/components/studio/TerminalSection'
@@ -96,6 +98,20 @@ export default function StudioRightPanel({
       gamma: DEFAULT_ASCII_STATE.gamma,
     })
   }
+  const resetAsciiColor = () => {
+    resetAsciiColorGroup(theme, setAsciiControl, setGrainradEffectControl)
+  }
+  const resetAsciiPrimary = () => {
+    resetAsciiPrimaryGroup(theme, setAsciiControl, setGrainradEffectControl)
+  }
+  const resetEffectGroups = (groups: GrainradSettingGroup[]) => {
+    resetGrainradControlGroups(
+      selectedEffectId,
+      groups,
+      theme,
+      setGrainradEffectControl,
+    )
+  }
 
   return (
     <div className={classes.rightContent}>
@@ -112,7 +128,18 @@ export default function StudioRightPanel({
       >
         {selectedEffectId === 'ascii' ? (
           <>
-            <TerminalRowGroup title="ASCII">
+            <TerminalRowGroup
+              title="ASCII"
+              action={(
+                <button
+                  type="button"
+                  className={classes.sectionResetButton}
+                  onClick={resetAsciiPrimary}
+                >
+                  Reset
+                </button>
+              )}
+            >
               <TerminalRangeRow
                 label="Scale"
                 value={asciiScale}
@@ -159,14 +186,18 @@ export default function StudioRightPanel({
               ) : null}
             </TerminalRowGroup>
 
-            <TerminalRowGroup title="Adjustments">
-              <button
-                type="button"
-                className={`${classes.inputGroupReset} ${classes.adjustmentsReset}`}
-                onClick={resetAsciiAdjustments}
-              >
-                Reset all
-              </button>
+            <TerminalRowGroup
+              title="Adjustments"
+              action={(
+                <button
+                  type="button"
+                  className={classes.sectionResetButton}
+                  onClick={resetAsciiAdjustments}
+                >
+                  Reset
+                </button>
+              )}
+            >
               <TerminalRangeRow
                 label="Brightness"
                 value={ascii.brightness}
@@ -225,7 +256,18 @@ export default function StudioRightPanel({
               />
             </TerminalRowGroup>
 
-            <TerminalRowGroup title="Color">
+            <TerminalRowGroup
+              title="Color"
+              action={(
+                <button
+                  type="button"
+                  className={classes.sectionResetButton}
+                  onClick={resetAsciiColor}
+                >
+                  Reset
+                </button>
+              )}
+            >
               <TerminalDropdownRow
                 label="Mode"
                 value={readStringControl(effectControls, 'color-mode', 'mono')}
@@ -268,17 +310,31 @@ export default function StudioRightPanel({
             controls: effectControls,
             theme,
             onChange: setGrainradEffectControl,
+            resetGroups: resetEffectGroups,
           })
         )}
       </TerminalSection>
 
-      <TerminalSection id="processing" title="Processing">
+      <TerminalSection
+        id="processing"
+        title="Processing"
+        action={(
+          <button
+            type="button"
+            className={classes.sectionResetButton}
+            onClick={() => resetEffectGroups(getGrainradProcessingGroups(selectedEffectId))}
+          >
+            Reset
+          </button>
+        )}
+      >
         {renderEffectSettings({
           selectedEffectId,
           groups: getGrainradProcessingGroups(selectedEffectId),
           controls: effectControls,
           theme,
           onChange: setGrainradEffectControl,
+          resetGroups: resetEffectGroups,
         })}
       </TerminalSection>
 
@@ -303,38 +359,96 @@ export default function StudioRightPanel({
   )
 }
 
+type SetGrainradEffectControl = (
+  effectId: GrainradEffectId,
+  controlId: string,
+  value: GrainradControlValue,
+) => void
+
+export function resetGrainradControlGroups(
+  effectId: GrainradEffectId,
+  groups: GrainradSettingGroup[],
+  theme: StudioTheme,
+  onChange: SetGrainradEffectControl,
+) {
+  groups.forEach((group) => group.controls.forEach((control) => {
+    onChange(
+      effectId,
+      control.id,
+      getGrainradControlDefaultValue(control, theme),
+    )
+  }))
+}
+
+export function resetAsciiColorGroup(
+  theme: StudioTheme,
+  setAsciiControl: (partial: Partial<StudioAsciiState>) => void,
+  setGrainradEffectControl: SetGrainradEffectControl,
+) {
+  setGrainradEffectControl('ascii', 'color-mode', 'mono')
+  setAsciiControl({
+    foregroundColor: readThemeDefaultColor('ascii', 'foreground', theme),
+    backgroundColor: readThemeDefaultColor('ascii', 'background', theme),
+    colorIntensity: DEFAULT_ASCII_STATE.colorIntensity,
+    palette: DEFAULT_ASCII_STATE.palette,
+  })
+}
+
+export function resetAsciiPrimaryGroup(
+  theme: StudioTheme,
+  setAsciiControl: (partial: Partial<StudioAsciiState>) => void,
+  setGrainradEffectControl: SetGrainradEffectControl,
+) {
+  const asciiGroup = getGrainradEffectById('ascii').settingGroups.find(
+    (group) => group.title === 'ASCII',
+  )
+
+  if (asciiGroup) {
+    resetGrainradControlGroups(
+      'ascii',
+      [asciiGroup],
+      theme,
+      setGrainradEffectControl,
+    )
+  }
+
+  setAsciiControl({
+    cellSize: DEFAULT_ASCII_STATE.cellSize,
+    charsetStyle: DEFAULT_ASCII_STATE.charsetStyle,
+  })
+}
+
 function renderEffectSettings({
   selectedEffectId,
   groups,
   controls,
   theme,
   onChange,
+  resetGroups,
 }: {
   selectedEffectId: GrainradEffectId
   groups: GrainradSettingGroup[]
   controls: Record<string, GrainradControlValue> | undefined
   theme: 'light' | 'dark'
   onChange: (effectId: GrainradEffectId, controlId: string, value: GrainradControlValue) => void
+  resetGroups: (groups: GrainradSettingGroup[]) => void
 }) {
   return (
     <>
       {groups.map((group, groupIndex) => (
-        <TerminalRowGroup key={group.title ?? `group-${groupIndex}`} title={group.title}>
-          {group.title === 'Adjustments' ? (
+        <TerminalRowGroup
+          key={group.title ?? `group-${groupIndex}`}
+          title={group.title}
+          action={group.title ? (
             <button
               type="button"
-              className={`${classes.inputGroupReset} ${classes.adjustmentsReset}`}
-              onClick={() => group.controls.forEach((control) => {
-                onChange(
-                  selectedEffectId,
-                  control.id,
-                  getGrainradControlDefaultValue(control, theme),
-                )
-              })}
+              className={classes.sectionResetButton}
+              onClick={() => resetGroups([group])}
             >
-              Reset all
+              Reset
             </button>
-          ) : null}
+          ) : undefined}
+        >
           {group.controls
             .filter((control) => isGrainradControlVisible(control, controls))
             .map((control) => renderEffectControl({
@@ -390,7 +504,7 @@ function renderPostProcessingSettings({
               )
             })}
           >
-            Reset all
+            Reset
           </button>
         ) : null}
         {group.controls

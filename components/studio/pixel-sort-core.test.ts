@@ -243,6 +243,50 @@ describe('Pixel Sort exact CPU scanline oracle', () => {
       expect(output, JSON.stringify(variant)).not.toEqual(base)
     }
   })
+
+  it('keeps Mix zero exact while fixed Streak palette, Mix, and Background remain observable', () => {
+    const width = 32
+    const height = 24
+    const source = colorfulFixture(width, height)
+    const originalSettings = exactSettings({
+      mode: 'brightness',
+      threshold: 0.3,
+      streakLength: 20,
+    })
+    const original = renderPixelSortFrame({ rgba: source, width, height, settings: originalSettings }).data
+    const paletteSettings: PixelSortSettings = {
+      ...originalSettings,
+      mix: 1,
+      shadow: '#102030',
+      midtone: '#d04080',
+      highlight: '#ffe080',
+      background: '#000000',
+    }
+
+    const palette = renderPixelSortFrame({ rgba: source, width, height, settings: paletteSettings }).data
+    expect(palette).not.toEqual(original)
+    const mixZero = renderPixelSortFrame({
+      rgba: source,
+      width,
+      height,
+      settings: { ...paletteSettings, mix: 0 },
+    }).data
+    const mixTwo = renderPixelSortFrame({
+      rgba: source,
+      width,
+      height,
+      settings: { ...paletteSettings, mix: 2 },
+    }).data
+    expect(mixZero).toEqual(original)
+    expect(mixTwo).not.toEqual(palette)
+
+    const background = render({
+      rgba: row([[0, 0, 0, 255]]),
+      settings: { ...paletteSettings, background: '#123456', brightness: 0, contrast: 0 },
+      width: 1,
+    }).data
+    expect(texels(background)).toEqual([[0x12, 0x34, 0x56, 255]])
+  })
 })
 
 function render(options: {
@@ -264,9 +308,11 @@ function render(options: {
 function exactSettings(overrides: Partial<PixelSortSettings> = {}): PixelSortSettings {
   return {
     ...DEFAULT_PIXEL_SORT_SETTINGS,
+    background: '#000000',
     brightness: 0,
     contrast: 0,
     intensity: 1,
+    mix: 0,
     mode: 'brightness',
     randomness: 0,
     ...overrides,

@@ -43,14 +43,21 @@ function TerminalRowShell({
 
 export function TerminalRowGroup({
   title,
+  action,
   children,
 }: {
   title?: string
+  action?: ReactNode
   children: ReactNode
 }) {
   return (
     <div className={classes.rowGroup}>
-      {title ? (
+      {title && action ? (
+        <div className={classes.groupHeader}>
+          <h3 className={classes.groupTitle}>{title}</h3>
+          {action}
+        </div>
+      ) : title ? (
         <h3 className={classes.groupTitle}>{title}</h3>
       ) : null}
       {children}

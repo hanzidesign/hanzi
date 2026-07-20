@@ -1,13 +1,15 @@
 export type VoronoiRgb = readonly [number, number, number]
 export type VoronoiVec2 = readonly [number, number]
-export type VoronoiEdgeColor = 0 | 1 | 2
-export type VoronoiColorMode = 0 | 1 | 2
 
 export type VoronoiSettings = Readonly<{
   cellSize: number
   edgeWidth: number
-  edgeColor: VoronoiEdgeColor
-  colorMode: VoronoiColorMode
+  edgeColor: VoronoiRgb
+  fillCanvas: boolean
+  cellShadow: VoronoiRgb
+  cellMidtone: VoronoiRgb
+  cellHighlight: VoronoiRgb
+  background: VoronoiRgb
   randomize: number
   brightness: number
   contrast: number
@@ -28,9 +30,11 @@ export type VoronoiTrace = Readonly<{
   secondDistance: number
   edgeDistance: number
   interiorMask: number
+  modelMask: number
   centerUv: VoronoiVec2
   averageSampleCount: number
   cellColor: VoronoiRgb
+  cellTone: number
   edgeColor: VoronoiRgb
   composedColor: VoronoiRgb
   output: VoronoiRgb
@@ -46,8 +50,12 @@ export type VoronoiReferenceOutput = Readonly<{
 export const DEFAULT_VORONOI_SETTINGS: VoronoiSettings = {
   cellSize: 30,
   edgeWidth: 0.3,
-  edgeColor: 0,
-  colorMode: 0,
+  edgeColor: [16 / 255, 16 / 255, 16 / 255],
+  fillCanvas: false,
+  cellShadow: [43 / 255, 45 / 255, 66 / 255],
+  cellMidtone: [109 / 255, 89 / 255, 122 / 255],
+  cellHighlight: [233 / 255, 196 / 255, 106 / 255],
+  background: [1, 1, 1],
   randomize: 0.8,
   brightness: 0,
   contrast: 0,
@@ -153,47 +161,50 @@ function traceVoronoiUnchecked(
     clamp01((cell.closestCell[0] + 0.5) * settings.cellSize / width),
     clamp01((cell.closestCell[1] + 0.5) * settings.cellSize / height),
   ]
-  let cellColor: VoronoiRgb
   let averageSampleCount = 0
-
-  if (settings.colorMode < 0.5) {
-    const sum = [0, 0, 0]
-    for (let deltaY = -2; deltaY <= 2; deltaY += 1) {
-      for (let deltaX = -2; deltaX <= 2; deltaX += 1) {
-        const sample = sampleVoronoiSourceLinear(
-          rgb,
-          width,
-          height,
-          (cell.closestCell[0] + 0.5 + deltaX * 0.2) * settings.cellSize / width,
-          (cell.closestCell[1] + 0.5 + deltaY * 0.2) * settings.cellSize / height,
-        )
-        sum[0] += sample[0]
-        sum[1] += sample[1]
-        sum[2] += sample[2]
-        averageSampleCount += 1
-      }
+  const sum = [0, 0, 0]
+  for (let deltaY = -2; deltaY <= 2; deltaY += 1) {
+    for (let deltaX = -2; deltaX <= 2; deltaX += 1) {
+      const sample = sampleVoronoiSourceLinear(
+        rgb,
+        width,
+        height,
+        (cell.closestCell[0] + 0.5 + deltaX * 0.2) * settings.cellSize / width,
+        (cell.closestCell[1] + 0.5 + deltaY * 0.2) * settings.cellSize / height,
+      )
+      sum[0] += sample[0]
+      sum[1] += sample[1]
+      sum[2] += sample[2]
+      averageSampleCount += 1
     }
-    cellColor = [sum[0] / averageSampleCount, sum[1] / averageSampleCount, sum[2] / averageSampleCount]
-  } else if (settings.colorMode < 1.5) {
-    cellColor = sampleVoronoiSourceLinear(rgb, width, height, centerUv[0], centerUv[1])
-  } else {
-    const currentColor = sampleVoronoiSourceLinear(rgb, width, height, uv[0], uv[1])
-    const centerColor = sampleVoronoiSourceLinear(rgb, width, height, centerUv[0], centerUv[1])
-    const gradient = smoothstep(0, 0.7, cell.closestDistance) * 0.5
-    cellColor = mixRgb(centerColor, currentColor, gradient)
   }
+  const averageColor: VoronoiRgb = [
+    sum[0] / averageSampleCount,
+    sum[1] / averageSampleCount,
+    sum[2] / averageSampleCount,
+  ]
+  const sourceLuminance = luminance(averageColor)
+  const modelMask = smoothstep(
+    0.01,
+    0.12,
+    luminance(sampleVoronoiSourceLinear(rgb, width, height, uv[0], uv[1])),
+  )
+  const cellTone = smoothstep(0.15, 0.9, sourceLuminance)
+  const cellColor = cellTone <= 0.5
+    ? mixRgb(settings.cellShadow, settings.cellMidtone, cellTone * 2)
+    : mixRgb(settings.cellMidtone, settings.cellHighlight, (cellTone - 0.5) * 2)
 
-  const edgeColor: VoronoiRgb = settings.edgeColor < 0.5
-    ? [0, 0, 0]
-    : settings.edgeColor < 1.5
-      ? [1, 1, 1]
-      : scaleRgb(cellColor, 0.3)
+  const edgeColor = settings.edgeColor
   const composedColor = mixRgb(edgeColor, cellColor, interiorMask)
-  const output = adjustSource(composedColor, settings.brightness, settings.contrast)
+  const adjustedModelColor = adjustSource(composedColor, settings.brightness, settings.contrast)
+  const output = settings.fillCanvas
+    ? adjustedModelColor
+    : mixRgb(settings.background, adjustedModelColor, modelMask)
 
   return {
     averageSampleCount,
     cellColor,
+    cellTone,
     centerUv,
     closestCell: cell.closestCell,
     closestDistance: cell.closestDistance,
@@ -201,6 +212,7 @@ function traceVoronoiUnchecked(
     edgeColor,
     edgeDistance,
     interiorMask,
+    modelMask,
     output,
     scaledPoint,
     secondDistance: cell.secondDistance,
@@ -247,18 +259,15 @@ function assertSource(input: VoronoiReferenceInput) {
   assertStep('cellSize', settings.cellSize, 10, 5)
   assertRange('edgeWidth', settings.edgeWidth, 0, 1)
   assertStep('edgeWidth', settings.edgeWidth, 0, 0.05)
-  if (![0, 1, 2].includes(settings.edgeColor)) {
-    throw new RangeError('Voronoi edgeColor must be 0, 1, or 2')
-  }
-  if (![0, 1, 2].includes(settings.colorMode)) {
-    throw new RangeError('Voronoi colorMode must be 0, 1, or 2')
-  }
   assertRange('randomize', settings.randomize, 0, 1)
   assertStep('randomize', settings.randomize, 0, 0.05)
   assertRange('brightness', settings.brightness, -100, 100)
   assertInteger('brightness', settings.brightness)
   assertRange('contrast', settings.contrast, -100, 100)
   assertInteger('contrast', settings.contrast)
+  if (typeof settings.fillCanvas !== 'boolean') {
+    throw new TypeError('Voronoi fillCanvas must be boolean')
+  }
 }
 
 function assertRange(name: string, value: number, minimum: number, maximum: number) {
@@ -295,8 +304,8 @@ function mixRgb(from: VoronoiRgb, to: VoronoiRgb, amount: number): VoronoiRgb {
   return [mix(from[0], to[0], amount), mix(from[1], to[1], amount), mix(from[2], to[2], amount)]
 }
 
-function scaleRgb(color: VoronoiRgb, amount: number): VoronoiRgb {
-  return [color[0] * amount, color[1] * amount, color[2] * amount]
+function luminance(color: VoronoiRgb) {
+  return color[0] * 0.299 + color[1] * 0.587 + color[2] * 0.114
 }
 
 function smoothstep(edge0: number, edge1: number, value: number) {

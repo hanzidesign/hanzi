@@ -30,6 +30,11 @@ describe('VHS shader material', () => {
     expect(material.uniforms.u_distortion.value).toBe(0.5)
     expect(material.uniforms.u_noise.value).toBe(0.3)
     expect(material.uniforms.u_colorBleed.value).toBe(0.5)
+    expect(material.uniforms.u_chromaBlur.value).toBe(0.3)
+    expect(material.uniforms.u_saturation.value).toBe(0.9)
+    expect(material.uniforms.u_redGain.value).toBe(1.1)
+    expect(material.uniforms.u_greenGain.value).toBe(1)
+    expect(material.uniforms.u_blueGain.value).toBe(0.9)
     expect(material.uniforms.u_vhsScanlines.value).toBe(0.3)
     expect(material.uniforms.u_trackingError.value).toBe(0.2)
     expect(material.uniforms.u_brightness.value).toBe(0)
@@ -44,6 +49,11 @@ describe('VHS shader material', () => {
       distortion: 0.75,
       noise: 0.65,
       'color-bleed': 0.55,
+      'chroma-blur': 0.65,
+      saturation: 1.25,
+      'red-gain': 1.35,
+      'green-gain': 0.8,
+      'blue-gain': 1.5,
       'vhs-scanlines': 0.45,
       'tracking-error': 0.35,
       brightness: 40,
@@ -54,6 +64,11 @@ describe('VHS shader material', () => {
     expect(material.uniforms.u_distortion.value).toBe(0.75)
     expect(material.uniforms.u_noise.value).toBe(0.65)
     expect(material.uniforms.u_colorBleed.value).toBe(0.55)
+    expect(material.uniforms.u_chromaBlur.value).toBe(0.65)
+    expect(material.uniforms.u_saturation.value).toBe(1.25)
+    expect(material.uniforms.u_redGain.value).toBe(1.35)
+    expect(material.uniforms.u_greenGain.value).toBe(0.8)
+    expect(material.uniforms.u_blueGain.value).toBe(1.5)
     expect(material.uniforms.u_vhsScanlines.value).toBe(0.45)
     expect(material.uniforms.u_trackingError.value).toBe(0.35)
     expect(material.uniforms.u_brightness.value).toBe(0.4)
@@ -122,7 +137,7 @@ describe('VHS shader material', () => {
     }
   })
 
-  it('ports separated RGB, the independent five-tap blur, and fixed 30 percent mix', () => {
+  it('ports separated RGB, the independent five-tap blur, and configurable mix', () => {
     expect(VHS_FRAGMENT_SHADER).toContain('if (u_colorBleed > 0.01)')
     expect(VHS_FRAGMENT_SHADER).toContain('float bleedAmount = u_colorBleed * 0.01;')
     expect(VHS_FRAGMENT_SHADER).toContain('warpedUv + vec2(bleedAmount * 2.0, 0.0)')
@@ -130,7 +145,7 @@ describe('VHS shader material', () => {
     expect(VHS_FRAGMENT_SHADER).toContain('for (int i = -2; i <= 2; i++)')
     expect(VHS_FRAGMENT_SHADER).toContain('chromaBlur /= 5.0;')
     expect(VHS_FRAGMENT_SHADER).toContain(
-      'effectColor = mix(vec3(red, green, blue), chromaBlur, 0.3);',
+      'effectColor = mix(vec3(red, green, blue), chromaBlur, u_chromaBlur);',
     )
   })
 
@@ -171,8 +186,9 @@ describe('VHS shader material', () => {
 
   it('keeps the VHS grading, channel bias, and fixed warped-UV vignette unconditional', () => {
     expect(VHS_FRAGMENT_SHADER).toContain('vec3(vhsLuminance(effectColor))')
-    expect(VHS_FRAGMENT_SHADER).toContain('effectColor.r *= 1.1;')
-    expect(VHS_FRAGMENT_SHADER).toContain('effectColor.b *= 0.9;')
+    expect(VHS_FRAGMENT_SHADER).toContain('effectColor.r *= u_redGain;')
+    expect(VHS_FRAGMENT_SHADER).toContain('effectColor.g *= u_greenGain;')
+    expect(VHS_FRAGMENT_SHADER).toContain('effectColor.b *= u_blueGain;')
     expect(VHS_FRAGMENT_SHADER).toContain(
       'length((warpedUv - 0.5) * vec2(0.5, 0.7)) * 0.5;',
     )

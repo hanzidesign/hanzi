@@ -55,9 +55,6 @@ const liveDropdownOptionLabels = [
   'Diagonal',
   'Shaded',
   'Worley',
-  'Darkened',
-  'Center Sample',
-  'Gradient',
 ]
 
 describe('Phase 5D Grainrad follow-up parity contract', () => {

@@ -40,6 +40,9 @@ describe('Studio shared post-processing compositor contract', () => {
     expect(postProcessing).toContain('StudioGrainEffect')
     expect(postProcessing).toContain('StudioCrtCurveEffect')
     expect(postProcessing).toContain('StudioPhosphorEffect')
+    expect(postProcessing).toContain('StudioBackgroundRestoreEffect')
+    expect(postProcessing).toContain("selectedEffectId === 'voronoi'")
+    expect(postProcessing).toContain('key="background-restore"')
     expect(postProcessing).toContain("readString(controls?.['grain-mode'], 'noise')")
     expect(postProcessing).toContain("readNumber(controls?.['grain-speed'], 50)")
     expect(postProcessing).not.toContain("readNumber(controls?.['grain-speed'], 50) / 100")
@@ -59,17 +62,25 @@ describe('Studio shared post-processing compositor contract', () => {
     expect(postProcessing).toContain('playing: animation.playing')
     expect(postProcessing).not.toContain('scanlinePlay')
     expect(postProcessing).toContain('StudioProcessingEffect')
+    expect(postProcessing.indexOf("if (selectedEffectId === 'voronoi')"))
+      .toBeGreaterThan(postProcessing.indexOf('if (vignetteEnabled)'))
   })
 
   it('renders source, compositor, and export capture in strict order', async () => {
     const renderContext = await readFile(join(studioDir, 'studio-render-context.tsx'), 'utf8')
     const postProcessing = await readFile(join(studioDir, 'studio-post-processing.tsx'), 'utf8')
+    const voronoiRenderer = await readFile(join(studioDir, 'CharacterVoronoiCanvas.tsx'), 'utf8')
 
     expect(postProcessing).toContain('renderPriority={1}')
     expect(renderContext).toContain('exportRender ? 2 : 0')
     expect(renderContext).not.toContain('gl.render(scene, camera)')
     expect(renderContext).toContain('onFrameRendered?.(requestId, gl.domElement)')
     expect(renderContext).toContain("selectedEffectId !== 'pixel-sort'")
+    expect(renderContext).toContain('voronoiMaskTextureRef')
+    expect(voronoiRenderer).toContain(
+      'voronoiMaskTextureRef.current = nextSource ? renderTarget.texture : null',
+    )
+    expect(postProcessing).toContain('backgroundRestoreEffect.setMaskTexture(voronoiMaskTextureRef.current)')
 
     for (const rendererFile of offscreenSourceRenderers) {
       const renderer = await readFile(join(studioDir, rendererFile), 'utf8')

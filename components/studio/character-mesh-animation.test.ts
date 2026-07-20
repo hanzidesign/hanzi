@@ -1,29 +1,18 @@
+import { readFile } from 'node:fs/promises'
+
 import { describe, expect, it } from 'vitest'
 
-import {
-  shouldRunCharacterMeshAnimation,
-} from './character-mesh-animation'
+describe('character mesh GPU animation seam', () => {
+  it('updates bindings at priority -2 from the shared effective time', async () => {
+    const source = await readFile(
+      new URL('./character-mesh-animation.ts', import.meta.url),
+      'utf8',
+    )
 
-describe('character mesh animation cadence', () => {
-  it('allows the initial preview frame, skips one frame after an update, then allows the following frame', () => {
-    expect(shouldRunCharacterMeshAnimation({
-      exportRender: false,
-      skipNextPreviewFrame: false,
-    })).toBe(true)
-    expect(shouldRunCharacterMeshAnimation({
-      exportRender: false,
-      skipNextPreviewFrame: true,
-    })).toBe(false)
-    expect(shouldRunCharacterMeshAnimation({
-      exportRender: false,
-      skipNextPreviewFrame: false,
-    })).toBe(true)
-  })
-
-  it('always allows export updates', () => {
-    expect(shouldRunCharacterMeshAnimation({
-      exportRender: true,
-      skipNextPreviewFrame: true,
-    })).toBe(true)
+    expect(source).toContain('computeEffectiveAnimationTime')
+    expect(source).toContain('binding?.update(')
+    expect(source).toContain('playing: animation.playing')
+    expect(source).toContain('}, -2)')
+    expect(source).not.toContain('skipNextPreviewFrame')
   })
 })

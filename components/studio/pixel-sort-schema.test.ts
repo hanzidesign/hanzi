@@ -13,6 +13,7 @@ describe('Grainrad Pixel Sort schema', () => {
     expect(definition.settingGroups.map((group) => group.title)).toEqual([
       'Pixel Sort',
       'Adjustments',
+      'Color',
     ])
     expect(definition.settingGroups.flatMap((group) => group.controls.map((control) => control.id))).toEqual([
       'direction',
@@ -24,6 +25,11 @@ describe('Grainrad Pixel Sort schema', () => {
       'reverse',
       'brightness',
       'contrast',
+      'highlight',
+      'midtone',
+      'shadow',
+      'background',
+      'mix',
     ])
   })
 
@@ -58,6 +64,21 @@ describe('Grainrad Pixel Sort schema', () => {
     expect(controls.reverse).toMatchObject({ kind: 'toggle', defaultValue: false })
     expect(controls.brightness).toMatchObject({ defaultValue: 0, min: -100, max: 100, step: 1 })
     expect(controls.contrast).toMatchObject({ defaultValue: 0, min: -100, max: 100, step: 1 })
+    expect(controls.mix).toMatchObject({ defaultValue: 1, min: 0, max: 2, step: 0.05 })
+    expect(controls.shadow).toMatchObject({
+      kind: 'color',
+      defaultValueByTheme: { light: '#35115c', dark: '#1b0836' },
+    })
+    expect(controls.midtone).toMatchObject({
+      kind: 'color', defaultValueByTheme: { light: '#c93472', dark: '#ff5a9d' },
+    })
+    expect(controls.highlight).toMatchObject({
+      kind: 'color', defaultValueByTheme: { light: '#e6a928', dark: '#ffe08a' },
+    })
+    expect(controls.background).toMatchObject({
+      kind: 'color',
+      defaultValueByTheme: { light: '#ffffff', dark: '#000000' },
+    })
     expect(createDefaultGrainradEffectControls()['pixel-sort']).toMatchObject({
       direction: 'horizontal',
       'sort-mode': 'hue',
@@ -68,6 +89,11 @@ describe('Grainrad Pixel Sort schema', () => {
       reverse: false,
       brightness: 0,
       contrast: 0,
+      highlight: '#e6a928',
+      midtone: '#c93472',
+      shadow: '#35115c',
+      background: '#ffffff',
+      mix: 1,
     })
   })
 })

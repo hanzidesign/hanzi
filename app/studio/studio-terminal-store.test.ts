@@ -38,7 +38,7 @@ function createMemoryStorage(initialValue?: string) {
 }
 
 describe('Phase 5D Grainrad terminal Studio store', () => {
-  it('keeps all 25 Effect color settings independent across dark and light themes', () => {
+  it('keeps all 36 Effect color settings independent across dark and light themes', () => {
     const { storage } = createMemoryStorage()
     const store = createStudioStore(storage)
     const colorControls = GRAINRAD_EFFECTS.flatMap((effect) =>
@@ -51,7 +51,7 @@ describe('Phase 5D Grainrad terminal Studio store', () => {
     const lightColors = new Map<string, string>()
     const darkColors = new Map<string, string>()
 
-    expect(colorControls).toHaveLength(25)
+    expect(colorControls).toHaveLength(36)
 
     colorControls.forEach(({ effectId, control }, index) => {
       const value = control.kind === 'select'
@@ -1339,7 +1339,7 @@ describe('Phase 5D Grainrad terminal Studio store', () => {
             'cell-size': 999,
             'edge-width': -1,
             'edge-color': 'black',
-            'color-mode': 'unknown',
+            'fill-canvas': 'yes',
             randomize: 9,
             brightness: 999,
             contrast: -999,
@@ -1351,15 +1351,16 @@ describe('Phase 5D Grainrad terminal Studio store', () => {
     const store = createStudioStore(storage)
 
     expect(store.getState().grainradEffect.controls.voronoi).toMatchObject({
-      'cell-size': 100, 'edge-width': 0, 'edge-color': '1', 'cell-color-mode': '0',
+      'cell-size': 100, 'edge-width': 0, 'edge-color': '#f4f1e8', 'fill-canvas': false,
       randomize: 1, brightness: 100, contrast: -100,
     })
 
-    store.getState().setGrainradEffectControl('voronoi', 'cell-color-mode', '2')
+    store.getState().setGrainradEffectControl('voronoi', 'edge-color', '#123456')
+    store.getState().setGrainradEffectControl('voronoi', 'fill-canvas', true)
     store.getState().resetSelectedEffectControls()
 
     expect(store.getState().grainradEffect.controls.voronoi).toMatchObject({
-      'cell-size': 30, 'edge-width': 0.3, 'edge-color': '1', 'cell-color-mode': '0',
+      'cell-size': 30, 'edge-width': 0.3, 'edge-color': '#f4f1e8', 'fill-canvas': false,
       randomize: 0.8, brightness: 0, contrast: 0,
     })
     expect(store.getState().grainradEffect.controls.threshold.levels).toBe(6)

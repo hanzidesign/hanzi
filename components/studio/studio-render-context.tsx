@@ -5,7 +5,14 @@ import {
   useFrame,
   type CanvasProps,
 } from '@react-three/fiber'
-import { createContext, useContext, useRef, type ReactNode } from 'react'
+import {
+  createContext,
+  useContext,
+  useRef,
+  type MutableRefObject,
+  type ReactNode,
+} from 'react'
+import type { Texture } from 'three'
 import { useStudioStore } from '@/app/studio/studio-store'
 import { computeEffectiveAnimationTime } from '@/components/studio/animation-time'
 import StudioPostProcessing from '@/components/studio/studio-post-processing'
@@ -14,11 +21,15 @@ type StudioRenderContextValue = {
   exportRender: boolean
   requestId: number
   onFrameRendered?: (requestId: number, canvas: HTMLCanvasElement) => void
+  voronoiMaskTextureRef: MutableRefObject<Texture | null>
 }
+
+const emptyVoronoiMaskTextureRef: MutableRefObject<Texture | null> = { current: null }
 
 const StudioRenderContext = createContext<StudioRenderContextValue>({
   exportRender: false,
   requestId: 0,
+  voronoiMaskTextureRef: emptyVoronoiMaskTextureRef,
 })
 
 let latestPreviewAnimationTime = 0
@@ -34,8 +45,15 @@ export function StudioRenderModeProvider({
   onFrameRendered?: (requestId: number, canvas: HTMLCanvasElement) => void
   children: ReactNode
 }) {
+  const voronoiMaskTextureRef = useRef<Texture | null>(null)
+
   return (
-    <StudioRenderContext value={{ exportRender, requestId, onFrameRendered }}>
+    <StudioRenderContext value={{
+      exportRender,
+      requestId,
+      onFrameRendered,
+      voronoiMaskTextureRef,
+    }}>
       {children}
     </StudioRenderContext>
   )

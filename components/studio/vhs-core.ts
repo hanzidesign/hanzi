@@ -5,6 +5,11 @@ export type VhsSettings = Readonly<{
   distortion: number
   noise: number
   colorBleed: number
+  chromaBlur: number
+  saturation: number
+  redGain: number
+  greenGain: number
+  blueGain: number
   vhsScanlines: number
   trackingError: number
   brightness: number
@@ -63,6 +68,11 @@ export const DEFAULT_VHS_SETTINGS: VhsSettings = {
   distortion: 0.5,
   noise: 0.3,
   colorBleed: 0.5,
+  chromaBlur: 0.3,
+  saturation: 0.9,
+  redGain: 1.1,
+  greenGain: 1,
+  blueGain: 0.9,
   vhsScanlines: 0.3,
   trackingError: 0.2,
   brightness: 0,
@@ -185,7 +195,7 @@ function traceVhsUnchecked(input: VhsReferenceInput, x: number, y: number): VhsT
       totals[2] += sampled[2]
     }
     chromaBlur = [totals[0] / 5, totals[1] / 5, totals[2] / 5]
-    colorAfterBleed = mixRgb(separatedColor, chromaBlur, 0.3)
+    colorAfterBleed = mixRgb(separatedColor, chromaBlur, settings.chromaBlur)
   } else {
     colorAfterBleed = sampleVhsSourceLinear(rgb, width, height, warpedUv[0], warpedUv[1])
     separatedColor = colorAfterBleed
@@ -237,14 +247,14 @@ function traceVhsUnchecked(input: VhsReferenceInput, x: number, y: number): VhsT
     + colorAfterNoise[1] * 0.587
     + colorAfterNoise[2] * 0.114
   const desaturatedColor: VhsRgb = [
-    mix(colorAfterNoise[0], luminance, 0.1),
-    mix(colorAfterNoise[1], luminance, 0.1),
-    mix(colorAfterNoise[2], luminance, 0.1),
+    mix(colorAfterNoise[0], luminance, 1 - settings.saturation),
+    mix(colorAfterNoise[1], luminance, 1 - settings.saturation),
+    mix(colorAfterNoise[2], luminance, 1 - settings.saturation),
   ]
   const gradedColor: VhsRgb = [
-    desaturatedColor[0] * 1.1,
-    desaturatedColor[1],
-    desaturatedColor[2] * 0.9,
+    desaturatedColor[0] * settings.redGain,
+    desaturatedColor[1] * settings.greenGain,
+    desaturatedColor[2] * settings.blueGain,
   ]
   const vignette = 1 - Math.hypot(
     (warpedUv[0] - 0.5) * 0.5,
@@ -324,16 +334,27 @@ function assertSource(input: VhsReferenceInput) {
     throw new RangeError('VHS rgb length must equal width * height * 3')
   }
   if (!Number.isFinite(input.time)) throw new RangeError('VHS time must be finite')
-  const effectSettings = [
+  const unitEffectSettings = [
     ['distortion', input.settings.distortion],
     ['noise', input.settings.noise],
     ['colorBleed', input.settings.colorBleed],
+    ['chromaBlur', input.settings.chromaBlur],
     ['vhsScanlines', input.settings.vhsScanlines],
     ['trackingError', input.settings.trackingError],
   ] as const
-  for (const [name, value] of effectSettings) {
+  for (const [name, value] of unitEffectSettings) {
     if (!Number.isFinite(value)) throw new RangeError(`VHS ${name} must be finite`)
     if (value < 0 || value > 1) throw new RangeError(`VHS ${name} must be between 0 and 1`)
+  }
+  const colorSettings = [
+    ['saturation', input.settings.saturation],
+    ['redGain', input.settings.redGain],
+    ['greenGain', input.settings.greenGain],
+    ['blueGain', input.settings.blueGain],
+  ] as const
+  for (const [name, value] of colorSettings) {
+    if (!Number.isFinite(value)) throw new RangeError(`VHS ${name} must be finite`)
+    if (value < 0 || value > 2) throw new RangeError(`VHS ${name} must be between 0 and 2`)
   }
   for (const [name, value] of [
     ['brightness', input.settings.brightness],

@@ -2,8 +2,6 @@ import { DataTexture, Vector2 } from 'three'
 import { describe, expect, it, vi } from 'vitest'
 
 import {
-  VORONOI_COLOR_MODE_IDS,
-  VORONOI_EDGE_COLOR_IDS,
   VORONOI_FRAGMENT_SHADER,
   applyVoronoiUniforms,
   createVoronoiShaderMaterial,
@@ -30,8 +28,12 @@ describe('Voronoi shader material', () => {
     expect(material.uniforms.u_resolution.value.toArray()).toEqual([1280, 720])
     expect(material.uniforms.u_cellSize.value).toBe(30)
     expect(material.uniforms.u_edgeWidth.value).toBe(0.3)
-    expect(material.uniforms.u_edgeColor.value).toBe(0)
-    expect(material.uniforms.u_colorMode.value).toBe(0)
+    expect(material.uniforms.u_edgeColor.value).toEqual([16 / 255, 16 / 255, 16 / 255])
+    expect(material.uniforms.u_cellShadow.value).toEqual([43 / 255, 45 / 255, 66 / 255])
+    expect(material.uniforms.u_cellMidtone.value).toEqual([109 / 255, 89 / 255, 122 / 255])
+    expect(material.uniforms.u_cellHighlight.value).toEqual([233 / 255, 196 / 255, 106 / 255])
+    expect(material.uniforms.u_background.value).toEqual([1, 1, 1])
+    expect(material.uniforms.u_fillCanvas.value).toBe(0)
     expect(material.uniforms.u_randomize.value).toBe(0.8)
     expect(material.uniforms.u_brightness.value).toBe(0)
     expect(material.uniforms.u_contrast.value).toBe(0)
@@ -39,44 +41,48 @@ describe('Voronoi shader material', () => {
     expect(material.uniforms.u_time.value).toBe(0)
   })
 
-  it('maps string control ids to the exact numeric uniform ABI without clamping', () => {
+  it('maps numeric controls and every direct color picker without clamping', () => {
     const { material } = createFixture()
 
     applyVoronoiUniforms(material, {
       'cell-size': 85,
       'edge-width': 0.65,
-      'edge-color': '2',
-      'cell-color-mode': '1',
+      'edge-color': '#123456',
+      'cell-shadow': '#102030',
+      'cell-midtone': '#405060',
+      'cell-highlight': '#708090',
+      background: '#abcdef',
+      'fill-canvas': true,
       randomize: 0.35,
       brightness: 40,
       contrast: -25,
       'brightness-map': 1.4,
     })
 
-    expect(VORONOI_EDGE_COLOR_IDS).toEqual({ '0': 0, '1': 1, '2': 2 })
-    expect(VORONOI_COLOR_MODE_IDS).toEqual({ '0': 0, '1': 1, '2': 2 })
     expect(material.uniforms.u_cellSize.value).toBe(85)
     expect(material.uniforms.u_edgeWidth.value).toBe(0.65)
-    expect(material.uniforms.u_edgeColor.value).toBe(2)
-    expect(material.uniforms.u_colorMode.value).toBe(1)
+    expect(material.uniforms.u_edgeColor.value).toEqual([0x12 / 255, 0x34 / 255, 0x56 / 255])
+    expect(material.uniforms.u_cellShadow.value).toEqual([0x10 / 255, 0x20 / 255, 0x30 / 255])
+    expect(material.uniforms.u_cellMidtone.value).toEqual([0x40 / 255, 0x50 / 255, 0x60 / 255])
+    expect(material.uniforms.u_cellHighlight.value).toEqual([0x70 / 255, 0x80 / 255, 0x90 / 255])
+    expect(material.uniforms.u_background.value).toEqual([0xab / 255, 0xcd / 255, 0xef / 255])
+    expect(material.uniforms.u_fillCanvas.value).toBe(1)
     expect(material.uniforms.u_randomize.value).toBe(0.35)
     expect(material.uniforms.u_brightness.value).toBe(0.4)
     expect(material.uniforms.u_contrast.value).toBe(-0.25)
     expect(material.uniforms.u_brightnessMap.value).toBe(1.4)
   })
 
-  it('rejects numeric select values at the string control boundary and uses fallbacks', () => {
+  it('rejects invalid direct colors and uses fallbacks', () => {
     const { material } = createFixture()
 
     applyVoronoiUniforms(material, {
       'cell-size': Number.NaN,
       'edge-color': 2,
-      'cell-color-mode': 1,
     })
 
     expect(material.uniforms.u_cellSize.value).toBe(30)
-    expect(material.uniforms.u_edgeColor.value).toBe(0)
-    expect(material.uniforms.u_colorMode.value).toBe(0)
+    expect(material.uniforms.u_edgeColor.value).toEqual([16 / 255, 16 / 255, 16 / 255])
   })
 
   it('ports the exact correlated hash and randomized feature-point equation', () => {
@@ -122,7 +128,7 @@ describe('Voronoi shader material', () => {
       'vec2 sampleOffset = vec2(float(dx), float(dy)) * 0.2;',
       'averageColor += sampleVoronoiMipZero(sampleUv);',
       'sampleCount += 1.0;',
-      'cellColor = averageColor / sampleCount;',
+      'averageColor /= sampleCount;',
     ]) {
       expect(VORONOI_FRAGMENT_SHADER).toContain(marker)
     }
@@ -131,27 +137,21 @@ describe('Voronoi shader material', () => {
     )
   })
 
-  it('uses the nominal unrandomized center for Center Sample and exact Gradient mixing', () => {
-    expect(VORONOI_FRAGMENT_SHADER.match(/closestCell \+ 0\.5/g)).toHaveLength(3)
+  it('maps model-source tone into all three colors and composes the direct edge color before B/C', () => {
     expect(VORONOI_FRAGMENT_SHADER).toContain(
-      'float gradientAmount = smoothstep(0.0, 0.7, closestDistance);',
+      'float cellTone = smoothstep(0.15, 0.9, sourceLuminance);',
     )
     expect(VORONOI_FRAGMENT_SHADER).toContain(
-      'cellColor = mix(centerColor, currentColor, gradientAmount * 0.5);',
+      'voronoiLuminance(texture2D(u_sourceTexture, v_uv).rgb)',
     )
-  })
-
-  it('ports Black, White, and actual Darkened edge modes before B/C', () => {
-    expect(VORONOI_FRAGMENT_SHADER).toContain('edgePixelColor = vec3(0.0);')
-    expect(VORONOI_FRAGMENT_SHADER).toContain('edgePixelColor = vec3(1.0);')
-    expect(VORONOI_FRAGMENT_SHADER).toContain('edgePixelColor = cellColor * 0.3;')
+    expect(VORONOI_FRAGMENT_SHADER).toContain('u_cellHighlight')
     expect(VORONOI_FRAGMENT_SHADER).toContain(
-      'vec3 effectColor = mix(edgePixelColor, cellColor, interiorMask);',
+      'vec3 voronoiColor = mix(u_edgeColor, cellColor, interiorMask);',
     )
     expect(VORONOI_FRAGMENT_SHADER).toContain(
       '(1.0 + u_contrast) / (1.0 - 0.99 * u_contrast)',
     )
-    expect(VORONOI_FRAGMENT_SHADER.indexOf('vec3 effectColor = mix')).toBeLessThan(
+    expect(VORONOI_FRAGMENT_SHADER.indexOf('vec3 voronoiColor = mix')).toBeLessThan(
       VORONOI_FRAGMENT_SHADER.indexOf(
         'effectColor = applyVoronoiBrightnessContrast(effectColor);',
       ),
@@ -165,7 +165,7 @@ describe('Voronoi shader material', () => {
       'vec2 blurTexel = min(u_blur, 12.0) / max(u_sourceSize, vec2(1.0));',
     )
     expect(VORONOI_FRAGMENT_SHADER).toContain(
-      'vec3 currentColor = sampleVoronoiMipZero(v_uv);',
+      'averageColor += sampleVoronoiMipZero(sampleUv);',
     )
     expect(VORONOI_FRAGMENT_SHADER).toContain(
       'color = mix(color, 1.0 - color, u_processingInvert);',
@@ -193,6 +193,13 @@ describe('Voronoi shader material', () => {
     )
     expect(effectIndex).toBeLessThan(processingIndex)
     expect(processingIndex).toBeLessThan(postIndex)
+    const backgroundIndex = VORONOI_FRAGMENT_SHADER.lastIndexOf(
+      'effectColor = mix(u_background, effectColor, mix(modelMask, 1.0, u_fillCanvas));',
+    )
+    expect(postIndex).toBeLessThan(backgroundIndex)
+    expect(VORONOI_FRAGMENT_SHADER).toContain(
+      'gl_FragColor = vec4(effectColor, 1.0);',
+    )
 
     const { material } = createFixture()
     applyVoronoiUniforms(material, {

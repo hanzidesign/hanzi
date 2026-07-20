@@ -30,6 +30,10 @@ import {
 } from '@/components/studio/character-mesh-geometry'
 import { useCharacterMeshAnimation } from '@/components/studio/character-mesh-animation'
 import {
+  attachCharacterMeshGpuDeform,
+  type CharacterMeshGpuDeformBinding,
+} from '@/components/studio/character-mesh-gpu-deform'
+import {
   applyContourUniforms,
   createContourShaderMaterial,
   disposeContourShaderMaterial,
@@ -199,7 +203,7 @@ function CharacterContourScene({
     source.group.scale.setScalar(meshSettings.scale)
   }, [geometryResult, meshSettings.position, meshSettings.rotation, meshSettings.scale])
 
-  useCharacterMeshAnimation(geometryResultRef, animation)
+  useCharacterMeshAnimation(sourceRef, meshSettings.deform, animation)
 
   useFrame((_, delta) => {
     const source = sourceRef.current
@@ -253,6 +257,7 @@ type ContourSourceScene = {
   camera: PerspectiveCamera
   scene: Scene
   group: Group
+  gpuDeform: CharacterMeshGpuDeformBinding | null
   dispose: () => void
 }
 
@@ -269,6 +274,9 @@ function createContourSourceScene(
     roughness: 0.72,
     metalness: 0.05,
   })
+  const gpuDeform = geometryResult.gpuDeformActive
+    ? attachCharacterMeshGpuDeform(material, 'standard')
+    : null
   const directional = new DirectionalLight('#ffffff', 1)
   directional.position.set(5, 5, 5)
 
@@ -282,7 +290,11 @@ function createContourSourceScene(
     camera,
     scene,
     group,
-    dispose: () => material.dispose(),
+    gpuDeform,
+    dispose: () => {
+      gpuDeform?.dispose()
+      material.dispose()
+    },
   }
 }
 

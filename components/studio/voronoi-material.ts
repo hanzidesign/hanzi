@@ -3,18 +3,6 @@ import { ShaderMaterial, Vector2, type Texture } from 'three'
 export type VoronoiControlValue = string | number | boolean
 export type VoronoiControls = Readonly<Record<string, VoronoiControlValue>>
 
-export const VORONOI_EDGE_COLOR_IDS = {
-  '0': 0,
-  '1': 1,
-  '2': 2,
-} as const
-
-export const VORONOI_COLOR_MODE_IDS = {
-  '0': 0,
-  '1': 1,
-  '2': 2,
-} as const
-
 export type CreateVoronoiShaderMaterialOptions = Readonly<{
   controls: VoronoiControls
   sourceTexture: Texture
@@ -37,8 +25,12 @@ uniform vec2 u_sourceSize;
 uniform vec2 u_resolution;
 uniform float u_cellSize;
 uniform float u_edgeWidth;
-uniform float u_edgeColor;
-uniform float u_colorMode;
+uniform vec3 u_edgeColor;
+uniform float u_fillCanvas;
+uniform vec3 u_cellShadow;
+uniform vec3 u_cellMidtone;
+uniform vec3 u_cellHighlight;
+uniform vec3 u_background;
 uniform float u_randomize;
 uniform float u_brightness;
 uniform float u_contrast;
@@ -158,42 +150,31 @@ void main() {
 
   float edgeDistance = secondClosestDistance - closestDistance;
   float interiorMask = smoothstep(0.0, u_edgeWidth * 0.3, edgeDistance);
-  vec3 cellColor;
-
-  if (u_colorMode < 0.5) {
-    vec3 averageColor = vec3(0.0);
-    float sampleCount = 0.0;
-    for (int dy = -2; dy <= 2; dy++) {
-      for (int dx = -2; dx <= 2; dx++) {
-        vec2 sampleOffset = vec2(float(dx), float(dy)) * 0.2;
-        vec2 sampleUv = (closestCell + 0.5 + sampleOffset)
-          * u_cellSize / u_resolution;
-        averageColor += sampleVoronoiMipZero(sampleUv);
-        sampleCount += 1.0;
-      }
+  vec3 averageColor = vec3(0.0);
+  float sampleCount = 0.0;
+  for (int dy = -2; dy <= 2; dy++) {
+    for (int dx = -2; dx <= 2; dx++) {
+      vec2 sampleOffset = vec2(float(dx), float(dy)) * 0.2;
+      vec2 sampleUv = (closestCell + 0.5 + sampleOffset)
+        * u_cellSize / u_resolution;
+      averageColor += sampleVoronoiMipZero(sampleUv);
+      sampleCount += 1.0;
     }
-    cellColor = averageColor / sampleCount;
-  } else if (u_colorMode < 1.5) {
-    vec2 centerUv = (closestCell + 0.5) * u_cellSize / u_resolution;
-    cellColor = sampleVoronoiMipZero(centerUv);
-  } else {
-    vec2 centerUv = (closestCell + 0.5) * u_cellSize / u_resolution;
-    vec3 currentColor = sampleVoronoiMipZero(v_uv);
-    vec3 centerColor = sampleVoronoiMipZero(centerUv);
-    float gradientAmount = smoothstep(0.0, 0.7, closestDistance);
-    cellColor = mix(centerColor, currentColor, gradientAmount * 0.5);
   }
+  averageColor /= sampleCount;
+  float sourceLuminance = voronoiLuminance(averageColor);
+  float modelMask = smoothstep(
+    0.01,
+    0.12,
+    voronoiLuminance(texture2D(u_sourceTexture, v_uv).rgb)
+  );
+  float cellTone = smoothstep(0.15, 0.9, sourceLuminance);
+  vec3 cellColor = cellTone <= 0.5
+    ? mix(u_cellShadow, u_cellMidtone, cellTone * 2.0)
+    : mix(u_cellMidtone, u_cellHighlight, (cellTone - 0.5) * 2.0);
 
-  vec3 edgePixelColor;
-  if (u_edgeColor < 0.5) {
-    edgePixelColor = vec3(0.0);
-  } else if (u_edgeColor < 1.5) {
-    edgePixelColor = vec3(1.0);
-  } else {
-    edgePixelColor = cellColor * 0.3;
-  }
-
-  vec3 effectColor = mix(edgePixelColor, cellColor, interiorMask);
+  vec3 voronoiColor = mix(u_edgeColor, cellColor, interiorMask);
+  vec3 effectColor = voronoiColor;
   effectColor = applyVoronoiBrightnessContrast(effectColor);
   effectColor = applyVoronoiProcessing(
     effectColor,
@@ -204,6 +185,7 @@ void main() {
     voronoiLuminance(effectColor),
     v_uv
   );
+  effectColor = mix(u_background, effectColor, mix(modelMask, 1.0, u_fillCanvas));
   gl_FragColor = vec4(effectColor, 1.0);
 }
 `
@@ -224,8 +206,12 @@ export function createVoronoiShaderMaterial({
       u_resolution: { value: resolution.clone() },
       u_cellSize: { value: 30 },
       u_edgeWidth: { value: 0.3 },
-      u_edgeColor: { value: VORONOI_EDGE_COLOR_IDS['0'] },
-      u_colorMode: { value: VORONOI_COLOR_MODE_IDS['0'] },
+      u_edgeColor: { value: [16 / 255, 16 / 255, 16 / 255] },
+      u_fillCanvas: { value: 0 },
+      u_cellShadow: { value: [43 / 255, 45 / 255, 66 / 255] },
+      u_cellMidtone: { value: [109 / 255, 89 / 255, 122 / 255] },
+      u_cellHighlight: { value: [233 / 255, 196 / 255, 106 / 255] },
+      u_background: { value: [1, 1, 1] },
       u_randomize: { value: 0.8 },
       u_brightness: { value: 0 },
       u_contrast: { value: 0 },
@@ -256,16 +242,12 @@ export function applyVoronoiUniforms(
 ) {
   material.uniforms.u_cellSize.value = readNumber(controls['cell-size'], 30)
   material.uniforms.u_edgeWidth.value = readNumber(controls['edge-width'], 0.3)
-  material.uniforms.u_edgeColor.value = readEnum(
-    controls['edge-color'],
-    VORONOI_EDGE_COLOR_IDS,
-    '0',
-  )
-  material.uniforms.u_colorMode.value = readEnum(
-    controls['cell-color-mode'],
-    VORONOI_COLOR_MODE_IDS,
-    '0',
-  )
+  material.uniforms.u_edgeColor.value = readColor(controls['edge-color'], '#101010')
+  material.uniforms.u_fillCanvas.value = readBoolean(controls['fill-canvas'])
+  material.uniforms.u_cellShadow.value = readColor(controls['cell-shadow'], '#2b2d42')
+  material.uniforms.u_cellMidtone.value = readColor(controls['cell-midtone'], '#6d597a')
+  material.uniforms.u_cellHighlight.value = readColor(controls['cell-highlight'], '#e9c46a')
+  material.uniforms.u_background.value = readColor(controls.background, '#ffffff')
   material.uniforms.u_randomize.value = readNumber(controls.randomize, 0.8)
   material.uniforms.u_brightness.value = readNumber(controls.brightness, 0) / 100
   material.uniforms.u_contrast.value = readNumber(controls.contrast, 0) / 100
@@ -295,12 +277,8 @@ function readBoolean(value: VoronoiControlValue | undefined) {
   return value === true ? 1 : 0
 }
 
-function readEnum<T extends Record<string, number>>(
-  value: VoronoiControlValue | undefined,
-  values: T,
-  fallback: keyof T,
-) {
-  return typeof value === 'string' && value in values
-    ? values[value as keyof T]
-    : values[fallback]
+function readColor(value: VoronoiControlValue | undefined, fallback: string): [number, number, number] {
+  const match = (typeof value === 'string' ? value : fallback).match(/^#?([0-9a-f]{6})$/i)
+  const integer = Number.parseInt(match?.[1] ?? '000000', 16)
+  return [((integer >> 16) & 255) / 255, ((integer >> 8) & 255) / 255, (integer & 255) / 255]
 }

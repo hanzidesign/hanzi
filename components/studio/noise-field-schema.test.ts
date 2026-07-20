@@ -7,10 +7,10 @@ describe('Grainrad Noise Field schema', () => {
     const definition = getGrainradEffectById('noise-field')
 
     expect(definition.renderer).toBe('noise-field')
-    expect(definition.settingGroups.map((group) => group.title)).toEqual(['Noise Field', 'Adjustments'])
+    expect(definition.settingGroups.map((group) => group.title)).toEqual(['Noise Field', 'Adjustments', 'Color'])
     expect(definition.settingGroups.flatMap((group) => group.controls.map((control) => control.id))).toEqual([
       'noise-type', 'scale', 'intensity', 'octaves', 'speed', 'animate', 'distort-only',
-      'brightness', 'contrast',
+      'brightness', 'contrast', 'foreground', 'background',
     ])
   })
 
@@ -36,10 +36,19 @@ describe('Grainrad Noise Field schema', () => {
     expect(controls['distort-only']).toMatchObject({ kind: 'toggle', defaultValue: true })
     expect(controls.brightness).toMatchObject({ defaultValue: 0, min: -100, max: 100, step: 1 })
     expect(controls.contrast).toMatchObject({ defaultValue: 0, min: -100, max: 100, step: 1 })
+    expect(controls.foreground).toMatchObject({
+      kind: 'color', defaultValue: '#ffffff',
+      defaultValueByTheme: { light: '#ffffff', dark: '#ffffff' },
+    })
+    expect(controls.background).toMatchObject({
+      kind: 'color', defaultValue: '#000000',
+      defaultValueByTheme: { light: '#000000', dark: '#000000' },
+    })
     expect(Object.values(controls).every((control) => control.visibleWhen === undefined)).toBe(true)
     expect(createDefaultGrainradEffectControls()['noise-field']).toMatchObject({
       'noise-type': 'perlin', scale: 50, intensity: 1, octaves: 4, speed: 1,
       animate: true, 'distort-only': true, brightness: 0, contrast: 0,
+      foreground: '#ffffff', background: '#000000',
     })
   })
 })

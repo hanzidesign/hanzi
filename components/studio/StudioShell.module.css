@@ -437,8 +437,11 @@
 .meshDeformSection > .inputGroupReset {
   position: absolute;
   z-index: 1;
-  top: 5px;
-  right: 0;
+  top: 6px;
+  right: 8px;
+  height: 30px;
+  display: flex;
+  align-items: center;
   opacity: 0;
   pointer-events: none;
 }
@@ -700,10 +703,30 @@
   padding-top: 14px;
 }
 
-.adjustmentsReset {
-  position: absolute;
-  top: 3px;
-  right: 0;
+.groupHeader {
+  min-height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 0 4px;
+}
+
+.groupHeader .groupTitle {
+  margin: 0;
+}
+
+@media (min-width: 901px) and (hover: hover) and (pointer: fine) {
+  .rowGroup > .groupHeader .sectionResetButton {
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .rowGroup:hover > .groupHeader .sectionResetButton,
+  .rowGroup:focus-within > .groupHeader .sectionResetButton {
+    opacity: 1;
+    pointer-events: auto;
+  }
 }
 
 .postProcessingGroups {
@@ -722,8 +745,11 @@
 .postProcessingGroup > .inputGroupReset {
   position: absolute;
   z-index: 1;
-  top: 5px;
-  right: 0;
+  top: 6px;
+  right: 8px;
+  height: 30px;
+  display: flex;
+  align-items: center;
   opacity: 0;
   pointer-events: none;
 }

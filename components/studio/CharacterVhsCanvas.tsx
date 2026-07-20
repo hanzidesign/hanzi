@@ -33,6 +33,10 @@ import {
   type CharacterMeshGeometryResult,
 } from '@/components/studio/character-mesh-geometry'
 import { useCharacterMeshAnimation } from '@/components/studio/character-mesh-animation'
+import {
+  attachCharacterMeshGpuDeform,
+  type CharacterMeshGpuDeformBinding,
+} from '@/components/studio/character-mesh-gpu-deform'
 import { applyDeltaRotation } from '@/components/studio/shader-canvas-math'
 import {
   addCharacterModelCopies,
@@ -98,6 +102,7 @@ function CharacterVhsScene({
   const meshSettings = useStudioStore((store) => store.mesh)
   const animation = useStudioStore((store) => store.animation)
   const controls = useStudioStore((store) => store.grainradEffect.controls['vhs'])
+  const activeBackground = typeof controls.background === 'string' ? controls.background : '#000000'
   const [geometryResult, setGeometryResult] = useState<CharacterMeshGeometryResult | null>(null)
   const geometryResultRef = useRef<CharacterMeshGeometryResult | null>(null)
   const sourceRef = useRef<VhsSourceScene | null>(null)
@@ -162,6 +167,11 @@ function CharacterVhsScene({
     }
   }, [geometryResult, meshSettings.repeat])
 
+  useEffect(() => {
+    const source = sourceRef.current
+    if (source) applyVhsSourceBackground(source, activeBackground)
+  }, [activeBackground, geometryResult, meshSettings.repeat])
+
   const material = useMemo(() => createVhsShaderMaterial({
     controls: {},
     sourceTexture: renderTarget.texture,
@@ -180,7 +190,7 @@ function CharacterVhsScene({
   }, [material])
 
   useEffect(() => {
-applyVhsUniforms(material, withoutSharedControllerValues(controls))
+    applyVhsUniforms(material, withoutSharedControllerValues(controls))
   }, [controls, material])
 
   useEffect(() => {
@@ -198,7 +208,7 @@ applyVhsUniforms(material, withoutSharedControllerValues(controls))
     source.group.scale.setScalar(meshSettings.scale)
   }, [geometryResult, meshSettings.position, meshSettings.rotation, meshSettings.scale])
 
-  useCharacterMeshAnimation(geometryResultRef, animation)
+  useCharacterMeshAnimation(sourceRef, meshSettings.deform, animation)
 
   useFrame(({ clock }, delta) => {
     const source = sourceRef.current
@@ -247,13 +257,14 @@ applyVhsUniforms(material, withoutSharedControllerValues(controls))
   )
 }
 
-type VhsSourceScene = {
+export type VhsSourceScene = {
   scene: Scene
   group: Group
+  gpuDeform: CharacterMeshGpuDeformBinding | null
   dispose: () => void
 }
 
-function createVhsSourceScene(
+export function createVhsSourceScene(
   geometryResult: CharacterMeshGeometryResult,
   repeat: CharacterRepeatSettings,
 ): VhsSourceScene {
@@ -264,6 +275,9 @@ function createVhsSourceScene(
     roughness: 0.72,
     metalness: 0.05,
   })
+  const gpuDeform = geometryResult.gpuDeformActive
+    ? attachCharacterMeshGpuDeform(material, 'standard')
+    : null
   const directional = new DirectionalLight('#ffffff', 1.4)
   directional.position.set(2, 3, 4)
 
@@ -276,7 +290,17 @@ function createVhsSourceScene(
   return {
     scene,
     group,
-    dispose: () => material.dispose(),
+    gpuDeform,
+    dispose: () => {
+      gpuDeform?.dispose()
+      material.dispose()
+    },
+  }
+}
+
+export function applyVhsSourceBackground(source: VhsSourceScene, background: string) {
+  if (source.scene.background instanceof Color) {
+    source.scene.background.set(background)
   }
 }
 

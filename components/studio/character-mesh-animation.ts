@@ -1,24 +1,9 @@
 import { useFrame } from '@react-three/fiber'
-import { useRef, type RefObject } from 'react'
+import type { RefObject } from 'react'
 
 import { computeEffectiveAnimationTime } from '@/components/studio/animation-time'
-import {
-  updateCharacterMeshGeometryAnimation,
-  type CharacterMeshGeometryResult,
-} from '@/components/studio/character-mesh-geometry'
-import { useStudioRenderMode } from '@/components/studio/studio-render-context'
-
-export type CharacterMeshAnimationCadenceInput = {
-  exportRender: boolean
-  skipNextPreviewFrame: boolean
-}
-
-export function shouldRunCharacterMeshAnimation({
-  exportRender,
-  skipNextPreviewFrame,
-}: CharacterMeshAnimationCadenceInput) {
-  return exportRender || !skipNextPreviewFrame
-}
+import type { CharacterMeshDeformSettings } from '@/components/studio/character-mesh-deform'
+import type { CharacterMeshGpuDeformBinding } from '@/components/studio/character-mesh-gpu-deform'
 
 export type CharacterMeshAnimationState = {
   playing: boolean
@@ -26,28 +11,24 @@ export type CharacterMeshAnimationState = {
   timeOffset: number
 }
 
+export type CharacterMeshGpuDeformSource = {
+  gpuDeform: CharacterMeshGpuDeformBinding | null
+}
+
 /**
- * Installs the shared per-frame seam for animated Model Deform geometry.
+ * Synchronizes GPU Model Deform uniforms before offscreen source renders.
  * A negative priority runs before offscreen source renders (which use -1).
  */
 export function useCharacterMeshAnimation(
-  geometryResultRef: RefObject<CharacterMeshGeometryResult | null>,
+  sourceRef: RefObject<CharacterMeshGpuDeformBinding | CharacterMeshGpuDeformSource | null>,
+  deform: CharacterMeshDeformSettings,
   animation: CharacterMeshAnimationState,
 ) {
-  const { exportRender } = useStudioRenderMode()
-  const skipNextPreviewFrameRef = useRef(false)
-
   useFrame(({ clock }) => {
-    if (!shouldRunCharacterMeshAnimation({
-      exportRender,
-      skipNextPreviewFrame: skipNextPreviewFrameRef.current,
-    })) {
-      skipNextPreviewFrameRef.current = false
-      return
-    }
-
-    const didUpdate = updateCharacterMeshGeometryAnimation(
-      geometryResultRef.current,
+    const source = sourceRef.current
+    const binding = source && 'gpuDeform' in source ? source.gpuDeform : source
+    binding?.update(
+      deform,
       computeEffectiveAnimationTime({
         elapsedSeconds: clock.getElapsedTime(),
         speed: animation.speed,
@@ -55,9 +36,5 @@ export function useCharacterMeshAnimation(
         playing: animation.playing,
       }),
     )
-
-    if (!exportRender && didUpdate) {
-      skipNextPreviewFrameRef.current = true
-    }
   }, -2)
 }

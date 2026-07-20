@@ -22,6 +22,8 @@ describe('Grainrad effect renderer routing contract', () => {
       builderCallers.push(fileName)
       expect(source, `${fileName} must install the shared Model Deform animation seam`)
         .toContain('useCharacterMeshAnimation')
+      expect(source, `${fileName} must attach the shared GPU Model Deform adapter`)
+        .toContain('attachCharacterMeshGpuDeform')
       expect(source, `${fileName} must pass mesh.deform to the builder`)
         .toMatch(fileName === 'CharacterMesh.tsx'
           ? /deform,/

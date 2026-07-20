@@ -3,6 +3,7 @@ export type PixelSortRgba = readonly [number, number, number, number]
 export type PixelSortVec2 = readonly [number, number]
 export type PixelSortDirection = 'horizontal' | 'vertical' | 'diagonal'
 export type PixelSortMode = 'brightness' | 'hue' | 'saturation' | 'dark'
+export type PixelSortTheme = 'light' | 'dark'
 
 export type PixelSortSettings = Readonly<{
   direction: PixelSortDirection
@@ -14,6 +15,11 @@ export type PixelSortSettings = Readonly<{
   reverse: boolean
   brightness: number
   contrast: number
+  mix: number
+  shadow: string
+  midtone: string
+  highlight: string
+  background: string
 }>
 
 export type PixelSortFrameInput = Readonly<{
@@ -64,6 +70,11 @@ export const DEFAULT_PIXEL_SORT_SETTINGS: PixelSortSettings = {
   reverse: false,
   brightness: 0,
   contrast: 0,
+  mix: 1,
+  shadow: '#35115c',
+  midtone: '#c93472',
+  highlight: '#e6a928',
+  background: '#ffffff',
 }
 
 export function hashPixelSort11(value: number) {
@@ -126,8 +137,9 @@ export function renderPixelSortFrame({
   assertInput(rgba, width, height, settings)
 
   const sorted = new Uint8ClampedArray(rgba)
+  const mappingT = new Float64Array(width * height)
   for (const line of createScanlines(width, height, settings.direction)) {
-    sortScanline(sorted, rgba, line, settings)
+    sortScanline(sorted, rgba, line, settings, mappingT)
   }
 
   const data = new Uint8ClampedArray(rgba.length)
@@ -135,8 +147,18 @@ export function renderPixelSortFrame({
     for (let channel = 0; channel < 4; channel += 1) {
       data[offset + channel] = mix(rgba[offset + channel], sorted[offset + channel], settings.intensity)
     }
+    const composed: PixelSortRgb = [
+      data[offset] / 255,
+      data[offset + 1] / 255,
+      data[offset + 2] / 255,
+    ]
+    const mapped = mapPixelSortPalette(composed, mappingT[offset / 4], settings)
+    const output = mixRgb(composed, mapped, settings.mix)
+    const outputWithBackground = isExactBlack(composed)
+      ? hexToRgb(settings.background)
+      : output
     const adjusted = adjustSource(
-      [data[offset] / 255, data[offset + 1] / 255, data[offset + 2] / 255],
+      clampRgb(outputWithBackground),
       settings.brightness,
       settings.contrast,
     )
@@ -217,6 +239,7 @@ function sortScanline(
   source: Uint8Array | Uint8ClampedArray,
   line: ScanlineDescriptor,
   settings: PixelSortSettings,
+  mappingT: Float64Array,
 ) {
   const threshold = getPixelSortThreshold(line.coordinate, settings.threshold, settings.randomness)
   const phase = getPixelSortBlockPhase(line.coordinate, settings.streakLength, settings.randomness)
@@ -238,6 +261,12 @@ function sortScanline(
         && isEligibleAt(source, line.indexAt(cursor), threshold, settings.mode)
       ) cursor += 1
       sortRun(output, source, line, runStart, cursor, settings.reverse)
+      const runSize = cursor - runStart
+      for (let targetPosition = runStart; targetPosition < cursor; targetPosition += 1) {
+        mappingT[line.indexAt(targetPosition)] = runSize <= 1
+          ? 0
+          : (targetPosition - runStart) / (runSize - 1)
+      }
     }
   }
 }
@@ -377,6 +406,99 @@ function adjustSource(color: PixelSortRgb, brightness: number, contrast: number)
   return [adjust(color[0]), adjust(color[1]), adjust(color[2])]
 }
 
+export function mapPixelSortPalette(
+  color: PixelSortRgb,
+  mappingT: number,
+  settings: Pick<PixelSortSettings, 'shadow' | 'midtone' | 'highlight' | 'background'>,
+): PixelSortRgb {
+  if (color[0] <= 1e-12 && color[1] <= 1e-12 && color[2] <= 1e-12) {
+    return hexToRgb(settings.background)
+  }
+  const palette = {
+    shadow: hexToRgb(settings.shadow),
+    midtone: hexToRgb(settings.midtone),
+    highlight: hexToRgb(settings.highlight),
+  }
+  const t = clamp01(mappingT)
+  if (t <= 0.5) return interpolateOklch(palette.shadow, palette.midtone, t * 2)
+  return interpolateOklch(palette.midtone, palette.highlight, (t - 0.5) * 2)
+}
+
+export function hexToRgb(value: string): PixelSortRgb {
+  const match = /^#?([\da-f]{6})$/i.exec(value.trim())
+  if (!match) return [0, 0, 0]
+  const integer = Number.parseInt(match[1], 16)
+  return [
+    ((integer >> 16) & 0xff) / 255,
+    ((integer >> 8) & 0xff) / 255,
+    (integer & 0xff) / 255,
+  ]
+}
+
+/** Interpolates in OKLCH with a shortest-path hue and clamps to sRGB gamut. */
+export function interpolateOklch(from: PixelSortRgb, to: PixelSortRgb, amount: number): PixelSortRgb {
+  const a = rgbToOklch(from)
+  const b = rgbToOklch(to)
+  let hueDelta = b[2] - a[2]
+  if (hueDelta > Math.PI) hueDelta -= Math.PI * 2
+  if (hueDelta < -Math.PI) hueDelta += Math.PI * 2
+  return clampRgb(oklchToRgb([
+    mix(a[0], b[0], amount),
+    mix(a[1], b[1], amount),
+    a[2] + hueDelta * amount,
+  ]))
+}
+
+function rgbToOklch([red, green, blue]: PixelSortRgb): [number, number, number] {
+  const [r, g, b] = [red, green, blue].map(srgbToLinear)
+  const l = 0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b
+  const m = 0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b
+  const s = 0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b
+  const lRoot = Math.cbrt(l)
+  const mRoot = Math.cbrt(m)
+  const sRoot = Math.cbrt(s)
+  const lightness = 0.2104542553 * lRoot + 0.793617785 * mRoot - 0.0040720468 * sRoot
+  const a = 1.9779984951 * lRoot - 2.428592205 * mRoot + 0.4505937099 * sRoot
+  const bValue = 0.0259040371 * lRoot + 0.7827717662 * mRoot - 0.808675766 * sRoot
+  return [lightness, Math.hypot(a, bValue), Math.atan2(bValue, a)]
+}
+
+function oklchToRgb([lightness, chroma, hue]: [number, number, number]): PixelSortRgb {
+  const a = chroma * Math.cos(hue)
+  const b = chroma * Math.sin(hue)
+  const lRoot = lightness + 0.3963377774 * a + 0.2158037573 * b
+  const mRoot = lightness - 0.1055613458 * a - 0.0638541728 * b
+  const sRoot = lightness - 0.0894841775 * a - 1.291485548 * b
+  const l = lRoot ** 3
+  const m = mRoot ** 3
+  const s = sRoot ** 3
+  return [
+    linearToSrgb(4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s),
+    linearToSrgb(-1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s),
+    linearToSrgb(-0.0041960863 * l - 0.7034186147 * m + 1.707614701 * s),
+  ]
+}
+
+function srgbToLinear(value: number) {
+  return value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4
+}
+
+function linearToSrgb(value: number) {
+  return value <= 0.0031308 ? value * 12.92 : 1.055 * Math.max(value, 0) ** (1 / 2.4) - 0.055
+}
+
+function clampRgb(color: PixelSortRgb): PixelSortRgb {
+  return [clamp01(color[0]), clamp01(color[1]), clamp01(color[2])]
+}
+
+function isExactBlack(color: PixelSortRgb) {
+  return color[0] <= 1e-12 && color[1] <= 1e-12 && color[2] <= 1e-12
+}
+
+function mixRgb(from: PixelSortRgb, to: PixelSortRgb, amount: number): PixelSortRgb {
+  return [mix(from[0], to[0], amount), mix(from[1], to[1], amount), mix(from[2], to[2], amount)]
+}
+
 function luminance(color: PixelSortRgb) {
   return color[0] * 0.299 + color[1] * 0.587 + color[2] * 0.114
 }
@@ -416,6 +538,7 @@ function assertSettings(settings: PixelSortSettings) {
   assertRange('randomness', settings.randomness, 0, 1)
   assertRange('brightness', settings.brightness, -100, 100)
   assertRange('contrast', settings.contrast, -100, 100)
+  assertRange('mix', settings.mix, 0, 2)
   if (typeof settings.reverse !== 'boolean') {
     throw new TypeError('Pixel Sort reverse must be boolean')
   }

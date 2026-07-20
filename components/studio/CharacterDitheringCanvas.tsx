@@ -30,6 +30,10 @@ import {
 } from '@/components/studio/character-mesh-geometry'
 import { useCharacterMeshAnimation } from '@/components/studio/character-mesh-animation'
 import {
+  attachCharacterMeshGpuDeform,
+  type CharacterMeshGpuDeformBinding,
+} from '@/components/studio/character-mesh-gpu-deform'
+import {
   applyDitheringUniforms,
   createDitheringShaderMaterial,
 } from '@/components/studio/dithering-material'
@@ -198,7 +202,7 @@ applyDitheringUniforms(material, withoutSharedControllerValues(controls))
     source.group.scale.setScalar(meshSettings.scale)
   }, [geometryResult, meshSettings.position, meshSettings.rotation, meshSettings.scale])
 
-  useCharacterMeshAnimation(geometryResultRef, animation)
+  useCharacterMeshAnimation(sourceRef, meshSettings.deform, animation)
 
   useFrame(({ clock }, delta) => {
     const source = sourceRef.current
@@ -256,6 +260,7 @@ applyDitheringUniforms(material, withoutSharedControllerValues(controls))
 type DitheringSourceScene = {
   scene: Scene
   group: Group
+  gpuDeform: CharacterMeshGpuDeformBinding | null
   dispose: () => void
 }
 
@@ -270,6 +275,9 @@ function createDitheringSourceScene(
     roughness: 0.72,
     metalness: 0.05,
   })
+  const gpuDeform = geometryResult.gpuDeformActive
+    ? attachCharacterMeshGpuDeform(material, 'standard')
+    : null
 
   scene.background = new Color('#000000')
   scene.add(new AmbientLight('#ffffff', 0.85))
@@ -283,7 +291,11 @@ function createDitheringSourceScene(
   return {
     scene,
     group,
-    dispose: () => material.dispose(),
+    gpuDeform,
+    dispose: () => {
+      gpuDeform?.dispose()
+      material.dispose()
+    },
   }
 }
 

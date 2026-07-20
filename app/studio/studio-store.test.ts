@@ -83,7 +83,7 @@ describe('studio store', () => {
         deform: {
           bulgePinch: { enabled: true, amount: 99 },
           squashStretch: { enabled: true, amount: -4 },
-          wave: { enabled: true, amount: 0.4 },
+          wave: { enabled: true, amount: 0.4, speed: 99 },
           surfaceNoise: { enabled: true, amount: -2 },
           inflate: { enabled: true, amount: 99 },
           curl: { enabled: true, amount: 999 },
@@ -98,7 +98,7 @@ describe('studio store', () => {
     expect(store.getState().mesh.deform).toEqual({
       bulgePinch: { ...DEFAULT_CHARACTER_MESH_DEFORM.bulgePinch, enabled: true, amount: 10 },
       squashStretch: { ...DEFAULT_CHARACTER_MESH_DEFORM.squashStretch, enabled: true, amount: -1 },
-      wave: { ...DEFAULT_CHARACTER_MESH_DEFORM.wave, enabled: true, amplitude: 0.4 },
+      wave: { ...DEFAULT_CHARACTER_MESH_DEFORM.wave, enabled: true, amplitude: 0.4, speed: 20 },
       surfaceNoise: { ...DEFAULT_CHARACTER_MESH_DEFORM.surfaceNoise, enabled: true, amount: 0 },
       inflate: { ...DEFAULT_CHARACTER_MESH_DEFORM.inflate, enabled: true, amount: 10 },
       curl: { ...DEFAULT_CHARACTER_MESH_DEFORM.curl, enabled: true, angle: 360 },
@@ -133,6 +133,24 @@ describe('studio store', () => {
       enabled: true,
       angle: 45,
     })
+    expect(store.getState().mesh).toBe(updatedMesh)
+    expect(updateCount).toBe(1)
+    unsubscribe()
+  })
+
+  it('updates Wave speed atomically and ignores a duplicate value', () => {
+    const { storage } = createMemoryStorage()
+    const store = createStudioStore(storage)
+    let updateCount = 0
+    const unsubscribe = store.subscribe(() => {
+      updateCount += 1
+    })
+
+    store.getState().setMeshDeformControl('wave', { speed: 8 })
+    const updatedMesh = store.getState().mesh
+    store.getState().setMeshDeformControl('wave', { speed: 8 })
+
+    expect(store.getState().mesh.deform.wave.speed).toBe(8)
     expect(store.getState().mesh).toBe(updatedMesh)
     expect(updateCount).toBe(1)
     unsubscribe()

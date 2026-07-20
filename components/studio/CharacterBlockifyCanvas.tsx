@@ -34,6 +34,10 @@ import {
   type CharacterMeshGeometryResult,
 } from '@/components/studio/character-mesh-geometry'
 import { useCharacterMeshAnimation } from '@/components/studio/character-mesh-animation'
+import {
+  attachCharacterMeshGpuDeform,
+  type CharacterMeshGpuDeformBinding,
+} from '@/components/studio/character-mesh-gpu-deform'
 import { applyDeltaRotation } from '@/components/studio/shader-canvas-math'
 import {
   addCharacterModelCopies,
@@ -199,7 +203,7 @@ applyBlockifyUniforms(material, withoutSharedControllerValues(controls))
     source.group.scale.setScalar(meshSettings.scale)
   }, [geometryResult, meshSettings.position, meshSettings.rotation, meshSettings.scale])
 
-  useCharacterMeshAnimation(geometryResultRef, animation)
+  useCharacterMeshAnimation(sourceRef, meshSettings.deform, animation)
 
   useFrame(({ clock }, delta) => {
     const source = sourceRef.current
@@ -256,6 +260,7 @@ applyBlockifyUniforms(material, withoutSharedControllerValues(controls))
 type BlockifySourceScene = {
   scene: Scene
   group: Group
+  gpuDeform: CharacterMeshGpuDeformBinding | null
   dispose: () => void
 }
 
@@ -270,6 +275,9 @@ function createBlockifySourceScene(
     roughness: 0.72,
     metalness: 0.05,
   })
+  const gpuDeform = geometryResult.gpuDeformActive
+    ? attachCharacterMeshGpuDeform(material, 'standard')
+    : null
   const directional = new DirectionalLight('#ffffff', 1.4)
   directional.position.set(2, 3, 4)
 
@@ -282,7 +290,11 @@ function createBlockifySourceScene(
   return {
     scene,
     group,
-    dispose: () => material.dispose(),
+    gpuDeform,
+    dispose: () => {
+      gpuDeform?.dispose()
+      material.dispose()
+    },
   }
 }
 

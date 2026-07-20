@@ -110,6 +110,21 @@ const SHARED_POST_CONTROL_IDS = [
   'phosphor-custom-color',
 ]
 
+export const PIXEL_SORT_DEDICATED_CONTROL_IDS = [
+  'highlight',
+  'midtone',
+  'shadow',
+  'background',
+  'mix',
+] as const
+
+export const VORONOI_DEDICATED_COLOR_CONTROL_IDS = [
+  'cell-shadow',
+  'cell-midtone',
+  'cell-highlight',
+  'background',
+] as const
+
 const EFFECT_CONTROL_IDS: Record<GrainradEffectId, string[]> = {
   ascii: [
     'scale',
@@ -218,6 +233,7 @@ const EFFECT_CONTROL_IDS: Record<GrainradEffectId, string[]> = {
     'reverse',
     'brightness',
     'contrast',
+    ...PIXEL_SORT_DEDICATED_CONTROL_IDS,
   ],
   blockify: [
     'style',
@@ -286,12 +302,15 @@ const EFFECT_CONTROL_IDS: Record<GrainradEffectId, string[]> = {
     'distort-only',
     'brightness',
     'contrast',
+    'foreground',
+    'background',
   ],
   voronoi: [
     'cell-size',
     'edge-width',
     'edge-color',
-    'cell-color-mode',
+    'fill-canvas',
+    ...VORONOI_DEDICATED_COLOR_CONTROL_IDS,
     'randomize',
     'brightness',
     'contrast',
@@ -302,6 +321,12 @@ const EFFECT_CONTROL_IDS: Record<GrainradEffectId, string[]> = {
     'color-bleed',
     'vhs-scanlines',
     'tracking-error',
+    'saturation',
+    'red-gain',
+    'green-gain',
+    'blue-gain',
+    'chroma-blur',
+    'background',
     'brightness',
     'contrast',
   ],
@@ -444,12 +469,6 @@ const NOISE_FIELD_TYPE_IDS: Record<string, number> = {
   perlin: 0,
   simplex: 1,
   worley: 2,
-}
-
-const VORONOI_ENUM_IDS: Record<string, number> = {
-  '0': 0,
-  '1': 1,
-  '2': 2,
 }
 
 export function compileGrainradEffectRuntime({
@@ -654,15 +673,18 @@ export function compileGrainradEffectRuntime({
       effectValues[6] = read.number('contrast', 0) / 100
       effectValues[7] = NOISE_FIELD_TYPE_IDS[read.text('noise-type', 'perlin')] ?? 0
       effectValues[8] = controls?.['distort-only'] === false ? 0 : 1
+      effectColorA = read.color('foreground', '#ffffff')
+      effectColorB = read.color('background', '#000000')
       break
     case 'voronoi':
       effectValues[0] = read.number('cell-size', 30)
       effectValues[1] = read.number('edge-width', 0.3)
-      effectValues[2] = VORONOI_ENUM_IDS[read.text('edge-color', '0')] ?? 0
-      effectValues[3] = VORONOI_ENUM_IDS[read.text('cell-color-mode', '0')] ?? 0
-      effectValues[4] = read.number('randomize', 0.8)
-      effectValues[5] = read.number('brightness', 0) / 100
-      effectValues[6] = read.number('contrast', 0) / 100
+      effectValues[2] = read.number('randomize', 0.8)
+      effectValues[3] = read.number('brightness', 0) / 100
+      effectValues[4] = read.number('contrast', 0) / 100
+      effectValues[5] = read.boolean('fill-canvas')
+      effectColorA = read.color('edge-color', '#101010')
+      effectColorB = read.color('background', '#ffffff')
       break
     case 'vhs':
       effectValues[0] = read.number('distortion', 0.5)
@@ -672,6 +694,12 @@ export function compileGrainradEffectRuntime({
       effectValues[4] = read.number('tracking-error', 0.2)
       effectValues[5] = read.number('brightness', 0) / 100
       effectValues[6] = read.number('contrast', 0) / 100
+      effectValues[7] = read.number('chroma-blur', 0.3)
+      effectValues[8] = read.number('saturation', 0.9)
+      effectValues[9] = read.number('red-gain', 1.1)
+      effectValues[10] = read.number('green-gain', 1)
+      effectValues[11] = read.number('blue-gain', 0.9)
+      effectColorB = read.color('background', '#101010')
       break
   }
 

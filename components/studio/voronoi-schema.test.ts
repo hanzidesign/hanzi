@@ -7,9 +7,10 @@ describe('Grainrad Voronoi schema', () => {
     const definition = getGrainradEffectById('voronoi')
 
     expect(definition.renderer).toBe('voronoi')
-    expect(definition.settingGroups.map((group) => group.title)).toEqual(['Voronoi', 'Adjustments'])
+    expect(definition.settingGroups.map((group) => group.title)).toEqual(['Voronoi', 'Adjustments', 'Color'])
     expect(definition.settingGroups.flatMap((group) => group.controls.map((control) => control.id))).toEqual([
-      'cell-size', 'edge-width', 'edge-color', 'cell-color-mode', 'randomize', 'brightness', 'contrast',
+      'cell-size', 'edge-width', 'randomize', 'brightness', 'contrast',
+      'cell-shadow', 'cell-midtone', 'cell-highlight', 'background', 'edge-color', 'fill-canvas',
     ])
   })
 
@@ -21,29 +22,28 @@ describe('Grainrad Voronoi schema', () => {
 
     expect(controls['cell-size']).toMatchObject({ defaultValue: 30, min: 10, max: 100, step: 5 })
     expect(controls['edge-width']).toMatchObject({ defaultValue: 0.3, min: 0, max: 1, step: 0.05 })
-    expect(controls['edge-color']).toMatchObject({
-      defaultValue: '0',
-      options: [
-        { value: '0', label: 'Black' },
-        { value: '1', label: 'White' },
-        { value: '2', label: 'Darkened' },
-      ],
+    expect(controls['cell-shadow']).toMatchObject({
+      kind: 'color', defaultValueByTheme: { light: '#2b2d42', dark: '#101828' },
     })
-    expect(controls['cell-color-mode']).toMatchObject({
-      defaultValue: '0',
-      options: [
-        { value: '0', label: 'Cell Average' },
-        { value: '1', label: 'Center Sample' },
-        { value: '2', label: 'Gradient' },
-      ],
+    expect(controls['cell-midtone']).toMatchObject({
+      kind: 'color', defaultValueByTheme: { light: '#6d597a', dark: '#00b4d8' },
+    })
+    expect(controls['cell-highlight']).toMatchObject({
+      kind: 'color', defaultValueByTheme: { light: '#e9c46a', dark: '#ff4d8d' },
     })
     expect(controls.randomize).toMatchObject({ defaultValue: 0.8, min: 0, max: 1, step: 0.05 })
     expect(controls.brightness).toMatchObject({ defaultValue: 0, min: -100, max: 100, step: 1 })
     expect(controls.contrast).toMatchObject({ defaultValue: 0, min: -100, max: 100, step: 1 })
-    expect(Object.values(controls).every((control) => control.visibleWhen === undefined)).toBe(true)
+    expect(controls.background).toMatchObject({ kind: 'color', defaultValueByTheme: { light: '#ffffff', dark: '#000000' } })
+    expect(controls['edge-color']).toMatchObject({
+      kind: 'color', defaultValueByTheme: { light: '#101010', dark: '#f4f1e8' },
+    })
+    expect(controls['fill-canvas']).toMatchObject({ kind: 'toggle', defaultValue: false })
     expect(createDefaultGrainradEffectControls().voronoi).toMatchObject({
-      'cell-size': 30, 'edge-width': 0.3, 'edge-color': '0', 'cell-color-mode': '0',
+      'cell-size': 30, 'edge-width': 0.3, 'edge-color': '#101010',
       randomize: 0.8, brightness: 0, contrast: 0,
+      'cell-shadow': '#2b2d42', 'cell-midtone': '#6d597a', 'cell-highlight': '#e9c46a',
+      background: '#ffffff', 'fill-canvas': false,
     })
   })
 })

@@ -44,7 +44,7 @@ describe('Studio color behavior', () => {
     }
   })
 
-  it('uses mono as the default value for every Color Mode control', () => {
+  it('uses mono as the default for every remaining Color Mode control', () => {
     const colorModeControls = GRAINRAD_EFFECTS.flatMap((effect) =>
       effect.settingGroups
         .flatMap((group) => group.controls)

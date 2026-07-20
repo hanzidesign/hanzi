@@ -14,6 +14,11 @@ describe('VHS CPU reference', () => {
     expect(DEFAULT_VHS_SETTINGS).toEqual({
       brightness: 0,
       colorBleed: 0.5,
+      chromaBlur: 0.3,
+      saturation: 0.9,
+      redGain: 1.1,
+      greenGain: 1,
+      blueGain: 0.9,
       contrast: 0,
       distortion: 0.5,
       noise: 0.3,
@@ -84,7 +89,7 @@ describe('VHS CPU reference', () => {
     ])
   })
 
-  it('separates RGB, averages five taps, and mixes 30% chroma blur', () => {
+  it('separates RGB, averages five taps, and mixes the configurable chroma blur', () => {
     const input = makeInput({
       height: 4,
       settings: optionalSettings({ colorBleed: 0.75 }),
@@ -108,9 +113,9 @@ describe('VHS CPU reference', () => {
     expect(trace.separatedColor).toEqual([red, green, blue])
     expect(trace.chromaBlur).toEqual(average)
     expect(trace.colorAfterBleed).toEqual([
-      mix(red, average[0], 0.3),
-      mix(green, average[1], 0.3),
-      mix(blue, average[2], 0.3),
+      mix(red, average[0], input.settings.chromaBlur),
+      mix(green, average[1], input.settings.chromaBlur),
+      mix(blue, average[2], input.settings.chromaBlur),
     ])
   })
 
@@ -164,17 +169,18 @@ describe('VHS CPU reference', () => {
   })
 
   it('always grades, tints, and vignettes before brightness and contrast', () => {
+    const settings = optionalSettings({ brightness: 20, contrast: 40 })
     const trace = traceVhsAt(makeInput({
       height: 8,
       rgb: solidRgb(10, 8, [100, 150, 200]),
-      settings: optionalSettings({ brightness: 20, contrast: 40 }),
+      settings,
       width: 10,
     }), 0, 0)
     const luminance = trace.colorAfterNoise[0] * 0.299
       + trace.colorAfterNoise[1] * 0.587
       + trace.colorAfterNoise[2] * 0.114
-    const desaturated = trace.colorAfterNoise.map((channel) => mix(channel, luminance, 0.1))
-    const graded = [desaturated[0] * 1.1, desaturated[1], desaturated[2] * 0.9]
+    const desaturated = trace.colorAfterNoise.map((channel) => mix(channel, luminance, 1 - settings.saturation))
+    const graded = [desaturated[0] * settings.redGain, desaturated[1] * settings.greenGain, desaturated[2] * settings.blueGain]
     const vignette = 1 - Math.hypot(
       (trace.uv[0] - 0.5) * 0.5,
       (trace.uv[1] - 0.5) * 0.7,
@@ -183,12 +189,13 @@ describe('VHS CPU reference', () => {
     const contrastFactor = 1.4 / (1 - 0.99 * 0.4)
 
     expect(trace.luminance).toBeCloseTo(luminance, 14)
-    expect(trace.desaturatedColor).toEqual(desaturated)
-    expect(trace.gradedColor).toEqual(graded)
+    trace.desaturatedColor.forEach((channel, index) => expect(channel).toBeCloseTo(desaturated[index], 14))
+    trace.gradedColor.forEach((channel, index) => expect(channel).toBeCloseTo(graded[index], 14))
     expect(trace.vignette).toBeCloseTo(vignette, 14)
-    expect(trace.preAdjustmentColor).toEqual(preAdjustment)
-    expect(trace.output).toEqual(preAdjustment.map(
-      (channel) => clamp01((channel + 0.2 - 0.5) * contrastFactor + 0.5),
+    trace.preAdjustmentColor.forEach((channel, index) => expect(channel).toBeCloseTo(preAdjustment[index], 14))
+    trace.output.forEach((channel, index) => expect(channel).toBeCloseTo(
+      clamp01((preAdjustment[index] + 0.2 - 0.5) * contrastFactor + 0.5),
+      14,
     ))
   })
 
@@ -245,6 +252,24 @@ describe('VHS CPU reference', () => {
     expect(warped).not.toEqual(base)
   })
 
+  it('makes every expanded VHS color controller observable on a mixed frame', () => {
+    const input = makeInput({ width: 16, height: 10, time: 1.25 })
+    const base = renderVhsReference(input).data
+    for (const settings of [
+      { colorBleed: 0 },
+      { chromaBlur: 0 },
+      { saturation: 0 },
+      { redGain: 0 },
+      { greenGain: 0 },
+      { blueGain: 0 },
+    ] satisfies Array<Partial<import('./vhs-core').VhsSettings>>) {
+      expect(renderVhsReference({
+        ...input,
+        settings: { ...input.settings, ...settings },
+      }).data, JSON.stringify(settings)).not.toEqual(base)
+    }
+  })
+
   it('does not treat all-zero effects as passthrough and collapses contrast -100 to gray', () => {
     const input = makeInput({
       height: 5,
@@ -284,6 +309,9 @@ describe('VHS CPU reference', () => {
     expect(() => render({ settings: { distortion: 1.05 } })).toThrow('between 0 and 1')
     expect(() => render({ settings: { noise: 0.03 } })).not.toThrow()
     expect(() => render({ settings: { colorBleed: Number.NaN } })).toThrow('finite')
+    expect(() => render({ settings: { colorBleed: 1.05 } })).toThrow('between 0 and 1')
+    expect(() => render({ settings: { chromaBlur: 1.05 } })).toThrow('between 0 and 1')
+    expect(() => render({ settings: { saturation: 2.05 } })).toThrow('between 0 and 2')
     expect(() => render({ settings: { vhsScanlines: -0.05 } })).toThrow('between 0 and 1')
     expect(() => render({ settings: { trackingError: 0.51 } })).not.toThrow()
     expect(() => render({ settings: { brightness: 0.5 } })).toThrow('integer')
@@ -313,6 +341,11 @@ function makeInput(options: {
 function optionalSettings(overrides: Partial<import('./vhs-core').VhsSettings> = {}) {
   return {
     colorBleed: 0,
+    chromaBlur: 0.3,
+    saturation: 0.9,
+    redGain: 1.1,
+    greenGain: 1,
+    blueGain: 0.9,
     distortion: 0,
     noise: 0,
     trackingError: 0,

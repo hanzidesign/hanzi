@@ -19,7 +19,7 @@ import {
 export const MIN_CHARACTER_EXTRUSION_DEPTH = 0.01
 export const MIN_DISPLACEMENT_SUBDIVISION_LEVEL = 0
 export const MAX_DISPLACEMENT_SUBDIVISION_LEVEL = 2
-const CHARACTER_SURFACE_NOISE_MAX_DISPLACEMENT = 0.1
+const CHARACTER_GPU_DEFORM_BOUNDS_PADDING = 0.36
 
 export { DEFAULT_CHARACTER_MESH_DEFORM }
 
@@ -41,16 +41,7 @@ export type CharacterMeshGeometryResult = {
   boundsMax: Vector3
   shaderBoundsMin: Vector3
   shaderBoundsMax: Vector3
-  /** Runtime-only data for advancing animated surface noise in-place. */
-  animationData?: CharacterMeshGeometryAnimationData
-}
-
-type CharacterMeshGeometryAnimationData = {
-  deform: CharacterMeshDeformSettings
-  bounds: Box3
-  stableSamples: readonly Float32Array[]
-  basePositions: readonly Float32Array[]
-  lastAnimationTime: number
+  gpuDeformActive: boolean
 }
 
 export function clampCharacterExtrusionDepth(extrusionDepth: number) {
@@ -120,6 +111,7 @@ export function createCharacterMeshGeometries({
       || noiseSignal !== 0
       || inflateSignal !== 0
       || curlSignal !== 0
+    const gpuDeformActive = waveSignal !== 0 || noiseSignal !== 0
     const nonNoiseNonlinearActive = (
       bulgeSignal !== 0
       || (squashSignal !== 0 && safeDeform.squashStretch.falloff > 0)
@@ -162,15 +154,6 @@ export function createCharacterMeshGeometries({
       )
     }
 
-    const basePositions = advancedActive
-      ? geometries.map((geometry) => new Float32Array(geometry.attributes.position.array))
-      : undefined
-    const hasAnimatedNoise = safeDeform.surfaceNoise.enabled
-      && safeDeform.surfaceNoise.amount !== 0
-      && safeDeform.surfaceNoise.speed > 0
-      && stableSamples !== undefined
-      && basePositions !== undefined
-
     if (advancedActive && stableSamples) {
       geometries.forEach((geometry, geometryIndex) => {
         applyCharacterMeshDeformations(
@@ -178,8 +161,10 @@ export function createCharacterMeshGeometries({
           safeDeform,
           stableSamples[geometryIndex],
           stableBounds,
-          0,
         )
+        if (gpuDeformActive) {
+          assignCharacterMeshGpuDeformAttributes(geometry, stableSamples[geometryIndex])
+        }
       })
       for (const geometry of geometries) {
         geometry.computeVertexNormals()
@@ -203,15 +188,11 @@ export function createCharacterMeshGeometries({
       )
     }
 
-    if (hasAnimatedNoise) {
-      // Time-zero geometry may already be displaced by -maxNoiseDisplacement;
-      // reserve twice that amount so a later +maxNoiseDisplacement sample fits.
-      const maxNoiseDisplacement = safeDeform.surfaceNoise.amount * CHARACTER_SURFACE_NOISE_MAX_DISPLACEMENT
-      const animatedNoiseBoundsPadding = maxNoiseDisplacement * 2
+    if (gpuDeformActive) {
       for (const geometry of geometries) {
-        geometry.boundingBox?.expandByScalar(animatedNoiseBoundsPadding)
+        geometry.boundingBox?.expandByScalar(CHARACTER_GPU_DEFORM_BOUNDS_PADDING)
         if (geometry.boundingSphere) {
-          geometry.boundingSphere.radius += animatedNoiseBoundsPadding
+          geometry.boundingSphere.radius += CHARACTER_GPU_DEFORM_BOUNDS_PADDING
         }
       }
     }
@@ -222,15 +203,7 @@ export function createCharacterMeshGeometries({
       boundsMax,
       shaderBoundsMin: shaderBounds.min,
       shaderBoundsMax: shaderBounds.max,
-      animationData: hasAnimatedNoise
-        ? {
-          deform: safeDeform,
-          bounds: stableBounds.clone(),
-          stableSamples,
-          basePositions,
-          lastAnimationTime: 0,
-        }
-        : undefined,
+      gpuDeformActive,
     }
   } catch (error) {
     disposeGeometries(geometries)
@@ -358,12 +331,31 @@ function captureStableSamples(geometries: BufferGeometry[], bounds: Box3): Float
   return samples
 }
 
+function assignCharacterMeshGpuDeformAttributes(
+  geometry: BufferGeometry,
+  stableSamples: Float32Array,
+) {
+  const modelPositions = new Float32Array(geometry.attributes.position.count * 3)
+  const stableNormals = new Float32Array(geometry.attributes.position.count * 3)
+  for (let index = 0; index < geometry.attributes.position.count; index += 1) {
+    const sampleOffset = index * STABLE_SAMPLE_STRIDE
+    const attributeOffset = index * 3
+    modelPositions[attributeOffset] = stableSamples[sampleOffset]
+    modelPositions[attributeOffset + 1] = stableSamples[sampleOffset + 1]
+    modelPositions[attributeOffset + 2] = stableSamples[sampleOffset + 2]
+    stableNormals[attributeOffset] = stableSamples[sampleOffset + 3]
+    stableNormals[attributeOffset + 1] = stableSamples[sampleOffset + 4]
+    stableNormals[attributeOffset + 2] = stableSamples[sampleOffset + 5]
+  }
+  geometry.setAttribute('characterModelPosition', new BufferAttribute(modelPositions, 3))
+  geometry.setAttribute('characterStableNormal', new BufferAttribute(stableNormals, 3))
+}
+
 function applyCharacterMeshDeformations(
   geometry: BufferGeometry,
   deform: CharacterMeshDeformSettings,
   stableSamples: Float32Array,
   bounds: Box3,
-  animationTime: number,
 ) {
   const position = geometry.attributes.position
   const center = bounds.getCenter(new Vector3())
@@ -378,9 +370,6 @@ function applyCharacterMeshDeformations(
     const u = stableSamples[stableOffset]
     const v = stableSamples[stableOffset + 1]
     const w = stableSamples[stableOffset + 2]
-    const nx = stableSamples[stableOffset + 3]
-    const ny = stableSamples[stableOffset + 4]
-    const nz = stableSamples[stableOffset + 5]
     let x = position.getX(index)
     let y = position.getY(index)
     let z = position.getZ(index)
@@ -419,46 +408,6 @@ function applyCharacterMeshDeformations(
       if (axis !== 'x') x = center.x + (x - center.x) * secondary
       if (axis !== 'y') y = center.y + (y - center.y) * secondary
       if (axis !== 'z') z = center.z + (z - center.z) * secondary
-    }
-
-    if (deform.wave.enabled && deform.wave.amplitude !== 0) {
-      const { amplitude, frequency, phase, direction, waveform, offset, decay } = deform.wave
-      const coordinate = direction === 'x'
-        ? u
-        : direction === 'y'
-          ? v
-          : direction === 'diagonal'
-            ? (u + v) / Math.sqrt(2)
-            : Math.hypot(u, v)
-      const theta = Math.PI * 2 * frequency * (coordinate + offset) + phase * Math.PI / 180
-      const sine = Math.sin(theta)
-      const wave = waveform === 'triangle'
-        ? (2 / Math.PI) * Math.asin(sine)
-        : waveform === 'square' ? (sine >= 0 ? 1 : -1) : sine
-      const edge = clamp(Math.abs(coordinate), 0, 1)
-      const envelope = (1 - decay) + decay * (1 - smoothstep01(edge))
-      z += amplitude * 0.16 * wave * envelope
-    }
-
-    if (deform.surfaceNoise.enabled && deform.surfaceNoise.amount !== 0) {
-      const { amount, scale, seed, detail, roughness, direction, contrast, offsetX, offsetY } = deform.surfaceNoise
-      const xCoordinate = (u + offsetX) * scale + animationTime * deform.surfaceNoise.speed
-      const yCoordinate = (v + offsetY) * scale
-      const value = sampleCharacterMeshSurfaceNoise(xCoordinate, yCoordinate, seed, detail, roughness, contrast)
-      const magnitude = amount * CHARACTER_SURFACE_NOISE_MAX_DISPLACEMENT * value
-      if (direction === 'depth') {
-        z += magnitude
-      } else if (direction === 'radial') {
-        const radial = Math.hypot(u, v)
-        if (radial > Number.EPSILON) {
-          x += (u / radial) * magnitude
-          y += (v / radial) * magnitude
-        }
-      } else {
-        x += nx * magnitude
-        y += ny * magnitude
-        z += nz * magnitude
-      }
     }
 
     if (deform.inflate.enabled && deform.inflate.amount !== 0) {
@@ -511,43 +460,6 @@ function applyCharacterMeshDeformations(
   }
 
   position.needsUpdate = true
-}
-
-/**
- * Advances animated Noise without rebuilding React state or replacing geometry.
- * The geometry is restored from its post-basic-deformation baseline before every
- * sample, so each time is deterministic and independent of frame rate.
- */
-export function updateCharacterMeshGeometryAnimation(
-  result: CharacterMeshGeometryResult | null | undefined,
-  animationTime: number,
-) {
-  const animation = result?.animationData
-  if (!animation || !Number.isFinite(animationTime) || animation.lastAnimationTime === animationTime) {
-    return false
-  }
-
-  result.geometries.forEach((geometry, geometryIndex) => {
-    const position = geometry.attributes.position
-    const basePositions = animation.basePositions[geometryIndex]
-    if (!basePositions || basePositions.length !== position.array.length) {
-      return
-    }
-
-    position.array.set(basePositions)
-    position.needsUpdate = true
-    applyCharacterMeshDeformations(
-      geometry,
-      animation.deform,
-      animation.stableSamples[geometryIndex],
-      animation.bounds,
-      animationTime,
-    )
-    geometry.computeVertexNormals()
-  })
-
-  animation.lastAnimationTime = animationTime
-  return true
 }
 
 function profileWeight(distance: number, radius: number, falloff: number, profile: CharacterMeshBulgeProfile) {

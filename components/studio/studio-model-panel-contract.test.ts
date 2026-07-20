@@ -71,7 +71,8 @@ describe('Studio shared Model panel contract', () => {
     expect(source).toContain('function StudioModelReset')
     expect(source).toContain('function StudioRepeatReset')
     expect(source).toContain('function StudioMotionReset')
-    expect(source.match(/Reset all/g)).toHaveLength(4)
+    expect(source).not.toContain('Reset all')
+    expect(source.match(/Reset\s*<\/button>/g)).toHaveLength(4)
     expect(source).toContain('repeat: { ...DEFAULT_MESH_STATE.repeat, enabled: true }')
     expect(source).toContain('rotation: { ...DEFAULT_MESH_STATE.rotation },')
     expect(source).toContain('scale: DEFAULT_MESH_STATE.scale,')
@@ -160,6 +161,7 @@ describe('Studio shared Model panel contract', () => {
       expect(deformSource).toContain(`onReset={() => update({ ${field}: DEFAULT_MESH_STATE.deform.${feature}.${field} })}`)
     }
     expect(deformSource).toContain('label="Amplitude"')
+    expect(deformSource).toContain('label="Speed" value={value.speed} min={1} max={20} step={0.01}')
     expect(deformSource).toContain('label="Angle"')
     expect(deformSource).toContain('label="Profile"')
     expect(deformSource).toContain('label="Waveform"')

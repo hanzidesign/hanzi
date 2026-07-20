@@ -31,6 +31,7 @@ describe('character mesh deform domain', () => {
       wave: {
         enabled: false,
         amplitude: 0.2,
+        speed: 2,
         frequency: 3,
         phase: 0,
         direction: 'y',
@@ -80,7 +81,7 @@ describe('character mesh deform domain', () => {
     const sanitized = sanitizeCharacterMeshDeformSettings({
       bulgePinch: { enabled: 'yes', amount: 99, radius: 99, falloff: 4, axis: 'bad', profile: 'bad' },
       squashStretch: { amount: -9, axis: 'bad', pivot: 9, preserveVolume: 0, secondaryScale: 9, falloff: -1 },
-      wave: { amount: 2, frequency: 100, phase: -1000, direction: 'bad', waveform: 'bad', offset: 9, decay: -1 },
+      wave: { amount: 2, speed: 99, frequency: 100, phase: -1000, direction: 'bad', waveform: 'bad', offset: 9, decay: -1 },
       surfaceNoise: { enabled: true, amount: 9, speed: 99, scale: 100, seed: 10000.7, detail: 8.3, roughness: -1, direction: 'bad', contrast: 4, offsetX: -8, offsetY: 8 },
       inflate: { enabled: true, amount: 99, balance: -1, radius: 0, falloff: 3, centerX: -4, centerY: 4, uniform: 'yes', deflate: true },
       curl: { amount: -1000, axis: 'bad', tightness: 0, pivot: 5, offset: -5, turns: 8.8, falloff: 3, clamp: 'no' },
@@ -90,7 +91,8 @@ describe('character mesh deform domain', () => {
     expect(sanitizeCharacterMeshDeformSettings({ bulgePinch: { amount: -99 } }).bulgePinch.amount).toBe(-10)
     expect(sanitizeCharacterMeshDeformSettings({ bulgePinch: { radius: -1 } }).bulgePinch.radius).toBe(0.05)
     expect(sanitized.squashStretch).toEqual({ ...DEFAULT_CHARACTER_MESH_DEFORM.squashStretch, amount: -1, pivot: 1, secondaryScale: 3 })
-    expect(sanitized.wave).toEqual({ ...DEFAULT_CHARACTER_MESH_DEFORM.wave, amplitude: 1, frequency: 12, phase: -360, offset: 1 })
+    expect(sanitized.wave).toEqual({ ...DEFAULT_CHARACTER_MESH_DEFORM.wave, amplitude: 1, speed: 20, frequency: 12, phase: -360, offset: 1 })
+    expect(sanitizeCharacterMeshDeformSettings({ wave: { speed: -1 } }).wave.speed).toBe(1)
     expect(sanitized.surfaceNoise).toEqual({ ...DEFAULT_CHARACTER_MESH_DEFORM.surfaceNoise, enabled: true, amount: 2, speed: 20, scale: 20, seed: 9999, detail: 5, roughness: 0, offsetX: -5, offsetY: 5, contrast: 2 })
     expect(sanitizeCharacterMeshDeformSettings({ surfaceNoise: { amount: -1 } }).surfaceNoise.amount).toBe(0)
     expect(sanitizeCharacterMeshDeformSettings({ surfaceNoise: { speed: -1 } }).surfaceNoise.speed).toBe(1)

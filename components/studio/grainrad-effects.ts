@@ -545,10 +545,26 @@ export const GRAINRAD_EFFECTS: GrainradEffectDefinition[] = [
         title: 'Chromatic Effects',
         controls: [
           toggleControl('chromatic-enabled', 'Enabled', false),
-          rangeControl('max-displace', 'Max Displace', 6, 0, 50, 1, 'px'),
-          rangeControl('red-channel', 'Red Channel', 23, 0, 360, 1),
-          rangeControl('green-channel', 'Green Channel', 50, 0, 360, 1),
-          rangeControl('blue-channel', 'Blue Channel', 80, 0, 360, 1),
+          rangeControl('max-displace', 'Max Displace', 6, 0, 50, 1, 'px', {
+            controlId: 'chromatic-enabled',
+            operator: 'equals',
+            value: true,
+          }),
+          rangeControl('red-channel', 'Red Channel', 23, 0, 360, 1, undefined, {
+            controlId: 'chromatic-enabled',
+            operator: 'equals',
+            value: true,
+          }),
+          rangeControl('green-channel', 'Green Channel', 50, 0, 360, 1, undefined, {
+            controlId: 'chromatic-enabled',
+            operator: 'equals',
+            value: true,
+          }),
+          rangeControl('blue-channel', 'Blue Channel', 80, 0, 360, 1, undefined, {
+            controlId: 'chromatic-enabled',
+            operator: 'equals',
+            value: true,
+          }),
         ],
       },
     ],
@@ -755,6 +771,16 @@ export const GRAINRAD_EFFECTS: GrainradEffectDefinition[] = [
         controls: [
           rangeControl('brightness', 'Brightness', 0, -100, 100, 1),
           rangeControl('contrast', 'Contrast', 0, -100, 100, 1),
+        ],
+      },
+      {
+        title: 'Color',
+        controls: [
+          colorControl('highlight', 'Highlight', '#e6a928', { light: '#e6a928', dark: '#ffe08a' }),
+          colorControl('midtone', 'Midtone', '#c93472', { light: '#c93472', dark: '#ff5a9d' }),
+          colorControl('shadow', 'Shadow', '#35115c', { light: '#35115c', dark: '#1b0836' }),
+          colorControl('background', 'Background', '#ffffff', { light: '#ffffff', dark: '#000000' }),
+          rangeControl('mix', 'Mix', 1, 0, 2, 0.05),
         ],
       },
     ],
@@ -999,6 +1025,13 @@ export const GRAINRAD_EFFECTS: GrainradEffectDefinition[] = [
           rangeControl('contrast', 'Contrast', 0, -100, 100, 1),
         ],
       },
+      {
+        title: 'Color',
+        controls: [
+          colorControl('foreground', 'Foreground', '#ffffff', { light: '#ffffff', dark: '#ffffff' }),
+          colorControl('background', 'Background', '#000000', { light: '#000000', dark: '#000000' }),
+        ],
+      },
     ],
   },
   {
@@ -1011,16 +1044,6 @@ export const GRAINRAD_EFFECTS: GrainradEffectDefinition[] = [
         controls: [
           rangeControl('cell-size', 'Cell Size', 30, 10, 100, 5),
           rangeControl('edge-width', 'Edge Width', 0.3, 0, 1, 0.05),
-          themeSelectControl('edge-color', 'Edge Color', '0', { light: '0', dark: '1' }, [
-            { value: '0', label: 'Black' },
-            { value: '1', label: 'White' },
-            { value: '2', label: 'Darkened' },
-          ]),
-          selectControl('cell-color-mode', 'Cell Color Source', '0', [
-            { value: '0', label: 'Cell Average' },
-            { value: '1', label: 'Center Sample' },
-            { value: '2', label: 'Gradient' },
-          ]),
           rangeControl('randomize', 'Randomize', 0.8, 0, 1, 0.05),
         ],
       },
@@ -1029,6 +1052,17 @@ export const GRAINRAD_EFFECTS: GrainradEffectDefinition[] = [
         controls: [
           rangeControl('brightness', 'Brightness', 0, -100, 100, 1),
           rangeControl('contrast', 'Contrast', 0, -100, 100, 1),
+        ],
+      },
+      {
+        title: 'Color',
+        controls: [
+          colorControl('cell-shadow', 'Cell Shadow', '#2b2d42', { light: '#2b2d42', dark: '#101828' }),
+          colorControl('cell-midtone', 'Cell Midtone', '#6d597a', { light: '#6d597a', dark: '#00b4d8' }),
+          colorControl('cell-highlight', 'Cell Highlight', '#e9c46a', { light: '#e9c46a', dark: '#ff4d8d' }),
+          colorControl('background', 'Background', '#ffffff', { light: '#ffffff', dark: '#000000' }),
+          colorControl('edge-color', 'Edge Color', '#101010', { light: '#101010', dark: '#f4f1e8' }),
+          toggleControl('fill-canvas', 'Fill Canvas', false),
         ],
       },
     ],
@@ -1043,7 +1077,6 @@ export const GRAINRAD_EFFECTS: GrainradEffectDefinition[] = [
         controls: [
           rangeControl('distortion', 'Distortion', 0.5, 0, 1, 0.05),
           rangeControl('noise', 'Noise', 0.3, 0, 1, 0.05),
-          rangeControl('color-bleed', 'Color Bleed', 0.5, 0, 1, 0.05),
           rangeControl('vhs-scanlines', 'Scanlines', 0.3, 0, 1, 0.05),
           rangeControl('tracking-error', 'Tracking Error', 0.2, 0, 1, 0.05),
         ],
@@ -1053,6 +1086,22 @@ export const GRAINRAD_EFFECTS: GrainradEffectDefinition[] = [
         controls: [
           rangeControl('brightness', 'Brightness', 0, -100, 100, 1),
           rangeControl('contrast', 'Contrast', 0, -100, 100, 1),
+        ],
+      },
+      {
+        title: 'Color',
+        controls: [
+          rangeControl('color-bleed', 'Color Bleed', 0.5, 0, 1, 0.05),
+          rangeControl('chroma-blur', 'Chroma Blur', 0.3, 0, 1, 0.05, undefined, {
+            controlId: 'color-bleed',
+            operator: 'greater-than',
+            value: 0,
+          }),
+          rangeControl('saturation', 'Saturation', 0.9, 0, 2, 0.05),
+          rangeControl('red-gain', 'Red Gain', 1.1, 0, 2, 0.05),
+          rangeControl('green-gain', 'Green Gain', 1, 0, 2, 0.05),
+          rangeControl('blue-gain', 'Blue Gain', 0.9, 0, 2, 0.05),
+          colorControl('background', 'Background', '#f4f1e8', { light: '#f4f1e8', dark: '#101010' }),
         ],
       },
     ],
@@ -1266,20 +1315,6 @@ function selectControl(
     defaultValue,
     options,
     visibleWhen,
-  }
-}
-
-function themeSelectControl(
-  id: string,
-  label: string,
-  defaultValue: string,
-  defaultValueByTheme: Record<'light' | 'dark', string>,
-  options: Array<GrainradSelectOption>,
-  visibleWhen?: GrainradControlVisibility,
-): GrainradSelectControl {
-  return {
-    ...selectControl(id, label, defaultValue, options, visibleWhen),
-    defaultValueByTheme,
   }
 }
 

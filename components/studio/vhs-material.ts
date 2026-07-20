@@ -27,6 +27,11 @@ uniform float u_time;
 uniform float u_distortion;
 uniform float u_noise;
 uniform float u_colorBleed;
+uniform float u_chromaBlur;
+uniform float u_saturation;
+uniform float u_redGain;
+uniform float u_greenGain;
+uniform float u_blueGain;
 uniform float u_vhsScanlines;
 uniform float u_trackingError;
 uniform float u_brightness;
@@ -159,7 +164,7 @@ void main() {
       chromaBlur += sampleVhsSource(warpedUv + vec2(sampleOffset, 0.0));
     }
     chromaBlur /= 5.0;
-    effectColor = mix(vec3(red, green, blue), chromaBlur, 0.3);
+    effectColor = mix(vec3(red, green, blue), chromaBlur, u_chromaBlur);
   } else {
     effectColor = sampleVhsSource(warpedUv);
   }
@@ -194,10 +199,11 @@ void main() {
   effectColor = mix(
     effectColor,
     vec3(vhsLuminance(effectColor)),
-    0.1
+    1.0 - u_saturation
   );
-  effectColor.r *= 1.1;
-  effectColor.b *= 0.9;
+  effectColor.r *= u_redGain;
+  effectColor.g *= u_greenGain;
+  effectColor.b *= u_blueGain;
   float fixedVignette = 1.0
     - length((warpedUv - 0.5) * vec2(0.5, 0.7)) * 0.5;
   effectColor *= fixedVignette;
@@ -230,6 +236,11 @@ export function createVhsShaderMaterial({
       u_distortion: { value: 0.5 },
       u_noise: { value: 0.3 },
       u_colorBleed: { value: 0.5 },
+      u_chromaBlur: { value: 0.3 },
+      u_saturation: { value: 0.9 },
+      u_redGain: { value: 1.1 },
+      u_greenGain: { value: 1 },
+      u_blueGain: { value: 0.9 },
       u_vhsScanlines: { value: 0.3 },
       u_trackingError: { value: 0.2 },
       u_brightness: { value: 0 },
@@ -258,6 +269,11 @@ export function applyVhsUniforms(material: ShaderMaterial, controls: VhsControls
   material.uniforms.u_distortion.value = readNumber(controls.distortion, 0.5)
   material.uniforms.u_noise.value = readNumber(controls.noise, 0.3)
   material.uniforms.u_colorBleed.value = readNumber(controls['color-bleed'], 0.5)
+  material.uniforms.u_chromaBlur.value = readNumber(controls['chroma-blur'], 0.3)
+  material.uniforms.u_saturation.value = readNumber(controls.saturation, 0.9)
+  material.uniforms.u_redGain.value = readNumber(controls['red-gain'], 1.1)
+  material.uniforms.u_greenGain.value = readNumber(controls['green-gain'], 1)
+  material.uniforms.u_blueGain.value = readNumber(controls['blue-gain'], 0.9)
   material.uniforms.u_vhsScanlines.value = readNumber(controls['vhs-scanlines'], 0.3)
   material.uniforms.u_trackingError.value = readNumber(controls['tracking-error'], 0.2)
   material.uniforms.u_brightness.value = readNumber(controls.brightness, 0) / 100

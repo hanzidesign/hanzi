@@ -87,7 +87,7 @@ function StudioModelReset() {
         })
       }
     >
-      Reset all
+      Reset
     </button>
   )
 }
@@ -108,7 +108,7 @@ function StudioRepeatReset() {
         repeat: { ...DEFAULT_MESH_STATE.repeat, enabled: true },
       })}
     >
-      Reset all
+      Reset
     </button>
   )
 }
@@ -129,7 +129,7 @@ function StudioMotionReset() {
         setAnimationControl({ playing: true, speed: 1 })
       }}
     >
-      Reset all
+      Reset
     </button>
   )
 }
@@ -251,7 +251,7 @@ function SectionFrame<T extends { enabled: boolean }>({ label, value, update, de
   const reset = () => update({ ...defaultValue, ...({ enabled: true } as Partial<T>) })
   return (
     <section className={classes.meshDeformSection} data-enabled={value.enabled} aria-label={label}>
-      {value.enabled ? <button type="button" className={classes.inputGroupReset} onClick={reset}>Reset all</button> : null}
+      {value.enabled ? <button type="button" className={classes.inputGroupReset} onClick={reset}>Reset</button> : null}
       <TerminalToggleRow label={label} checked={value.enabled} onChange={(enabled) => update({ enabled } as Partial<T>)} />
       {value.enabled ? children : null}
     </section>
@@ -284,6 +284,7 @@ function SquashSection({ value, update }: DeformSectionProps<CharacterMeshSquash
 function WaveSection({ value, update }: DeformSectionProps<CharacterMeshWave>) {
   return <SectionFrame label="Wave" value={value} update={update} defaultValue={resetCharacterMeshDeformFeature('wave')}>
     <TerminalRangeRow label="Amplitude" value={value.amplitude} min={-1} max={1} step={0.01} onChange={(amplitude) => update({ amplitude })} onReset={() => update({ amplitude: DEFAULT_MESH_STATE.deform.wave.amplitude })} />
+    <TerminalRangeRow label="Speed" value={value.speed} min={1} max={20} step={0.01} onChange={(speed) => update({ speed })} onReset={() => update({ speed: DEFAULT_MESH_STATE.deform.wave.speed })} />
     <TerminalRangeRow label="Frequency" value={value.frequency} min={0.1} max={12} step={0.1} onChange={(frequency) => update({ frequency })} onReset={() => update({ frequency: DEFAULT_MESH_STATE.deform.wave.frequency })} />
     <TerminalRangeRow label="Phase" value={value.phase} min={-360} max={360} step={1} displayValue={`${Math.round(value.phase)}°`} onChange={(phase) => update({ phase })} onReset={() => update({ phase: DEFAULT_MESH_STATE.deform.wave.phase })} />
     <TerminalDropdownRow label="Direction" value={value.direction} options={[{ value: 'x', label: 'X' }, { value: 'y', label: 'Y' }, { value: 'diagonal', label: 'Diagonal' }, { value: 'radial', label: 'Radial' }]} onChange={(direction) => update({ direction })} onReset={() => update({ direction: DEFAULT_MESH_STATE.deform.wave.direction })} />

@@ -1,6 +1,7 @@
 import { Vector2 } from 'three'
 import { describe, expect, it } from 'vitest'
 import {
+  StudioBackgroundRestoreEffect,
   StudioCrtCurveEffect,
   StudioGrainEffect,
   StudioPhosphorEffect,
@@ -8,6 +9,28 @@ import {
 } from './studio-post-processing-effects'
 
 describe('Studio shared post-processing effects', () => {
+  it('restores the exact Voronoi background from the preserved model alpha mask', () => {
+    const effect = new StudioBackgroundRestoreEffect()
+
+    effect.setParameters({ background: '#123456', fillCanvas: false })
+    effect.setMaskTexture({})
+
+    expect(effect.uniforms.get('uBackground')?.value).toEqual([0x12 / 255, 0x34 / 255, 0x56 / 255])
+    expect(effect.uniforms.get('uFillCanvas')?.value).toBe(0)
+    expect(effect.uniforms.get('uHasModelMask')?.value).toBe(1)
+    expect(effect.getFragmentShader()).toContain(
+      'mix(uBackground, inputColor.rgb, modelMask)',
+    )
+    expect(effect.getFragmentShader()).toContain('texture2D(uModelMask, uv)')
+    expect(effect.getFragmentShader()).toContain('uHasModelMask')
+    expect(effect.getFragmentShader()).not.toContain('inputColor.a')
+
+    effect.setMaskTexture(null)
+    expect(effect.uniforms.get('uHasModelMask')?.value).toBe(0)
+
+    effect.dispose()
+  })
+
   it('maps Grain controls into deterministic bounded uniforms', () => {
     const effect = new StudioGrainEffect()
 

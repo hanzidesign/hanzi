@@ -15,12 +15,9 @@ import {
 } from '@/components/studio/studio-render-context'
 import { SVGLoader } from 'three/addons/loaders/SVGLoader.js'
 import {
-  AmbientLight,
   Color,
   DataTexture,
-  DirectionalLight,
   Group,
-  MeshStandardMaterial,
   NearestFilter,
   RGBAFormat,
   Scene,
@@ -37,6 +34,10 @@ import {
   type CharacterMeshGeometryResult,
 } from '@/components/studio/character-mesh-geometry'
 import { useCharacterMeshAnimation } from '@/components/studio/character-mesh-animation'
+import {
+  attachCharacterMeshGpuDeform,
+  type CharacterMeshGpuDeformBinding,
+} from '@/components/studio/character-mesh-gpu-deform'
 import {
   type PixelSortSettings,
 } from '@/components/studio/pixel-sort-core'
@@ -55,6 +56,7 @@ import {
   addCharacterModelCopies,
   type CharacterRepeatSettings,
 } from '@/components/studio/character-model-arrangement'
+import { createCharacterModelToneMaterial } from '@/components/studio/character-model-tone-material'
 
 const PREVIEW_MAX_DIMENSION = 768
 const PREVIEW_FRAME_INTERVAL_SECONDS = 1 / 20
@@ -117,6 +119,7 @@ function CharacterPixelSortScene({
   const { camera, gl, size } = useThree()
   const renderMode = useStudioRenderMode()
   const meshSettings = useStudioStore((store) => store.mesh)
+  const theme = useStudioStore((store) => store.view.theme)
   const animation = useStudioStore((store) => store.animation)
   const controls = useStudioStore((store) => store.grainradEffect.controls['pixel-sort'])
   const pixelSortControls = useMemo(
@@ -124,8 +127,8 @@ function CharacterPixelSortScene({
     [controls],
   )
   const settings = useMemo(
-    () => readPixelSortSettings(pixelSortControls),
-    [pixelSortControls],
+    () => readPixelSortSettings(pixelSortControls, theme),
+    [pixelSortControls, theme],
   )
   const settingsRef = useRef(settings)
   const [geometryResult, setGeometryResult] = useState<CharacterMeshGeometryResult | null>(null)
@@ -240,7 +243,7 @@ function CharacterPixelSortScene({
     captureQueuedRef.current = true
   }, [geometryResult, meshSettings.position, meshSettings.rotation, meshSettings.scale])
 
-  useCharacterMeshAnimation(geometryResultRef, animation)
+  useCharacterMeshAnimation(sourceRef, meshSettings.deform, animation)
 
   useFrame(({ clock }, delta) => {
     const source = sourceRef.current
@@ -455,25 +458,22 @@ export function getPixelSortDimensions({
 type PixelSortSourceScene = {
   scene: Scene
   group: Group
+  gpuDeform: CharacterMeshGpuDeformBinding | null
   dispose: () => void
 }
 
-function createPixelSortSourceScene(
+export function createPixelSortSourceScene(
   geometryResult: CharacterMeshGeometryResult,
   repeat: CharacterRepeatSettings,
 ): PixelSortSourceScene {
   const scene = new Scene()
   const group = new Group()
-  const material = new MeshStandardMaterial({
-    color: new Color('#ffffff'),
-    roughness: 0.72,
-    metalness: 0.05,
-  })
-  const directional = new DirectionalLight('#ffffff', 1.4)
-  directional.position.set(2, 3, 4)
+  const material = createCharacterModelToneMaterial()
+  const gpuDeform = geometryResult.gpuDeformActive
+    ? attachCharacterMeshGpuDeform(material, 'custom')
+    : null
 
   scene.background = new Color('#000000')
-  scene.add(new AmbientLight('#ffffff', 0.85), directional)
 
   addCharacterModelCopies(group, geometryResult.geometries, material, repeat)
   scene.add(group)
@@ -481,7 +481,11 @@ function createPixelSortSourceScene(
   return {
     scene,
     group,
-    dispose: () => material.dispose(),
+    gpuDeform,
+    dispose: () => {
+      gpuDeform?.dispose()
+      material.dispose()
+    },
   }
 }
 

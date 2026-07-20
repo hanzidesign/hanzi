@@ -81,6 +81,20 @@ void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor)
 }
 `
 
+export const BACKGROUND_RESTORE_FRAGMENT_SHADER = /* glsl */ `
+uniform vec3 uBackground;
+uniform sampler2D uModelMask;
+uniform float uHasModelMask;
+uniform float uFillCanvas;
+
+void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor) {
+  float sourceTone = dot(texture2D(uModelMask, uv).rgb, vec3(0.299, 0.587, 0.114));
+  float modelMask = smoothstep(0.01, 0.12, sourceTone) * uHasModelMask;
+  modelMask = mix(modelMask, 1.0, uFillCanvas);
+  outputColor = vec4(mix(uBackground, inputColor.rgb, modelMask), 1.0);
+}
+`
+
 export class StudioGrainEffect extends Effect {
   constructor() {
     super('StudioGrainEffect', GRAIN_FRAGMENT_SHADER, {
@@ -195,11 +209,48 @@ export class StudioPhosphorEffect extends Effect {
   }
 }
 
+export class StudioBackgroundRestoreEffect extends Effect {
+  constructor() {
+    super('StudioBackgroundRestoreEffect', BACKGROUND_RESTORE_FRAGMENT_SHADER, {
+      blendFunction: BlendFunction.NORMAL,
+      uniforms: new Map<string, Uniform>([
+        ['uBackground', new Uniform([1, 1, 1])],
+        ['uModelMask', new Uniform(null)],
+        ['uHasModelMask', new Uniform(0)],
+        ['uFillCanvas', new Uniform(0)],
+      ]),
+    })
+  }
+
+  setParameters({
+    background,
+    fillCanvas,
+  }: {
+    background: unknown
+    fillCanvas: boolean
+  }) {
+    this.uniforms.get('uBackground')!.value = resolveRgbColor(background, [1, 1, 1])
+    this.uniforms.get('uFillCanvas')!.value = fillCanvas ? 1 : 0
+  }
+
+  setMaskTexture(value: unknown) {
+    this.uniforms.get('uModelMask')!.value = value
+    this.uniforms.get('uHasModelMask')!.value = value ? 1 : 0
+  }
+}
+
 export function resolvePhosphorColor(value: unknown): [number, number, number] {
+  return resolveRgbColor(value, [0, 1, 0])
+}
+
+function resolveRgbColor(
+  value: unknown,
+  fallback: [number, number, number],
+): [number, number, number] {
   if (typeof value === 'string') {
     const match = value.match(/^#?([0-9a-f]{6})$/i)
     if (!match) {
-      return [0, 1, 0]
+      return fallback
     }
 
     const color = Number.parseInt(match[1], 16)
@@ -213,7 +264,7 @@ export function resolvePhosphorColor(value: unknown): [number, number, number] {
   if (!Array.isArray(value) || value.length !== 3 || !value.every(
     (entry) => typeof entry === 'number' && Number.isFinite(entry),
   )) {
-    return [0, 1, 0]
+    return fallback
   }
 
   return [

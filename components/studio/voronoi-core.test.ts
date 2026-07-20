@@ -13,11 +13,15 @@ describe('Voronoi CPU reference', () => {
   it('keeps the exact production defaults', () => {
     expect(DEFAULT_VORONOI_SETTINGS).toEqual({
       brightness: 0,
+      background: [1, 1, 1],
       cellSize: 30,
-      colorMode: 0,
+      cellShadow: [43 / 255, 45 / 255, 66 / 255],
+      cellMidtone: [109 / 255, 89 / 255, 122 / 255],
+      cellHighlight: [233 / 255, 196 / 255, 106 / 255],
       contrast: 0,
-      edgeColor: 0,
+      edgeColor: [16 / 255, 16 / 255, 16 / 255],
       edgeWidth: 0.3,
+      fillCanvas: false,
       randomize: 0.8,
     })
   })
@@ -38,31 +42,8 @@ describe('Voronoi CPU reference', () => {
     expect(result.secondDistance).toBeCloseTo(0.6236595323850647, 14)
   })
 
-  it('uses the nominal lattice center for Center Sample and exact second-minus-first edge mask', () => {
-    const input = makeInput({ settings: { colorMode: 1 } })
-    const trace = traceVoronoiAt(input, 7, 5)
-    const centerUv = [
-      (trace.closestCell[0] + 0.5) * input.settings.cellSize / input.width,
-      (trace.closestCell[1] + 0.5) * input.settings.cellSize / input.height,
-    ] as const
-    const expectedColor = sampleVoronoiSourceLinear(
-      input.rgb,
-      input.width,
-      input.height,
-      centerUv[0],
-      centerUv[1],
-    )
-    const edgeDistance = trace.secondDistance - trace.closestDistance
-    const expectedMask = smoothstep(0, input.settings.edgeWidth * 0.3, edgeDistance)
-
-    expect(trace.centerUv).toEqual([clamp01(centerUv[0]), clamp01(centerUv[1])])
-    expect(trace.cellColor).toEqual(expectedColor)
-    expect(trace.edgeDistance).toBeCloseTo(edgeDistance, 14)
-    expect(trace.interiorMask).toBeCloseTo(expectedMask, 14)
-  })
-
   it('takes exactly 25 nominal-square samples for Cell Average', () => {
-    const input = makeInput({ settings: { colorMode: 0 } })
+    const input = makeInput()
     const trace = traceVoronoiAt(input, 7, 5)
     const sum = [0, 0, 0]
     for (let dy = -2; dy <= 2; dy += 1) {
@@ -77,36 +58,34 @@ describe('Voronoi CPU reference', () => {
         sum.forEach((_, channel) => { sum[channel] += sample[channel] })
       }
     }
+    const average = sum.map((channel) => channel / 25)
+    const sourceLuminance = average[0] * 0.299 + average[1] * 0.587 + average[2] * 0.114
+    const maskSample = sampleVoronoiSourceLinear(
+      input.rgb,
+      input.width,
+      input.height,
+      trace.uv[0],
+      trace.uv[1],
+    )
+    const maskLuminance = maskSample[0] * 0.299 + maskSample[1] * 0.587 + maskSample[2] * 0.114
+    const expectedTone = smoothstep(0.15, 0.9, sourceLuminance)
     expect(trace.averageSampleCount).toBe(25)
-    expect(trace.cellColor).toEqual(sum.map((channel) => channel / 25))
+    expect(trace.cellTone).toBeCloseTo(expectedTone, 14)
+    expect(trace.modelMask).toBeCloseTo(smoothstep(0.01, 0.12, maskLuminance), 14)
   })
 
-  it('caps Gradient current-color contribution at one half', () => {
-    const input = makeInput({ settings: { colorMode: 2 } })
-    const trace = traceVoronoiAt(input, 7, 5)
-    const center = sampleVoronoiSourceLinear(input.rgb, input.width, input.height, trace.centerUv[0], trace.centerUv[1])
-    const current = sampleVoronoiSourceLinear(input.rgb, input.width, input.height, trace.uv[0], trace.uv[1])
-    const amount = smoothstep(0, 0.7, trace.closestDistance) * 0.5
-    expect(amount).toBeLessThanOrEqual(0.5)
-    expect(trace.cellColor).toEqual(center.map((channel, index) => (
-      channel + (current[index] - channel) * amount
-    )))
-  })
-
-  it('composes Black, White, or Darkened edges before B/C and renders RGB output', () => {
-    const baseInput = makeInput({ settings: { colorMode: 1 } })
-    const black = traceVoronoiAt(baseInput, 7, 5)
-    const white = traceVoronoiAt({
-      ...baseInput,
-      settings: { ...baseInput.settings, edgeColor: 1 },
-    }, 7, 5)
-    const darkened = traceVoronoiAt({
-      ...baseInput,
-      settings: { ...baseInput.settings, edgeColor: 2 },
-    }, 7, 5)
-    expect(black.edgeColor).toEqual([0, 0, 0])
-    expect(white.edgeColor).toEqual([1, 1, 1])
-    expect(darkened.edgeColor).toEqual(darkened.cellColor.map((channel) => channel * 0.3))
+  it('composes the freely selected Edge Color before B/C and renders RGB output', () => {
+    const baseInput = makeInput({
+      rgb: solidRgb(18, 14, [255, 255, 255]),
+      settings: { edgeColor: [0.2, 0.4, 0.6] },
+    })
+    const trace = traceVoronoiAt(baseInput, 7, 5)
+    expect(trace.edgeColor).toBe(baseInput.settings.edgeColor)
+    expect(trace.edgeDistance).toBeCloseTo(trace.secondDistance - trace.closestDistance, 14)
+    expect(trace.interiorMask).toBeCloseTo(
+      smoothstep(0, baseInput.settings.edgeWidth * 0.3, trace.edgeDistance),
+      14,
+    )
 
     const collapsedInput = {
       ...baseInput,
@@ -118,20 +97,62 @@ describe('Voronoi CPU reference', () => {
     expect(new Set(output.data)).toEqual(new Set([128]))
   })
 
+  it('makes Shadow, Midtone, and Highlight independently visible', () => {
+    const input = makeInput()
+    const base = renderVoronoiReference(input).data
+    for (const settings of [
+      { cellShadow: [1, 0, 0] as const },
+      { cellMidtone: [0, 1, 0] as const },
+      { cellHighlight: [0, 0, 1] as const },
+    ]) {
+      expect(renderVoronoiReference({
+        ...input,
+        settings: { ...input.settings, ...settings },
+      }).data, Object.keys(settings)[0]).not.toEqual(base)
+    }
+    expect(Array.from({ length: input.width * input.height }, (_, index) => (
+      traceVoronoiAt(input, index % input.width, Math.floor(index / input.width)).cellTone
+    )).some((tone) => tone > 0.5)).toBe(true)
+  })
+
+  it('keeps model-exterior Background pure unless Fill Canvas is enabled', () => {
+    const rgb = solidRgb(18, 14, [0, 0, 0])
+    const settings = {
+      background: [0.2, 0.3, 0.4] as const,
+      brightness: 100,
+      contrast: 100,
+    }
+    const backgroundOnly = renderVoronoiReference(makeInput({ rgb, settings })).data
+    const expectedBackground = Array.from(backgroundOnly.slice(0, 3))
+    expect(expectedBackground).toEqual([51, 76, 102])
+    for (let offset = 0; offset < backgroundOnly.length; offset += 3) {
+      expect(Array.from(backgroundOnly.slice(offset, offset + 3))).toEqual(expectedBackground)
+    }
+
+    const filled = renderVoronoiReference(makeInput({
+      rgb,
+      settings: { ...settings, fillCanvas: true },
+    })).data
+    expect(filled).not.toEqual(backgroundOnly)
+  })
+
+  it('uses the current model pixel as the mask even when its Voronoi cell averages model tone', () => {
+    const width = 18
+    const height = 14
+    const rgb = solidRgb(width, height, [255, 255, 255])
+    rgb.set([0, 0, 0], 0)
+    const background = [0.2, 0.3, 0.4] as const
+    const trace = traceVoronoiAt(makeInput({ width, height, rgb, settings: { background } }), 0, 0)
+
+    expect(trace.cellTone).toBeGreaterThan(0)
+    expect(trace.modelMask).toBe(0)
+    expect(trace.output).toEqual(background)
+  })
+
   it('does not invent a corrected Edge Width zero meaning away from the degenerate boundary', () => {
     const trace = traceVoronoiAt(makeInput({ settings: { edgeWidth: 0 } }), 7, 5)
     expect(trace.edgeDistance).toBeGreaterThan(0)
     expect(trace.interiorMask).toBe(1)
-  })
-
-  it('keeps all Color Modes equivalent on a constant source', () => {
-    const rgb = solidRgb(18, 14, [80, 120, 160])
-    const colors = ([0, 1, 2] as const).map((colorMode) => (
-      traceVoronoiAt(makeInput({ rgb, settings: { colorMode } }), 7, 5).cellColor
-    ))
-    for (const color of colors.slice(1)) {
-      color.forEach((channel, index) => expect(channel).toBeCloseTo(colors[0][index], 14))
-    }
   })
 
   it('rejects malformed input and every out-of-contract setting', () => {
@@ -145,13 +166,13 @@ describe('Voronoi CPU reference', () => {
     expect(() => render({ settings: { cellSize: 11 } })).toThrow('increments of 5')
     expect(() => render({ settings: { edgeWidth: 1.1 } })).toThrow('between 0 and 1')
     expect(() => render({ settings: { edgeWidth: 0.03 } })).toThrow('increments of 0.05')
-    expect(() => render({ settings: { edgeColor: 3 as 0 } })).toThrow('edgeColor')
-    expect(() => render({ settings: { colorMode: -1 as 0 } })).toThrow('colorMode')
     expect(() => render({ settings: { randomize: 0.03 } })).toThrow('increments of 0.05')
     expect(() => render({ settings: { brightness: 0.5 } })).toThrow('integer')
     expect(() => render({ settings: { contrast: 101 } })).toThrow('between -100 and 100')
+    expect(() => render({ settings: { fillCanvas: 1 as unknown as boolean } })).toThrow('boolean')
     expect(() => traceVoronoiAt(makeInput(), -1, 0)).toThrow('in-bounds')
   })
+
 })
 
 function render(options: Parameters<typeof makeInput>[0] = {}) {

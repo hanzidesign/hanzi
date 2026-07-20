@@ -36,10 +36,22 @@ describe('Grainrad Dithering schema', () => {
         values: ['bayer-2x2', 'bayer-4x4', 'bayer-8x8', 'bayer-16x16', 'clustered-dot'],
       },
     })
-    expect(controls['max-displace']).toMatchObject({ min: 0, max: 50, step: 1 })
-    expect(controls['red-channel']).toMatchObject({ min: 0, max: 360, step: 1 })
-    expect(controls['green-channel']).toMatchObject({ min: 0, max: 360, step: 1 })
-    expect(controls['blue-channel']).toMatchObject({ min: 0, max: 360, step: 1 })
+    expect(controls['max-displace']).toMatchObject({
+      min: 0, max: 50, step: 1,
+      visibleWhen: { controlId: 'chromatic-enabled', operator: 'equals', value: true },
+    })
+    expect(controls['red-channel']).toMatchObject({
+      min: 0, max: 360, step: 1,
+      visibleWhen: { controlId: 'chromatic-enabled', operator: 'equals', value: true },
+    })
+    expect(controls['green-channel']).toMatchObject({
+      min: 0, max: 360, step: 1,
+      visibleWhen: { controlId: 'chromatic-enabled', operator: 'equals', value: true },
+    })
+    expect(controls['blue-channel']).toMatchObject({
+      min: 0, max: 360, step: 1,
+      visibleWhen: { controlId: 'chromatic-enabled', operator: 'equals', value: true },
+    })
   })
 
   it('publishes every dynamic Dithering control with its effect-local visibility rule', () => {
@@ -136,12 +148,17 @@ describe('Grainrad Dithering schema', () => {
     expect(visibleDefaults).not.toContain('mod-type')
     expect(visibleDefaults).not.toContain('palette')
     expect(visibleDefaults).not.toContain('color-depth')
+    expect(visibleDefaults).not.toContain('max-displace')
+    expect(visibleDefaults).not.toContain('red-channel')
+    expect(visibleDefaults).not.toContain('green-channel')
+    expect(visibleDefaults).not.toContain('blue-channel')
 
     const rgbCrosshatch = {
       ...defaults,
       algorithm: 'crosshatch',
       modulation: true,
       'color-mode': 'rgb',
+      'chromatic-enabled': true,
     }
     const visibleRgbCrosshatch = controls
       .filter((control) => isGrainradControlVisible(control, rgbCrosshatch))

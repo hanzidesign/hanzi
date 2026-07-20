@@ -14,6 +14,10 @@ import {
 } from '@/components/studio/character-mesh-geometry'
 import { useCharacterMeshAnimation } from '@/components/studio/character-mesh-animation'
 import {
+  attachCharacterMeshGpuDeform,
+  type CharacterMeshGpuDeformBinding,
+} from '@/components/studio/character-mesh-gpu-deform'
+import {
   applyGrainradRuntimeUniforms,
   createAsciiShaderMaterial,
   disposeAsciiShaderMaterial,
@@ -85,6 +89,7 @@ function CharacterAsciiScene({
   const groupRef = useRef<Group>(null)
   const materialRef = useRef<ShaderMaterial | null>(null)
   const geometryResultRef = useRef<CharacterMeshGeometryResult | null>(null)
+  const gpuDeformRef = useRef<CharacterMeshGpuDeformBinding | null>(null)
   const mouseRef = useRef(new Vector2(0, 0))
   const [geometryResult, setGeometryResult] = useState<CharacterMeshGeometryResult | null>(null)
   const mesh = useStudioStore((store) => store.mesh)
@@ -181,17 +186,23 @@ function CharacterAsciiScene({
 
   useEffect(() => {
     materialRef.current = material
+    const gpuDeform = attachCharacterMeshGpuDeform(material, 'custom')
+    gpuDeformRef.current = gpuDeform
 
     return () => {
       if (materialRef.current === material) {
         materialRef.current = null
       }
+      if (gpuDeformRef.current === gpuDeform) {
+        gpuDeformRef.current = null
+      }
 
+      gpuDeform?.dispose()
       disposeAsciiShaderMaterial(material)
     }
   }, [material])
 
-  useCharacterMeshAnimation(geometryResultRef, animation)
+  useCharacterMeshAnimation(gpuDeformRef, mesh.deform, animation)
 
   useFrame(({ clock, pointer }, delta) => {
     const activeMaterial = materialRef.current

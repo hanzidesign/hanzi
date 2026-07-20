@@ -1,12 +1,11 @@
 import { BufferAttribute, Shape, Vector3 } from 'three'
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it } from 'vitest'
 
 import {
   MIN_CHARACTER_EXTRUSION_DEPTH,
   clampCharacterExtrusionDepth,
   createCharacterMeshGeometries,
   sampleCharacterMeshSurfaceNoise,
-  updateCharacterMeshGeometryAnimation,
 } from './character-mesh-geometry'
 import { DEFAULT_CHARACTER_MESH_DEFORM } from './character-mesh-deform'
 
@@ -212,7 +211,7 @@ describe('character mesh geometry helpers', () => {
     expect(sideDepthUvs.size).toBeGreaterThan(1)
   })
 
-  it('applies each enabled Model Deform effect while disabled controls stay neutral', () => {
+  it('applies CPU Model Deforms and routes Wave and Noise to GPU attributes', () => {
     const base = createCharacterMeshGeometries({
       shapes: [rectangleShape(500, 500)],
       extrusionDepth: 0.2,
@@ -220,8 +219,6 @@ describe('character mesh geometry helpers', () => {
     const effects = [
       ['bulgePinch', 1],
       ['squashStretch', 1],
-      ['wave', 1],
-      ['surfaceNoise', 1],
       ['inflate', 1],
       ['curl', 90],
     ] as const
@@ -236,6 +233,17 @@ describe('character mesh geometry helpers', () => {
       expect(Array.from(result.geometries[0].attributes.position.array)).not.toEqual(
         Array.from(base.geometries[0].attributes.position.array),
       )
+    }
+
+    for (const key of ['wave', 'surfaceNoise'] as const) {
+      const result = createCharacterMeshGeometries({
+        shapes: [rectangleShape(500, 500)],
+        extrusionDepth: 0.2,
+        deform: deformWith(key, 1),
+      })
+      expect(result.gpuDeformActive).toBe(true)
+      expect(result.geometries[0].attributes.characterModelPosition).toBeDefined()
+      expect(result.geometries[0].attributes.characterStableNormal).toBeDefined()
     }
 
     const disabled = createCharacterMeshGeometries({
@@ -460,7 +468,7 @@ describe('character mesh geometry helpers', () => {
     expect(positions(zero)).toEqual(positions(base))
   })
 
-  it('keeps surface noise deterministic while changing seed and lattice controls', () => {
+  it('keeps GPU Noise settings out of static position buffers', () => {
     const options = {
       shapes: [rectangleShape(500, 500)],
       extrusionDepth: 0.2,
@@ -485,11 +493,14 @@ describe('character mesh geometry helpers', () => {
       deform: { ...options.deform, surfaceNoise: { ...options.deform.surfaceNoise, offsetX: 1 } },
     })
     expect(positions(first)).toEqual(positions(second))
-    expect(positions(changedSeed)).not.toEqual(positions(first))
-    expect(positions(changedOffset)).not.toEqual(positions(first))
+    expect(positions(changedSeed)).toEqual(positions(first))
+    expect(positions(changedOffset)).toEqual(positions(first))
+    expect(Array.from(first.geometries[0].attributes.characterModelPosition.array)).toEqual(
+      Array.from(changedSeed.geometries[0].attributes.characterModelPosition.array),
+    )
   })
 
-  it('advances animated Noise in place, deterministically, and marks GPU positions dirty', () => {
+  it('authors stable GPU attributes and pads animated deform bounds once', () => {
     const result = createCharacterMeshGeometries({
       shapes: [rectangleShape(500, 500)],
       extrusionDepth: 0.2,
@@ -505,68 +516,15 @@ describe('character mesh geometry helpers', () => {
       },
     })
     const geometry = result.geometries[0]
-    const initial = positions(result)
-
-    expect(result.animationData).toBeDefined()
-    expect(updateCharacterMeshGeometryAnimation(result, 0)).toBe(false)
-    expect(positions(result)).toEqual(initial)
-
     const positionAttribute = geometry.attributes.position as BufferAttribute
-    const previousVersion = positionAttribute.version
-    expect(updateCharacterMeshGeometryAnimation(result, 1)).toBe(true)
-    const atOne = positions(result)
-    expect(atOne).not.toEqual(initial)
-    expect(positionAttribute.version).toBeGreaterThan(previousVersion)
-    expect(updateCharacterMeshGeometryAnimation(result, 1)).toBe(false)
+    const positionVersion = positionAttribute.version
 
-    expect(updateCharacterMeshGeometryAnimation(result, 0)).toBe(true)
-    expect(positions(result)).toEqual(initial)
-    expect(updateCharacterMeshGeometryAnimation(result, 1)).toBe(true)
-    expect(positions(result)).toEqual(atOne)
-  })
-
-  it('pads animated Noise bounds once and avoids per-frame bounds recomputation', () => {
-    const result = createCharacterMeshGeometries({
-      shapes: [rectangleShape(500, 500)],
-      extrusionDepth: 0.2,
-      displacementSubdivisionLevel: 2,
-      deform: {
-        ...DEFAULT_CHARACTER_MESH_DEFORM,
-        surfaceNoise: {
-          ...DEFAULT_CHARACTER_MESH_DEFORM.surfaceNoise,
-          enabled: true,
-          amount: 1,
-          speed: 1,
-        },
-      },
-    })
-    const geometry = result.geometries[0]
-    const boundingBox = geometry.boundingBox?.clone()
-    const boundingSphere = geometry.boundingSphere?.clone()
-    const unpaddedGeometry = geometry.clone()
-    unpaddedGeometry.computeBoundingBox()
-    unpaddedGeometry.computeBoundingSphere()
-    const computeBoundingBox = vi.spyOn(geometry, 'computeBoundingBox')
-    const computeBoundingSphere = vi.spyOn(geometry, 'computeBoundingSphere')
-
-    expect(boundingBox).toBeDefined()
-    expect(boundingSphere).toBeDefined()
-    expect(boundingBox?.min.x).toBeCloseTo(unpaddedGeometry.boundingBox!.min.x - 0.2, 6)
-    expect(boundingBox?.max.x).toBeCloseTo(unpaddedGeometry.boundingBox!.max.x + 0.2, 6)
-    expect(boundingSphere?.radius).toBeCloseTo(unpaddedGeometry.boundingSphere!.radius + 0.2, 6)
-    expect(updateCharacterMeshGeometryAnimation(result, 1)).toBe(true)
-    expect(computeBoundingBox).not.toHaveBeenCalled()
-    expect(computeBoundingSphere).not.toHaveBeenCalled()
-
-    const position = geometry.attributes.position
-    for (let index = 0; index < position.count; index += 1) {
-      const point = new Vector3(position.getX(index), position.getY(index), position.getZ(index))
-      expect(boundingBox?.containsPoint(point)).toBe(true)
-      expect(boundingSphere?.distanceToPoint(point)).toBeLessThanOrEqual(
-        (boundingSphere?.radius ?? 0) + 1e-6,
-      )
-    }
-    unpaddedGeometry.dispose()
+    expect(result.gpuDeformActive).toBe(true)
+    expect(geometry.attributes.characterModelPosition.count).toBe(geometry.attributes.position.count)
+    expect(geometry.attributes.characterStableNormal.count).toBe(geometry.attributes.position.count)
+    expect(geometry.boundingBox?.min.x).toBeCloseTo(-1.36, 6)
+    expect(geometry.boundingBox?.max.x).toBeCloseTo(1.36, 6)
+    expect(positionAttribute.version).toBe(positionVersion)
   })
 
   it('samples deterministic fBm noise with detail, roughness, scale and contrast controls', () => {
@@ -582,7 +540,7 @@ describe('character mesh geometry helpers', () => {
     )
   })
 
-  it('uses averaged stable surface normals for Noise normal direction at duplicate seams', () => {
+  it('authors averaged stable surface normals for GPU Noise at duplicate seams', () => {
     const baseOptions = {
       shapes: [rectangleShape(500, 500)],
       extrusionDepth: 0.2,
@@ -602,17 +560,17 @@ describe('character mesh geometry helpers', () => {
         surfaceNoise: { ...DEFAULT_CHARACTER_MESH_DEFORM.surfaceNoise, enabled: true, amount: 1, direction: 'normal' },
       },
     })
-    expect(positions(normal)).not.toEqual(positions(radial))
+    expect(positions(normal)).toEqual(positions(radial))
 
-    const source = createCharacterMeshGeometries(baseOptions).geometries[0].attributes.position
-    const noisy = normal.geometries[0].attributes.position
+    const source = normal.geometries[0].attributes.characterModelPosition
+    const stableNormal = normal.geometries[0].attributes.characterStableNormal
     const deltasBySourcePosition = new Map<string, [number, number, number]>()
     for (let index = 0; index < source.count; index += 1) {
       const key = `${source.getX(index).toFixed(6)}:${source.getY(index).toFixed(6)}:${source.getZ(index).toFixed(6)}`
       const delta: [number, number, number] = [
-        noisy.getX(index) - source.getX(index),
-        noisy.getY(index) - source.getY(index),
-        noisy.getZ(index) - source.getZ(index),
+        stableNormal.getX(index),
+        stableNormal.getY(index),
+        stableNormal.getZ(index),
       ]
       const previous = deltasBySourcePosition.get(key)
       if (previous) {
@@ -714,31 +672,15 @@ describe('character mesh geometry helpers', () => {
     expect(secondary).not.toEqual(preserve)
   })
 
-  it('supports Wave direction, waveform, phase, offset and edge decay', () => {
+  it('keeps GPU Wave settings out of static position buffers', () => {
     const baseOptions = { shapes: [rectangleShape(500, 500)], extrusionDepth: 0.2, displacementSubdivisionLevel: 2 }
-    const base = positions(createCharacterMeshGeometries(baseOptions))
     const wave = (partial: Partial<typeof DEFAULT_CHARACTER_MESH_DEFORM.wave>) => positions(createCharacterMeshGeometries({
       ...baseOptions,
       deform: { ...DEFAULT_CHARACTER_MESH_DEFORM, wave: { ...DEFAULT_CHARACTER_MESH_DEFORM.wave, enabled: true, amplitude: 1, ...partial } },
     }))
-    expect(wave({ direction: 'x' })).not.toEqual(wave({ direction: 'y' }))
-    expect(wave({ direction: 'diagonal' })).not.toEqual(wave({ direction: 'radial' }))
-    expect(wave({ waveform: 'sine' })).not.toEqual(wave({ waveform: 'square' }))
-    expect(wave({ phase: 90 })).not.toEqual(wave({ phase: 0 }))
-    expect(wave({ offset: 0.25 })).not.toEqual(wave({ offset: 0 }))
-
-    const decay = axisDeltas(base, wave({ decay: 1, direction: 'x', frequency: 0.5 }))
-    const edgeMagnitudes: number[] = []
-    const centerMagnitudes: number[] = []
-    const source = base
-    for (let index = 0; index < source.length; index += 3) {
-      const x = Math.abs(source[index])
-      if (x > 0.9) edgeMagnitudes.push(Math.abs(decay.z[index / 3]))
-      if (x < 0.1) centerMagnitudes.push(Math.abs(decay.z[index / 3]))
-    }
-    expect(edgeMagnitudes.length).toBeGreaterThan(0)
-    expect(centerMagnitudes.length).toBeGreaterThan(0)
-    expect(Math.max(...edgeMagnitudes)).toBeLessThanOrEqual(Math.max(...centerMagnitudes))
+    expect(wave({ direction: 'x' })).toEqual(wave({ direction: 'y' }))
+    expect(wave({ waveform: 'sine' })).toEqual(wave({ waveform: 'square' }))
+    expect(wave({ phase: 90, speed: 20, decay: 1 })).toEqual(wave({ phase: 0, speed: 1, decay: 0 }))
   })
 
   it('keeps squash amount zero neutral and matches Curl angle 360 to one turn', () => {

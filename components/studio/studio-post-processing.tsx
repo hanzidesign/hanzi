@@ -11,8 +11,10 @@ import {
 import { Vector2 } from 'three'
 import { useStudioStore } from '@/app/studio/studio-store'
 import { computeEffectiveAnimationTime } from '@/components/studio/animation-time'
+import { useStudioRenderMode } from '@/components/studio/studio-render-context'
 import {
   StudioCrtCurveEffect,
+  StudioBackgroundRestoreEffect,
   StudioGrainEffect,
   StudioPhosphorEffect,
   StudioScanlineEffect,
@@ -21,6 +23,8 @@ import { StudioProcessingEffect } from '@/components/studio/studio-processing-ef
 
 export default function StudioPostProcessing() {
   const { gl, size } = useThree()
+  const { voronoiMaskTextureRef } = useStudioRenderMode()
+  const selectedEffectId = useStudioStore((store) => store.grainradEffect.selectedEffectId)
   const controls = useStudioStore((store) => (
     store.grainradEffect.controls[store.grainradEffect.selectedEffectId]
   ))
@@ -30,6 +34,7 @@ export default function StudioPostProcessing() {
   const scanlineEffect = useMemo(() => new StudioScanlineEffect(), [])
   const crtCurveEffect = useMemo(() => new StudioCrtCurveEffect(), [])
   const phosphorEffect = useMemo(() => new StudioPhosphorEffect(), [])
+  const backgroundRestoreEffect = useMemo(() => new StudioBackgroundRestoreEffect(), [])
 
   const bloomEnabled = controls?.bloom === true
   const chromaticEnabled = controls?.chromatic === true
@@ -38,6 +43,7 @@ export default function StudioPostProcessing() {
   const crtCurveEnabled = controls?.['crt-curve'] === true
   const phosphorEnabled = controls?.phosphor === true
   const grainEnabled = controls?.grain === true
+  const fillCanvas = controls?.['fill-canvas'] === true
   const bloomThreshold = clamp(readNumber(controls?.['bloom-threshold'], 0.5), 0, 1)
   const bloomSoftThreshold = clamp(readNumber(controls?.['bloom-soft-threshold'], 0.2), 0, 1)
   const bloomIntensity = clamp(readNumber(controls?.['bloom-intensity'], 1.5), 0, 2)
@@ -80,10 +86,16 @@ export default function StudioPostProcessing() {
     })
     crtCurveEffect.setAmount(crtAmount)
     phosphorEffect.setColor(phosphorColor)
+    backgroundRestoreEffect.setParameters({
+      background: controls?.background,
+      fillCanvas,
+    })
   }, [
     controls,
+    backgroundRestoreEffect,
     crtAmount,
     crtCurveEffect,
+    fillCanvas,
     phosphorColor,
     phosphorEffect,
     processingEffect,
@@ -100,9 +112,11 @@ export default function StudioPostProcessing() {
     scanlineEffect.dispose()
     crtCurveEffect.dispose()
     phosphorEffect.dispose()
-  }, [crtCurveEffect, grainEffect, phosphorEffect, processingEffect, scanlineEffect])
+    backgroundRestoreEffect.dispose()
+  }, [backgroundRestoreEffect, crtCurveEffect, grainEffect, phosphorEffect, processingEffect, scanlineEffect])
 
   useFrame(({ clock }) => {
+    backgroundRestoreEffect.setMaskTexture(voronoiMaskTextureRef.current)
     const time = computeEffectiveAnimationTime({
       elapsedSeconds: clock.getElapsedTime(),
       speed: animation.animatePost ? animation.speed : 0,
@@ -157,6 +171,9 @@ export default function StudioPostProcessing() {
   }
   if (vignetteEnabled) {
     effects.push(<Vignette key="vignette" offset={vignetteRadius} darkness={vignetteIntensity} />)
+  }
+  if (selectedEffectId === 'voronoi') {
+    effects.push(<primitive key="background-restore" object={backgroundRestoreEffect} dispose={null} />)
   }
 
   return (

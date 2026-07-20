@@ -8,18 +8,18 @@ import {
   type MutableRefObject,
 } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
-import { StudioRenderCanvas as Canvas } from '@/components/studio/studio-render-context'
+import {
+  StudioRenderCanvas as Canvas,
+  useStudioRenderMode,
+} from '@/components/studio/studio-render-context'
 import { SVGLoader } from 'three/addons/loaders/SVGLoader.js'
 import {
-  AmbientLight,
   Color,
-  DirectionalLight,
   Group,
-  MeshStandardMaterial,
   Scene,
+  ShaderMaterial,
   Vector2,
   WebGLRenderTarget,
-  type ShaderMaterial,
 } from 'three'
 import { useStudioStore } from '@/app/studio/studio-store'
 import { withoutSharedControllerValues } from './grainrad-shared-controls'
@@ -34,11 +34,16 @@ import {
   type CharacterMeshGeometryResult,
 } from '@/components/studio/character-mesh-geometry'
 import { useCharacterMeshAnimation } from '@/components/studio/character-mesh-animation'
+import {
+  attachCharacterMeshGpuDeform,
+  type CharacterMeshGpuDeformBinding,
+} from '@/components/studio/character-mesh-gpu-deform'
 import { applyDeltaRotation } from '@/components/studio/shader-canvas-math'
 import {
   addCharacterModelCopies,
   type CharacterRepeatSettings,
 } from '@/components/studio/character-model-arrangement'
+import { createCharacterModelToneMaterial } from '@/components/studio/character-model-tone-material'
 
 export default function CharacterVoronoiCanvas() {
   const svgData = useStudioStore((store) => store.runtime.svgData)
@@ -95,6 +100,7 @@ function CharacterVoronoiScene({
   svgData: string
   svgLoadError: string | null
 }) {
+  const { voronoiMaskTextureRef } = useStudioRenderMode()
   const { camera, gl, size } = useThree()
   const meshSettings = useStudioStore((store) => store.mesh)
   const animation = useStudioStore((store) => store.animation)
@@ -154,14 +160,18 @@ function CharacterVoronoiScene({
       ? createVoronoiSourceScene(geometryResult, meshSettings.repeat)
       : null
     sourceRef.current = nextSource
+    voronoiMaskTextureRef.current = nextSource ? renderTarget.texture : null
 
     return () => {
       if (sourceRef.current === nextSource) {
         sourceRef.current = null
       }
+      if (voronoiMaskTextureRef.current === renderTarget.texture) {
+        voronoiMaskTextureRef.current = null
+      }
       nextSource?.dispose()
     }
-  }, [geometryResult, meshSettings.repeat])
+  }, [geometryResult, meshSettings.repeat, renderTarget.texture, voronoiMaskTextureRef])
 
   const material = useMemo(() => createVoronoiShaderMaterial({
     controls: {},
@@ -181,7 +191,7 @@ function CharacterVoronoiScene({
   }, [material])
 
   useEffect(() => {
-applyVoronoiUniforms(material, withoutSharedControllerValues(controls))
+    applyVoronoiUniforms(material, withoutSharedControllerValues(controls))
   }, [controls, material])
 
   useEffect(() => {
@@ -199,7 +209,7 @@ applyVoronoiUniforms(material, withoutSharedControllerValues(controls))
     source.group.scale.setScalar(meshSettings.scale)
   }, [geometryResult, meshSettings.position, meshSettings.rotation, meshSettings.scale])
 
-  useCharacterMeshAnimation(geometryResultRef, animation)
+  useCharacterMeshAnimation(sourceRef, meshSettings.deform, animation)
 
   useFrame(({ clock }, delta) => {
     const source = sourceRef.current
@@ -253,28 +263,25 @@ applyVoronoiUniforms(material, withoutSharedControllerValues(controls))
   )
 }
 
-type VoronoiSourceScene = {
+export type VoronoiSourceScene = {
   scene: Scene
   group: Group
+  gpuDeform: CharacterMeshGpuDeformBinding | null
   dispose: () => void
 }
 
-function createVoronoiSourceScene(
+export function createVoronoiSourceScene(
   geometryResult: CharacterMeshGeometryResult,
   repeat: CharacterRepeatSettings,
 ): VoronoiSourceScene {
   const scene = new Scene()
   const group = new Group()
-  const material = new MeshStandardMaterial({
-    color: new Color('#ffffff'),
-    roughness: 0.72,
-    metalness: 0.05,
-  })
-  const directional = new DirectionalLight('#ffffff', 1.4)
-  directional.position.set(2, 3, 4)
+  const material = createCharacterModelToneMaterial()
+  const gpuDeform = geometryResult.gpuDeformActive
+    ? attachCharacterMeshGpuDeform(material, 'custom')
+    : null
 
   scene.background = new Color('#000000')
-  scene.add(new AmbientLight('#ffffff', 0.85), directional)
 
   addCharacterModelCopies(group, geometryResult.geometries, material, repeat)
   scene.add(group)
@@ -282,7 +289,11 @@ function createVoronoiSourceScene(
   return {
     scene,
     group,
-    dispose: () => material.dispose(),
+    gpuDeform,
+    dispose: () => {
+      gpuDeform?.dispose()
+      material.dispose()
+    },
   }
 }
 
