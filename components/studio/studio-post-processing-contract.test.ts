@@ -58,8 +58,9 @@ describe('Studio shared post-processing compositor contract', () => {
     expect(postProcessing).toContain(
       "scanlineEffect.setTime(scanlineDirection === 'up' ? -time : time)",
     )
-    expect(postProcessing).toContain('speed: animation.animatePost ? animation.speed : 0')
-    expect(postProcessing).toContain('playing: animation.playing')
+    expect(postProcessing).toContain(
+      'animation.animatePost ? readAnimationTime() : animation.timeOffset',
+    )
     expect(postProcessing).not.toContain('scanlinePlay')
     expect(postProcessing).toContain('StudioProcessingEffect')
     expect(postProcessing.indexOf("if (selectedEffectId === 'voronoi')"))

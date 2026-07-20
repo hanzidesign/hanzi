@@ -207,7 +207,7 @@ function CharacterContourScene({
     source.group.scale.setScalar(meshSettings.scale)
   }, [geometryResult, meshSettings.position, meshSettings.rotation, meshSettings.scale])
 
-  useCharacterMeshAnimation(sourceRef, meshSettings.deform, animation)
+  useCharacterMeshAnimation(sourceRef, meshSettings.deform)
 
   useFrame((_, delta) => {
     const source = sourceRef.current

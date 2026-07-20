@@ -23,7 +23,7 @@ describe('Phase 5C active 3D ASCII renderer contract', () => {
     expect(rendererSource).toContain('groupRef.current.rotation.y')
     expect(rendererSource).toContain('mesh.autoRotate')
     expect(rendererSource).toContain('mesh.autoRotateSpeed')
-    expect(rendererSource).toContain('computeEffectiveAnimationTime')
+    expect(rendererSource).toContain('readAnimationTime()')
     expect(rendererSource).toContain('u_asciiCellSize')
   })
 

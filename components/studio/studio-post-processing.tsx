@@ -10,7 +10,6 @@ import {
 } from '@react-three/postprocessing'
 import { Vector2 } from 'three'
 import { useStudioStore } from '@/app/studio/studio-store'
-import { computeEffectiveAnimationTime } from '@/components/studio/animation-time'
 import { useStudioRenderMode } from '@/components/studio/studio-render-context'
 import {
   StudioCrtCurveEffect,
@@ -23,7 +22,7 @@ import { StudioProcessingEffect } from '@/components/studio/studio-processing-ef
 
 export default function StudioPostProcessing() {
   const { gl, size } = useThree()
-  const { voronoiMaskTextureRef } = useStudioRenderMode()
+  const { readAnimationTime, voronoiMaskTextureRef } = useStudioRenderMode()
   const selectedEffectId = useStudioStore((store) => store.grainradEffect.selectedEffectId)
   const controls = useStudioStore((store) => (
     store.grainradEffect.controls[store.grainradEffect.selectedEffectId]
@@ -115,14 +114,9 @@ export default function StudioPostProcessing() {
     backgroundRestoreEffect.dispose()
   }, [backgroundRestoreEffect, crtCurveEffect, grainEffect, phosphorEffect, processingEffect, scanlineEffect])
 
-  useFrame(({ clock }) => {
+  useFrame(() => {
     backgroundRestoreEffect.setMaskTexture(voronoiMaskTextureRef.current)
-    const time = computeEffectiveAnimationTime({
-      elapsedSeconds: clock.getElapsedTime(),
-      speed: animation.animatePost ? animation.speed : 0,
-      timeOffset: animation.timeOffset,
-      playing: animation.playing,
-    })
+    const time = animation.animatePost ? readAnimationTime() : animation.timeOffset
 
     grainEffect.setParameters({
       intensity: grainIntensity,

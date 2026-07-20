@@ -69,7 +69,11 @@ export default function StudioExportPanel() {
   const [message, setMessage] = useState('Ready')
   const [modal, setModal] = useState<ExportModalState | null>(null)
   const [pngExporting, setPngExporting] = useState(false)
-  const [renderSurface, setRenderSurface] = useState<{ size: number; requestId: number } | null>(null)
+  const [renderSurface, setRenderSurface] = useState<{
+    size: number
+    requestId: number
+    animationTime: number
+  } | null>(null)
   const abortControllerRef = useRef<AbortController | null>(null)
   const renderRequestIdRef = useRef(0)
   const pendingExportFrameRef = useRef<PendingExportFrame | null>(null)
@@ -80,7 +84,11 @@ export default function StudioExportPanel() {
     && motionSpeed !== 0
   const exporting = modal?.status === 'exporting'
 
-  const requestExportFrame = useCallback((size: number, signal?: AbortSignal) => {
+  const requestExportFrame = useCallback((
+    size: number,
+    animationTime: number,
+    signal?: AbortSignal,
+  ) => {
     return new Promise<HTMLCanvasElement>((resolve, reject) => {
       if (pendingExportFrameRef.current) {
         reject(new Error('Another export frame is still rendering'))
@@ -114,7 +122,7 @@ export default function StudioExportPanel() {
 
       pendingExportFrameRef.current = { requestId, size, resolve, reject, cleanup }
       signal?.addEventListener('abort', handleAbort, { once: true })
-      setRenderSurface({ size, requestId })
+      setRenderSurface({ size, requestId, animationTime })
 
       if (signal?.aborted) {
         handleAbort()
@@ -160,7 +168,10 @@ export default function StudioExportPanel() {
     if (format === 'png') {
       setPngExporting(true)
       try {
-        const exportCanvas = await requestExportFrame(PNG_EXPORT_SIZE)
+        const exportCanvas = await requestExportFrame(
+          PNG_EXPORT_SIZE,
+          readLatestPreviewAnimationTime(),
+        )
         const rawBlob = await canvasToBlob(exportCanvas, 'image/png')
         const blob = await compressExportBlob(rawBlob, 'png')
         downloadBlob(blob, createExportFileName(format))
@@ -191,7 +202,11 @@ export default function StudioExportPanel() {
         format,
         abortController.signal,
         previewAnimationTime,
-        () => requestExportFrame(ANIMATION_EXPORT_SIZE, abortController.signal),
+        (animationTime) => requestExportFrame(
+          ANIMATION_EXPORT_SIZE,
+          animationTime,
+          abortController.signal,
+        ),
         (completed, total) => {
           totalFrames = total
           setMessage(`Exporting ${optionLabel(format)} ${completed}/${total}`)
@@ -296,6 +311,7 @@ export default function StudioExportPanel() {
         ? createPortal(
             <StudioExportRenderSurface
               size={renderSurface.size}
+              initialAnimationTime={renderSurface.animationTime}
               requestId={renderSurface.requestId}
               onFrameRendered={handleExportFrameRendered}
             />,
@@ -412,7 +428,7 @@ async function captureAnimationLoop(
   format: AnimatedStudioExportFormat,
   signal: AbortSignal,
   baseAnimationTime: number,
-  renderFrame: () => Promise<HTMLCanvasElement>,
+  renderFrame: (animationTime: number) => Promise<HTMLCanvasElement>,
   onProgress: (completed: number, total: number) => void,
 ) {
   const initialState = useStudioStore.getState()
@@ -461,7 +477,7 @@ async function captureAnimationLoop(
         },
       })
 
-      const exportCanvas = await renderFrame()
+      const exportCanvas = await renderFrame(frame.animationTime)
       encoder ??= await createAnimationEncoder(format, exportCanvas, plan)
       await encoder.addFrame(frameIndex, exportCanvas)
       onProgress(frameIndex + 1, plan.frameCount)

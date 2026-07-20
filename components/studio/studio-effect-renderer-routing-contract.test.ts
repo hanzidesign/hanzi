@@ -230,7 +230,7 @@ describe('Grainrad effect renderer routing contract', () => {
     ]) {
       expect(halftoneCanvasSource).toContain(`meshSettings.${meshParam}`)
     }
-    expect(halftoneCanvasSource).toContain('computeEffectiveAnimationTime')
+    expect(halftoneCanvasSource).toContain('readAnimationTime()')
     expect(halftoneCanvasSource).toContain('animation.playing')
     expect(halftoneCanvasSource).toContain('animation.speed')
 
@@ -260,7 +260,7 @@ describe('Grainrad effect renderer routing contract', () => {
     ]) {
       expect(matrixRainCanvasSource).toContain(`meshSettings.${meshParam}`)
     }
-    expect(matrixRainCanvasSource).toContain('computeEffectiveAnimationTime')
+    expect(matrixRainCanvasSource).toContain('readAnimationTime()')
     expect(matrixRainCanvasSource).toContain('animation.playing')
     expect(matrixRainCanvasSource).toContain('animation.speed')
     expect(matrixRainCanvasSource).toContain('disposeMatrixRainGlyphAtlas')
@@ -297,7 +297,7 @@ describe('Grainrad effect renderer routing contract', () => {
     ]) {
       expect(dotsCanvasSource).toContain(`meshSettings.${meshParam}`)
     }
-    expect(dotsCanvasSource).toContain('computeEffectiveAnimationTime')
+    expect(dotsCanvasSource).toContain('readAnimationTime()')
     expect(dotsCanvasSource).toContain('animation.playing')
     expect(dotsCanvasSource).toContain('animation.speed')
 
@@ -388,7 +388,7 @@ describe('Grainrad effect renderer routing contract', () => {
     ]) {
       expect(pixelSortCanvasSource).toContain(`meshSettings.${meshParam}`)
     }
-    expect(pixelSortCanvasSource).toContain('computeEffectiveAnimationTime')
+    expect(pixelSortCanvasSource).toContain('useCharacterMeshAnimation')
     expect(pixelSortCanvasSource).toContain('animation.playing')
     expect(pixelSortCanvasSource).toContain('animation.speed')
 
@@ -426,7 +426,7 @@ describe('Grainrad effect renderer routing contract', () => {
     ]) {
       expect(blockifyCanvasSource).toContain(`meshSettings.${meshParam}`)
     }
-    expect(blockifyCanvasSource).toContain('computeEffectiveAnimationTime')
+    expect(blockifyCanvasSource).toContain('readAnimationTime()')
     expect(blockifyCanvasSource).toContain('animation.playing')
     expect(blockifyCanvasSource).toContain('animation.speed')
 
@@ -465,7 +465,7 @@ describe('Grainrad effect renderer routing contract', () => {
     ]) {
       expect(thresholdCanvasSource).toContain(`meshSettings.${meshParam}`)
     }
-    expect(thresholdCanvasSource).toContain('computeEffectiveAnimationTime')
+    expect(thresholdCanvasSource).toContain('readAnimationTime()')
     expect(thresholdCanvasSource).toContain('animation.playing')
     expect(thresholdCanvasSource).toContain('animation.speed')
 
@@ -505,7 +505,7 @@ describe('Grainrad effect renderer routing contract', () => {
     ]) {
       expect(edgeDetectionCanvasSource).toContain(`meshSettings.${meshParam}`)
     }
-    expect(edgeDetectionCanvasSource).toContain('computeEffectiveAnimationTime')
+    expect(edgeDetectionCanvasSource).toContain('readAnimationTime()')
     expect(edgeDetectionCanvasSource).toContain('animation.playing')
     expect(edgeDetectionCanvasSource).toContain('animation.speed')
 
@@ -546,7 +546,7 @@ describe('Grainrad effect renderer routing contract', () => {
     ]) {
       expect(crosshatchCanvasSource).toContain(`meshSettings.${meshParam}`)
     }
-    expect(crosshatchCanvasSource).toContain('computeEffectiveAnimationTime')
+    expect(crosshatchCanvasSource).toContain('readAnimationTime()')
     expect(crosshatchCanvasSource).toContain('animation.playing')
     expect(crosshatchCanvasSource).toContain('animation.speed')
 
@@ -588,7 +588,7 @@ describe('Grainrad effect renderer routing contract', () => {
     ]) {
       expect(waveLinesCanvasSource).toContain(`meshSettings.${meshParam}`)
     }
-    expect(waveLinesCanvasSource).toContain('computeEffectiveAnimationTime')
+    expect(waveLinesCanvasSource).toContain('readAnimationTime()')
     expect(waveLinesCanvasSource).toContain('animation.playing')
     expect(waveLinesCanvasSource).toContain('animation.speed')
 
@@ -631,7 +631,7 @@ describe('Grainrad effect renderer routing contract', () => {
     ]) {
       expect(noiseFieldCanvasSource).toContain(`meshSettings.${meshParam}`)
     }
-    expect(noiseFieldCanvasSource).toContain('computeEffectiveAnimationTime')
+    expect(noiseFieldCanvasSource).toContain('readAnimationTime()')
     expect(noiseFieldCanvasSource).toContain('animation.playing')
     expect(noiseFieldCanvasSource).toContain('animation.speed')
 
@@ -675,7 +675,7 @@ describe('Grainrad effect renderer routing contract', () => {
     ]) {
       expect(voronoiCanvasSource).toContain(`meshSettings.${meshParam}`)
     }
-    expect(voronoiCanvasSource).toContain('computeEffectiveAnimationTime')
+    expect(voronoiCanvasSource).toContain('readAnimationTime()')
     expect(voronoiCanvasSource).toContain('animation.playing')
     expect(voronoiCanvasSource).toContain('animation.speed')
 
@@ -720,7 +720,8 @@ describe('Grainrad effect renderer routing contract', () => {
     ]) {
       expect(vhsCanvasSource).toContain(`meshSettings.${meshParam}`)
     }
-    expect(vhsCanvasSource).toContain('clock.getElapsedTime()')
+    expect(vhsCanvasSource).not.toContain('clock.getElapsedTime()')
+    expect(vhsCanvasSource).toContain('readAnimationTime()')
     expect(vhsCanvasSource).toContain('animation.playing')
     expect(vhsCanvasSource).toContain('animation.speed')
 

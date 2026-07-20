@@ -9,7 +9,6 @@ import {
 } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import {
-  reportLatestPreviewAnimationTime,
   StudioRenderCanvas as Canvas,
   useStudioRenderMode,
 } from '@/components/studio/studio-render-context'
@@ -28,7 +27,6 @@ import {
 } from 'three'
 import { useStudioStore } from '@/app/studio/studio-store'
 import { withoutSharedControllerValues } from './grainrad-shared-controls'
-import { computeEffectiveAnimationTime } from '@/components/studio/animation-time'
 import {
   createCharacterMeshGeometries,
   type CharacterMeshGeometryResult,
@@ -263,19 +261,11 @@ function CharacterPixelSortScene({
     invalidatePixelSortExport(generation, pendingExportAckRef, lastRequestedExportRef)
   }, [generation, geometryResult, meshSettings.position, meshSettings.rotation, meshSettings.scale])
 
-  useCharacterMeshAnimation(sourceRef, meshSettings.deform, animation)
+  useCharacterMeshAnimation(sourceRef, meshSettings.deform)
 
-  useFrame(({ clock }, delta) => {
+  useFrame((_, delta) => {
     const source = sourceRef.current
     if (!source) return
-
-    const animationTime = computeEffectiveAnimationTime({
-      elapsedSeconds: clock.getElapsedTime(),
-      speed: animation.playing ? animation.speed : 0,
-      timeOffset: animation.timeOffset,
-      playing: animation.playing,
-    })
-    if (!renderMode.exportRender) reportLatestPreviewAnimationTime(animationTime)
 
     if (meshSettings.autoRotate && animation.playing && animation.speed !== 0) {
       source.group.rotation.y = applyDeltaRotation(

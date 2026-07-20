@@ -7,6 +7,7 @@ import {
 } from '@react-three/fiber'
 import {
   createContext,
+  useCallback,
   useContext,
   useEffect,
   useMemo,
@@ -17,7 +18,7 @@ import {
 } from 'react'
 import type { Texture } from 'three'
 import { useStudioStore } from '@/app/studio/studio-store'
-import { computeEffectiveAnimationTime } from '@/components/studio/animation-time'
+import { AnimationTimeline } from '@/components/studio/animation-time'
 import StudioPostProcessing from '@/components/studio/studio-post-processing'
 
 type StudioRenderContextValue = {
@@ -29,6 +30,14 @@ type StudioRenderContextValue = {
   voronoiMaskTextureRef: MutableRefObject<Texture | null>
   reportCharacterRotationY: (rotationY: number) => void
   readCharacterRotationY: (fallback: number) => number
+  readAnimationTime: () => number
+  timelineActive: boolean
+  advanceAnimationTime: (
+    deltaSeconds: number,
+    speed: number,
+    timeOffset: number,
+    playing: boolean,
+  ) => number
 }
 
 const emptyVoronoiMaskTextureRef: MutableRefObject<Texture | null> = { current: null }
@@ -121,23 +130,34 @@ const StudioRenderContext = createContext<StudioRenderContextValue>({
   voronoiMaskTextureRef: emptyVoronoiMaskTextureRef,
   reportCharacterRotationY: () => undefined,
   readCharacterRotationY: (fallback) => normalizeRotationRadians(fallback),
+  readAnimationTime: () => 0,
+  timelineActive: false,
+  advanceAnimationTime: () => 0,
 })
 
 let latestPreviewAnimationTime = 0
 
 export function StudioRenderModeProvider({
   exportRender,
+  initialAnimationTime,
   requestId = 0,
   onFrameRendered,
   children,
 }: {
   exportRender: boolean
+  initialAnimationTime?: number
   requestId?: number
   onFrameRendered?: (requestId: number, canvas: HTMLCanvasElement) => void
   children: ReactNode
 }) {
   const voronoiMaskTextureRef = useRef<Texture | null>(null)
   const [characterRotationSnapshot] = useState(createCharacterRotationSnapshot)
+  const [animationTimeline] = useState(
+    () => {
+      const timeOffset = useStudioStore.getState().animation.timeOffset
+      return new AnimationTimeline(initialAnimationTime ?? timeOffset, timeOffset)
+    },
+  )
   const exportFrameAckGate = useMemo(() => new ExportFrameAckGate(), [])
 
   useEffect(() => {
@@ -160,6 +180,13 @@ export function StudioRenderModeProvider({
     }
   }
   const readCharacterRotationY = (fallback: number) => characterRotationSnapshot.read(fallback)
+  const readAnimationTime = useCallback(() => animationTimeline.read(), [animationTimeline])
+  const advanceAnimationTime = useCallback((
+    deltaSeconds: number,
+    speed: number,
+    timeOffset: number,
+    playing: boolean,
+  ) => animationTimeline.advance({ deltaSeconds, speed, timeOffset, playing }), [animationTimeline])
   const markExportContentReady = () => {
     if (exportRender && requestId > 0) {
       exportFrameAckGate.markContentReady(requestId)
@@ -176,6 +203,9 @@ export function StudioRenderModeProvider({
       voronoiMaskTextureRef,
       reportCharacterRotationY,
       readCharacterRotationY,
+      readAnimationTime,
+      timelineActive: true,
+      advanceAnimationTime,
     }}>
       {children}
     </StudioRenderContext>
@@ -206,7 +236,7 @@ export function readLatestPreviewAnimationTime() {
 
 export function reportLatestPreviewAnimationTime(animationTime: number) {
   if (Number.isFinite(animationTime)) {
-    latestPreviewAnimationTime = Math.max(0, animationTime)
+    latestPreviewAnimationTime = animationTime
   }
 }
 
@@ -215,21 +245,27 @@ function StudioRenderFrameObserver({
   requestId,
   onFrameRendered,
   exportFrameAckGate,
+  advanceAnimationTime,
 }: StudioRenderContextValue) {
   const animation = useStudioStore((store) => store.animation)
   const selectedEffectId = useStudioStore((store) => store.grainradEffect.selectedEffectId)
-  useFrame(({ clock, gl }) => {
-    if (!exportRender) {
-      reportLatestPreviewAnimationTime(computeEffectiveAnimationTime({
-        elapsedSeconds: clock.getElapsedTime(),
-        speed: animation.speed,
-        timeOffset: animation.timeOffset,
-        playing: animation.playing,
-      }))
-      return
-    }
+  useFrame((_, delta) => {
+    const animationTime = advanceAnimationTime(
+      delta,
+      animation.speed,
+      animation.timeOffset,
+      animation.playing,
+    )
 
+    if (!exportRender) {
+      reportLatestPreviewAnimationTime(animationTime)
+    }
+  }, -3)
+
+  useFrame(({ gl }) => {
     if (
+      exportRender
+      &&
       selectedEffectId !== 'pixel-sort'
       && requestId > 0
       && exportFrameAckGate.consumeIfReady(requestId, gl.info.render.calls)

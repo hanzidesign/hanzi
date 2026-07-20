@@ -104,7 +104,11 @@ function CharacterVhsScene({
   const { camera, gl, size } = useThree()
   const meshSettings = useStudioStore((store) => store.mesh)
   const animation = useStudioStore((store) => store.animation)
-  const { markExportContentReady, reportCharacterRotationY } = useStudioRenderMode()
+  const {
+    markExportContentReady,
+    readAnimationTime,
+    reportCharacterRotationY,
+  } = useStudioRenderMode()
   const controls = useStudioStore((store) => store.grainradEffect.controls['vhs'])
   const activeBackground = typeof controls.background === 'string' ? controls.background : '#000000'
   const [geometryResult, setGeometryResult] = useState<CharacterMeshGeometryResult | null>(null)
@@ -212,9 +216,9 @@ function CharacterVhsScene({
     source.group.scale.setScalar(meshSettings.scale)
   }, [geometryResult, meshSettings.position, meshSettings.rotation, meshSettings.scale])
 
-  useCharacterMeshAnimation(sourceRef, meshSettings.deform, animation)
+  useCharacterMeshAnimation(sourceRef, meshSettings.deform)
 
-  useFrame(({ clock }, delta) => {
+  useFrame((_, delta) => {
     const source = sourceRef.current
     if (!source || geometryResult?.geometries.length === 0) {
       return
@@ -251,7 +255,7 @@ function CharacterVhsScene({
     if (activeMaterial) {
       activeMaterial.uniforms.u_sourceSize.value.set(width, height)
       activeMaterial.uniforms.u_resolution.value.set(width, height)
-      activeMaterial.uniforms.u_time.value = clock.getElapsedTime()
+      activeMaterial.uniforms.u_time.value = readAnimationTime()
     }
   }, -1)
 

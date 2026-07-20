@@ -10,7 +10,6 @@ import { SVGLoader } from 'three/addons/loaders/SVGLoader.js'
 import { Group, Vector2, type ShaderMaterial } from 'three'
 import { useStudioStore } from '@/app/studio/studio-store'
 import { withoutSharedControllerValues } from './grainrad-shared-controls'
-import { computeEffectiveAnimationTime } from '@/components/studio/animation-time'
 import {
   createCharacterMeshGeometries,
   type CharacterMeshGeometryResult,
@@ -99,7 +98,11 @@ function CharacterAsciiScene({
   const ascii = useStudioStore((store) => store.ascii)
   const animation = useStudioStore((store) => store.animation)
   const grainradEffect = useStudioStore((store) => store.grainradEffect)
-  const { markExportContentReady, reportCharacterRotationY } = useStudioRenderMode()
+  const {
+    markExportContentReady,
+    readAnimationTime,
+    reportCharacterRotationY,
+  } = useStudioRenderMode()
 
   useEffect(() => {
     if (svgLoadError) {
@@ -206,16 +209,13 @@ function CharacterAsciiScene({
     }
   }, [material])
 
-  useCharacterMeshAnimation(gpuDeformRef, mesh.deform, animation)
+  useCharacterMeshAnimation(gpuDeformRef, mesh.deform)
 
-  useFrame(({ clock, pointer }, delta) => {
+  useFrame(({ pointer }, delta) => {
     const activeMaterial = materialRef.current
-    const effectiveTime = computeEffectiveAnimationTime({
-      elapsedSeconds: clock.getElapsedTime(),
-      speed: animation.animateShaders ? animation.speed : 0,
-      timeOffset: animation.timeOffset,
-      playing: animation.playing,
-    })
+    const effectiveTime = animation.animateShaders
+      ? readAnimationTime()
+      : animation.timeOffset
 
     mouseRef.current.set(pointer.x, pointer.y)
 

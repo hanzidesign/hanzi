@@ -6,10 +6,12 @@ import classes from './StudioShell.module.css'
 
 export default function StudioExportRenderSurface({
   size,
+  initialAnimationTime,
   requestId,
   onFrameRendered,
 }: {
   size: number
+  initialAnimationTime: number
   requestId: number
   onFrameRendered: (requestId: number, canvas: HTMLCanvasElement) => void
 }) {
@@ -23,6 +25,7 @@ export default function StudioExportRenderSurface({
     >
       <StudioRenderModeProvider
         exportRender
+        initialAnimationTime={initialAnimationTime}
         requestId={requestId}
         onFrameRendered={onFrameRendered}
       >

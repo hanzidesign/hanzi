@@ -9,9 +9,8 @@ describe('character mesh GPU animation seam', () => {
       'utf8',
     )
 
-    expect(source).toContain('computeEffectiveAnimationTime')
+    expect(source).toContain('readAnimationTime()')
     expect(source).toContain('binding?.update(')
-    expect(source).toContain('playing: animation.playing')
     expect(source).toContain('}, -2)')
     expect(source).not.toContain('skipNextPreviewFrame')
   })

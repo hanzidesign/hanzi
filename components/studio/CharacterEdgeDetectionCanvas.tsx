@@ -26,7 +26,6 @@ import {
 } from 'three'
 import { useStudioStore } from '@/app/studio/studio-store'
 import { withoutSharedControllerValues } from './grainrad-shared-controls'
-import { computeEffectiveAnimationTime } from '@/components/studio/animation-time'
 import {
   applyEdgeDetectionUniforms,
   createEdgeDetectionShaderMaterial,
@@ -105,7 +104,7 @@ function CharacterEdgeDetectionScene({
   const { camera, gl, size } = useThree()
   const meshSettings = useStudioStore((store) => store.mesh)
   const animation = useStudioStore((store) => store.animation)
-  const { markExportContentReady, reportCharacterRotationY } = useStudioRenderMode()
+  const { markExportContentReady, readAnimationTime, reportCharacterRotationY } = useStudioRenderMode()
   const controls = useStudioStore((store) => store.grainradEffect.controls['edge-detection'])
   const [geometryResult, setGeometryResult] = useState<CharacterMeshGeometryResult | null>(null)
   const geometryResultRef = useRef<CharacterMeshGeometryResult | null>(null)
@@ -207,9 +206,9 @@ applyEdgeDetectionUniforms(material, withoutSharedControllerValues(controls))
     source.group.scale.setScalar(meshSettings.scale)
   }, [geometryResult, meshSettings.position, meshSettings.rotation, meshSettings.scale])
 
-  useCharacterMeshAnimation(sourceRef, meshSettings.deform, animation)
+  useCharacterMeshAnimation(sourceRef, meshSettings.deform)
 
-  useFrame(({ clock }, delta) => {
+  useFrame((_, delta) => {
     const source = sourceRef.current
     if (!source || geometryResult?.geometries.length === 0) {
       return
@@ -246,12 +245,7 @@ applyEdgeDetectionUniforms(material, withoutSharedControllerValues(controls))
     if (activeMaterial) {
       activeMaterial.uniforms.u_sourceSize.value.set(width, height)
       activeMaterial.uniforms.u_resolution.value.set(width, height)
-      activeMaterial.uniforms.u_time.value = computeEffectiveAnimationTime({
-        elapsedSeconds: clock.getElapsedTime(),
-        speed: animation.playing ? animation.speed : 0,
-        timeOffset: animation.timeOffset,
-        playing: animation.playing,
-      })
+      activeMaterial.uniforms.u_time.value = readAnimationTime()
     }
   }, -1)
 
