@@ -135,12 +135,24 @@ describe('StudioProcessingEffect', () => {
     expect(resolutionValue(effect).toArray()).toEqual([1280, 720])
   })
 
+  it('keeps preview visual sampling separate from actual render resolution', () => {
+    const effect = new StudioProcessingEffect()
+
+    effect.setSize(2048, 2048)
+    effect.setVisualSize(720, 480)
+
+    expect(resolutionValue(effect).toArray()).toEqual([2048, 2048])
+    expect(
+      (effect.uniforms.get('u_processingVisualResolution')!.value as Vector2).toArray(),
+    ).toEqual([720, 480])
+  })
+
   it('implements neighbor-sampled screen-space Processing with identity gates', () => {
     const shader = STUDIO_PROCESSING_FRAGMENT_SHADER
 
     expect(occurrences(shader, 'processingSample(')).toBeGreaterThanOrEqual(18)
     expect(shader).toContain('texture2D(inputBuffer')
-    expect(shader).toContain('1.0 / max(u_processingResolution, vec2(1.0))')
+    expect(shader).toContain('1.0 / max(u_processingVisualResolution, vec2(1.0))')
     expect(shader).toContain('if (u_blurRadius > 0.0)')
     expect(shader).toContain('processingSpatialBlur(uv, texel, u_blurRadius)')
     expect(shader).toContain('(center.rgb - neighborMean) * u_edgeEnhance')

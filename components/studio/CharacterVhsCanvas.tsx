@@ -108,6 +108,7 @@ function CharacterVhsScene({
     markExportContentReady,
     readAnimationTime,
     reportCharacterRotationY,
+    resolveVisualFrameSize,
   } = useStudioRenderMode()
   const controls = useStudioStore((store) => store.grainradEffect.controls['vhs'])
   const activeBackground = typeof controls.background === 'string' ? controls.background : '#000000'
@@ -237,6 +238,7 @@ function CharacterVhsScene({
     const pixelRatio = gl.getPixelRatio()
     const width = Math.max(1, Math.round(size.width * pixelRatio))
     const height = Math.max(1, Math.round(size.height * pixelRatio))
+    const visual = resolveVisualFrameSize('canvas', width, height)
 
     if (renderTarget.width !== width || renderTarget.height !== height) {
       renderTarget.setSize(width, height)
@@ -254,7 +256,7 @@ function CharacterVhsScene({
     const activeMaterial = materialRef.current
     if (activeMaterial) {
       activeMaterial.uniforms.u_sourceSize.value.set(width, height)
-      activeMaterial.uniforms.u_resolution.value.set(width, height)
+      activeMaterial.uniforms.u_resolution.value.set(visual.width, visual.height)
       activeMaterial.uniforms.u_time.value = readAnimationTime()
     }
   }, -1)

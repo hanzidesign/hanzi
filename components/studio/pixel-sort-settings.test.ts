@@ -4,13 +4,14 @@ import { DEFAULT_PIXEL_SORT_SETTINGS } from './pixel-sort-core'
 import { readPixelSortSettings } from './pixel-sort-settings'
 
 describe('Pixel Sort independent renderer settings adapter', () => {
-  it('resolves the fixed palette defaults per active theme', () => {
+  it('resolves the fixed gradient defaults per active theme', () => {
     expect(readPixelSortSettings({}, 'light')).toMatchObject({
-      highlight: '#e6a928', midtone: '#c93472', shadow: '#35115c', background: '#ffffff',
+      startColor: '#35115c', middleColor: '#c93472', endColor: '#e6a928', background: '#ffffff',
     })
     expect(readPixelSortSettings({}, 'dark')).toMatchObject({
-      highlight: '#ffe08a', midtone: '#ff5a9d', shadow: '#1b0836', background: '#000000',
+      startColor: '#1b0836', middleColor: '#ff5a9d', endColor: '#ffe08a', background: '#000000',
     })
+    expect(readPixelSortSettings({}, 'light').randomness).toBe(0.5)
   })
   it('maps every visible Pixel Sort controller without generic runtime packing', () => {
     expect(readPixelSortSettings({
@@ -24,9 +25,9 @@ describe('Pixel Sort independent renderer settings adapter', () => {
       brightness: 40,
       contrast: -25,
       mix: 1,
-      shadow: '#102030',
-      midtone: '#405060',
-      highlight: '#708090',
+      'start-color': '#102030',
+      'middle-color': '#405060',
+      'end-color': '#708090',
       background: '#ffffff',
     })).toMatchObject({
       direction: 'radial',
@@ -39,9 +40,9 @@ describe('Pixel Sort independent renderer settings adapter', () => {
       brightness: 40,
       contrast: -25,
       mix: 1,
-      shadow: '#102030',
-      midtone: '#405060',
-      highlight: '#708090',
+      startColor: '#102030',
+      middleColor: '#405060',
+      endColor: '#708090',
       background: '#ffffff',
     })
   })
@@ -51,7 +52,7 @@ describe('Pixel Sort independent renderer settings adapter', () => {
       direction: 'unknown',
       'sort-mode': 'color',
       threshold: Number.NaN,
-    })).toMatchObject({ ...DEFAULT_PIXEL_SORT_SETTINGS, background: '#ffffff' })
+    })).toMatchObject({ ...DEFAULT_PIXEL_SORT_SETTINGS, mode: 'depth', background: '#ffffff' })
   })
 
   it.each(['horizontal', 'vertical', 'diagonal', 'anti-diagonal', 'radial'] as const)(

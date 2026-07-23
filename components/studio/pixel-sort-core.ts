@@ -2,7 +2,7 @@ export type PixelSortRgb = readonly [number, number, number]
 export type PixelSortRgba = readonly [number, number, number, number]
 export type PixelSortVec2 = readonly [number, number]
 export type PixelSortDirection = 'horizontal' | 'vertical' | 'diagonal' | 'anti-diagonal' | 'radial'
-export type PixelSortMode = 'brightness' | 'hue' | 'saturation' | 'dark'
+export type PixelSortMode = 'brightness' | 'hue' | 'saturation' | 'dark' | 'depth'
 export type PixelSortTheme = 'light' | 'dark'
 
 export type PixelSortSettings = Readonly<{
@@ -16,9 +16,9 @@ export type PixelSortSettings = Readonly<{
   brightness: number
   contrast: number
   mix: number
-  shadow: string
-  midtone: string
-  highlight: string
+  startColor: string
+  middleColor: string
+  endColor: string
   background: string
 }>
 
@@ -72,18 +72,18 @@ let radialLayoutCache: { key: string; layout: RadialLayout } | null = null
 
 export const DEFAULT_PIXEL_SORT_SETTINGS: PixelSortSettings = {
   direction: 'horizontal',
-  mode: 'hue',
+  mode: 'depth',
   threshold: 0.25,
-  streakLength: 100,
-  intensity: 0.8,
-  randomness: 0.3,
+  streakLength: 500,
+  intensity: 1,
+  randomness: 0.5,
   reverse: false,
   brightness: 0,
   contrast: 0,
   mix: 1,
-  shadow: '#35115c',
-  midtone: '#c93472',
-  highlight: '#e6a928',
+  startColor: '#35115c',
+  middleColor: '#c93472',
+  endColor: '#e6a928',
   background: '#ffffff',
 }
 
@@ -114,30 +114,65 @@ export function getPixelSortBlockPhase(
 /**
  * These names are the production UI values. Production uses them as black,
  * white, and bright interval predicates rather than literal ordering keys.
- * Ordering itself is always by luminance.
+ * Legacy modes order by luminance; Model Depth orders by the encoded depth alpha.
  */
 export function isPixelSortSpanStart(
   color: PixelSortRgb,
   threshold: number,
   mode: PixelSortMode,
+  depth = 1,
 ) {
+  void depth
   switch (mode) {
     case 'brightness':
-      return luminance(color) > threshold * 0.25
+      return isExactBlack(color) || luminance(color) > threshold * 0.25
     case 'hue':
-      return luminance(color) < 1 - threshold * 0.25
+      return isExactBlack(color) || luminance(color) < 1 - threshold * 0.25
     case 'saturation':
-      return maximumChannel(color) > threshold
+      return isExactBlack(color) || maximumChannel(color) > threshold
     case 'dark':
       return maximumChannel(color) < threshold
+    case 'depth':
+      // Model Depth partitions every rendered texel into the scanline. The
+      // threshold controls reach/capacity, not region membership; exact black
+      // remains traversable and contributes a zero metric below.
+      return true
   }
 }
 
+export function getPixelSortDepthReach(depth: number, threshold: number) {
+  if (depth < threshold) return 0
+  if (threshold >= 1) return depth >= 1 ? 1 : 0
+  return clamp01((depth - threshold) / (1 - threshold))
+}
+
 /**
- * Exact CPU oracle for the dedicated Pixel Sort renderer. Each scanline is
- * partitioned into globally anchored blocks and every eligible subrun is a
- * stable one-to-one permutation of its source texels.
+ * Mode-specific contribution used to choose a dynamic streak length. The
+ * eligibility predicate above intentionally remains independent of this
+ * metric, so this only controls how far an eligible run is consumed.
  */
+export function getPixelSortModeMetric(
+  color: PixelSortRgb,
+  mode: PixelSortMode,
+  depth = 1,
+  threshold = 0.25,
+) {
+  if (isExactBlack(color)) return 0
+  switch (mode) {
+    case 'brightness':
+      return luminance(color) > threshold * 0.25 ? luminance(color) : 0
+    case 'hue':
+      return luminance(color) < 1 - threshold * 0.25 ? 1 - luminance(color) : 0
+    case 'saturation':
+      return maximumChannel(color) > threshold ? maximumChannel(color) : 0
+    case 'dark':
+      return maximumChannel(color) < threshold ? 1 - maximumChannel(color) : 0
+    case 'depth':
+      return Math.max(getPixelSortDepthReach(depth, threshold), maximumChannel(color))
+  }
+}
+
+/** Exact CPU/export renderer for boundary-led connected scanlines. */
 export function renderPixelSortFrame({
   rgba,
   width,
@@ -146,29 +181,27 @@ export function renderPixelSortFrame({
 }: PixelSortFrameInput): PixelSortFrameOutput {
   assertInput(rgba, width, height, settings)
 
-  const sorted = new Uint8ClampedArray(rgba)
-  const mappingT = new Float64Array(width * height)
-  for (const line of createScanlines(width, height, settings.direction)) {
-    sortScanline(sorted, rgba, line, settings, mappingT)
-  }
-
   const data = new Uint8ClampedArray(rgba.length)
   for (let offset = 0; offset < rgba.length; offset += 4) {
-    for (let channel = 0; channel < 4; channel += 1) {
-      data[offset + channel] = mix(rgba[offset + channel], sorted[offset + channel], settings.intensity)
-    }
-    const composed: PixelSortRgb = [
-      data[offset] / 255,
-      data[offset + 1] / 255,
-      data[offset + 2] / 255,
-    ]
-    const mapped = mapPixelSortPalette(composed, mappingT[offset / 4], settings)
-    const output = mixRgb(composed, mapped, settings.mix)
-    const outputWithBackground = isExactBlack(composed)
+    const source = readRgb(rgba, offset / 4)
+    const depth = rgba[offset + 3] / 255
+    const base = isExactBlack(source)
       ? hexToRgb(settings.background)
-      : output
+      : mixRgb(source, mapPixelSortGradient(source, depth, settings), settings.mix)
+    data[offset] = clamp01(base[0]) * 255
+    data[offset + 1] = clamp01(base[1]) * 255
+    data[offset + 2] = clamp01(base[2]) * 255
+    data[offset + 3] = 255
+  }
+
+  for (const line of createScanlines(width, height, settings.direction)) {
+    renderTrailScanline(data, rgba, line, settings)
+  }
+
+  for (let offset = 0; offset < data.length; offset += 4) {
+    const composed: PixelSortRgb = [data[offset] / 255, data[offset + 1] / 255, data[offset + 2] / 255]
     const adjusted = adjustSource(
-      clampRgb(outputWithBackground),
+      clampRgb(composed),
       settings.brightness,
       settings.contrast,
     )
@@ -178,6 +211,64 @@ export function renderPixelSortFrame({
   }
 
   return { channels: 4, data, height, width }
+}
+
+export function getPixelSortLineFactor(lineCoordinate: number, randomness: number) {
+  if (randomness === 0) return 1
+  return clamp01(hashPixelSort11(lineCoordinate * 0.173)) ** randomness
+}
+
+function renderTrailScanline(
+  output: Uint8ClampedArray,
+  source: Uint8Array | Uint8ClampedArray,
+  line: ScanlineDescriptor,
+  settings: PixelSortSettings,
+) {
+  const lineFactor = getPixelSortLineFactor(line.coordinate, settings.randomness)
+  let valid = false
+  let distance = -1
+  let accumulatedReach = 0
+  for (let sequence = 0; sequence < line.length; sequence += 1) {
+    const position = settings.reverse ? line.length - 1 - sequence : sequence
+    const pixelIndex = line.indexAt(position)
+    const color = readRgb(source, pixelIndex)
+    const occupied = !isExactBlack(color)
+    const localReach = getPixelSortModeMetric(
+      color,
+      settings.mode,
+      readDepth(source, pixelIndex),
+      settings.threshold,
+    )
+    if (occupied) {
+      valid = true
+      distance = 0
+      accumulatedReach = localReach
+    } else if (valid) {
+      distance += 1
+    }
+
+    const limit = Math.min(
+      settings.streakLength,
+      settings.streakLength * lineFactor * clamp01(accumulatedReach),
+    )
+    const foregroundActive = occupied && valid
+    const exteriorActive = !occupied && valid && limit > 0 && distance <= limit
+    if (foregroundActive || exteriorActive) {
+      const gradientScale = foregroundActive
+        ? Math.max(settings.streakLength * lineFactor, 1)
+        : Math.max(limit, 1e-12)
+      const gradientPosition = foregroundActive
+        ? (sequence / gradientScale) % 1
+        : distance / gradientScale
+      const gradient = mapPixelSortGradient(color, gradientPosition, settings)
+      const offset = pixelIndex * 4
+      const base: PixelSortRgb = [output[offset] / 255, output[offset + 1] / 255, output[offset + 2] / 255]
+      const overlaid = mixRgb(base, gradient, settings.intensity)
+      output[offset] = clamp01(overlaid[0]) * 255
+      output[offset + 1] = clamp01(overlaid[1]) * 255
+      output[offset + 2] = clamp01(overlaid[2]) * 255
+    }
+  }
 }
 
 /** @deprecated Use renderPixelSortFrame. */
@@ -203,32 +294,32 @@ export function tracePixelSortSpan({
     settings.threshold,
     settings.randomness,
   )
-  const { blockEnd, blockStart } = getBlockBounds(
-    linePosition,
-    line.length,
-    line.coordinate,
-    settings,
-  )
+  const blockStart = 0
+  const blockEnd = line.length
   let spanStart = linePosition
   let spanEnd = linePosition
+  const eligible = isEligibleAt(rgba, line.indexAt(linePosition), variedThreshold, settings.mode)
 
-  if (isEligibleAt(rgba, line.indexAt(linePosition), variedThreshold, settings.mode)) {
+  if (eligible) {
     while (
-      spanStart > blockStart
+      spanStart > 0
       && isEligibleAt(rgba, line.indexAt(spanStart - 1), variedThreshold, settings.mode)
     ) spanStart -= 1
     while (
-      spanEnd + 1 < blockEnd
+      spanEnd + 1 < line.length
       && isEligibleAt(rgba, line.indexAt(spanEnd + 1), variedThreshold, settings.mode)
     ) spanEnd += 1
+
+    const phase = getPixelSortBlockPhase(line.coordinate, settings.streakLength, settings.randomness)
+    const chunk = getDynamicChunks(rgba, line, spanStart, spanEnd + 1, settings, phase)
+      .find(({ start, end }) => linePosition >= start && linePosition < end)
+    if (chunk) {
+      spanStart = chunk.start
+      spanEnd = chunk.end - 1
+    }
   }
 
-  const spanSize = isEligibleAt(
-    rgba,
-    line.indexAt(linePosition),
-    variedThreshold,
-    settings.mode,
-  ) ? spanEnd - spanStart + 1 : 0
+  const spanSize = eligible ? spanEnd - spanStart + 1 : 0
 
   return {
     blockEnd,
@@ -244,66 +335,76 @@ export function tracePixelSortSpan({
   }
 }
 
-function sortScanline(
-  output: Uint8ClampedArray,
-  source: Uint8Array | Uint8ClampedArray,
-  line: ScanlineDescriptor,
-  settings: PixelSortSettings,
-  mappingT: Float64Array,
-) {
-  const threshold = getPixelSortThreshold(line.coordinate, settings.threshold, settings.randomness)
-  const phase = getPixelSortBlockPhase(line.coordinate, settings.streakLength, settings.randomness)
+type PixelSortChunk = Readonly<{ start: number; end: number }>
 
-  for (let nominalStart = -phase; nominalStart < line.length; nominalStart += settings.streakLength) {
-    const blockStart = Math.max(0, nominalStart)
-    const blockEnd = Math.min(line.length, nominalStart + settings.streakLength)
-    let cursor = blockStart
-
-    while (cursor < blockEnd) {
-      if (!isEligibleAt(source, line.indexAt(cursor), threshold, settings.mode)) {
-        cursor += 1
-        continue
-      }
-
-      const runStart = cursor
-      while (
-        cursor < blockEnd
-        && isEligibleAt(source, line.indexAt(cursor), threshold, settings.mode)
-      ) cursor += 1
-      sortRun(output, source, line, runStart, cursor, settings.reverse)
-      const runSize = cursor - runStart
-      for (let targetPosition = runStart; targetPosition < cursor; targetPosition += 1) {
-        mappingT[line.indexAt(targetPosition)] = runSize <= 1
-          ? 0
-          : (targetPosition - runStart) / (runSize - 1)
-      }
-    }
-  }
-}
-
-function sortRun(
-  output: Uint8ClampedArray,
+function getDynamicChunks(
   source: Uint8Array | Uint8ClampedArray,
   line: ScanlineDescriptor,
   start: number,
   end: number,
-  reverse: boolean,
+  settings: PixelSortSettings,
+  phase: number,
+): PixelSortChunk[] {
+  const windowMax = getForwardWindowMax(
+    source,
+    line,
+    start,
+    end,
+    settings.streakLength,
+    settings.mode,
+    settings.threshold,
+  )
+  const chunks: PixelSortChunk[] = []
+  let cursor = start
+  let first = true
+  while (cursor < end) {
+    const rawCap = Math.max(1, Math.round(settings.streakLength * windowMax[cursor - start]!))
+    const phaseRemainder = (cursor + phase) % rawCap
+    const cap = first
+      ? Math.max(1, phaseRemainder === 0 ? rawCap : rawCap - phaseRemainder)
+      : rawCap
+    const chunkEnd = Math.min(end, cursor + cap)
+    chunks.push({ end: chunkEnd, start: cursor })
+    cursor = chunkEnd
+    first = false
+  }
+  return chunks
+}
+
+/** O(n) forward sliding-window maximum over an eligible region. */
+function getForwardWindowMax(
+  source: Uint8Array | Uint8ClampedArray,
+  line: ScanlineDescriptor,
+  start: number,
+  end: number,
+  windowSize: number,
+  mode: PixelSortMode,
+  threshold: number,
 ) {
-  const entries = Array.from({ length: end - start }, (_, position) => {
-    const pixelIndex = line.indexAt(start + position)
-    return { key: luminance(readRgb(source, pixelIndex)), pixelIndex, position }
-  })
+  const length = end - start
+  const values = new Float64Array(length)
+  for (let index = 0; index < length; index += 1) {
+    const pixelIndex = line.indexAt(start + index)
+    values[index] = getPixelSortModeMetric(
+      readRgb(source, pixelIndex),
+      mode,
+      readDepth(source, pixelIndex),
+      threshold,
+    )
+  }
 
-  entries.sort((left, right) => {
-    const keyOrder = reverse ? right.key - left.key : left.key - right.key
-    return keyOrder || left.position - right.position
-  })
-
-  entries.forEach((entry, index) => {
-    const sourceOffset = entry.pixelIndex * 4
-    const targetOffset = line.indexAt(start + index) * 4
-    output.set(source.subarray(sourceOffset, sourceOffset + 4), targetOffset)
-  })
+  const result = new Float64Array(length)
+  const deque = new Int32Array(length)
+  let dequeStart = length
+  let dequeEnd = length
+  for (let index = length - 1; index >= 0; index -= 1) {
+    while (dequeStart < dequeEnd && deque[dequeEnd - 1]! >= index + windowSize) dequeEnd -= 1
+    while (dequeStart < dequeEnd && values[deque[dequeStart]!]! <= values[index]!) dequeStart += 1
+    dequeStart -= 1
+    deque[dequeStart] = index
+    result[index] = values[deque[dequeEnd - 1]!]!
+  }
+  return result
 }
 
 function* createScanlines(
@@ -413,7 +514,8 @@ function getRadialLayout(width: number, height: number): RadialLayout {
 
   const centerX = (width - 1) / 2
   const centerY = (height - 1) / 2
-  const rayCount = Math.max(1, Math.ceil(Math.PI * Math.hypot(width - 1, height - 1)))
+  const maxRadius = Math.max(1, Math.ceil(Math.hypot(width, height) / 2))
+  const rayCount = Math.max(1, Math.ceil(Math.PI * 2 * maxRadius))
   const centerIndex = Number.isInteger(centerX) && Number.isInteger(centerY)
     ? centerY * width + centerX
     : -1
@@ -498,27 +600,18 @@ function getRadialLayout(width: number, height: number): RadialLayout {
   return layout
 }
 
-function getBlockBounds(
-  position: number,
-  lineLength: number,
-  lineCoordinate: number,
-  settings: PixelSortSettings,
-) {
-  const phase = getPixelSortBlockPhase(lineCoordinate, settings.streakLength, settings.randomness)
-  const nominalStart = Math.floor((position + phase) / settings.streakLength) * settings.streakLength - phase
-  return {
-    blockEnd: Math.min(lineLength, nominalStart + settings.streakLength),
-    blockStart: Math.max(0, nominalStart),
-  }
-}
-
 function isEligibleAt(
   source: Uint8Array | Uint8ClampedArray,
   pixelIndex: number,
   threshold: number,
   mode: PixelSortMode,
 ) {
-  return isPixelSortSpanStart(readRgb(source, pixelIndex), threshold, mode)
+  return isPixelSortSpanStart(
+    readRgb(source, pixelIndex),
+    threshold,
+    mode,
+    readDepth(source, pixelIndex),
+  )
 }
 
 function readRgb(
@@ -527,6 +620,13 @@ function readRgb(
 ): PixelSortRgb {
   const offset = pixelIndex * 4
   return [source[offset] / 255, source[offset + 1] / 255, source[offset + 2] / 255]
+}
+
+function readDepth(
+  source: Uint8Array | Uint8ClampedArray,
+  pixelIndex: number,
+) {
+  return source[pixelIndex * 4 + 3] / 255
 }
 
 function adjustSource(color: PixelSortRgb, brightness: number, contrast: number): PixelSortRgb {
@@ -539,22 +639,19 @@ function adjustSource(color: PixelSortRgb, brightness: number, contrast: number)
   return [adjust(color[0]), adjust(color[1]), adjust(color[2])]
 }
 
-export function mapPixelSortPalette(
+export function mapPixelSortGradient(
   color: PixelSortRgb,
   mappingT: number,
-  settings: Pick<PixelSortSettings, 'shadow' | 'midtone' | 'highlight' | 'background'>,
+  settings: Pick<PixelSortSettings, 'startColor' | 'middleColor' | 'endColor' | 'background'>,
 ): PixelSortRgb {
-  if (color[0] <= 1e-12 && color[1] <= 1e-12 && color[2] <= 1e-12) {
-    return hexToRgb(settings.background)
-  }
-  const palette = {
-    shadow: hexToRgb(settings.shadow),
-    midtone: hexToRgb(settings.midtone),
-    highlight: hexToRgb(settings.highlight),
+  const gradient = {
+    start: hexToRgb(settings.startColor),
+    middle: hexToRgb(settings.middleColor),
+    end: hexToRgb(settings.endColor),
   }
   const t = clamp01(mappingT)
-  if (t <= 0.5) return interpolateOklch(palette.shadow, palette.midtone, t * 2)
-  return interpolateOklch(palette.midtone, palette.highlight, (t - 0.5) * 2)
+  if (t <= 0.5) return interpolateOklch(gradient.start, gradient.middle, t * 2)
+  return interpolateOklch(gradient.middle, gradient.end, (t - 0.5) * 2)
 }
 
 export function hexToRgb(value: string): PixelSortRgb {
@@ -659,16 +756,16 @@ function assertSettings(settings: PixelSortSettings) {
   if (!(['horizontal', 'vertical', 'diagonal', 'anti-diagonal', 'radial'] as const).includes(settings.direction)) {
     throw new RangeError('Pixel Sort direction must be horizontal, vertical, diagonal, anti-diagonal, or radial')
   }
-  if (!(['brightness', 'hue', 'saturation', 'dark'] as const).includes(settings.mode)) {
-    throw new RangeError('Pixel Sort mode must be brightness, hue, saturation, or dark')
+  if (!(['brightness', 'hue', 'saturation', 'dark', 'depth'] as const).includes(settings.mode)) {
+    throw new RangeError('Pixel Sort mode must be brightness, hue, saturation, dark, or depth')
   }
   assertRange('threshold', settings.threshold, 0, 0.5)
-  assertRange('streakLength', settings.streakLength, 10, 300)
+  assertRange('streakLength', settings.streakLength, 1, 2000)
   if (!Number.isInteger(settings.streakLength)) {
     throw new RangeError('Pixel Sort streakLength must be an integer')
   }
-  assertRange('intensity', settings.intensity, 0, 1)
-  assertRange('randomness', settings.randomness, 0, 1)
+  assertRange('intensity', settings.intensity, 0, 2)
+  assertRange('randomness', settings.randomness, 0, 5)
   assertRange('brightness', settings.brightness, -100, 100)
   assertRange('contrast', settings.contrast, -100, 100)
   assertRange('mix', settings.mix, 0, 2)

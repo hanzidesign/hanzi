@@ -25,9 +25,9 @@ describe('Grainrad Pixel Sort schema', () => {
       'reverse',
       'brightness',
       'contrast',
-      'highlight',
-      'midtone',
-      'shadow',
+      'start-color',
+      'middle-color',
+      'end-color',
       'background',
       'mix',
     ])
@@ -52,30 +52,32 @@ describe('Grainrad Pixel Sort schema', () => {
     })
     expect(controls['sort-mode']).toMatchObject({
       kind: 'select',
-      defaultValue: 'hue',
+      defaultValue: 'depth',
       options: [
         { value: 'brightness', label: 'Brightness' },
         { value: 'hue', label: 'Hue' },
         { value: 'saturation', label: 'Saturation' },
+        { value: 'depth', label: 'Depth' },
       ],
     })
     expect(controls.threshold).toMatchObject({ defaultValue: 0.25, min: 0, max: 0.5, step: 0.05 })
-    expect(controls['streak-length']).toMatchObject({ defaultValue: 100, min: 10, max: 300, step: 10 })
-    expect(controls.intensity).toMatchObject({ defaultValue: 0.8, min: 0, max: 1, step: 0.05 })
-    expect(controls.randomness).toMatchObject({ defaultValue: 0.3, min: 0, max: 1, step: 0.05 })
+    expect(controls['streak-length']).toMatchObject({ defaultValue: 500, min: 1, max: 2000, step: 1 })
+    expect(controls.intensity).toMatchObject({ defaultValue: 1, min: 0, max: 2, step: 0.05 })
+    expect(controls.randomness).toMatchObject({ defaultValue: 0.5, min: 0, max: 5, step: 0.1 })
     expect(controls.reverse).toMatchObject({ kind: 'toggle', defaultValue: false })
     expect(controls.brightness).toMatchObject({ defaultValue: 0, min: -100, max: 100, step: 1 })
     expect(controls.contrast).toMatchObject({ defaultValue: 0, min: -100, max: 100, step: 1 })
     expect(controls.mix).toMatchObject({ defaultValue: 1, min: 0, max: 2, step: 0.05 })
-    expect(controls.shadow).toMatchObject({
+    expect(controls['start-color']).toMatchObject({
       kind: 'color',
+      label: 'Start Color',
       defaultValueByTheme: { light: '#35115c', dark: '#1b0836' },
     })
-    expect(controls.midtone).toMatchObject({
-      kind: 'color', defaultValueByTheme: { light: '#c93472', dark: '#ff5a9d' },
+    expect(controls['middle-color']).toMatchObject({
+      kind: 'color', label: 'Middle Color', defaultValueByTheme: { light: '#c93472', dark: '#ff5a9d' },
     })
-    expect(controls.highlight).toMatchObject({
-      kind: 'color', defaultValueByTheme: { light: '#e6a928', dark: '#ffe08a' },
+    expect(controls['end-color']).toMatchObject({
+      kind: 'color', label: 'End Color', defaultValueByTheme: { light: '#e6a928', dark: '#ffe08a' },
     })
     expect(controls.background).toMatchObject({
       kind: 'color',
@@ -83,19 +85,22 @@ describe('Grainrad Pixel Sort schema', () => {
     })
     expect(createDefaultGrainradEffectControls()['pixel-sort']).toMatchObject({
       direction: 'horizontal',
-      'sort-mode': 'hue',
+      'sort-mode': 'depth',
       threshold: 0.25,
-      'streak-length': 100,
-      intensity: 0.8,
-      randomness: 0.3,
+      'streak-length': 500,
+      intensity: 1,
+      randomness: 0.5,
       reverse: false,
       brightness: 0,
       contrast: 0,
-      highlight: '#e6a928',
-      midtone: '#c93472',
-      shadow: '#35115c',
+      'start-color': '#35115c',
+      'middle-color': '#c93472',
+      'end-color': '#e6a928',
       background: '#ffffff',
       mix: 1,
     })
+    expect(controls).not.toHaveProperty('shadow')
+    expect(controls).not.toHaveProperty('midtone')
+    expect(controls).not.toHaveProperty('highlight')
   })
 })

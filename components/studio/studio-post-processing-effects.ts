@@ -8,6 +8,7 @@ uniform float uSize;
 uniform float uSpeed;
 uniform float uTime;
 uniform vec2 uResolution;
+uniform vec2 uVisualResolution;
 
 float studioPostHash(vec2 value) {
   vec3 p3 = fract(vec3(value.xyx) * 0.1031);
@@ -18,12 +19,13 @@ float studioPostHash(vec2 value) {
 void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor) {
   float noise;
   if (uMode < 0.5) {
-    vec2 grainCell = floor(uv * uResolution / max(uSize, 1.0));
+    vec2 grainCell = floor(uv * uVisualResolution / max(uSize, 1.0));
     float normalizedSpeed = clamp(uSpeed / 100.0, 0.0, 2.0);
     float frame = floor(uTime * mix(2.0, 30.0, normalizedSpeed));
     noise = studioPostHash(grainCell + vec2(frame * 0.7549, frame));
   } else {
-    vec2 pixel = floor(gl_FragCoord.xy / max(uSize, 1.0));
+    vec2 visualPixel = uv * uVisualResolution;
+    vec2 pixel = floor(visualPixel / max(uSize, 1.0));
     float pixelFrameRate = mix(
       1.0,
       60.0,
@@ -61,9 +63,10 @@ uniform float uOffset;
 uniform float uSpeed;
 uniform float uTime;
 uniform vec2 uResolution;
+uniform vec2 uVisualResolution;
 
 void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor) {
-  float fragY = uv.y * uResolution.y;
+  float fragY = uv.y * uVisualResolution.y;
   float phase = mod(fragY + uOffset + uTime * uSpeed * uSpacing * 2.0, uSpacing * 2.0);
   float scanlineMask = phase < uSpacing ? 1.0 : 0.0;
   vec3 color = inputColor.rgb;
@@ -106,6 +109,7 @@ export class StudioGrainEffect extends Effect {
         ['uSpeed', new Uniform(50)],
         ['uTime', new Uniform(0)],
         ['uResolution', new Uniform(new Vector2(1, 1))],
+        ['uVisualResolution', new Uniform(new Vector2(1, 1))],
       ]),
     })
   }
@@ -132,6 +136,11 @@ export class StudioGrainEffect extends Effect {
 
   override setSize(width: number, height: number) {
     const resolution = this.uniforms.get('uResolution')!.value as Vector2
+    resolution.set(Math.max(1, width), Math.max(1, height))
+  }
+
+  setVisualSize(width: number, height: number) {
+    const resolution = this.uniforms.get('uVisualResolution')!.value as Vector2
     resolution.set(Math.max(1, width), Math.max(1, height))
   }
 
@@ -163,6 +172,7 @@ export class StudioScanlineEffect extends Effect {
         ['uSpeed', new Uniform(1)],
         ['uTime', new Uniform(0)],
         ['uResolution', new Uniform(new Vector2(1, 1))],
+        ['uVisualResolution', new Uniform(new Vector2(1, 1))],
       ]),
     })
   }
@@ -190,6 +200,11 @@ export class StudioScanlineEffect extends Effect {
 
   override setSize(width: number, height: number) {
     const resolution = this.uniforms.get('uResolution')!.value as Vector2
+    resolution.set(Math.max(1, width), Math.max(1, height))
+  }
+
+  setVisualSize(width: number, height: number) {
+    const resolution = this.uniforms.get('uVisualResolution')!.value as Vector2
     resolution.set(Math.max(1, width), Math.max(1, height))
   }
 }

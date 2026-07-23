@@ -144,7 +144,7 @@ void main() {
 
   vec3 ditheredColor = adjustedColor;
   if (u_dither > 0.5) {
-    float bayerValue = thresholdBayer4x4(gl_FragCoord.xy);
+    float bayerValue = thresholdBayer4x4(v_uv * u_resolution);
     ditheredColor += vec3((bayerValue - 0.5) * 0.1);
   }
 

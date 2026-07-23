@@ -87,7 +87,7 @@ function CharacterAsciiScene({
   svgLoadError,
   onAsciiStatusChange,
 }: CharacterAsciiSceneProps) {
-  const { size } = useThree()
+  const { gl, size } = useThree()
   const groupRef = useRef<Group>(null)
   const materialRef = useRef<ShaderMaterial | null>(null)
   const geometryResultRef = useRef<CharacterMeshGeometryResult | null>(null)
@@ -99,9 +99,13 @@ function CharacterAsciiScene({
   const animation = useStudioStore((store) => store.animation)
   const grainradEffect = useStudioStore((store) => store.grainradEffect)
   const {
+    exportRender,
     markExportContentReady,
     readAnimationTime,
+    readPointer,
     reportCharacterRotationY,
+    reportPointer,
+    resolveVisualFrameSize,
   } = useStudioRenderMode()
 
   useEffect(() => {
@@ -217,12 +221,22 @@ function CharacterAsciiScene({
       ? readAnimationTime()
       : animation.timeOffset
 
-    mouseRef.current.set(pointer.x, pointer.y)
+    if (exportRender) {
+      const previewPointer = readPointer(pointer.x, pointer.y)
+      mouseRef.current.set(previewPointer.x, previewPointer.y)
+    } else {
+      mouseRef.current.set(pointer.x, pointer.y)
+      reportPointer(pointer.x, pointer.y)
+    }
 
     if (activeMaterial) {
+      const actualWidth = gl.domElement.width || Math.round(size.width * gl.getPixelRatio())
+      const actualHeight = gl.domElement.height || Math.round(size.height * gl.getPixelRatio())
+      const visualSize = resolveVisualFrameSize('canvas', actualWidth, actualHeight)
       activeMaterial.uniforms.u_time.value = effectiveTime
       activeMaterial.uniforms.u_mouse.value.copy(mouseRef.current)
-      activeMaterial.uniforms.u_resolution.value.set(size.width, size.height)
+      activeMaterial.uniforms.u_resolution.value.set(actualWidth, actualHeight)
+      activeMaterial.uniforms.u_visualResolution.value.set(visualSize.width, visualSize.height)
       activeMaterial.uniforms.u_asciiCellSize.value = ascii.cellSize
       activeMaterial.uniforms.u_asciiDensity.value = ascii.density
       activeMaterial.uniforms.u_asciiContrast.value = ascii.contrast

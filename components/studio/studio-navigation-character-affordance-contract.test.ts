@@ -27,6 +27,18 @@ describe('Studio navigation, Character meaning, and interaction affordances', ()
     expect(characterPanel).toContain('className={classes.characterTriggerMeaning}')
   })
 
+  it('aligns each Character option as year, English meaning, and Hanzi columns', async () => {
+    const characterPanel = await readFile(join(studioDir, 'CharacterPanel.tsx'), 'utf8')
+    const styles = await readFile(join(studioDir, 'StudioShell.module.css'), 'utf8')
+
+    expect(characterPanel).toContain('meaning[country]?.[optionYear]')
+    expect(characterPanel).toContain('className={classes.characterOptionYear}')
+    expect(characterPanel).toContain('className={classes.characterOptionMeaning}')
+    expect(characterPanel).toContain('className={classes.hanziGlyph}')
+    expect(styles).toMatch(/\.yearButton \{[\s\S]*?display: grid;[\s\S]*?grid-template-columns:/)
+    expect(styles).toMatch(/\.characterOptionMeaning \{[\s\S]*?text-align: right;/)
+  })
+
   it('has a non-empty meaning for every selectable Character', () => {
     for (const script of Object.values(chars)) {
       for (const [country, years] of Object.entries(script)) {

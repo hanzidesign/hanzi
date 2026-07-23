@@ -22,7 +22,11 @@ import { StudioProcessingEffect } from '@/components/studio/studio-processing-ef
 
 export default function StudioPostProcessing() {
   const { gl, size } = useThree()
-  const { readAnimationTime, voronoiMaskTextureRef } = useStudioRenderMode()
+  const {
+    readAnimationTime,
+    resolveVisualFrameSize,
+    voronoiMaskTextureRef,
+  } = useStudioRenderMode()
   const selectedEffectId = useStudioStore((store) => store.grainradEffect.selectedEffectId)
   const controls = useStudioStore((store) => (
     store.grainradEffect.controls[store.grainradEffect.selectedEffectId]
@@ -70,9 +74,14 @@ export default function StudioPostProcessing() {
     1,
     gl.domElement.width || Math.round(size.width * gl.getPixelRatio()),
   )
+  const drawingHeight = Math.max(
+    1,
+    gl.domElement.height || Math.round(size.height * gl.getPixelRatio()),
+  )
+  const visualFrameSize = resolveVisualFrameSize('canvas', drawingWidth, drawingHeight)
   const chromaticOffset = useMemo(
-    () => new Vector2(chromaticOffsetPixels / drawingWidth, 0),
-    [chromaticOffsetPixels, drawingWidth],
+    () => new Vector2(chromaticOffsetPixels / visualFrameSize.width, 0),
+    [chromaticOffsetPixels, visualFrameSize.width],
   )
 
   useEffect(() => {
@@ -115,6 +124,9 @@ export default function StudioPostProcessing() {
   }, [backgroundRestoreEffect, crtCurveEffect, grainEffect, phosphorEffect, processingEffect, scanlineEffect])
 
   useFrame(() => {
+    processingEffect.setVisualSize(visualFrameSize.width, visualFrameSize.height)
+    grainEffect.setVisualSize(visualFrameSize.width, visualFrameSize.height)
+    scanlineEffect.setVisualSize(visualFrameSize.width, visualFrameSize.height)
     backgroundRestoreEffect.setMaskTexture(voronoiMaskTextureRef.current)
     const time = animation.animatePost ? readAnimationTime() : animation.timeOffset
 

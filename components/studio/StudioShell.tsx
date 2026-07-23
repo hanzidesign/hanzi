@@ -9,7 +9,10 @@ import StudioMobileTabs from '@/components/studio/StudioMobileTabs'
 import StudioRightPanel from '@/components/studio/StudioRightPanel'
 import StudioSettingsSheet from '@/components/studio/StudioSettingsSheet'
 import StudioThemeToggle from '@/components/studio/StudioThemeToggle'
-import { StudioRenderModeProvider } from '@/components/studio/studio-render-context'
+import {
+  StudioPreviewFrameProvider,
+  StudioRenderModeProvider,
+} from '@/components/studio/studio-render-context'
 import classes from './StudioShell.module.css'
 
 export default function StudioShell() {
@@ -31,41 +34,43 @@ export default function StudioShell() {
   }
 
   return (
-    <StudioRenderModeProvider exportRender={false}>
-      <div
-        className={classes.shell}
-        data-studio-terminal-shell
-        data-studio-theme={theme}
-      >
-        <StudioMobileHeader
-          onFullscreen={() => handleFullscreen('[data-studio-terminal-shell]')}
-        />
-        <aside className={classes.leftPanel} data-studio-left-panel>
-          <StudioLeftPanel />
-        </aside>
-        <main className={classes.preview} data-studio-preview>
-          <StudioCanvas />
-          <div className={classes.previewTopRail}>
-            <div className={classes.previewActions}>
-              <StudioThemeToggle />
-              <button
-                type="button"
-                className={classes.previewActionButton}
-                aria-label="Toggle fullscreen"
-                onClick={() => handleFullscreen('[data-studio-preview]')}
-              >
-                <IoExpandOutline aria-hidden size={16} />
-                <span>Fullscreen</span>
-              </button>
+    <StudioPreviewFrameProvider>
+      <StudioRenderModeProvider exportRender={false}>
+        <div
+          className={classes.shell}
+          data-studio-terminal-shell
+          data-studio-theme={theme}
+        >
+          <StudioMobileHeader
+            onFullscreen={() => handleFullscreen('[data-studio-terminal-shell]')}
+          />
+          <aside className={classes.leftPanel} data-studio-left-panel>
+            <StudioLeftPanel />
+          </aside>
+          <main className={classes.preview} data-studio-preview>
+            <StudioCanvas />
+            <div className={classes.previewTopRail}>
+              <div className={classes.previewActions}>
+                <StudioThemeToggle />
+                <button
+                  type="button"
+                  className={classes.previewActionButton}
+                  aria-label="Toggle fullscreen"
+                  onClick={() => handleFullscreen('[data-studio-preview]')}
+                >
+                  <IoExpandOutline aria-hidden size={16} />
+                  <span>Fullscreen</span>
+                </button>
+              </div>
             </div>
-          </div>
-        </main>
-        <aside className={classes.rightPanel} data-studio-right-panel>
-          <StudioRightPanel />
-        </aside>
-        <StudioMobileTabs />
-        <StudioSettingsSheet />
-      </div>
-    </StudioRenderModeProvider>
+          </main>
+          <aside className={classes.rightPanel} data-studio-right-panel>
+            <StudioRightPanel />
+          </aside>
+          <StudioMobileTabs />
+          <StudioSettingsSheet />
+        </div>
+      </StudioRenderModeProvider>
+    </StudioPreviewFrameProvider>
   )
 }

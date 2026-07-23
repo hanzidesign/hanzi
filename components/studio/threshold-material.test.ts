@@ -90,7 +90,7 @@ describe('Threshold shader material', () => {
       'adjustedColor = clamp((adjustedColor - 0.5) * contrastFactor + 0.5, 0.0, 1.0);',
     )
     expect(THRESHOLD_FRAGMENT_SHADER.indexOf('sourceColor + u_brightness')).toBeLessThan(
-      THRESHOLD_FRAGMENT_SHADER.indexOf('thresholdBayer4x4(gl_FragCoord.xy)'),
+      THRESHOLD_FRAGMENT_SHADER.indexOf('thresholdBayer4x4(v_uv * u_resolution)'),
     )
   })
 

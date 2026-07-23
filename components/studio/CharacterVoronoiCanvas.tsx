@@ -99,7 +99,13 @@ function CharacterVoronoiScene({
   svgData: string
   svgLoadError: string | null
 }) {
-  const { markExportContentReady, readAnimationTime, reportCharacterRotationY, voronoiMaskTextureRef } = useStudioRenderMode()
+  const {
+    markExportContentReady,
+    readAnimationTime,
+    reportCharacterRotationY,
+    resolveVisualFrameSize,
+    voronoiMaskTextureRef,
+  } = useStudioRenderMode()
   const { camera, gl, size } = useThree()
   const meshSettings = useStudioStore((store) => store.mesh)
   const animation = useStudioStore((store) => store.animation)
@@ -229,6 +235,7 @@ function CharacterVoronoiScene({
     const pixelRatio = gl.getPixelRatio()
     const width = Math.max(1, Math.round(size.width * pixelRatio))
     const height = Math.max(1, Math.round(size.height * pixelRatio))
+    const visual = resolveVisualFrameSize('canvas', width, height)
 
     if (renderTarget.width !== width || renderTarget.height !== height) {
       renderTarget.setSize(width, height)
@@ -246,7 +253,7 @@ function CharacterVoronoiScene({
     const activeMaterial = materialRef.current
     if (activeMaterial) {
       activeMaterial.uniforms.u_sourceSize.value.set(width, height)
-      activeMaterial.uniforms.u_resolution.value.set(width, height)
+      activeMaterial.uniforms.u_resolution.value.set(visual.width, visual.height)
       activeMaterial.uniforms.u_time.value = readAnimationTime()
     }
   }, -1)

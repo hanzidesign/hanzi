@@ -245,7 +245,7 @@ function applyCharacterMeshDeformation(
     const twistedX = taperedX * cosine + z * sine
     const twistedY = y * taperedScale
     const twistedZ = -taperedX * sine + z * cosine
-    const bendAngle = bendRadians * twistedX / 2
+    const bendAngle = Math.abs(bendRadians) * twistedX / 2
     const bentX = bendRadians === 0
       ? twistedX
       : Math.sin(bendAngle) * bendRadius

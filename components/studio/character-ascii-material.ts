@@ -50,6 +50,7 @@ precision highp float;
 uniform float u_time;
 uniform vec2 u_mouse;
 uniform vec2 u_resolution;
+uniform vec2 u_visualResolution;
 uniform float u_asciiCellSize;
 uniform float u_asciiDensity;
 uniform float u_asciiContrast;
@@ -426,11 +427,11 @@ vec4 applyGrainradProcessing(vec4 effectColor, float brightness) {
   return vec4(clamp(color, 0.0, 1.0), mask);
 }
 
-vec3 applyGrainradPostProcessing(vec3 color, float brightness, vec2 screenUv, vec2 centered, vec2 cellId) {
+vec3 applyGrainradPostProcessing(vec3 color, float brightness, vec2 screenUv, vec2 centered, vec2 cellId, vec2 visualPixel) {
   color += smoothstep(0.58, 1.0, brightness) * u_postA * 0.35;
   color.r += (hash12(cellId + 12.0) - 0.5) * u_postE * 0.1;
   color.b -= (hash12(cellId + 15.0) - 0.5) * u_postE * 0.1;
-  color *= 1.0 - sin(gl_FragCoord.y * 3.14159) * 0.16 * u_postF;
+  color *= 1.0 - sin(visualPixel.y * 3.14159) * 0.16 * u_postF;
   color *= mix(1.0, smoothstep(1.2, 0.2, length(centered)), u_postG);
   color = mix(color, color * (1.0 - dot(centered, centered) * 0.12), u_postH);
   color = mix(color, color * vec3(0.92, 1.05, 0.9), u_postI);
@@ -439,16 +440,17 @@ vec3 applyGrainradPostProcessing(vec3 color, float brightness, vec2 screenUv, ve
 
 void main() {
   vec2 screenUv = gl_FragCoord.xy / max(u_resolution, vec2(1.0));
+  vec2 visualPixel = screenUv * u_visualResolution;
   vec2 centered = screenUv * 2.0 - 1.0;
   float curve = dot(centered, centered) * u_curvature;
   vec2 curvedUv = screenUv + centered * curve * 0.08;
-  vec2 cellId = floor(curvedUv * u_resolution / max(u_asciiCellSize, 1.0));
-  vec2 cellUv = fract(curvedUv * u_resolution / max(u_asciiCellSize, 1.0));
+  vec2 cellId = floor(curvedUv * u_visualResolution / max(u_asciiCellSize, 1.0));
+  vec2 cellUv = fract(curvedUv * u_visualResolution / max(u_asciiCellSize, 1.0));
   float outputColumnCount = clamp(u_effectC, 0.0, 600.0);
-  float outputCellSize = max(u_resolution.x / max(outputColumnCount, 1.0), 1.0);
+  float outputCellSize = max(u_visualResolution.x / max(outputColumnCount, 1.0), 1.0);
   float asciiEffectCellSize = mix(max(u_asciiCellSize, 1.0), outputCellSize, step(1.0, outputColumnCount));
-  vec2 asciiEffectCellId = floor(curvedUv * u_resolution / asciiEffectCellSize);
-  vec2 asciiEffectCellUv = fract(curvedUv * u_resolution / asciiEffectCellSize);
+  vec2 asciiEffectCellId = floor(curvedUv * u_visualResolution / asciiEffectCellSize);
+  vec2 asciiEffectCellUv = fract(curvedUv * u_visualResolution / asciiEffectCellSize);
   float glyphScale = mix(1.0, 0.25, clamp(u_effectB, 0.0, 1.0));
   vec2 spacedAsciiEffectCellUv = (asciiEffectCellUv - 0.5) / max(glyphScale, 0.001) + 0.5;
   float insideGlyphBox = step(0.0, min(spacedAsciiEffectCellUv.x, spacedAsciiEffectCellUv.y)) *
@@ -481,16 +483,16 @@ void main() {
   grainradColor = applyGrainradProcessing(grainradColor, brightness);
   float finalAlpha = max(grainradAsciiMask, grainradColor.a);
   color = grainradColor.rgb;
-  float scanline = 1.0 - sin(gl_FragCoord.y * 3.14159) * 0.5 * u_scanlineAmount;
+  float scanline = 1.0 - sin(visualPixel.y * 3.14159) * 0.5 * u_scanlineAmount;
   float vignette = smoothstep(1.15, 0.2, length(centered)) * u_vignette + (1.0 - u_vignette);
-  float grain = (hash12(gl_FragCoord.xy + u_time * 17.0) - 0.5) * u_grain;
+  float grain = (hash12(visualPixel + u_time * 17.0) - 0.5) * u_grain;
   float bloom = smoothstep(0.68, 1.0, brightness) * u_bloomAmount;
   float chroma = (hash12(cellId + u_mouse * 31.0) - 0.5) * u_chromaticOffset;
 
   color = adjustSaturation(color, u_asciiSaturation);
   color = rotateHue(color, u_asciiHueRotation);
   color = color * scanline * vignette + bloom + grain + chroma;
-  color = applyGrainradPostProcessing(color, brightness, screenUv, centered, cellId);
+  color = applyGrainradPostProcessing(color, brightness, screenUv, centered, cellId, visualPixel);
   gl_FragColor = vec4(clamp(color, 0.0, 1.0), finalAlpha);
 }
 `
@@ -548,6 +550,7 @@ function createAsciiShaderUniforms({
     u_time: { value: 0 },
     u_mouse: { value: new Vector2(0, 0) },
     u_resolution: { value: new Vector2(1, 1) },
+    u_visualResolution: { value: new Vector2(1, 1) },
     u_asciiCellSize: { value: ascii.cellSize },
     u_asciiDensity: { value: ascii.density },
     u_asciiContrast: { value: ascii.contrast },

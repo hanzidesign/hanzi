@@ -761,15 +761,16 @@ export const GRAINRAD_EFFECTS: GrainradEffectDefinition[] = [
           selectControl('direction', 'Direction', 'horizontal', [
             ...pixelSortDirectionOptions,
           ]),
-          selectControl('sort-mode', 'Sort Mode', 'hue', [
+          selectControl('sort-mode', 'Sort Mode', 'depth', [
             { value: 'brightness', label: 'Brightness' },
             { value: 'hue', label: 'Hue' },
             { value: 'saturation', label: 'Saturation' },
+            { value: 'depth', label: 'Depth' },
           ]),
           rangeControl('threshold', 'Threshold', 0.25, 0, 0.5, 0.05),
-          rangeControl('streak-length', 'Streak Length', 100, 10, 300, 10),
-          rangeControl('intensity', 'Intensity', 0.8, 0, 1, 0.05),
-          rangeControl('randomness', 'Randomness', 0.3, 0, 1, 0.05),
+          rangeControl('streak-length', 'Streak Length', 500, 1, 2000, 1),
+          rangeControl('intensity', 'Intensity', 1, 0, 2, 0.05),
+          rangeControl('randomness', 'Randomness', 0.5, 0, 5, 0.1),
           toggleControl('reverse', 'Reverse', false),
         ],
       },
@@ -783,9 +784,9 @@ export const GRAINRAD_EFFECTS: GrainradEffectDefinition[] = [
       {
         title: 'Color',
         controls: [
-          colorControl('highlight', 'Highlight', '#e6a928', { light: '#e6a928', dark: '#ffe08a' }),
-          colorControl('midtone', 'Midtone', '#c93472', { light: '#c93472', dark: '#ff5a9d' }),
-          colorControl('shadow', 'Shadow', '#35115c', { light: '#35115c', dark: '#1b0836' }),
+          colorControl('start-color', 'Start Color', '#35115c', { light: '#35115c', dark: '#1b0836' }),
+          colorControl('middle-color', 'Middle Color', '#c93472', { light: '#c93472', dark: '#ff5a9d' }),
+          colorControl('end-color', 'End Color', '#e6a928', { light: '#e6a928', dark: '#ffe08a' }),
           colorControl('background', 'Background', '#ffffff', { light: '#ffffff', dark: '#000000' }),
           rangeControl('mix', 'Mix', 1, 0, 2, 0.05),
         ],

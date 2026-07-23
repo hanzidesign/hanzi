@@ -70,9 +70,9 @@ describe('Phase 5F Grainrad runtime effect compiler', () => {
       'dots.background',
       'contour.line-color',
       'contour.background',
-      'pixel-sort.highlight',
-      'pixel-sort.midtone',
-      'pixel-sort.shadow',
+      'pixel-sort.start-color',
+      'pixel-sort.middle-color',
+      'pixel-sort.end-color',
       'pixel-sort.background',
       'blockify.foreground',
       'blockify.background',
@@ -504,12 +504,30 @@ describe('Phase 5F Grainrad runtime effect compiler', () => {
     expect(runtime.effectColorA).toEqual([1, 1, 1])
     expect(runtime.effectColorB).toEqual([0, 0, 0])
 
+    expect(compileGrainradEffectRuntime({
+      selectedEffectId: 'pixel-sort',
+      controls: { ...defaults, 'sort-mode': 'depth' },
+    }).effectValues[1]).toBe(4)
+
     expect(['horizontal', 'vertical', 'diagonal', 'anti-diagonal', 'radial'].map((direction) => (
       compileGrainradEffectRuntime({
         selectedEffectId: 'pixel-sort',
         controls: { ...defaults, direction },
       }).effectValues[0]
     ))).toEqual([0, 1, 2, 3, 4])
+
+    expect(compileGrainradEffectRuntime({
+      selectedEffectId: 'pixel-sort',
+      controls: {},
+    }).effectValues[3]).toBe(500)
+    expect(compileGrainradEffectRuntime({
+      selectedEffectId: 'pixel-sort',
+      controls: {},
+    }).effectValues[4]).toBe(1)
+    expect(compileGrainradEffectRuntime({
+      selectedEffectId: 'pixel-sort',
+      controls: {},
+    }).effectValues[5]).toBe(0.5)
   })
 
   it('packs Blockify controls in the exact production uniform units and ids', () => {

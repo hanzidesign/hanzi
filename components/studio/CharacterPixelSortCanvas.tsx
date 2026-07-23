@@ -15,15 +15,12 @@ import {
 import { SVGLoader } from 'three/addons/loaders/SVGLoader.js'
 import {
   Color,
-  DataTexture,
   Group,
   NearestFilter,
   RGBAFormat,
   Scene,
   UnsignedByteType,
   WebGLRenderTarget,
-  type ShaderMaterial,
-  type WebGLRenderer,
 } from 'three'
 import { useStudioStore } from '@/app/studio/studio-store'
 import { withoutSharedControllerValues } from './grainrad-shared-controls'
@@ -36,25 +33,22 @@ import {
   attachCharacterMeshGpuDeform,
   type CharacterMeshGpuDeformBinding,
 } from '@/components/studio/character-mesh-gpu-deform'
-import {
-  type PixelSortSettings,
-} from '@/components/studio/pixel-sort-core'
 import { readPixelSortSettings } from '@/components/studio/pixel-sort-settings'
 import {
   createPixelSortPresentMaterial,
-  setPixelSortExactFrame,
   setPixelSortPresentMode,
   setPixelSortPreviewResolution,
   setPixelSortPreviewSettings,
   setPixelSortPreviewSource,
+  setPixelSortPreviewTrail,
 } from '@/components/studio/pixel-sort-present-material'
 import {
-  PixelSortWorkerClient,
-} from '@/components/studio/pixel-sort-worker-client'
-import {
-  createPixelSortExportGenerationCoordinator,
-  type PixelSortExportGenerationCoordinator,
-} from '@/components/studio/pixel-sort-export-generation'
+  createPixelSortTrailResources,
+  disposePixelSortTrailResources,
+  renderPixelSortTrails,
+  resizePixelSortTrailResources,
+  type PixelSortTrailResources,
+} from '@/components/studio/pixel-sort-trail-material'
 import { applyDeltaRotation } from '@/components/studio/shader-canvas-math'
 import {
   addCharacterModelCopies,
@@ -62,7 +56,7 @@ import {
 } from '@/components/studio/character-model-arrangement'
 import { createCharacterModelToneMaterial } from '@/components/studio/character-model-tone-material'
 
-const PREVIEW_MAX_DIMENSION = 768
+const PIXEL_SORT_PREVIEW_MAX_DIMENSION = 768
 
 export default function CharacterPixelSortCanvas() {
   const svgData = useStudioStore((store) => store.runtime.svgData)
@@ -138,20 +132,15 @@ function CharacterPixelSortScene({
   const [geometryResult, setGeometryResult] = useState<CharacterMeshGeometryResult | null>(null)
   const geometryResultRef = useRef<CharacterMeshGeometryResult | null>(null)
   const sourceRef = useRef<PixelSortSourceScene | null>(null)
-  const workerRef = useRef<PixelSortWorkerClient | null>(null)
-  const disposedRef = useRef(false)
   const captureQueuedRef = useRef(true)
+  const trailDirtyRef = useRef(true)
   const lastRequestedExportRef = useRef(0)
   const pendingExportAckRef = useRef(0)
-  const [generation] = useState(() => createPixelSortExportGenerationCoordinator<
-    Uint8Array,
-    { rgba: ArrayBuffer; width: number; height: number },
-    DataTexture
-  >())
+  const preparedExportAckRef = useRef(0)
   const renderTarget = useMemo(() => createPixelSortRenderTarget(), [])
+  const trailResourcesRef = useRef<PixelSortTrailResources | null>(null)
   const [presentation] = useState(() => {
     return {
-      currentTexture: renderTarget.texture,
       material: createPixelSortPresentMaterial(renderTarget.texture),
     }
   })
@@ -159,32 +148,33 @@ function CharacterPixelSortScene({
   useEffect(() => {
     settingsRef.current = settings
     setPixelSortPreviewSettings(presentation.material, settings)
-    invalidatePixelSortExport(generation, pendingExportAckRef, lastRequestedExportRef)
-  }, [generation, presentation.material, settings])
+    trailDirtyRef.current = true
+    invalidatePixelSortExport(pendingExportAckRef, lastRequestedExportRef, preparedExportAckRef)
+  }, [presentation.material, settings])
 
   useEffect(() => {
-    disposedRef.current = false
     captureQueuedRef.current = true
 
     return () => {
-      disposedRef.current = true
-      invalidatePixelSortExport(generation, pendingExportAckRef, lastRequestedExportRef)
-      workerRef.current?.dispose()
-      workerRef.current = null
+      invalidatePixelSortExport(pendingExportAckRef, lastRequestedExportRef, preparedExportAckRef)
+      if (trailResourcesRef.current) {
+        disposePixelSortTrailResources(trailResourcesRef.current)
+        trailResourcesRef.current = null
+      }
     }
-  }, [generation])
+  }, [])
 
   useEffect(() => {
     if (renderMode.exportRender) return
-    invalidatePixelSortExport(generation, pendingExportAckRef, lastRequestedExportRef)
+    invalidatePixelSortExport(pendingExportAckRef, lastRequestedExportRef, preparedExportAckRef)
     setPixelSortPresentMode(presentation.material, 'preview')
     setPixelSortPreviewSource(presentation.material, renderTarget.texture)
-  }, [generation, renderMode.exportRender, presentation.material, renderTarget.texture])
+  }, [renderMode.exportRender, presentation.material, renderTarget.texture])
 
   useEffect(() => {
     if (!svgData || svgLoadError) {
       replaceGeometryResult(null, geometryResultRef, setGeometryResult)
-      invalidatePixelSortExport(generation, pendingExportAckRef, lastRequestedExportRef)
+      invalidatePixelSortExport(pendingExportAckRef, lastRequestedExportRef, preparedExportAckRef)
       return
     }
 
@@ -205,10 +195,10 @@ function CharacterPixelSortScene({
 
       replaceGeometryResult(nextGeometryResult, geometryResultRef, setGeometryResult)
       captureQueuedRef.current = true
-      invalidatePixelSortExport(generation, pendingExportAckRef, lastRequestedExportRef)
+      invalidatePixelSortExport(pendingExportAckRef, lastRequestedExportRef, preparedExportAckRef)
     } catch {
       replaceGeometryResult(null, geometryResultRef, setGeometryResult)
-      invalidatePixelSortExport(generation, pendingExportAckRef, lastRequestedExportRef)
+      invalidatePixelSortExport(pendingExportAckRef, lastRequestedExportRef, preparedExportAckRef)
     }
   }, [
     meshSettings.bend,
@@ -220,13 +210,11 @@ function CharacterPixelSortScene({
     meshSettings.deform,
     svgData,
     svgLoadError,
-    generation,
   ])
 
   useEffect(() => {
     return () => {
       disposeCurrentGeometryResult(geometryResultRef)
-      if (presentation.currentTexture !== renderTarget.texture) presentation.currentTexture.dispose()
       presentation.material.dispose()
       renderTarget.dispose()
     }
@@ -238,13 +226,13 @@ function CharacterPixelSortScene({
       : null
     sourceRef.current = nextSource
     captureQueuedRef.current = true
-    invalidatePixelSortExport(generation, pendingExportAckRef, lastRequestedExportRef)
+    invalidatePixelSortExport(pendingExportAckRef, lastRequestedExportRef, preparedExportAckRef)
 
     return () => {
       if (sourceRef.current === nextSource) sourceRef.current = null
       nextSource?.dispose()
     }
-  }, [generation, geometryResult, meshSettings.repeat])
+  }, [geometryResult, meshSettings.repeat])
 
   useEffect(() => {
     const source = sourceRef.current
@@ -258,8 +246,8 @@ function CharacterPixelSortScene({
     )
     source.group.scale.setScalar(meshSettings.scale)
     captureQueuedRef.current = true
-    invalidatePixelSortExport(generation, pendingExportAckRef, lastRequestedExportRef)
-  }, [generation, geometryResult, meshSettings.position, meshSettings.rotation, meshSettings.scale])
+    invalidatePixelSortExport(pendingExportAckRef, lastRequestedExportRef, preparedExportAckRef)
+  }, [geometryResult, meshSettings.position, meshSettings.rotation, meshSettings.scale])
 
   useCharacterMeshAnimation(sourceRef, meshSettings.deform)
 
@@ -281,14 +269,37 @@ function CharacterPixelSortScene({
     const dimensions = getPixelSortDimensions({
       width: size.width * gl.getPixelRatio(),
       height: size.height * gl.getPixelRatio(),
-      maxDimension: renderMode.exportRender ? Number.POSITIVE_INFINITY : PREVIEW_MAX_DIMENSION,
+      maxDimension: renderMode.exportRender
+        ? Number.POSITIVE_INFINITY
+        : PIXEL_SORT_PREVIEW_MAX_DIMENSION,
     })
+    const visualDimensions = renderMode.resolveVisualFrameSize(
+      'pixel-sort',
+      dimensions.width,
+      dimensions.height,
+    )
     if (renderTarget.width !== dimensions.width || renderTarget.height !== dimensions.height) {
       renderTarget.setSize(dimensions.width, dimensions.height)
+      if (!trailResourcesRef.current) {
+        trailResourcesRef.current = createPixelSortTrailResources()
+      }
+      resizePixelSortTrailResources(
+        trailResourcesRef.current,
+        dimensions.width,
+        dimensions.height,
+        settingsRef.current.direction,
+      )
+      trailDirtyRef.current = true
       captureQueuedRef.current = true
-      setPixelSortPreviewResolution(presentation.material, dimensions.width, dimensions.height)
-      invalidatePixelSortExport(generation, pendingExportAckRef, lastRequestedExportRef)
+      invalidatePixelSortExport(pendingExportAckRef, lastRequestedExportRef, preparedExportAckRef)
     }
+    setPixelSortPreviewResolution(
+      presentation.material,
+      dimensions.width,
+      dimensions.height,
+      visualDimensions.width,
+      visualDimensions.height,
+    )
 
     const exportCaptureRequested = renderMode.exportRender
       && renderMode.requestId > 0
@@ -307,32 +318,57 @@ function CharacterPixelSortScene({
       gl.render(source.scene, camera)
       gl.setRenderTarget(previousTarget)
       captureQueuedRef.current = false
+      trailDirtyRef.current = true
     }
 
-    // The preview samples the render target texture directly. No worker,
-    // readback, or DataTexture is involved in this path.
+    // Preview and export sample the same render target and GPU trail directly;
+    // neither path uses a worker or renderer readback.
     setPixelSortPreviewSource(presentation.material, renderTarget.texture)
+
+    if (trailDirtyRef.current) {
+      const trailResources = trailResourcesRef.current ?? createPixelSortTrailResources()
+      trailResourcesRef.current = trailResources
+      if (trailResources.width !== dimensions.width || trailResources.height !== dimensions.height) {
+        resizePixelSortTrailResources(
+          trailResources,
+          dimensions.width,
+          dimensions.height,
+          settingsRef.current.direction,
+        )
+      }
+      const trail = renderPixelSortTrails(
+        gl,
+        trailResources,
+        renderTarget.texture,
+        settingsRef.current,
+      )
+      if (trail) {
+        setPixelSortPreviewTrail(presentation.material, trail.texture, {
+          available: true,
+          radial: trail.radial,
+          maxRadius: trail.dimensions?.maxRadius,
+          angularBins: trail.dimensions?.angularBins,
+          radialBins: trail.dimensions?.radialBins,
+        })
+      } else {
+        setPixelSortPreviewTrail(presentation.material, renderTarget.texture, {
+          available: false,
+        })
+      }
+      trailDirtyRef.current = false
+    }
 
     if (exportCaptureRequested) {
       lastRequestedExportRef.current = renderMode.requestId
       setPixelSortPresentMode(presentation.material, 'preview')
-      const worker = workerRef.current ?? new PixelSortWorkerClient()
-      workerRef.current = worker
-      void processPixelSortExport({
-        gl,
-        height: dimensions.height,
-        presentation,
-        renderTarget,
-        settings: settingsRef.current,
-        width: dimensions.width,
-        worker,
-        captureQueuedRef,
-        disposedRef,
-        generation,
-        lastRequestedExportRef,
-        requestId: renderMode.requestId,
-        pendingExportAckRef,
-      })
+      preparedExportAckRef.current = renderMode.requestId
+    } else if (
+      renderMode.exportRender
+      && preparedExportAckRef.current === renderMode.requestId
+      && !trailDirtyRef.current
+    ) {
+      preparedExportAckRef.current = 0
+      pendingExportAckRef.current = renderMode.requestId
     }
   }, -1)
 
@@ -358,97 +394,13 @@ function CharacterPixelSortScene({
 }
 
 function invalidatePixelSortExport(
-  generation: PixelSortExportGenerationCoordinator<
-    Uint8Array,
-    { rgba: ArrayBuffer; width: number; height: number },
-    DataTexture
-  >,
   pendingExportAckRef: MutableRefObject<number>,
   lastRequestedExportRef: MutableRefObject<number>,
+  preparedExportAckRef: MutableRefObject<number>,
 ) {
-  generation.invalidate()
   pendingExportAckRef.current = 0
   lastRequestedExportRef.current = 0
-}
-
-function processPixelSortExport({
-  requestId,
-  gl,
-  height,
-  presentation,
-  renderTarget,
-  settings,
-  width,
-  worker,
-  captureQueuedRef,
-  disposedRef,
-  generation,
-  lastRequestedExportRef,
-  pendingExportAckRef,
-}: {
-  requestId: number
-  gl: WebGLRenderer
-  height: number
-  presentation: PixelSortPresentation
-  renderTarget: WebGLRenderTarget
-  settings: PixelSortSettings
-  width: number
-  worker: PixelSortWorkerClient
-  captureQueuedRef: MutableRefObject<boolean>
-  disposedRef: MutableRefObject<boolean>
-  generation: PixelSortExportGenerationCoordinator<
-    Uint8Array,
-    { rgba: ArrayBuffer; width: number; height: number },
-    DataTexture
-  >
-  lastRequestedExportRef: MutableRefObject<number>
-  pendingExportAckRef: MutableRefObject<number>
-}) {
-  void generation.request({
-    requestId,
-    readback: async () => {
-      const source = new Uint8Array(width * height * 4)
-      const pixels = await gl.readRenderTargetPixelsAsync(
-        renderTarget,
-        0,
-        0,
-        width,
-        height,
-        source,
-      )
-      return pixels as Uint8Array
-    },
-    render: async (pixels) => worker.render({
-      height,
-      rgba: pixels.buffer as ArrayBuffer,
-      settings,
-      width,
-    }),
-    createTexture: (result) => createPixelSortTexture(
-      new Uint8Array(result.rgba),
-      result.width,
-      result.height,
-    ),
-    present: (nextTexture) => {
-      const previousTexture = presentation.currentTexture
-      presentation.currentTexture = nextTexture
-      setPixelSortExactFrame(presentation.material, nextTexture)
-      setPixelSortPresentMode(presentation.material, 'exact')
-      if (previousTexture !== renderTarget.texture) previousTexture.dispose()
-    },
-    acknowledge: () => {
-      if (!disposedRef.current) pendingExportAckRef.current = requestId
-    },
-    onError: () => {
-      lastRequestedExportRef.current = 0
-      captureQueuedRef.current = true
-    },
-  })
-}
-
-type PixelSortPresentation = {
-  currentTexture: DataTexture | WebGLRenderTarget['texture']
-  material: ShaderMaterial
+  preparedExportAckRef.current = 0
 }
 
 function createPixelSortRenderTarget() {
@@ -461,15 +413,6 @@ function createPixelSortRenderTarget() {
   })
   renderTarget.texture.generateMipmaps = false
   return renderTarget
-}
-
-function createPixelSortTexture(data: Uint8Array, width: number, height: number) {
-  const texture = new DataTexture(data, width, height, RGBAFormat, UnsignedByteType)
-  texture.magFilter = NearestFilter
-  texture.minFilter = NearestFilter
-  texture.generateMipmaps = false
-  texture.needsUpdate = true
-  return texture
 }
 
 export function getPixelSortDimensions({
@@ -505,7 +448,7 @@ export function createPixelSortSourceScene(
 ): PixelSortSourceScene {
   const scene = new Scene()
   const group = new Group()
-  const material = createCharacterModelToneMaterial()
+  const material = createCharacterModelToneMaterial({ encodeDepthAlpha: true })
   const gpuDeform = geometryResult.gpuDeformActive
     ? attachCharacterMeshGpuDeform(material, 'custom')
     : null

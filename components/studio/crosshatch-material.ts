@@ -120,9 +120,10 @@ float crosshatchValueNoise(vec2 p) {
 float crosshatchPattern(vec2 uv, float angle, float spacing, float width, float seed, float phase, float randomness) {
   float sine = sin(angle);
   float cosine = cos(angle);
-  float rotatedX = uv.x * cosine - uv.y * sine;
-  float rotatedY = uv.x * sine + uv.y * cosine;
-  float scaledX = rotatedX * u_resolution.x / spacing + phase;
+  vec2 pixelPosition = uv * u_resolution;
+  float rotatedX = pixelPosition.x * cosine - pixelPosition.y * sine;
+  float rotatedY = pixelPosition.x * sine + pixelPosition.y * cosine;
+  float scaledX = rotatedX / spacing + phase;
 
   float wobble = 0.0;
   if (randomness > 0.0) {
@@ -132,7 +133,7 @@ float crosshatchPattern(vec2 uv, float angle, float spacing, float width, float 
 
   float distanceToLine = abs(fract(scaledX + wobble) - 0.5);
   float halfWidth = width * 0.5;
-  float aa = 1.5 / u_resolution.x;
+  float aa = 1.5 / max(spacing, 0.0001);
   return 1.0 - smoothstep(halfWidth - aa, halfWidth + aa, distanceToLine);
 }
 

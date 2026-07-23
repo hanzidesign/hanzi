@@ -226,8 +226,11 @@ export default function CharacterPanel() {
                     setScrollbarVisible(false)
                   }}
                 >
-                  <span>{optionYear}</span>
-                  <span className={classes.hanziGlyph}>({optionCharacter})</span>
+                  <span className={classes.characterOptionYear}>{optionYear}</span>
+                  <span className={classes.characterOptionMeaning}>
+                    {meaning[country]?.[optionYear]}
+                  </span>
+                  <span className={classes.hanziGlyph}>{optionCharacter}</span>
                 </button>
               ))}
             </div>

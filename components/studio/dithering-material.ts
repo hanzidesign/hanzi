@@ -144,7 +144,9 @@ float randomThreshold(vec2 pixel, float seed) {
 
 vec2 channelOffset(float degrees) {
   float radians = degrees * 0.017453292519943295;
-  return vec2(cos(radians), sin(radians)) * u_maxDisplace / max(u_sourceSize, vec2(1.0));
+  // Displacement is specified in preview-visual pixels. The source texture
+  // remains sampled at its actual size, so convert through the visual frame.
+  return vec2(cos(radians), sin(radians)) * u_maxDisplace / max(u_resolution, vec2(1.0));
 }
 
 vec3 applyChromaticDisplacement(vec2 sourceUv) {
@@ -222,7 +224,7 @@ float applyModulation(float luminance, vec2 pixel) {
   if (u_modulationEnabled < 0.5 || u_modAmplitude <= 0.0) {
     return luminance;
   }
-  vec2 normalized = pixel / max(u_sourceSize, vec2(1.0));
+  vec2 normalized = pixel / max(u_resolution, vec2(1.0));
   float frequency = max(u_modFrequency, 0.0001);
   float signal = sin(normalized.x * frequency * 6.2831853);
   if (u_modulationType > 0.5 && u_modulationType < 1.5) {
@@ -306,12 +308,12 @@ vec3 applyColorMode(vec3 sourceColor, float luminance, float dithered, vec2 dith
 }
 
 void main() {
-  vec2 sourcePixel = floor(v_uv * u_sourceSize / u_matrixSize) * u_matrixSize;
-  vec2 sourceUv = (sourcePixel + vec2(0.5)) / u_sourceSize;
+  vec2 visualPixel = v_uv * u_resolution;
+  vec2 ditherCell = floor(visualPixel / u_matrixSize);
+  vec2 sourceUv = (ditherCell * u_matrixSize + vec2(0.5)) / max(u_resolution, vec2(1.0));
   vec3 sourceColor = sampleSharpenedSource(sourceUv);
   float luminance = adjustLuminance(dot(sourceColor, vec3(0.299, 0.587, 0.114)));
-  luminance = applyModulation(luminance, sourcePixel);
-  vec2 ditherCell = floor(sourcePixel / u_matrixSize);
+  luminance = applyModulation(luminance, visualPixel);
   float dithered = applyDitheringAlgorithm(luminance, ditherCell);
   vec3 color = applyColorMode(sourceColor, luminance, dithered, ditherCell);
   color = applySharedProcessing(color, luminance);

@@ -96,13 +96,13 @@ describe('Studio color behavior', () => {
     expect(BLOCKIFY_FRAGMENT_SHADER).not.toContain('u_borderColor')
   })
 
-  it('defaults Pixel Sort mode to hue', () => {
+  it('defaults Pixel Sort mode to Depth', () => {
     const pixelSort = GRAINRAD_EFFECTS.find((effect) => effect.id === 'pixel-sort')!
     const sortMode = pixelSort.settingGroups
       .flatMap((group) => group.controls)
       .find((control) => control.id === 'sort-mode')
 
-    expect(sortMode?.defaultValue).toBe('hue')
+    expect(sortMode?.defaultValue).toBe('depth')
   })
 })
 

@@ -537,6 +537,282 @@ describe('Phase 5D Grainrad terminal Studio store', () => {
     })
   })
 
+  it('migrates the former Pixel Sort Hue default to Depth in both themes', () => {
+    const base = createInitialStudioStoreState()
+    const persistedState = {
+      ...base,
+      view: { ...base.view, theme: 'light' as const },
+      grainradEffect: {
+        ...base.grainradEffect,
+        controls: {
+          ...base.grainradEffect.controls,
+          'pixel-sort': { ...base.grainradEffect.controls['pixel-sort'], 'sort-mode': 'hue' },
+        },
+        controlsByTheme: {
+          light: {
+            ...base.grainradEffect.controlsByTheme.light,
+            'pixel-sort': {
+              ...base.grainradEffect.controlsByTheme.light['pixel-sort'],
+              'sort-mode': 'hue',
+            },
+          },
+          dark: {
+            ...base.grainradEffect.controlsByTheme.dark,
+            'pixel-sort': {
+              ...base.grainradEffect.controlsByTheme.dark['pixel-sort'],
+              'sort-mode': 'saturation',
+            },
+          },
+        },
+      },
+    }
+    const { storage } = createMemoryStorage(JSON.stringify({ state: persistedState, version: 8 }))
+    const store = createStudioStore(storage)
+
+    expect(store.getState().grainradEffect.controlsByTheme.light['pixel-sort']['sort-mode'])
+      .toBe('depth')
+    expect(store.getState().grainradEffect.controlsByTheme.dark['pixel-sort']['sort-mode'])
+      .toBe('saturation')
+    expect(store.getState().grainradEffect.controls['pixel-sort']['sort-mode']).toBe('depth')
+
+    store.getState().toggleStudioTheme()
+    expect(store.getState().grainradEffect.controls['pixel-sort']['sort-mode']).toBe('saturation')
+  })
+
+  it('migrates legacy active Pixel Sort controls and resets invalid values to Depth', () => {
+    const base = createInitialStudioStoreState()
+    const { controlsByTheme: _controlsByTheme, ...legacyGrainradEffect } = base.grainradEffect
+    void _controlsByTheme
+    const persistedState = {
+      ...base,
+      grainradEffect: {
+        ...legacyGrainradEffect,
+        controls: {
+          ...legacyGrainradEffect.controls,
+          'pixel-sort': { ...legacyGrainradEffect.controls['pixel-sort'], 'sort-mode': 'hue' },
+        },
+      },
+    }
+    const { storage } = createMemoryStorage(JSON.stringify({ state: persistedState, version: 6 }))
+    const store = createStudioStore(storage)
+
+    expect(store.getState().grainradEffect.controls['pixel-sort']['sort-mode']).toBe('depth')
+    store.getState().setSelectedEffect('pixel-sort')
+    store.getState().setGrainradEffectControl('pixel-sort', 'sort-mode', 'invalid')
+    expect(store.getState().grainradEffect.controls['pixel-sort']['sort-mode']).toBe('depth')
+    store.getState().setGrainradEffectControl('pixel-sort', 'sort-mode', 'hue')
+    store.getState().resetSelectedEffectControls()
+    expect(store.getState().grainradEffect.controls['pixel-sort']['sort-mode']).toBe('depth')
+  })
+
+  it('migrates the former Pixel Sort streak default in active and themed controls', () => {
+    const base = createInitialStudioStoreState()
+    const persistedState = {
+      ...base,
+      view: { ...base.view, theme: 'light' as const },
+      grainradEffect: {
+        ...base.grainradEffect,
+        controls: {
+          ...base.grainradEffect.controls,
+          'pixel-sort': {
+            ...base.grainradEffect.controls['pixel-sort'],
+            'streak-length': 100,
+          },
+        },
+        controlsByTheme: {
+          light: {
+            ...base.grainradEffect.controlsByTheme.light,
+            'pixel-sort': {
+              ...base.grainradEffect.controlsByTheme.light['pixel-sort'],
+              'streak-length': 100,
+            },
+          },
+          dark: {
+            ...base.grainradEffect.controlsByTheme.dark,
+            'pixel-sort': {
+              ...base.grainradEffect.controlsByTheme.dark['pixel-sort'],
+              'streak-length': 270,
+            },
+          },
+        },
+      },
+    }
+    const { storage } = createMemoryStorage(JSON.stringify({ state: persistedState, version: 9 }))
+    const store = createStudioStore(storage)
+
+    expect(store.getState().grainradEffect.controls['pixel-sort']['streak-length']).toBe(500)
+    expect(store.getState().grainradEffect.controlsByTheme.light['pixel-sort']['streak-length'])
+      .toBe(500)
+    expect(store.getState().grainradEffect.controlsByTheme.dark['pixel-sort']['streak-length'])
+      .toBe(270)
+
+    store.getState().toggleStudioTheme()
+    expect(store.getState().grainradEffect.controls['pixel-sort']['streak-length']).toBe(270)
+  })
+
+  it('migrates legacy Pixel Sort gradient color ids in active and themed controls', () => {
+    const base = createInitialStudioStoreState()
+    const legacyColors = (
+      controls: Record<string, string | number | boolean>,
+      colors: { shadow: string; midtone: string; highlight: string; startColor?: string },
+    ) => {
+      const rest = { ...controls }
+      delete rest['start-color']
+      delete rest['middle-color']
+      delete rest['end-color']
+      return {
+        ...rest,
+        shadow: colors.shadow,
+        midtone: colors.midtone,
+        highlight: colors.highlight,
+        ...(colors.startColor ? { 'start-color': colors.startColor } : {}),
+      }
+    }
+    const persistedState = {
+      ...base,
+      view: { ...base.view, theme: 'light' as const },
+      grainradEffect: {
+        ...base.grainradEffect,
+        controls: {
+          ...base.grainradEffect.controls,
+          'pixel-sort': legacyColors(base.grainradEffect.controls['pixel-sort'], {
+            shadow: '#111111', midtone: '#222222', highlight: '#333333', startColor: '#aaaaaa',
+          }),
+        },
+        controlsByTheme: {
+          light: {
+            ...base.grainradEffect.controlsByTheme.light,
+            'pixel-sort': legacyColors(base.grainradEffect.controlsByTheme.light['pixel-sort'], {
+              shadow: '#444444', midtone: '#555555', highlight: '#666666', startColor: '#aaaaaa',
+            }),
+          },
+          dark: {
+            ...base.grainradEffect.controlsByTheme.dark,
+            'pixel-sort': legacyColors(base.grainradEffect.controlsByTheme.dark['pixel-sort'], {
+              shadow: '#777777', midtone: '#888888', highlight: '#999999',
+            }),
+          },
+        },
+      },
+    }
+    const { storage } = createMemoryStorage(JSON.stringify({ state: persistedState, version: 10 }))
+    const store = createStudioStore(storage)
+
+    expect(store.getState().grainradEffect.controls['pixel-sort']).toMatchObject({
+      'start-color': '#aaaaaa',
+      'middle-color': '#555555',
+      'end-color': '#666666',
+    })
+    expect(store.getState().grainradEffect.controlsByTheme.light['pixel-sort']).toMatchObject({
+      'start-color': '#aaaaaa', 'middle-color': '#555555', 'end-color': '#666666',
+    })
+    expect(store.getState().grainradEffect.controlsByTheme.dark['pixel-sort']).toMatchObject({
+      'start-color': '#777777', 'middle-color': '#888888', 'end-color': '#999999',
+    })
+    for (const controls of [
+      store.getState().grainradEffect.controls['pixel-sort'],
+      store.getState().grainradEffect.controlsByTheme.light['pixel-sort'],
+      store.getState().grainradEffect.controlsByTheme.dark['pixel-sort'],
+    ]) {
+      expect(controls).not.toHaveProperty('shadow')
+      expect(controls).not.toHaveProperty('midtone')
+      expect(controls).not.toHaveProperty('highlight')
+    }
+  })
+
+  it('migrates only the former Pixel Sort randomness default in active and themed controls', () => {
+    const base = createInitialStudioStoreState()
+    const persistedState = {
+      ...base,
+      view: { ...base.view, theme: 'light' as const },
+      grainradEffect: {
+        ...base.grainradEffect,
+        controls: {
+          ...base.grainradEffect.controls,
+          'pixel-sort': { ...base.grainradEffect.controls['pixel-sort'], randomness: 0.3 },
+        },
+        controlsByTheme: {
+          light: {
+            ...base.grainradEffect.controlsByTheme.light,
+            'pixel-sort': { ...base.grainradEffect.controlsByTheme.light['pixel-sort'], randomness: 0.3 },
+          },
+          dark: {
+            ...base.grainradEffect.controlsByTheme.dark,
+            'pixel-sort': { ...base.grainradEffect.controlsByTheme.dark['pixel-sort'], randomness: 2.4 },
+          },
+        },
+      },
+    }
+    const { storage } = createMemoryStorage(JSON.stringify({ state: persistedState, version: 11 }))
+    const store = createStudioStore(storage)
+
+    expect(store.getState().grainradEffect.controls['pixel-sort'].randomness).toBe(0.5)
+    expect(store.getState().grainradEffect.controlsByTheme.light['pixel-sort'].randomness).toBe(0.5)
+    expect(store.getState().grainradEffect.controlsByTheme.dark['pixel-sort'].randomness).toBe(2.4)
+  })
+
+  it('migrates only the former Pixel Sort streak default from 250 to 500', () => {
+    const base = createInitialStudioStoreState()
+    const persistedState = {
+      ...base,
+      view: { ...base.view, theme: 'light' as const },
+      grainradEffect: {
+        ...base.grainradEffect,
+        controls: {
+          ...base.grainradEffect.controls,
+          'pixel-sort': { ...base.grainradEffect.controls['pixel-sort'], 'streak-length': 250 },
+        },
+        controlsByTheme: {
+          light: {
+            ...base.grainradEffect.controlsByTheme.light,
+            'pixel-sort': { ...base.grainradEffect.controlsByTheme.light['pixel-sort'], 'streak-length': 250 },
+          },
+          dark: {
+            ...base.grainradEffect.controlsByTheme.dark,
+            'pixel-sort': { ...base.grainradEffect.controlsByTheme.dark['pixel-sort'], 'streak-length': 640 },
+          },
+        },
+      },
+    }
+    const { storage } = createMemoryStorage(JSON.stringify({ state: persistedState, version: 12 }))
+    const store = createStudioStore(storage)
+
+    expect(store.getState().grainradEffect.controls['pixel-sort']['streak-length']).toBe(500)
+    expect(store.getState().grainradEffect.controlsByTheme.light['pixel-sort']['streak-length']).toBe(500)
+    expect(store.getState().grainradEffect.controlsByTheme.dark['pixel-sort']['streak-length']).toBe(640)
+  })
+
+  it('migrates only the former Pixel Sort intensity default from 0.8 to 1', () => {
+    const base = createInitialStudioStoreState()
+    const persistedState = {
+      ...base,
+      view: { ...base.view, theme: 'light' as const },
+      grainradEffect: {
+        ...base.grainradEffect,
+        controls: {
+          ...base.grainradEffect.controls,
+          'pixel-sort': { ...base.grainradEffect.controls['pixel-sort'], intensity: 0.8 },
+        },
+        controlsByTheme: {
+          light: {
+            ...base.grainradEffect.controlsByTheme.light,
+            'pixel-sort': { ...base.grainradEffect.controlsByTheme.light['pixel-sort'], intensity: 0.8 },
+          },
+          dark: {
+            ...base.grainradEffect.controlsByTheme.dark,
+            'pixel-sort': { ...base.grainradEffect.controlsByTheme.dark['pixel-sort'], intensity: 1.4 },
+          },
+        },
+      },
+    }
+    const { storage } = createMemoryStorage(JSON.stringify({ state: persistedState, version: 13 }))
+    const store = createStudioStore(storage)
+
+    expect(store.getState().grainradEffect.controls['pixel-sort'].intensity).toBe(1)
+    expect(store.getState().grainradEffect.controlsByTheme.light['pixel-sort'].intensity).toBe(1)
+    expect(store.getState().grainradEffect.controlsByTheme.dark['pixel-sort'].intensity).toBe(1.4)
+  })
+
   it('starts with an effect-scoped storage key and dark Studio theme', () => {
     const initial = createInitialStudioStoreState()
 
@@ -966,10 +1242,10 @@ describe('Phase 5D Grainrad terminal Studio store', () => {
 
     expect(store.getState().grainradEffect.controls['pixel-sort']).toMatchObject({
       direction: 'horizontal',
-      'sort-mode': 'hue',
+      'sort-mode': 'depth',
       threshold: 0.5,
-      'streak-length': 10,
-      intensity: 1,
+      'streak-length': 1,
+      intensity: 2,
       randomness: 0,
       reverse: false,
       brightness: 100,
@@ -981,11 +1257,11 @@ describe('Phase 5D Grainrad terminal Studio store', () => {
 
     expect(store.getState().grainradEffect.controls['pixel-sort']).toMatchObject({
       direction: 'horizontal',
-      'sort-mode': 'hue',
+      'sort-mode': 'depth',
       threshold: 0.25,
-      'streak-length': 100,
-      intensity: 0.8,
-      randomness: 0.3,
+      'streak-length': 500,
+      intensity: 1,
+      randomness: 0.5,
       reverse: false,
       brightness: 0,
       contrast: 0,

@@ -103,7 +103,12 @@ function CharacterDitheringScene({
   const { camera, gl, size } = useThree()
   const meshSettings = useStudioStore((store) => store.mesh)
   const animation = useStudioStore((store) => store.animation)
-  const { markExportContentReady, readAnimationTime, reportCharacterRotationY } = useStudioRenderMode()
+  const {
+    markExportContentReady,
+    readAnimationTime,
+    reportCharacterRotationY,
+    resolveVisualFrameSize,
+  } = useStudioRenderMode()
   const controls = useStudioStore((store) => store.grainradEffect.controls.dithering)
   const [geometryResult, setGeometryResult] = useState<CharacterMeshGeometryResult | null>(null)
   const geometryResultRef = useRef<CharacterMeshGeometryResult | null>(null)
@@ -226,6 +231,7 @@ applyDitheringUniforms(material, withoutSharedControllerValues(controls))
     const pixelRatio = gl.getPixelRatio()
     const width = Math.max(1, Math.round(size.width * pixelRatio))
     const height = Math.max(1, Math.round(size.height * pixelRatio))
+    const visual = resolveVisualFrameSize('canvas', width, height)
 
     if (renderTarget.width !== width || renderTarget.height !== height) {
       renderTarget.setSize(width, height)
@@ -243,7 +249,7 @@ applyDitheringUniforms(material, withoutSharedControllerValues(controls))
     const activeMaterial = materialRef.current
     if (activeMaterial) {
       activeMaterial.uniforms.u_sourceSize.value.set(width, height)
-      activeMaterial.uniforms.u_resolution.value.set(width, height)
+      activeMaterial.uniforms.u_resolution.value.set(visual.width, visual.height)
       activeMaterial.uniforms.u_time = activeMaterial.uniforms.u_time ?? { value: 0 }
       activeMaterial.uniforms.u_time.value = readAnimationTime()
     }

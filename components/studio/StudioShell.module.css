@@ -1358,9 +1358,22 @@
 }
 
 .yearButton {
-  display: flex;
-  justify-content: space-between;
-  gap: 8px;
+  display: grid;
+  grid-template-columns: 4ch minmax(0, 1fr) 1em;
+  align-items: center;
+  column-gap: 8px;
+}
+
+.characterOptionYear {
+  font-variant-numeric: tabular-nums;
+}
+
+.characterOptionMeaning {
+  min-width: 0;
+  overflow: hidden;
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .characterButton:hover,
@@ -1370,6 +1383,7 @@
 }
 
 .hanziGlyph {
+  justify-self: end;
   font-family: var(--font-noto);
 }
 

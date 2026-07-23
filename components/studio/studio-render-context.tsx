@@ -30,6 +30,8 @@ type StudioRenderContextValue = {
   voronoiMaskTextureRef: MutableRefObject<Texture | null>
   reportCharacterRotationY: (rotationY: number) => void
   readCharacterRotationY: (fallback: number) => number
+  reportPointer: (x: number, y: number) => void
+  readPointer: (fallbackX?: number, fallbackY?: number) => { x: number; y: number }
   readAnimationTime: () => number
   timelineActive: boolean
   advanceAnimationTime: (
@@ -38,10 +40,146 @@ type StudioRenderContextValue = {
     timeOffset: number,
     playing: boolean,
   ) => number
+  resolveVisualFrameSize: (
+    scope: StudioVisualFrameScope,
+    actualWidth: number,
+    actualHeight: number,
+  ) => StudioVisualFrameSize
 }
 
 const emptyVoronoiMaskTextureRef: MutableRefObject<Texture | null> = { current: null }
 const TWO_PI = Math.PI * 2
+let latestPreviewPointer: { x: number; y: number } | null = null
+
+export type StudioVisualFrameScope = 'canvas' | 'pixel-sort'
+
+export type StudioVisualFrameSize = Readonly<{
+  width: number
+  height: number
+}>
+
+export type StudioVisualFrame = StudioVisualFrameSize & Readonly<{
+  revision: number
+}>
+
+export type StudioVisualFrameSnapshot = Readonly<{
+  effectId: string
+  canvas?: StudioVisualFrame
+  'pixel-sort'?: StudioVisualFrame
+}>
+
+export type StudioPreviewFrameRegistry = ReturnType<typeof createStudioPreviewFrameRegistry>
+
+export function createStudioPreviewFrameRegistry() {
+  const entries = new Map<string, Map<StudioVisualFrameScope, StudioVisualFrame>>()
+  let revision = 0
+
+  return {
+    report(
+      effectId: string,
+      scope: StudioVisualFrameScope,
+      width: number,
+      height: number,
+    ) {
+      const safeWidth = safeFrameDimension(width)
+      const safeHeight = safeFrameDimension(height)
+      const effectEntries = entries.get(effectId) ?? new Map()
+      const current = effectEntries.get(scope)
+      if (current?.width === safeWidth && current.height === safeHeight) {
+        return current
+      }
+
+      const frame = Object.freeze({
+        width: safeWidth,
+        height: safeHeight,
+        revision: ++revision,
+      })
+      effectEntries.set(scope, frame)
+      entries.set(effectId, effectEntries)
+      return frame
+    },
+    capture(effectId: string): StudioVisualFrameSnapshot {
+      const effectEntries = entries.get(effectId)
+      return Object.freeze({
+        effectId,
+        ...(effectEntries?.get('canvas')
+          ? { canvas: Object.freeze({ ...effectEntries.get('canvas')! }) }
+          : {}),
+        ...(effectEntries?.get('pixel-sort')
+          ? { 'pixel-sort': Object.freeze({ ...effectEntries.get('pixel-sort')! }) }
+          : {}),
+      })
+    },
+    clear() {
+      entries.clear()
+    },
+  }
+}
+
+export function resolveDirectionalPixelScale(
+  actual: StudioVisualFrameSize,
+  visual: StudioVisualFrameSize,
+  axis: Readonly<{ x: number; y: number }>,
+) {
+  const axisLength = Math.hypot(axis.x, axis.y)
+  if (!Number.isFinite(axisLength) || axisLength <= 0) {
+    return 1
+  }
+
+  const scaleX = safeFrameDimension(actual.width) / safeFrameDimension(visual.width)
+  const scaleY = safeFrameDimension(actual.height) / safeFrameDimension(visual.height)
+  return Math.hypot(axis.x * scaleX, axis.y * scaleY) / axisLength
+}
+
+export function resolveStudioVisualFrameSize({
+  exportRender,
+  snapshot,
+  scope,
+  actualWidth,
+  actualHeight,
+}: Readonly<{
+  exportRender: boolean
+  snapshot?: StudioVisualFrameSnapshot
+  scope: StudioVisualFrameScope
+  actualWidth: number
+  actualHeight: number
+}>): StudioVisualFrameSize {
+  const actual = {
+    width: safeFrameDimension(actualWidth),
+    height: safeFrameDimension(actualHeight),
+  }
+  const captured = exportRender ? snapshot?.[scope] : undefined
+
+  return captured
+    ? { width: captured.width, height: captured.height }
+    : actual
+}
+
+function safeFrameDimension(value: number) {
+  return Number.isFinite(value) ? Math.max(1, Math.round(value)) : 1
+}
+
+const StudioPreviewFrameRegistryContext = createContext<StudioPreviewFrameRegistry | null>(null)
+
+export function StudioPreviewFrameProvider({ children }: { children: ReactNode }) {
+  const [registry] = useState(createStudioPreviewFrameRegistry)
+
+  useEffect(() => () => registry.clear(), [registry])
+
+  return (
+    <StudioPreviewFrameRegistryContext value={registry}>
+      {children}
+    </StudioPreviewFrameRegistryContext>
+  )
+}
+
+export function useStudioPreviewFrameSnapshot() {
+  const registry = useContext(StudioPreviewFrameRegistryContext)
+
+  return useCallback((effectId: string) => (
+    registry?.capture(effectId) ?? Object.freeze({ effectId })
+  ), [registry])
+}
 
 export class ExportFrameAckGate {
   private armedRequestId = 0
@@ -122,6 +260,19 @@ export function createCharacterRotationSnapshot(): CharacterRotationSnapshot {
   return snapshot
 }
 
+export function reportLatestPreviewPointer(x: number, y: number) {
+  if (Number.isFinite(x) && Number.isFinite(y)) {
+    latestPreviewPointer = { x, y }
+  }
+}
+
+export function readLatestPreviewPointer(fallbackX = 0, fallbackY = 0) {
+  return latestPreviewPointer ?? {
+    x: Number.isFinite(fallbackX) ? fallbackX : 0,
+    y: Number.isFinite(fallbackY) ? fallbackY : 0,
+  }
+}
+
 const StudioRenderContext = createContext<StudioRenderContextValue>({
   exportRender: false,
   requestId: 0,
@@ -130,9 +281,15 @@ const StudioRenderContext = createContext<StudioRenderContextValue>({
   voronoiMaskTextureRef: emptyVoronoiMaskTextureRef,
   reportCharacterRotationY: () => undefined,
   readCharacterRotationY: (fallback) => normalizeRotationRadians(fallback),
+  reportPointer: () => undefined,
+  readPointer: (fallbackX, fallbackY) => readLatestPreviewPointer(fallbackX, fallbackY),
   readAnimationTime: () => 0,
   timelineActive: false,
   advanceAnimationTime: () => 0,
+  resolveVisualFrameSize: (_scope, actualWidth, actualHeight) => ({
+    width: safeFrameDimension(actualWidth),
+    height: safeFrameDimension(actualHeight),
+  }),
 })
 
 let latestPreviewAnimationTime = 0
@@ -140,16 +297,22 @@ let latestPreviewAnimationTime = 0
 export function StudioRenderModeProvider({
   exportRender,
   initialAnimationTime,
+  visualFrameSnapshot,
   requestId = 0,
   onFrameRendered,
   children,
 }: {
   exportRender: boolean
   initialAnimationTime?: number
+  visualFrameSnapshot?: StudioVisualFrameSnapshot
   requestId?: number
   onFrameRendered?: (requestId: number, canvas: HTMLCanvasElement) => void
   children: ReactNode
 }) {
+  const inheritedPreviewFrameRegistry = useContext(StudioPreviewFrameRegistryContext)
+  const [fallbackPreviewFrameRegistry] = useState(createStudioPreviewFrameRegistry)
+  const previewFrameRegistry = inheritedPreviewFrameRegistry ?? fallbackPreviewFrameRegistry
+  const selectedEffectId = useStudioStore((store) => store.grainradEffect.selectedEffectId)
   const voronoiMaskTextureRef = useRef<Texture | null>(null)
   const [characterRotationSnapshot] = useState(createCharacterRotationSnapshot)
   const [animationTimeline] = useState(
@@ -180,6 +343,14 @@ export function StudioRenderModeProvider({
     }
   }
   const readCharacterRotationY = (fallback: number) => characterRotationSnapshot.read(fallback)
+  const reportPointer = (x: number, y: number) => {
+    if (!exportRender) {
+      reportLatestPreviewPointer(x, y)
+    }
+  }
+  const readPointer = (fallbackX = 0, fallbackY = 0) => (
+    readLatestPreviewPointer(fallbackX, fallbackY)
+  )
   const readAnimationTime = useCallback(() => animationTimeline.read(), [animationTimeline])
   const advanceAnimationTime = useCallback((
     deltaSeconds: number,
@@ -192,6 +363,25 @@ export function StudioRenderModeProvider({
       exportFrameAckGate.markContentReady(requestId)
     }
   }
+  const resolveVisualFrameSize = useCallback((
+    scope: StudioVisualFrameScope,
+    actualWidth: number,
+    actualHeight: number,
+  ): StudioVisualFrameSize => {
+    const actual = resolveStudioVisualFrameSize({
+      exportRender,
+      snapshot: visualFrameSnapshot,
+      scope,
+      actualWidth,
+      actualHeight,
+    })
+
+    if (!exportRender) {
+      previewFrameRegistry.report(selectedEffectId, scope, actual.width, actual.height)
+    }
+
+    return actual
+  }, [exportRender, previewFrameRegistry, selectedEffectId, visualFrameSnapshot])
 
   return (
     <StudioRenderContext value={{
@@ -203,9 +393,12 @@ export function StudioRenderModeProvider({
       voronoiMaskTextureRef,
       reportCharacterRotationY,
       readCharacterRotationY,
+      reportPointer,
+      readPointer,
       readAnimationTime,
       timelineActive: true,
       advanceAnimationTime,
+      resolveVisualFrameSize,
     }}>
       {children}
     </StudioRenderContext>
@@ -246,6 +439,7 @@ function StudioRenderFrameObserver({
   onFrameRendered,
   exportFrameAckGate,
   advanceAnimationTime,
+  resolveVisualFrameSize,
 }: StudioRenderContextValue) {
   const animation = useStudioStore((store) => store.animation)
   const selectedEffectId = useStudioStore((store) => store.grainradEffect.selectedEffectId)
@@ -263,6 +457,8 @@ function StudioRenderFrameObserver({
   }, -3)
 
   useFrame(({ gl }) => {
+    resolveVisualFrameSize('canvas', gl.domElement.width, gl.domElement.height)
+
     if (
       exportRender
       &&

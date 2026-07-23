@@ -1,7 +1,10 @@
 'use client'
 
 import StudioEffectCanvas from '@/components/studio/StudioEffectCanvas'
-import { StudioRenderModeProvider } from '@/components/studio/studio-render-context'
+import {
+  StudioRenderModeProvider,
+  type StudioVisualFrameSnapshot,
+} from '@/components/studio/studio-render-context'
 import classes from './StudioShell.module.css'
 
 export default function StudioExportRenderSurface({
@@ -9,11 +12,13 @@ export default function StudioExportRenderSurface({
   initialAnimationTime,
   requestId,
   onFrameRendered,
+  visualFrameSnapshot,
 }: {
   size: number
   initialAnimationTime: number
   requestId: number
   onFrameRendered: (requestId: number, canvas: HTMLCanvasElement) => void
+  visualFrameSnapshot: StudioVisualFrameSnapshot
 }) {
   return (
     <div
@@ -28,6 +33,7 @@ export default function StudioExportRenderSurface({
         initialAnimationTime={initialAnimationTime}
         requestId={requestId}
         onFrameRendered={onFrameRendered}
+        visualFrameSnapshot={visualFrameSnapshot}
       >
         <StudioEffectCanvas />
       </StudioRenderModeProvider>

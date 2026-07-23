@@ -93,9 +93,12 @@ describe('Studio shared post-processing compositor contract', () => {
       join(studioDir, independentRenderers[0]),
       'utf8',
     )
-    expect(pixelSortRenderer).toContain('PixelSortWorkerClient')
-    expect(pixelSortRenderer).toContain('readRenderTargetPixelsAsync')
+    expect(pixelSortRenderer).toContain('renderPixelSortTrails')
+    expect(pixelSortRenderer).toContain('setPixelSortPresentMode')
+    expect(pixelSortRenderer).not.toContain('PixelSortWorkerClient')
+    expect(pixelSortRenderer).not.toContain('readRenderTargetPixelsAsync')
     expect(pixelSortRenderer).toContain('pendingExportAckRef')
+    expect(pixelSortRenderer).toContain('preparedExportAckRef')
     expect(pixelSortRenderer).toContain('renderMode.onFrameRendered?.(')
   })
 

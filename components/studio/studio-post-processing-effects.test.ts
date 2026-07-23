@@ -36,6 +36,7 @@ describe('Studio shared post-processing effects', () => {
 
     effect.setParameters({ intensity: 1.5, mode: 'pixel', size: 18, speed: 200, time: 4.25 })
     effect.setSize(640, 360)
+    effect.setVisualSize(320, 180)
 
     expect(effect.uniforms.get('uIntensity')?.value).toBe(1.5)
     expect(effect.uniforms.get('uMode')?.value).toBe(1)
@@ -43,8 +44,9 @@ describe('Studio shared post-processing effects', () => {
     expect(effect.uniforms.get('uSpeed')?.value).toBe(200)
     expect(effect.uniforms.get('uTime')?.value).toBe(4.25)
     expect(effect.uniforms.get('uResolution')?.value).toEqual(new Vector2(640, 360))
+    expect(effect.uniforms.get('uVisualResolution')?.value).toEqual(new Vector2(320, 180))
     expect(effect.getFragmentShader()).toContain('grainCell')
-    expect(effect.getFragmentShader()).toContain('gl_FragCoord.xy / max(uSize, 1.0)')
+    expect(effect.getFragmentShader()).toContain('visualPixel / max(uSize, 1.0)')
     expect(effect.getFragmentShader()).toContain(
       'fract(sin(dot(pixel, vec2(12.9898, 78.233))) * 43758.5453)',
     )
@@ -85,6 +87,7 @@ describe('Studio shared post-processing effects', () => {
     effect.setParameters({ opacity: 1.5, spacing: 1250, offset: 25, speed: 25 })
     effect.setTime(-4.5)
     effect.setSize(1024, 768)
+    effect.setVisualSize(512, 384)
 
     expect(effect.uniforms.get('uOpacity')?.value).toBe(1)
     expect(effect.uniforms.get('uSpacing')?.value).toBe(1000)
@@ -92,7 +95,8 @@ describe('Studio shared post-processing effects', () => {
     expect(effect.uniforms.get('uSpeed')?.value).toBe(10)
     expect(effect.uniforms.get('uTime')?.value).toBe(-4.5)
     expect(effect.uniforms.get('uResolution')?.value).toEqual(new Vector2(1024, 768))
-    expect(effect.getFragmentShader()).toContain('float fragY = uv.y * uResolution.y')
+    expect(effect.uniforms.get('uVisualResolution')?.value).toEqual(new Vector2(512, 384))
+    expect(effect.getFragmentShader()).toContain('float fragY = uv.y * uVisualResolution.y')
     expect(effect.getFragmentShader()).toContain(
       'uOffset + uTime * uSpeed * uSpacing * 2.0',
     )

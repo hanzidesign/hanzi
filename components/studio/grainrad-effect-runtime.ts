@@ -111,9 +111,9 @@ const SHARED_POST_CONTROL_IDS = [
 ]
 
 export const PIXEL_SORT_DEDICATED_CONTROL_IDS = [
-  'highlight',
-  'midtone',
-  'shadow',
+  'start-color',
+  'middle-color',
+  'end-color',
   'background',
   'mix',
 ] as const
@@ -430,6 +430,8 @@ const PIXEL_SORT_MODE_IDS: Record<string, number> = {
   brightness: 0,
   hue: 1,
   saturation: 2,
+  dark: 3,
+  depth: 4,
 }
 
 const BLOCKIFY_STYLE_IDS: Record<string, number> = {
@@ -605,11 +607,11 @@ export function compileGrainradEffectRuntime({
       break
     case 'pixel-sort':
       effectValues[0] = PIXEL_SORT_DIRECTION_IDS[read.text('direction', 'horizontal')] ?? 0
-      effectValues[1] = PIXEL_SORT_MODE_IDS[read.text('sort-mode', 'brightness')] ?? 0
+      effectValues[1] = PIXEL_SORT_MODE_IDS[read.text('sort-mode', 'depth')] ?? 4
       effectValues[2] = read.number('threshold', 0.25)
-      effectValues[3] = read.number('streak-length', 100)
-      effectValues[4] = read.number('intensity', 0.8)
-      effectValues[5] = read.number('randomness', 0.3)
+      effectValues[3] = read.number('streak-length', 500)
+      effectValues[4] = read.number('intensity', 1)
+      effectValues[5] = read.number('randomness', 0.5)
       effectValues[6] = read.boolean('reverse')
       effectValues[7] = read.number('brightness', 0) / 100
       effectValues[8] = read.number('contrast', 0) / 100

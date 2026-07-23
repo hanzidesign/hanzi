@@ -17,7 +17,7 @@ export function readPixelSortSettings(
       ['horizontal', 'vertical', 'diagonal', 'anti-diagonal', 'radial'],
       'horizontal',
     ),
-    mode: readEnum(controls['sort-mode'], ['brightness', 'hue', 'saturation'], 'hue'),
+    mode: readEnum(controls['sort-mode'], ['brightness', 'hue', 'saturation', 'depth'], 'depth'),
     threshold: readNumber(controls.threshold, DEFAULT_PIXEL_SORT_SETTINGS.threshold),
     streakLength: readNumber(controls['streak-length'], DEFAULT_PIXEL_SORT_SETTINGS.streakLength),
     intensity: readNumber(controls.intensity, DEFAULT_PIXEL_SORT_SETTINGS.intensity),
@@ -26,9 +26,9 @@ export function readPixelSortSettings(
     brightness: readNumber(controls.brightness, DEFAULT_PIXEL_SORT_SETTINGS.brightness),
     contrast: readNumber(controls.contrast, DEFAULT_PIXEL_SORT_SETTINGS.contrast),
     mix: readNumber(controls.mix, DEFAULT_PIXEL_SORT_SETTINGS.mix),
-    shadow: readColor(controls.shadow, theme === 'dark' ? '#1b0836' : '#35115c'),
-    midtone: readColor(controls.midtone, theme === 'dark' ? '#ff5a9d' : '#c93472'),
-    highlight: readColor(controls.highlight, theme === 'dark' ? '#ffe08a' : '#e6a928'),
+    startColor: readColor(controls['start-color'], theme === 'dark' ? '#1b0836' : '#35115c'),
+    middleColor: readColor(controls['middle-color'], theme === 'dark' ? '#ff5a9d' : '#c93472'),
+    endColor: readColor(controls['end-color'], theme === 'dark' ? '#ffe08a' : '#e6a928'),
     background: readColor(controls.background, theme === 'dark' ? '#000000' : '#ffffff'),
   }
 }

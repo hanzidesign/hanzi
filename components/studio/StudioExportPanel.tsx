@@ -22,7 +22,11 @@ import {
   type AnimatedStudioExportFormat,
   type ExportAnimationPlan,
 } from '@/components/studio/export-animation'
-import { readLatestPreviewAnimationTime } from '@/components/studio/studio-render-context'
+import {
+  readLatestPreviewAnimationTime,
+  useStudioPreviewFrameSnapshot,
+  type StudioVisualFrameSnapshot,
+} from '@/components/studio/studio-render-context'
 import classes from './StudioShell.module.css'
 
 type ExportGridOption = {
@@ -60,6 +64,7 @@ type PendingExportFrame = {
 }
 
 export default function StudioExportPanel() {
+  const selectedEffectId = useStudioStore((store) => store.grainradEffect.selectedEffectId)
   const selectedFormat = useStudioStore((store) => store.export.selectedFormat)
   const autoRotate = useStudioStore((store) => store.mesh.autoRotate)
   const autoRotateSpeed = useStudioStore((store) => store.mesh.autoRotateSpeed)
@@ -73,7 +78,9 @@ export default function StudioExportPanel() {
     size: number
     requestId: number
     animationTime: number
+    visualFrameSnapshot: StudioVisualFrameSnapshot
   } | null>(null)
+  const captureVisualFrameSnapshot = useStudioPreviewFrameSnapshot()
   const abortControllerRef = useRef<AbortController | null>(null)
   const renderRequestIdRef = useRef(0)
   const pendingExportFrameRef = useRef<PendingExportFrame | null>(null)
@@ -87,6 +94,7 @@ export default function StudioExportPanel() {
   const requestExportFrame = useCallback((
     size: number,
     animationTime: number,
+    visualFrameSnapshot: StudioVisualFrameSnapshot,
     signal?: AbortSignal,
   ) => {
     return new Promise<HTMLCanvasElement>((resolve, reject) => {
@@ -122,7 +130,12 @@ export default function StudioExportPanel() {
 
       pendingExportFrameRef.current = { requestId, size, resolve, reject, cleanup }
       signal?.addEventListener('abort', handleAbort, { once: true })
-      setRenderSurface({ size, requestId, animationTime })
+      setRenderSurface({
+        size,
+        requestId,
+        animationTime,
+        visualFrameSnapshot,
+      })
 
       if (signal?.aborted) {
         handleAbort()
@@ -162,6 +175,7 @@ export default function StudioExportPanel() {
   useEffect(() => releaseExportSurface, [releaseExportSurface])
 
   const handleExport = async (format: StudioExportFormat) => {
+    const visualFrameSnapshot = captureVisualFrameSnapshot(selectedEffectId)
     setExportFormat(format)
     setMessage(`Preparing ${optionLabel(format)}…`)
 
@@ -171,6 +185,7 @@ export default function StudioExportPanel() {
         const exportCanvas = await requestExportFrame(
           PNG_EXPORT_SIZE,
           readLatestPreviewAnimationTime(),
+          visualFrameSnapshot,
         )
         const rawBlob = await canvasToBlob(exportCanvas, 'image/png')
         const blob = await compressExportBlob(rawBlob, 'png')
@@ -205,6 +220,7 @@ export default function StudioExportPanel() {
         (animationTime) => requestExportFrame(
           ANIMATION_EXPORT_SIZE,
           animationTime,
+          visualFrameSnapshot,
           abortController.signal,
         ),
         (completed, total) => {
@@ -314,6 +330,7 @@ export default function StudioExportPanel() {
               initialAnimationTime={renderSurface.animationTime}
               requestId={renderSurface.requestId}
               onFrameRendered={handleExportFrameRendered}
+              visualFrameSnapshot={renderSurface.visualFrameSnapshot}
             />,
             document.body,
           )

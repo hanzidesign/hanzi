@@ -56,7 +56,7 @@ import {
 } from '@/components/studio/character-mesh-deform'
 
 export const STUDIO_STORE_STORAGE_KEY = 'hanzi-studio-grainrad-effects-v1'
-const STUDIO_STORE_STORAGE_VERSION = 8
+const STUDIO_STORE_STORAGE_VERSION = 15
 export const MAX_PATTERN_LAYERS = 3
 const DEFAULT_ART_PATTERN_LAYERS: Array<
   Pick<StudioPatternLayer, 'source' | 'target' | 'enabled' | 'intensity' | 'blendMode' | 'locked'>
@@ -2058,6 +2058,222 @@ function migratePersistedStudioState(value: unknown, version: number): unknown {
               ...(darkMatrixRain.foreground === '#f4f1e8' ? { foreground: '#36d00b' } : {}),
             },
           },
+        },
+      },
+    }
+  }
+
+  if (version < 9) {
+    const grainradEffect = readRecord(persisted.grainradEffect)
+    const controlsByTheme = readRecord(grainradEffect.controlsByTheme)
+    const migratePixelSortDefault = (value: unknown) => {
+      const controls = readRecord(value)
+      if (!Object.prototype.hasOwnProperty.call(controls, 'pixel-sort')) return controls
+      const pixelSort = readRecord(controls['pixel-sort'])
+      return {
+        ...controls,
+        'pixel-sort': {
+          ...pixelSort,
+          ...(pixelSort['sort-mode'] === 'hue' ? { 'sort-mode': 'depth' } : {}),
+        },
+      }
+    }
+
+    persisted = {
+      ...persisted,
+      grainradEffect: {
+        ...grainradEffect,
+        controls: migratePixelSortDefault(grainradEffect.controls),
+        controlsByTheme: {
+          ...controlsByTheme,
+          light: migratePixelSortDefault(controlsByTheme.light),
+          dark: migratePixelSortDefault(controlsByTheme.dark),
+        },
+      },
+    }
+  }
+
+  if (version < 10) {
+    const grainradEffect = readRecord(persisted.grainradEffect)
+    const controlsByTheme = readRecord(grainradEffect.controlsByTheme)
+    const migratePixelSortStreakLength = (value: unknown) => {
+      const controls = readRecord(value)
+      if (!Object.prototype.hasOwnProperty.call(controls, 'pixel-sort')) return controls
+      const pixelSort = readRecord(controls['pixel-sort'])
+      return {
+        ...controls,
+        'pixel-sort': {
+          ...pixelSort,
+          ...(pixelSort['streak-length'] === 100 ? { 'streak-length': 250 } : {}),
+        },
+      }
+    }
+
+    persisted = {
+      ...persisted,
+      grainradEffect: {
+        ...grainradEffect,
+        controls: migratePixelSortStreakLength(grainradEffect.controls),
+        controlsByTheme: {
+          ...controlsByTheme,
+          light: migratePixelSortStreakLength(controlsByTheme.light),
+          dark: migratePixelSortStreakLength(controlsByTheme.dark),
+        },
+      },
+    }
+  }
+
+  if (version < 11) {
+    const grainradEffect = readRecord(persisted.grainradEffect)
+    const controlsByTheme = readRecord(grainradEffect.controlsByTheme)
+    const migratePixelSortColorIds = (value: unknown) => {
+      const controls = readRecord(value)
+      if (!Object.prototype.hasOwnProperty.call(controls, 'pixel-sort')) return controls
+      const pixelSort = readRecord(controls['pixel-sort'])
+      const migrated = { ...pixelSort }
+      if (!Object.prototype.hasOwnProperty.call(migrated, 'start-color') && typeof pixelSort.shadow === 'string') {
+        migrated['start-color'] = pixelSort.shadow
+      }
+      if (!Object.prototype.hasOwnProperty.call(migrated, 'middle-color') && typeof pixelSort.midtone === 'string') {
+        migrated['middle-color'] = pixelSort.midtone
+      }
+      if (!Object.prototype.hasOwnProperty.call(migrated, 'end-color') && typeof pixelSort.highlight === 'string') {
+        migrated['end-color'] = pixelSort.highlight
+      }
+      delete migrated.shadow
+      delete migrated.midtone
+      delete migrated.highlight
+      return {
+        ...controls,
+        'pixel-sort': migrated,
+      }
+    }
+
+    persisted = {
+      ...persisted,
+      grainradEffect: {
+        ...grainradEffect,
+        controls: migratePixelSortColorIds(grainradEffect.controls),
+        controlsByTheme: {
+          ...controlsByTheme,
+          light: migratePixelSortColorIds(controlsByTheme.light),
+          dark: migratePixelSortColorIds(controlsByTheme.dark),
+        },
+      },
+    }
+  }
+
+  if (version < 12) {
+    const grainradEffect = readRecord(persisted.grainradEffect)
+    const controlsByTheme = readRecord(grainradEffect.controlsByTheme)
+    const migratePixelSortRandomness = (value: unknown) => {
+      const controls = readRecord(value)
+      if (!Object.prototype.hasOwnProperty.call(controls, 'pixel-sort')) return controls
+      const pixelSort = readRecord(controls['pixel-sort'])
+      return {
+        ...controls,
+        'pixel-sort': {
+          ...pixelSort,
+          ...(pixelSort.randomness === 0.3 ? { randomness: 1 } : {}),
+        },
+      }
+    }
+    persisted = {
+      ...persisted,
+      grainradEffect: {
+        ...grainradEffect,
+        controls: migratePixelSortRandomness(grainradEffect.controls),
+        controlsByTheme: {
+          ...controlsByTheme,
+          light: migratePixelSortRandomness(controlsByTheme.light),
+          dark: migratePixelSortRandomness(controlsByTheme.dark),
+        },
+      },
+    }
+  }
+
+  if (version < 13) {
+    const grainradEffect = readRecord(persisted.grainradEffect)
+    const controlsByTheme = readRecord(grainradEffect.controlsByTheme)
+    const migratePixelSortStreakLength = (value: unknown) => {
+      const controls = readRecord(value)
+      if (!Object.prototype.hasOwnProperty.call(controls, 'pixel-sort')) return controls
+      const pixelSort = readRecord(controls['pixel-sort'])
+      return {
+        ...controls,
+        'pixel-sort': {
+          ...pixelSort,
+          ...(pixelSort['streak-length'] === 250 ? { 'streak-length': 500 } : {}),
+        },
+      }
+    }
+    persisted = {
+      ...persisted,
+      grainradEffect: {
+        ...grainradEffect,
+        controls: migratePixelSortStreakLength(grainradEffect.controls),
+        controlsByTheme: {
+          ...controlsByTheme,
+          light: migratePixelSortStreakLength(controlsByTheme.light),
+          dark: migratePixelSortStreakLength(controlsByTheme.dark),
+        },
+      },
+    }
+  }
+
+  if (version < 14) {
+    const grainradEffect = readRecord(persisted.grainradEffect)
+    const controlsByTheme = readRecord(grainradEffect.controlsByTheme)
+    const migratePixelSortIntensity = (value: unknown) => {
+      const controls = readRecord(value)
+      if (!Object.prototype.hasOwnProperty.call(controls, 'pixel-sort')) return controls
+      const pixelSort = readRecord(controls['pixel-sort'])
+      return {
+        ...controls,
+        'pixel-sort': {
+          ...pixelSort,
+          ...(pixelSort.intensity === 0.8 ? { intensity: 1 } : {}),
+        },
+      }
+    }
+    persisted = {
+      ...persisted,
+      grainradEffect: {
+        ...grainradEffect,
+        controls: migratePixelSortIntensity(grainradEffect.controls),
+        controlsByTheme: {
+          ...controlsByTheme,
+          light: migratePixelSortIntensity(controlsByTheme.light),
+          dark: migratePixelSortIntensity(controlsByTheme.dark),
+        },
+      },
+    }
+  }
+
+  if (version < 15) {
+    const grainradEffect = readRecord(persisted.grainradEffect)
+    const controlsByTheme = readRecord(grainradEffect.controlsByTheme)
+    const migratePixelSortRandomness = (value: unknown) => {
+      const controls = readRecord(value)
+      if (!Object.prototype.hasOwnProperty.call(controls, 'pixel-sort')) return controls
+      const pixelSort = readRecord(controls['pixel-sort'])
+      return {
+        ...controls,
+        'pixel-sort': {
+          ...pixelSort,
+          ...(pixelSort.randomness === 1 ? { randomness: 0.5 } : {}),
+        },
+      }
+    }
+    persisted = {
+      ...persisted,
+      grainradEffect: {
+        ...grainradEffect,
+        controls: migratePixelSortRandomness(grainradEffect.controls),
+        controlsByTheme: {
+          ...controlsByTheme,
+          light: migratePixelSortRandomness(controlsByTheme.light),
+          dark: migratePixelSortRandomness(controlsByTheme.dark),
         },
       },
     }

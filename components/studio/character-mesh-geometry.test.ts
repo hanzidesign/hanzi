@@ -172,6 +172,25 @@ describe('character mesh geometry helpers', () => {
     )
   })
 
+  it('preserves horizontal orientation while reversing Bend depth for negative angles', () => {
+    const baseOptions = {
+      shapes: [rectangleShape(500, 500)],
+      extrusionDepth: 0.2,
+      displacementSubdivisionLevel: 2,
+    }
+    const base = positions(createCharacterMeshGeometries(baseOptions))
+    const positive = positions(createCharacterMeshGeometries({ ...baseOptions, bend: 70 }))
+    const negative = positions(createCharacterMeshGeometries({ ...baseOptions, bend: -70 }))
+
+    for (let index = 0; index < base.length; index += 3) {
+      expect(positive[index]).toBeCloseTo(negative[index], 6)
+      expect(positive[index + 1]).toBeCloseTo(negative[index + 1], 6)
+      const positiveDepthDelta = positive[index + 2] - base[index + 2]
+      const negativeDepthDelta = negative[index + 2] - base[index + 2]
+      expect(positiveDepthDelta + negativeDepthDelta).toBeCloseTo(0, 6)
+    }
+  })
+
   it('applies character mesh thickness as geometry, bounds, and UV-affecting planar weight', () => {
     const normal = createCharacterMeshGeometries({
       shapes: [rectangleShape(500, 500)],

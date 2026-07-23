@@ -27,6 +27,7 @@ export type StudioProcessingValues = Readonly<{
 
 export const STUDIO_PROCESSING_FRAGMENT_SHADER = /* glsl */ `
 uniform vec2 u_processingResolution;
+uniform vec2 u_processingVisualResolution;
 uniform float u_processingInvert;
 uniform float u_brightnessMap;
 uniform float u_edgeEnhance;
@@ -73,7 +74,7 @@ vec3 processingSpatialBlur(const in vec2 uv, const in vec2 texel, const in float
 }
 
 void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor) {
-  vec2 texel = 1.0 / max(u_processingResolution, vec2(1.0));
+  vec2 texel = 1.0 / max(u_processingVisualResolution, vec2(1.0));
   vec4 center = processingSample(uv);
   vec3 neighborMean = processingNeighborMean(uv, texel);
   vec3 color = center.rgb;
@@ -137,6 +138,7 @@ export class StudioProcessingEffect extends Effect {
     const values = resolveStudioProcessingValues(controls)
     const uniforms = new Map<string, Uniform>([
       ['u_processingResolution', new Uniform(new Vector2(1, 1))],
+      ['u_processingVisualResolution', new Uniform(new Vector2(1, 1))],
       ['u_processingInvert', new Uniform(values.invert)],
       ['u_brightnessMap', new Uniform(values.brightnessMap)],
       ['u_edgeEnhance', new Uniform(values.edgeEnhance)],
@@ -175,6 +177,11 @@ export class StudioProcessingEffect extends Effect {
 
   override setSize(width: number, height: number) {
     const resolution = this.uniforms.get('u_processingResolution')!.value as Vector2
+    resolution.set(safeDimension(width), safeDimension(height))
+  }
+
+  setVisualSize(width: number, height: number) {
+    const resolution = this.uniforms.get('u_processingVisualResolution')!.value as Vector2
     resolution.set(safeDimension(width), safeDimension(height))
   }
 }

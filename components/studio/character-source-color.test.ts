@@ -13,7 +13,10 @@ import {
 import {
   createVoronoiSourceScene,
 } from './CharacterVoronoiCanvas'
-import { CHARACTER_MODEL_TONE_FRAGMENT_SHADER } from './character-model-tone-material'
+import {
+  CHARACTER_MODEL_TONE_FRAGMENT_SHADER,
+  createCharacterModelToneMaterial,
+} from './character-model-tone-material'
 import type { CharacterMeshGeometryResult } from './character-mesh-geometry'
 import type { CharacterRepeatSettings } from './character-model-arrangement'
 
@@ -110,6 +113,9 @@ describe('Pixel Sort and Noise Field source colors', () => {
       'smoothstep(3.2, 5.8, v_cameraDistance)',
     )
     expect(CHARACTER_MODEL_TONE_FRAGMENT_SHADER).toContain('dot(normalize(v_viewNormal)')
+    expect(createCharacterModelToneMaterial().uniforms.u_encodeDepthAlpha.value).toBe(false)
+    expect(createCharacterModelToneMaterial({ encodeDepthAlpha: true }).uniforms.u_encodeDepthAlpha.value).toBe(true)
+    expect(CHARACTER_MODEL_TONE_FRAGMENT_SHADER).toContain('gl_FragColor = vec4(vec3(0.12 + modelTone * 0.88), u_encodeDepthAlpha ? depthTone : 1.0);')
     source.dispose()
   })
 })

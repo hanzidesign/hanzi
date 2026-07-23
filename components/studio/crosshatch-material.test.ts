@@ -91,7 +91,7 @@ describe('Crosshatch shader material', () => {
     expect(material.uniforms.u_lineWidth.value).toBe(0.15)
   })
 
-  it('ports the production hash, value noise, hatch wobble, and width-only scaling', () => {
+  it('ports the production hash, value noise, hatch wobble, and visual-pixel scaling', () => {
     expect(CROSSHATCH_FRAGMENT_SHADER).toContain(
       'vec3 p3 = fract(vec3(p.x, p.y, p.x) * 0.1031);',
     )
@@ -104,9 +104,12 @@ describe('Crosshatch shader material', () => {
       '(crosshatchValueNoise(noiseCoord * 3.0) - 0.5) * randomness * 0.4',
     )
     expect(CROSSHATCH_FRAGMENT_SHADER).toContain(
-      'float scaledX = rotatedX * u_resolution.x / spacing + phase;',
+      'vec2 pixelPosition = uv * u_resolution;',
     )
-    expect(CROSSHATCH_FRAGMENT_SHADER).toContain('float aa = 1.5 / u_resolution.x;')
+    expect(CROSSHATCH_FRAGMENT_SHADER).toContain(
+      'float scaledX = rotatedX / spacing + phase;',
+    )
+    expect(CROSSHATCH_FRAGMENT_SHADER).toContain('float aa = 1.5 / max(spacing, 0.0001);')
     const hatchFunction = CROSSHATCH_FRAGMENT_SHADER.slice(
       CROSSHATCH_FRAGMENT_SHADER.indexOf('float crosshatchPattern'),
       CROSSHATCH_FRAGMENT_SHADER.indexOf('float crosshatchPostNoise'),
