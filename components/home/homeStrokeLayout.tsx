@@ -16,6 +16,7 @@ export const KAISHU_MAX_RELATIVE_PARALLAX_Y = 17
 export const KAISHU_OPACITY_MIN = 0.56
 export const KAISHU_OPACITY_MAX = 0.88
 export const KAISHU_DOT_LOCAL_SCALE = 0.42
+export const KAISHU_DEPTH_OPACITIES = [0.38, 0.52, 0.64] as const
 
 /** The original source contains twelve exact filled Kaishu silhouettes. */
 export const KAISHU_STROKE_SOURCE_PATHS = [
@@ -132,6 +133,44 @@ export function getKaishuStrokePlacements(): KaishuStrokePlacement[] {
     cachedKaishuStrokePlacements = createKaishuStrokePlacements(cryptoRandom)
   }
   return cachedKaishuStrokePlacements
+}
+
+/**
+ * Serialize the cached contour field for GPU rasterization.  The dimensions
+ * are bitmap dimensions (rather than CSS dimensions), while the root
+ * viewBox deliberately stays identical to the DOM SVG so xMidYMid slice has
+ * the same crop.  `strokeScale` is the backing/CSS pixel ratio supplied by
+ * the canvas resize path.
+ */
+export function serializeKaishuStrokeMaskSvg(
+  backingWidth: number,
+  backingHeight: number,
+  placements: readonly KaishuStrokePlacement[] = getKaishuStrokePlacements(),
+  strokeScale = 1
+): string {
+  const width = Math.max(1, Math.floor(backingWidth))
+  const height = Math.max(1, Math.floor(backingHeight))
+  const safeStrokeScale = Number.isFinite(strokeScale) && strokeScale > 0 ? strokeScale : 1
+  const contours = KAISHU_STROKE_OUTLINES.map((outline, pathIndex) => {
+    const placement = placements[pathIndex]
+    if (!placement) {
+      return ''
+    }
+
+    const sourceIndex = pathIndex % KAISHU_STROKE_CROPS.length
+    const crop = KAISHU_STROKE_CROPS[sourceIndex]
+    const localScale = sourceIndex === 3 ? KAISHU_DOT_LOCAL_SCALE : 1
+    const localWidth = Math.round(KAISHU_MAX_LOCAL_WIDTH * localScale * 100) / 100
+    const localHeight = Math.round(KAISHU_MAX_LOCAL_HEIGHT * localScale * 100) / 100
+    const transform = `translate(${placement.translateX.toFixed(2)} ${placement.translateY.toFixed(2)}) rotate(${placement.rotation.toFixed(2)}) scale(${placement.scale.toFixed(3)})`
+    const strokeWidth = (placement.strokeWidth * safeStrokeScale).toFixed(3)
+    const layerOpacity = KAISHU_DEPTH_OPACITIES[Math.floor(pathIndex / 19)] ?? 1
+    const opacity = (placement.opacity * layerOpacity).toFixed(3)
+
+    return `<g transform="${transform}"><svg x="${(-localWidth / 2).toFixed(2)}" y="${(-localHeight / 2).toFixed(2)}" width="${localWidth.toFixed(2)}" height="${localHeight.toFixed(2)}" viewBox="${crop.x} ${crop.y} ${crop.width} ${crop.height}" preserveAspectRatio="xMidYMid meet"><g transform="translate(0 450) scale(.1 -.1)"><path d="${outline}" fill="none" stroke="#fff" stroke-width="${strokeWidth}" stroke-linejoin="miter" stroke-miterlimit="2.5" vector-effect="non-scaling-stroke" opacity="${opacity}" /></g></svg></g>`
+  }).join('')
+
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${KAISHU_VIEWBOX_SIZE} ${KAISHU_VIEWBOX_SIZE}" preserveAspectRatio="xMidYMid slice">${contours}</svg>`
 }
 
 type KaishuStrokePathsProps = {

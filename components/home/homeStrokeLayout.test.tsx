@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 
 import {
   KAISHU_CELL_PITCH,
+  KAISHU_DEPTH_OPACITIES,
   KAISHU_DOT_LOCAL_SCALE,
   KAISHU_GRID_SIZE,
   KAISHU_JITTER_MAX,
@@ -21,6 +22,7 @@ import {
   KaishuStrokePaths,
   createKaishuStrokePlacements,
   getKaishuStrokePlacements,
+  serializeKaishuStrokeMaskSvg,
 } from './homeStrokeLayout'
 
 describe('Kaishu stroke outline data', () => {
@@ -75,6 +77,30 @@ describe('Kaishu stroke outline data', () => {
     expect(KAISHU_DOT_LOCAL_SCALE).toBe(0.42)
     expect(markup).toContain('height="34.44"')
     expect(markup).toContain('width="31.92"')
+  })
+
+  it('serializes the cached placements into a full-canvas alpha mask', () => {
+    const placements = createKaishuStrokePlacements(() => 0.5)
+    const markup = serializeKaishuStrokeMaskSvg(1200, 800, placements, 1.5)
+
+    expect(markup).toContain('xmlns="http://www.w3.org/2000/svg"')
+    expect(markup).toContain('width="1200" height="800"')
+    expect(markup).toContain('viewBox="0 0 1000 1000"')
+    expect(markup).toContain('preserveAspectRatio="xMidYMid slice"')
+    expect((markup.match(/<path\b/g) ?? [])).toHaveLength(KAISHU_STROKE_COUNT)
+    const pathDs = [...markup.matchAll(/<path\b[^>]*\bd="([^"]+)"/g)].map((match) => match[1])
+    expect([...new Set(pathDs)]).toEqual([...KAISHU_STROKE_SOURCE_PATHS])
+    expect((markup.match(/stroke="#fff"/g) ?? [])).toHaveLength(KAISHU_STROKE_COUNT)
+    expect((markup.match(/stroke-width="[^"]+"/g) ?? [])).toHaveLength(KAISHU_STROKE_COUNT)
+    expect((markup.match(/opacity="[^"]+"/g) ?? [])).toHaveLength(KAISHU_STROKE_COUNT)
+    expect(markup).toContain(`opacity="${(placements[0].opacity * KAISHU_DEPTH_OPACITIES[0]).toFixed(3)}"`)
+    expect(markup).toContain(`opacity="${(placements[19].opacity * KAISHU_DEPTH_OPACITIES[1]).toFixed(3)}"`)
+    expect(markup).toContain(`opacity="${(placements[38].opacity * KAISHU_DEPTH_OPACITIES[2]).toFixed(3)}"`)
+    expect((markup.match(/vector-effect="non-scaling-stroke"/g) ?? [])).toHaveLength(KAISHU_STROKE_COUNT)
+    expect((markup.match(/transform="translate\([^)]*\) rotate\(/g) ?? [])).toHaveLength(KAISHU_STROKE_COUNT)
+    expect(markup).toContain('scale(.1 -.1)')
+    expect(markup).toContain('width="31.92" height="34.44"')
+    expect(markup).not.toMatch(/<text\b|font-family|font-size/i)
   })
 })
 

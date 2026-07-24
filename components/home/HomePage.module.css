@@ -196,6 +196,13 @@
   mix-blend-mode: screen;
 }
 
+:global([data-mantine-color-scheme])
+  .home
+  .motionSurface[data-stroke-ready='true']
+  + .strokeField[data-randomized='true'] {
+  opacity: 0;
+}
+
 .strokeField path {
   fill: none;
   stroke: currentColor;
