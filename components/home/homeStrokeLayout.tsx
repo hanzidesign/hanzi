@@ -56,6 +56,7 @@ export const KAISHU_STROKE_OUTLINES = Array.from(
   (_, index) => KAISHU_STROKE_SOURCE_PATHS[index % KAISHU_STROKE_SOURCE_PATHS.length]
 )
 export const KAISHU_STROKE_COUNT = KAISHU_STROKE_OUTLINES.length
+const KAISHU_STROKES_PER_DEPTH = KAISHU_STROKE_COUNT / KAISHU_DEPTH_OPACITIES.length
 
 export type KaishuStrokePlacement = {
   outlineIndex: number
@@ -66,6 +67,22 @@ export type KaishuStrokePlacement = {
   scale: number
   opacity: number
   strokeWidth: number
+}
+
+function getKaishuStrokePathMetrics(pathIndex: number) {
+  const sourceIndex = pathIndex % KAISHU_STROKE_CROPS.length
+  const crop = KAISHU_STROKE_CROPS[sourceIndex]
+  const localScale = sourceIndex === 3 ? KAISHU_DOT_LOCAL_SCALE : 1
+
+  return {
+    crop,
+    width: Math.round(KAISHU_MAX_LOCAL_WIDTH * localScale * 100) / 100,
+    height: Math.round(KAISHU_MAX_LOCAL_HEIGHT * localScale * 100) / 100,
+  }
+}
+
+export function formatKaishuStrokePlacementTransform(placement: KaishuStrokePlacement): string {
+  return `translate(${placement.translateX.toFixed(2)} ${placement.translateY.toFixed(2)}) rotate(${placement.rotation.toFixed(2)}) scale(${placement.scale.toFixed(3)})`
 }
 
 function clampRandom(value: number): number {
@@ -157,14 +174,10 @@ export function serializeKaishuStrokeMaskSvg(
       return ''
     }
 
-    const sourceIndex = pathIndex % KAISHU_STROKE_CROPS.length
-    const crop = KAISHU_STROKE_CROPS[sourceIndex]
-    const localScale = sourceIndex === 3 ? KAISHU_DOT_LOCAL_SCALE : 1
-    const localWidth = Math.round(KAISHU_MAX_LOCAL_WIDTH * localScale * 100) / 100
-    const localHeight = Math.round(KAISHU_MAX_LOCAL_HEIGHT * localScale * 100) / 100
-    const transform = `translate(${placement.translateX.toFixed(2)} ${placement.translateY.toFixed(2)}) rotate(${placement.rotation.toFixed(2)}) scale(${placement.scale.toFixed(3)})`
+    const { crop, width: localWidth, height: localHeight } = getKaishuStrokePathMetrics(pathIndex)
+    const transform = formatKaishuStrokePlacementTransform(placement)
     const strokeWidth = (placement.strokeWidth * safeStrokeScale).toFixed(3)
-    const layerOpacity = KAISHU_DEPTH_OPACITIES[Math.floor(pathIndex / 19)] ?? 1
+    const layerOpacity = KAISHU_DEPTH_OPACITIES[Math.floor(pathIndex / KAISHU_STROKES_PER_DEPTH)] ?? 1
     const opacity = (placement.opacity * layerOpacity).toFixed(3)
 
     return `<g transform="${transform}"><svg x="${(-localWidth / 2).toFixed(2)}" y="${(-localHeight / 2).toFixed(2)}" width="${localWidth.toFixed(2)}" height="${localHeight.toFixed(2)}" viewBox="${crop.x} ${crop.y} ${crop.width} ${crop.height}" preserveAspectRatio="xMidYMid meet"><g transform="translate(0 450) scale(.1 -.1)"><path d="${outline}" fill="none" stroke="#fff" stroke-width="${strokeWidth}" stroke-linejoin="miter" stroke-miterlimit="2.5" vector-effect="non-scaling-stroke" opacity="${opacity}" /></g></svg></g>`
@@ -182,18 +195,14 @@ export function KaishuStrokePaths({ layerClassNames }: KaishuStrokePathsProps): 
   return (
     <>
       {layerClassNames.map((className, layerIndex) => {
-        const start = layerIndex * 19
-        const layerOutlines = KAISHU_STROKE_OUTLINES.slice(start, start + 19)
+        const start = layerIndex * KAISHU_STROKES_PER_DEPTH
+        const layerOutlines = KAISHU_STROKE_OUTLINES.slice(start, start + KAISHU_STROKES_PER_DEPTH)
 
         return (
           <g className={className} key={layerIndex}>
             {layerOutlines.map((outline, outlineIndex) => {
               const pathIndex = start + outlineIndex
-              const sourceIndex = pathIndex % KAISHU_STROKE_CROPS.length
-              const crop = KAISHU_STROKE_CROPS[sourceIndex]
-              const localScale = sourceIndex === 3 ? KAISHU_DOT_LOCAL_SCALE : 1
-              const localWidth = Math.round(KAISHU_MAX_LOCAL_WIDTH * localScale * 100) / 100
-              const localHeight = Math.round(KAISHU_MAX_LOCAL_HEIGHT * localScale * 100) / 100
+              const { crop, width: localWidth, height: localHeight } = getKaishuStrokePathMetrics(pathIndex)
 
               return (
                 <g data-kaishu-stroke="true" key={pathIndex}>

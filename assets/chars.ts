@@ -599,7 +599,7 @@ const meaning: Chars = {
     2011: 'Shift',
   },
   sg: {
-    2025: 'Chaos',
+    2025: 'Upheaval',
     2024: 'Disaster',
     2023: 'Scam',
     2022: 'Rise (cost of living)',

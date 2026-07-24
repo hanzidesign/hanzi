@@ -3,6 +3,7 @@
 import { useEffect, useRef } from 'react'
 import classes from './HomePage.module.css'
 import {
+  formatKaishuStrokePlacementTransform,
   getKaishuStrokePlacements,
   KaishuStrokePaths,
   serializeKaishuStrokeMaskSvg,
@@ -24,53 +25,13 @@ type PointerTarget = {
   lastMovedAt: number
 }
 
-type GPUBufferLike = { destroy: () => void }
-type GPUTextureViewLike = object
-type GPUTextureLike = { createView: () => GPUTextureViewLike; destroy: () => void }
-type GPUQueueLike = {
-  writeBuffer: (buffer: GPUBufferLike, offset: number, data: ArrayBuffer) => void
-  writeTexture: (
-    destination: { texture: GPUTextureLike },
-    data: ArrayBufferView,
-    dataLayout: { bytesPerRow: number; rowsPerImage: number },
-    size: { width: number; height: number }
-  ) => void
-  submit: (commands: object[]) => void
-  onSubmittedWorkDone: () => Promise<void>
+type BackingSize = {
+  width: number
+  height: number
+  strokeScale: number
 }
-type GPURenderPassLike = {
-  setPipeline: (pipeline: object) => void
-  setBindGroup: (index: number, bindGroup: object) => void
-  draw: (vertexCount: number) => void
-  end: () => void
-}
-type GPUCommandEncoderLike = { beginRenderPass: (descriptor: object) => GPURenderPassLike; finish: () => object }
-type GPUShaderModuleLike = {
-  getCompilationInfo: () => Promise<{
-    messages: Array<{ type: string; message: string; lineNum?: number; linePos?: number }>
-  }>
-}
-type GPUDeviceLike = {
-  createShaderModule: (descriptor: { code: string }) => GPUShaderModuleLike
-  createRenderPipelineAsync: (descriptor: object) => Promise<object>
-  createBuffer: (descriptor: { size: number; usage: number }) => GPUBufferLike
-  createTexture: (descriptor: object) => GPUTextureLike
-  createSampler: (descriptor: object) => object
-  createBindGroup: (descriptor: object) => object
-  createCommandEncoder: () => GPUCommandEncoderLike
-  queue: GPUQueueLike
-  destroy: () => void
-}
-type GPUAdapterLike = { requestDevice: () => Promise<GPUDeviceLike> }
-type GPUCanvasContext = {
-  configure: (descriptor: object) => void
-  getCurrentTexture: () => GPUTextureLike
-  unconfigure?: () => void
-}
-type GPU = {
-  requestAdapter: (options: { powerPreference: 'high-performance' }) => Promise<GPUAdapterLike | null>
-  getPreferredCanvasFormat: () => string
-}
+
+type BackingSizeJob = BackingSize & { generation: number }
 
 const trailFeedbackShader = /* wgsl */ `
 struct Uniforms {
@@ -532,7 +493,7 @@ export default function HomeSpatialMotion({ theme }: HomeSpatialMotionProps) {
 
       stroke.setAttribute(
         'transform',
-        `translate(${placement.translateX.toFixed(2)} ${placement.translateY.toFixed(2)}) rotate(${placement.rotation.toFixed(2)}) scale(${placement.scale.toFixed(3)})`
+        formatKaishuStrokePlacementTransform(placement)
       )
       stroke.style.setProperty('opacity', placement.opacity.toFixed(3))
       stroke.style.setProperty('--kaishu-stroke-width', placement.strokeWidth.toFixed(2))
@@ -583,15 +544,32 @@ function WebGpuAtmosphere({
     let frameHandle = 0
     let resizeObserver: ResizeObserver | null = null
     let context: GPUCanvasContext | null = null
-    let device: GPUDeviceLike | null = null
-    let uniformBuffer: GPUBufferLike | null = null
-    let trailTextures: GPUTextureLike[] = []
-    let strokeMaskTexture: GPUTextureLike | null = null
-    let retiredStrokeMaskTextures: GPUTextureLike[] = []
+    let device: GPUDevice | null = null
+    let uniformBuffer: GPUBuffer | null = null
+    let trailTextures: GPUTexture[] = []
+    let strokeMaskTexture: GPUTexture | null = null
+    let retiredStrokeMaskTextures: GPUTexture[] = []
     let strokeMaskGeneration = 0
+    let resizeFrameHandle = 0
+    let resizePending: BackingSizeJob | null = null
+    let currentBackingSize: BackingSize | null = null
+    let maskUploadInFlight = false
+    let pendingMaskJob: BackingSizeJob | null = null
+    let maskDebounceTimer: number | null = null
+    let maskDebounceDueAt: number | null = null
 
     const releaseGpuResources = () => {
       cancelAnimationFrame(frameHandle)
+      cancelAnimationFrame(resizeFrameHandle)
+      resizeFrameHandle = 0
+      if (maskDebounceTimer !== null) {
+        window.clearTimeout(maskDebounceTimer)
+        maskDebounceTimer = null
+      }
+      maskDebounceDueAt = null
+      resizePending = null
+      pendingMaskJob = null
+      strokeMaskGeneration += 1
       resizeObserver?.disconnect()
       resizeObserver = null
       context?.unconfigure?.()
@@ -608,9 +586,21 @@ function WebGpuAtmosphere({
       device = null
     }
 
+    const failToStaticFallback = (error: unknown, message: string) => {
+      if (cancelled) {
+        return
+      }
+
+      cancelled = true
+      delete canvas.dataset.ready
+      delete canvas.dataset.strokeReady
+      releaseGpuResources()
+      console.error(message, error)
+    }
+
     const mount = async () => {
       // navigator.gpu is intentionally the only renderer entry point; CSS remains the graceful fallback.
-      const gpu = (navigator as Navigator & { gpu?: GPU }).gpu
+      const gpu = navigator.gpu
       if (!gpu) {
         return
       }
@@ -620,14 +610,14 @@ function WebGpuAtmosphere({
         return
       }
 
-      const nextDevice = (await adapter.requestDevice()) as unknown as GPUDeviceLike
+      const nextDevice = await adapter.requestDevice()
       device = nextDevice
       if (cancelled) {
         nextDevice.destroy()
         return
       }
 
-      context = (canvas.getContext as (contextId: string) => unknown)('webgpu') as GPUCanvasContext | null
+      context = canvas.getContext('webgpu') as GPUCanvasContext | null
       if (!context) {
         nextDevice.destroy()
         device = null
@@ -650,19 +640,28 @@ function WebGpuAtmosphere({
           )
         }
       }
+      if (cancelled) {
+        return
+      }
 
-      const trailPipeline = (await nextDevice.createRenderPipelineAsync({
+      const trailPipeline: GPURenderPipeline = await nextDevice.createRenderPipelineAsync({
         layout: 'auto',
         vertex: { module: trailModule, entryPoint: 'trailVertex' },
         fragment: { module: trailModule, entryPoint: 'trailFragment', targets: [{ format: 'rgba8unorm' }] },
         primitive: { topology: 'triangle-list' },
-      })) as GPURenderPipelineLike
-      const atmospherePipeline = (await nextDevice.createRenderPipelineAsync({
+      })
+      if (cancelled) {
+        return
+      }
+      const atmospherePipeline: GPURenderPipeline = await nextDevice.createRenderPipelineAsync({
         layout: 'auto',
         vertex: { module: atmosphereModule, entryPoint: 'fullscreenVertex' },
         fragment: { module: atmosphereModule, entryPoint: 'atmosphereFragment', targets: [{ format }] },
         primitive: { topology: 'triangle-list' },
-      })) as GPURenderPipelineLike
+      })
+      if (cancelled) {
+        return
+      }
 
       const nextUniformBuffer = nextDevice.createBuffer({
         size: 48,
@@ -680,10 +679,10 @@ function WebGpuAtmosphere({
       const viscousPointer = { x: 0.5, y: 0.5 }
       let previousFrameTime = performance.now()
       let readTrailIndex = 0
-      let trailViews: GPUTextureViewLike[] = []
-      let trailBindGroups: object[] = []
-      let atmosphereBindGroups: object[] = []
-      let strokeMaskView: GPUTextureViewLike
+      let trailViews: GPUTextureView[] = []
+      let trailBindGroups: GPUBindGroup[] = []
+      let atmosphereBindGroups: GPUBindGroup[] = []
+      let strokeMaskView: GPUTextureView
       let pendingStrokeMaskActivation = false
       let strokeMaskReady = false
       let strokeMaskFencePending = false
@@ -712,6 +711,22 @@ function WebGpuAtmosphere({
         )
       }
 
+      const clearTrailViews = (commandEncoder: GPUCommandEncoder) => {
+        for (const view of trailViews) {
+          const clearPass = commandEncoder.beginRenderPass({
+            colorAttachments: [
+              {
+                view,
+                clearValue: { r: 0.5, g: 0.5, b: 0, a: 1 },
+                loadOp: 'clear',
+                storeOp: 'store',
+              },
+            ],
+          })
+          clearPass.end()
+        }
+      }
+
       const createTrailResources = () => {
         trailTextures.forEach((texture) => texture.destroy())
         trailTextures = [0, 1].map(() =>
@@ -735,28 +750,16 @@ function WebGpuAtmosphere({
         createAtmosphereBindGroups()
 
         const clearEncoder = nextDevice.createCommandEncoder()
-        for (const view of trailViews) {
-          const clearPass = clearEncoder.beginRenderPass({
-            colorAttachments: [
-              {
-                view,
-                clearValue: { r: 0.5, g: 0.5, b: 0, a: 1 },
-                loadOp: 'clear',
-                storeOp: 'store',
-              },
-            ],
-          })
-          clearPass.end()
-        }
+        clearTrailViews(clearEncoder)
         nextDevice.queue.submit([clearEncoder.finish()])
         readTrailIndex = 0
       }
 
-      const uploadStrokeMask = async (width: number, height: number, strokeScale: number) => {
-        const generation = ++strokeMaskGeneration
+      const uploadStrokeMask = async (job: BackingSizeJob) => {
+        const { width, height, strokeScale } = job
         const placements = getKaishuStrokePlacements()
         let imageUrl: string | null = null
-        let nextMaskTexture: GPUTextureLike | null = null
+        let nextMaskTexture: GPUTexture | null = null
 
         try {
           const svg = serializeKaishuStrokeMaskSvg(width, height, placements, strokeScale)
@@ -765,7 +768,7 @@ function WebGpuAtmosphere({
           image.decoding = 'async'
           image.src = imageUrl
           await image.decode()
-          if (cancelled || generation !== strokeMaskGeneration) {
+          if (cancelled || job.generation !== strokeMaskGeneration) {
             return
           }
 
@@ -803,7 +806,10 @@ function WebGpuAtmosphere({
             pendingStrokeMaskActivation = true
           }
         } catch (error: unknown) {
-          if (!cancelled && generation === strokeMaskGeneration && !strokeMaskReady) {
+          if (cancelled || job.generation !== strokeMaskGeneration) {
+            return
+          }
+          if (!strokeMaskReady) {
             pendingStrokeMaskActivation = false
             delete canvas.dataset.strokeReady
           }
@@ -816,23 +822,103 @@ function WebGpuAtmosphere({
         }
       }
 
-      const resize = () => {
-        const bounds = canvas.getBoundingClientRect()
+      const startPendingMaskUpload = () => {
+        if (cancelled || maskUploadInFlight || !pendingMaskJob) {
+          return
+        }
+
+        const job = pendingMaskJob
+        pendingMaskJob = null
+        maskUploadInFlight = true
+        void uploadStrokeMask(job).finally(() => {
+          maskUploadInFlight = false
+          if (cancelled || !pendingMaskJob) {
+            return
+          }
+
+          const debounceDueAt = maskDebounceDueAt
+          if (debounceDueAt !== null && performance.now() < debounceDueAt) {
+            return
+          }
+
+          if (maskDebounceTimer !== null) {
+            window.clearTimeout(maskDebounceTimer)
+            maskDebounceTimer = null
+          }
+          maskDebounceDueAt = null
+          startPendingMaskUpload()
+        })
+      }
+
+      const scheduleMaskUpload = (job: BackingSizeJob) => {
+        pendingMaskJob = job
+        if (maskDebounceTimer !== null) {
+          window.clearTimeout(maskDebounceTimer)
+        }
+        maskDebounceDueAt = performance.now() + STROKE_MASK_RESIZE_DEBOUNCE_MS
+        maskDebounceTimer = window.setTimeout(() => {
+          maskDebounceTimer = null
+          maskDebounceDueAt = null
+          startPendingMaskUpload()
+        }, STROKE_MASK_RESIZE_DEBOUNCE_MS)
+      }
+
+      const measureBackingSize = (target: HTMLCanvasElement): BackingSize => {
+        const bounds = target.getBoundingClientRect()
         const maxPixelCount = 1_600_000
         const cssPixelCount = Math.max(bounds.width * bounds.height, 1)
         const pixelBudgetDpr = Math.sqrt(maxPixelCount / cssPixelCount)
         const dpr = Math.min(window.devicePixelRatio || 1, 1.5, pixelBudgetDpr)
-        const nextWidth = Math.max(1, Math.floor(bounds.width * dpr))
-        const nextHeight = Math.max(1, Math.floor(bounds.height * dpr))
-        if (canvas.width !== nextWidth || canvas.height !== nextHeight || trailTextures.length === 0) {
-          canvas.width = nextWidth
-          canvas.height = nextHeight
-          createTrailResources()
-          void uploadStrokeMask(nextWidth, nextHeight, dpr)
+        return {
+          width: Math.max(1, Math.floor(bounds.width * dpr)),
+          height: Math.max(1, Math.floor(bounds.height * dpr)),
+          strokeScale: dpr,
         }
       }
-      resize()
-      resizeObserver = new ResizeObserver(resize)
+
+      const isSameBackingSize = (left: BackingSize, right: BackingSize) =>
+        left.width === right.width && left.height === right.height && left.strokeScale === right.strokeScale
+
+      const applyResize = (job: BackingSizeJob) => {
+        if (cancelled || job.generation !== strokeMaskGeneration) {
+          return
+        }
+
+        canvas.width = job.width
+        canvas.height = job.height
+        createTrailResources()
+        currentBackingSize = job
+        scheduleMaskUpload(job)
+      }
+
+      const initialSize = measureBackingSize(canvas)
+      currentBackingSize = initialSize
+      canvas.width = initialSize.width
+      canvas.height = initialSize.height
+      createTrailResources()
+      pendingMaskJob = { ...initialSize, generation: strokeMaskGeneration }
+      startPendingMaskUpload()
+
+      resizeObserver = new ResizeObserver(() => {
+        const measuredSize = measureBackingSize(canvas)
+        const latestKnownSize = resizePending ?? currentBackingSize
+        if (latestKnownSize && isSameBackingSize(measuredSize, latestKnownSize)) {
+          return
+        }
+
+        const generation = ++strokeMaskGeneration
+        resizePending = { ...measuredSize, generation }
+        if (resizeFrameHandle === 0) {
+          resizeFrameHandle = requestAnimationFrame(() => {
+            resizeFrameHandle = 0
+            const pendingResize = resizePending
+            resizePending = null
+            if (pendingResize) {
+              applyResize(pendingResize)
+            }
+          })
+        }
+      })
       resizeObserver.observe(canvas)
 
       const startedAt = performance.now()
@@ -882,19 +968,7 @@ function WebGpuAtmosphere({
             idleTrailCleared = false
           }
           if (!idleTrailCleared && frameTime - lastPointerMoveTime >= TRAIL_IDLE_RESET_MS) {
-            for (const view of trailViews) {
-              const resetPass = commandEncoder.beginRenderPass({
-                colorAttachments: [
-                  {
-                    view,
-                    clearValue: { r: 0.5, g: 0.5, b: 0, a: 1 },
-                    loadOp: 'clear',
-                    storeOp: 'store',
-                  },
-                ],
-              })
-              resetPass.end()
-            }
+            clearTrailViews(commandEncoder)
             idleTrailCleared = true
           }
 
@@ -931,39 +1005,40 @@ function WebGpuAtmosphere({
           nextDevice.queue.submit([commandEncoder.finish()])
           readTrailIndex = nextTrailIndex
         } catch (error: unknown) {
-          if (activatingStrokeMask) {
-            strokeMaskReady = false
-            pendingStrokeMaskActivation = true
-            delete canvas.dataset.strokeReady
-          }
-          console.error('Unable to submit homepage WebGPU atmosphere frame.', error)
-          frameHandle = requestAnimationFrame(render)
+          failToStaticFallback(error, 'Unable to submit homepage WebGPU atmosphere frame.')
           return
         }
         if (!revealRequested) {
           revealRequested = true
-          void nextDevice.queue.onSubmittedWorkDone().then(() => {
-            if (!cancelled) {
-              canvas.dataset.ready = 'true'
+          void nextDevice.queue.onSubmittedWorkDone().then(
+            () => {
+              if (!cancelled) {
+                canvas.dataset.ready = 'true'
+              }
+            },
+            (error: unknown) => {
+              failToStaticFallback(error, 'Unable to confirm homepage WebGPU atmosphere frame.')
             }
-          })
+          )
         }
         if (activatingStrokeMask) {
-          void nextDevice.queue.onSubmittedWorkDone().catch((error: unknown) => {
-            if (!cancelled) {
-              strokeMaskReady = false
-              pendingStrokeMaskActivation = true
-              delete canvas.dataset.strokeReady
-              console.error('Unable to confirm homepage SVG stroke mask frame.', error)
-            }
+          void nextDevice.queue.onSubmittedWorkDone().then(undefined, (error: unknown) => {
+            failToStaticFallback(error, 'Unable to confirm homepage SVG stroke mask frame.')
           })
         }
         if (strokeMaskFencePending) {
           strokeMaskFencePending = false
           const retiredTextures = retiredStrokeMaskTextures.splice(0)
-          void nextDevice.queue.onSubmittedWorkDone().then(() => {
+          const destroyRetiredTextures = () => {
             retiredTextures.forEach((texture) => texture.destroy())
-          })
+          }
+          void nextDevice.queue.onSubmittedWorkDone().then(
+            destroyRetiredTextures,
+            (error: unknown) => {
+              destroyRetiredTextures()
+              failToStaticFallback(error, 'Unable to retire homepage SVG stroke mask texture.')
+            }
+          )
         }
         frameHandle = requestAnimationFrame(render)
       }
@@ -972,10 +1047,7 @@ function WebGpuAtmosphere({
     }
 
     void mount().catch((error: unknown) => {
-      if (!cancelled) {
-        releaseGpuResources()
-        console.error('Unable to initialize homepage WebGPU atmosphere.', error)
-      }
+      failToStaticFallback(error, 'Unable to initialize homepage WebGPU atmosphere.')
     })
 
     return () => {
@@ -989,11 +1061,10 @@ function WebGpuAtmosphere({
   return <canvas ref={canvasRef} className={classes.motionSurface} aria-hidden="true" />
 }
 
-type GPURenderPipelineLike = { getBindGroupLayout: (index: number) => object }
-
 const GPU_BUFFER_USAGE_UNIFORM = 0x40
 const GPU_BUFFER_USAGE_COPY_DST = 0x08
 const GPU_TEXTURE_USAGE_COPY_DST = 0x02
 const GPU_TEXTURE_USAGE_TEXTURE_BINDING = 0x04
 const GPU_TEXTURE_USAGE_RENDER_ATTACHMENT = 0x10
 const TRAIL_IDLE_RESET_MS = 5200
+const STROKE_MASK_RESIZE_DEBOUNCE_MS = 120
