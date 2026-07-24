@@ -13,9 +13,9 @@ export default function HomePage() {
 
   return (
     <Box className={classes.home} pos="relative" mih="100dvh">
-      <PageBg />
+      <PageBg theme={theme} />
       <Box className={classes.contentLayer} pos="relative" p={16}>
-        <PageHeader theme={theme} onToggleTheme={toggleColorScheme} />
+        <PageHeader onToggleTheme={toggleColorScheme} />
       </Box>
       <Center
         className={classes.contentLayer}
@@ -35,10 +35,10 @@ export default function HomePage() {
             display="block"
             variant="outline"
             radius={10}
-            size="xl"
-            px={48}
+            size="lg"
+            px={40}
           >
-            <Text className={classes.ctaLabel} ff="var(--font-title)" fz={20}>
+            <Text className={classes.ctaLabel} ff="var(--font-body)" fz={18}>
               Open Studio
             </Text>
           </Button>

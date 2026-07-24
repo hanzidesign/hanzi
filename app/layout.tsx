@@ -2,7 +2,6 @@ import './global.css'
 
 import Script from 'next/script'
 import Providers from '@/components/providers/Providers'
-import { ColorSchemeScript } from '@mantine/core'
 import { publicEnv } from '@/utils/env'
 import { fontVariables } from '@/theme/font'
 import type { Metadata, Viewport } from 'next'
@@ -16,6 +15,9 @@ export const viewport: Viewport = {
 const title = publicEnv.appName
 const description = 'A visual editor for exploring Hanzi SVG character effects.'
 const gaId = process.env.NEXT_PUBLIC_GOOGLE_ANALYTICS
+const scriptDefaultColorScheme = ['light', 'dark', 'auto'].includes(publicEnv.defaultColorScheme)
+  ? publicEnv.defaultColorScheme
+  : 'light'
 
 export const metadata: Metadata = {
   metadataBase: new URL(publicEnv.webUrl),
@@ -61,7 +63,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             </Script>
           </>
         ) : null}
-        <ColorSchemeScript defaultColorScheme={publicEnv.defaultColorScheme} />
+        <Script id="mantine-color-scheme" strategy="beforeInteractive">
+          {`try {
+  var _colorScheme = window.localStorage.getItem("mantine-color-scheme-value");
+  var colorScheme = _colorScheme === "light" || _colorScheme === "dark" || _colorScheme === "auto" ? _colorScheme : "${scriptDefaultColorScheme}";
+  var computedColorScheme = colorScheme !== "auto" ? colorScheme : window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+  document.documentElement.setAttribute("data-mantine-color-scheme", computedColorScheme);
+} catch (e) {}`}
+        </Script>
       </head>
       <body>
         <Providers>{children}</Providers>
