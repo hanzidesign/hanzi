@@ -14,6 +14,7 @@ import {
   createCharacterMeshGeometries,
   type CharacterMeshGeometryResult,
 } from '@/components/studio/character-mesh-geometry'
+import { deriveCharacterMeshGeometrySignature } from '@/components/studio/character-mesh-geometry-signature'
 import { useCharacterMeshAnimation } from '@/components/studio/character-mesh-animation'
 import {
   attachCharacterMeshGpuDeform,
@@ -26,6 +27,7 @@ import {
   type CharacterMeshStatus,
 } from '@/components/studio/character-mesh-status'
 import { applyDeltaRotation } from '@/components/studio/shader-canvas-math'
+import { getSignedRotationSpeed } from '@/components/studio/motion-speed'
 import { createShaderMaterial, resolveShaderPresetForCanvas } from '@/components/studio/shader-material'
 import type { ShaderParamValues } from '@/shaders/types'
 import { isAbortError } from '@/utils/dataUrl'
@@ -116,6 +118,32 @@ export default function CharacterMesh({
   ])
   const material = materialState.material
   const { size } = useThree()
+  const geometrySignature = deriveCharacterMeshGeometrySignature({
+    extrusionDepth: mesh.extrusionDepth,
+    thickness: mesh.thickness,
+    deform: mesh.deform,
+    displacementSubdivisionLevel,
+  })
+  const geometryOptionsRef = useRef({
+    extrusionDepth: mesh.extrusionDepth,
+    thickness: mesh.thickness,
+    deform: mesh.deform,
+    displacementSubdivisionLevel,
+  })
+
+  useEffect(() => {
+    geometryOptionsRef.current = {
+      extrusionDepth: mesh.extrusionDepth,
+      thickness: mesh.thickness,
+      deform: mesh.deform,
+      displacementSubdivisionLevel,
+    }
+  }, [
+    displacementSubdivisionLevel,
+    mesh.deform,
+    mesh.extrusionDepth,
+    mesh.thickness,
+  ])
 
   useEffect(() => {
     onError(materialState.error)
@@ -160,10 +188,10 @@ export default function CharacterMesh({
     try {
       const nextResult = createGeometryResult(
         svgText,
-        mesh.extrusionDepth,
-        mesh.thickness,
-        mesh.deform,
-        displacementSubdivisionLevel,
+        geometryOptionsRef.current.extrusionDepth,
+        geometryOptionsRef.current.thickness,
+        geometryOptionsRef.current.deform,
+        geometryOptionsRef.current.displacementSubdivisionLevel,
       )
       replaceGeometryResult(nextResult, resultRef, setGeometryResult)
       onStatusChange(IDLE_CHARACTER_MESH_STATUS)
@@ -177,10 +205,7 @@ export default function CharacterMesh({
       })
     }
   }, [
-    displacementSubdivisionLevel,
-    mesh.extrusionDepth,
-    mesh.thickness,
-    mesh.deform,
+    geometrySignature,
     onStatusChange,
     svgText,
   ])
@@ -232,10 +257,10 @@ export default function CharacterMesh({
       displacementMapTransform,
     )
 
-    if (groupRef.current && mesh.autoRotate) {
+    if (groupRef.current && mesh.autoRotate && animation.playing) {
       groupRef.current.rotation.y = applyDeltaRotation(
         groupRef.current.rotation.y,
-        mesh.autoRotateSpeed,
+        mesh.autoRotateSpeed * getSignedRotationSpeed(animation.speed, animation.reverse),
         delta,
       )
     }

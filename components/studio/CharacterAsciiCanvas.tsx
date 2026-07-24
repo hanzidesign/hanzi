@@ -14,18 +14,23 @@ import {
   createCharacterMeshGeometries,
   type CharacterMeshGeometryResult,
 } from '@/components/studio/character-mesh-geometry'
+import {
+  deriveCharacterMeshGeometrySignature,
+  type CharacterMeshGeometrySignatureOptions,
+} from '@/components/studio/character-mesh-geometry-signature'
 import { useCharacterMeshAnimation } from '@/components/studio/character-mesh-animation'
 import {
   attachCharacterMeshGpuDeform,
   type CharacterMeshGpuDeformBinding,
 } from '@/components/studio/character-mesh-gpu-deform'
 import {
-  applyStudioRuntimeUniforms,
+  updateAsciiShaderUniforms,
   createAsciiShaderMaterial,
   disposeAsciiShaderMaterial,
 } from '@/components/studio/character-ascii-material'
 import { compileStudioEffectRuntime } from '@/components/studio/studio-effect-runtime'
 import { applyDeltaRotation } from '@/components/studio/shader-canvas-math'
+import { getSignedRotationSpeed } from '@/components/studio/motion-speed'
 import { createCharacterRepeatTransforms } from '@/components/studio/character-model-arrangement'
 
 export type CharacterAsciiStatus = {
@@ -97,7 +102,18 @@ function CharacterAsciiScene({
   const mesh = useStudioStore((store) => store.mesh)
   const ascii = useStudioStore((store) => store.ascii)
   const animation = useStudioStore((store) => store.animation)
-  const studioEffect = useStudioStore((store) => store.studioEffect)
+  const theme = useStudioStore((store) => store.view.theme)
+  const asciiEffectControls = useStudioStore((store) => store.studioEffect.controls.ascii)
+  const geometryOptionsRef = useRef<CharacterMeshGeometrySignatureOptions>({
+    extrusionDepth: mesh.extrusionDepth,
+    thickness: mesh.thickness,
+    bevel: mesh.bevel,
+    twist: mesh.twist,
+    taper: mesh.taper,
+    bend: mesh.bend,
+    deform: mesh.deform,
+    displacementSubdivisionLevel: 0,
+  })
   const {
     exportRender,
     markExportContentReady,
@@ -107,6 +123,46 @@ function CharacterAsciiScene({
     reportPointer,
     resolveVisualFrameSize,
   } = useStudioRenderMode()
+
+  const geometrySignature = useMemo(() => deriveCharacterMeshGeometrySignature({
+    extrusionDepth: mesh.extrusionDepth,
+    thickness: mesh.thickness,
+    bevel: mesh.bevel,
+    twist: mesh.twist,
+    taper: mesh.taper,
+    bend: mesh.bend,
+    deform: mesh.deform,
+    displacementSubdivisionLevel: 0,
+  }), [
+    mesh.bend,
+    mesh.bevel,
+    mesh.deform,
+    mesh.extrusionDepth,
+    mesh.taper,
+    mesh.thickness,
+    mesh.twist,
+  ])
+
+  useEffect(() => {
+    geometryOptionsRef.current = {
+      extrusionDepth: mesh.extrusionDepth,
+      thickness: mesh.thickness,
+      bevel: mesh.bevel,
+      twist: mesh.twist,
+      taper: mesh.taper,
+      bend: mesh.bend,
+      deform: mesh.deform,
+      displacementSubdivisionLevel: 0,
+    }
+  }, [
+    mesh.bend,
+    mesh.bevel,
+    mesh.deform,
+    mesh.extrusionDepth,
+    mesh.taper,
+    mesh.thickness,
+    mesh.twist,
+  ])
 
   useEffect(() => {
     if (svgLoadError) {
@@ -137,14 +193,7 @@ function CharacterAsciiScene({
       const shapes = svg.paths.flatMap((path) => SVGLoader.createShapes(path))
       const nextGeometryResult = createCharacterMeshGeometries({
         shapes,
-        extrusionDepth: mesh.extrusionDepth,
-        thickness: mesh.thickness,
-        bevel: mesh.bevel,
-        twist: mesh.twist,
-        taper: mesh.taper,
-        bend: mesh.bend,
-        deform: mesh.deform,
-        displacementSubdivisionLevel: 0,
+        ...geometryOptionsRef.current,
       })
 
       replaceGeometryResult(nextGeometryResult, geometryResultRef, setGeometryResult)
@@ -160,13 +209,7 @@ function CharacterAsciiScene({
       })
     }
   }, [
-    mesh.extrusionDepth,
-    mesh.thickness,
-    mesh.bevel,
-    mesh.twist,
-    mesh.taper,
-    mesh.bend,
-    mesh.deform,
+    geometrySignature,
     onAsciiStatusChange,
     svgData,
     svgLoadError,
@@ -181,39 +224,62 @@ function CharacterAsciiScene({
 
   const studioRuntime = useMemo(() => compileStudioEffectRuntime({
     selectedEffectId: 'ascii',
-    controls: withoutSharedControllerValues(studioEffect.controls.ascii),
-  }), [studioEffect])
+    controls: withoutSharedControllerValues(asciiEffectControls),
+  }), [asciiEffectControls])
   const repeatTransforms = useMemo(
     () => createCharacterRepeatTransforms(mesh.repeat),
     [mesh.repeat],
   )
 
-  const material = useMemo(() => createAsciiShaderMaterial({
+  const [material] = useState(() => createAsciiShaderMaterial({
     ascii,
     studioRuntime,
+    theme,
     foregroundColor: ascii.foregroundColor,
     backgroundColor: ascii.backgroundColor,
-  }), [ascii, studioRuntime])
+  }))
+
+  useEffect(() => {
+    updateAsciiShaderUniforms(material, {
+      ascii,
+      studioRuntime,
+      theme,
+      foregroundColor: ascii.foregroundColor,
+      backgroundColor: ascii.backgroundColor,
+    })
+  }, [ascii, material, studioRuntime, theme])
 
   useEffect(() => {
     materialRef.current = material
-    const gpuDeform = attachCharacterMeshGpuDeform(material, 'custom')
-    gpuDeformRef.current = gpuDeform
 
     return () => {
       if (materialRef.current === material) {
         materialRef.current = null
       }
-      if (gpuDeformRef.current === gpuDeform) {
-        gpuDeformRef.current = null
-      }
-
-      gpuDeform?.dispose()
+      gpuDeformRef.current?.dispose()
+      gpuDeformRef.current = null
       disposeAsciiShaderMaterial(material)
     }
   }, [material])
 
-  useCharacterMeshAnimation(gpuDeformRef, mesh.deform)
+  useEffect(() => {
+    if (!geometryResult?.gpuDeformActive) {
+      gpuDeformRef.current = null
+      return
+    }
+
+    const gpuDeform = attachCharacterMeshGpuDeform(material, 'custom')
+    gpuDeformRef.current = gpuDeform
+
+    return () => {
+      if (gpuDeformRef.current === gpuDeform) {
+        gpuDeformRef.current = null
+        gpuDeform.dispose()
+      }
+    }
+  }, [geometryResult?.gpuDeformActive, material])
+
+  useCharacterMeshAnimation(gpuDeformRef, mesh.deform, animation)
 
   useFrame(({ pointer }, delta) => {
     const activeMaterial = materialRef.current
@@ -237,25 +303,13 @@ function CharacterAsciiScene({
       activeMaterial.uniforms.u_mouse.value.copy(mouseRef.current)
       activeMaterial.uniforms.u_resolution.value.set(actualWidth, actualHeight)
       activeMaterial.uniforms.u_visualResolution.value.set(visualSize.width, visualSize.height)
-      activeMaterial.uniforms.u_asciiCellSize.value = ascii.cellSize
-      activeMaterial.uniforms.u_asciiDensity.value = ascii.density
-      activeMaterial.uniforms.u_asciiContrast.value = ascii.contrast
-      activeMaterial.uniforms.u_asciiBrightness.value = ascii.brightness
-      activeMaterial.uniforms.u_asciiSaturation.value = ascii.saturation
-      activeMaterial.uniforms.u_asciiHueRotation.value = ascii.hueRotation
-      activeMaterial.uniforms.u_asciiSharpness.value = ascii.sharpness
-      activeMaterial.uniforms.u_asciiGamma.value = ascii.gamma
-      activeMaterial.uniforms.u_colorIntensity.value = ascii.colorIntensity
-      activeMaterial.uniforms.u_depthInfluence.value = ascii.depthInfluence
-      activeMaterial.uniforms.u_normalInfluence.value = ascii.normalInfluence
-      applyStudioRuntimeUniforms(activeMaterial.uniforms, studioRuntime)
     }
 
     if (groupRef.current) {
-      if (mesh.autoRotate && animation.playing && animation.speed !== 0) {
+      if (mesh.autoRotate && animation.playing) {
         groupRef.current.rotation.y = applyDeltaRotation(
           groupRef.current.rotation.y,
-          mesh.autoRotateSpeed * animation.speed,
+          mesh.autoRotateSpeed * getSignedRotationSpeed(animation.speed, animation.reverse),
           delta,
         )
       }

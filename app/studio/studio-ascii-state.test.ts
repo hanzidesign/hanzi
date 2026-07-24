@@ -37,7 +37,7 @@ describe('Phase 5C ASCII renderer state', () => {
       autoRotateSpeed: expect.any(Number),
     })
     expect(initial.ascii).toMatchObject({
-      cellSize: expect.any(Number),
+      cellSize: 18,
       density: expect.any(Number),
       contrast: expect.any(Number),
       brightness: 0,

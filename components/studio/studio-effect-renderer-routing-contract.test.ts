@@ -719,6 +719,9 @@ describe('Studio effect renderer routing contract', () => {
     expect(vhsCanvasSource).toContain('readAnimationTime()')
     expect(vhsCanvasSource).toContain('animation.playing')
     expect(vhsCanvasSource).toContain('animation.speed')
+    expect(noiseFieldCanvasSource).toMatch(
+      /applyNoiseFieldSourceColors\(source, sourceColors\)[\s\S]{0,100}markSourceRenderDirty\(sourceRenderStateRef\.current\)/,
+    )
 
     for (const rendererSource of [
       asciiCanvasSource,

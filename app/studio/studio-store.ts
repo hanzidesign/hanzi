@@ -55,9 +55,18 @@ import {
   sanitizeCharacterMeshDeformSettings,
   type CharacterMeshDeformSettings,
 } from '@/components/studio/character-mesh-deform'
+import {
+  MAX_MOTION_SPEED,
+  MIN_MOTION_SPEED,
+  normalizeMotionSpeed,
+} from '@/components/studio/motion-speed'
+import {
+  DEFAULT_ASCII_SCALE,
+  asciiScaleToCellSize,
+} from '@/components/studio/ascii-cell-metrics'
 
 export const STUDIO_STORE_STORAGE_KEY = 'hanzi-studio-effects-v2'
-const STUDIO_STORE_STORAGE_VERSION = 16
+const STUDIO_STORE_STORAGE_VERSION = 17
 export const MAX_PATTERN_LAYERS = 3
 const DEFAULT_ART_PATTERN_LAYERS: Array<
   Pick<StudioPatternLayer, 'source' | 'target' | 'enabled' | 'intensity' | 'blendMode' | 'locked'>
@@ -304,7 +313,7 @@ export const DEFAULT_MESH_STATE = {
 }
 
 export const DEFAULT_ASCII_STATE: StudioAsciiState = {
-  cellSize: 12,
+  cellSize: asciiScaleToCellSize(DEFAULT_ASCII_SCALE),
   density: 0.82,
   contrast: 1.18,
   brightness: 0,
@@ -358,6 +367,7 @@ export type StudioStoreState = {
   animation: {
     playing: boolean
     speed: number
+    reverse: boolean
     timeOffset: number
     animateMorph: boolean
     animateShaders: boolean
@@ -506,7 +516,7 @@ export type StudioStore = StudioStoreState & StudioStoreActions
 
 type PersistedStudioState = Pick<
   StudioStoreState,
-  'character' | 'ascii' | 'mesh' | 'rendererMode' | 'view' | 'export' | 'studioEffect'
+  'character' | 'ascii' | 'mesh' | 'rendererMode' | 'view' | 'export' | 'studioEffect' | 'animation'
 >
 
 export const useStudioStore = createStudioStore()
@@ -915,7 +925,12 @@ export function createStudioStore(storage?: StateStorage) {
                   }
                 : state.shaderLayers,
             patternLayers: families.patterns ? randomizePatternLayers(state.patternLayers, seed) : state.patternLayers,
-            animation: coherentPreset ? coherentPreset.animation : state.animation,
+            animation: coherentPreset
+              ? {
+                  ...coherentPreset.animation,
+                  speed: normalizeMotionSpeed(coherentPreset.animation.speed),
+                }
+              : state.animation,
             postFx: coherentPreset
               ? { layers: mergeLockedPostFxLayers(state.postFx.layers, coherentPreset.postFx) }
               : state.postFx,
@@ -1022,8 +1037,16 @@ export function createStudioStore(storage?: StateStorage) {
           })
         },
         setAnimationControl: (partial) => {
+          const state = get()
+          const nextValue = { ...state.animation, ...partial }
+          const animation = sanitizeAnimationState(nextValue, state.animation)
+
+          if (Object.prototype.hasOwnProperty.call(partial, 'speed')) {
+            animation.speed = normalizeMotionSpeed(animation.speed)
+          }
+
           set({
-            animation: sanitizeAnimationState({ ...get().animation, ...partial }, get().animation),
+            animation,
           })
         },
         setSelectedEffect: (selectedEffectId) => {
@@ -1430,6 +1453,7 @@ function createDefaultAnimationState(): StudioStoreState['animation'] {
   return {
     playing: true,
     speed: 1,
+    reverse: false,
     timeOffset: 0,
     animateMorph: true,
     animateShaders: true,
@@ -1793,6 +1817,7 @@ function selectPersistedState(state: StudioStore): PersistedStudioState {
     character: state.character,
     ascii: state.ascii,
     mesh: state.mesh,
+    animation: state.animation,
     rendererMode: state.rendererMode,
     view: state.view,
     export: state.export,
@@ -1805,6 +1830,7 @@ function sanitizePersistedState(value: unknown): PersistedStudioState {
   const persisted = isRecord(value) ? value : {}
   const character = sanitizeCharacter(persisted.character, base.character)
   const view = sanitizeViewState(persisted.view, base.view)
+  const mesh = sanitizeMeshState(persisted.mesh, base.mesh)
   const studioEffect = sanitizeStudioEffectState(persisted.studioEffect, base.studioEffect, view.theme)
   const ascii = syncAsciiColorsFromControls(
     sanitizeAsciiState(persisted.ascii, base.ascii),
@@ -1814,7 +1840,8 @@ function sanitizePersistedState(value: unknown): PersistedStudioState {
   return {
     character,
     ascii,
-    mesh: sanitizeMeshState(persisted.mesh, base.mesh),
+    mesh,
+    animation: sanitizeAnimationState(persisted.animation, base.animation),
     rendererMode: sanitizeRendererMode(persisted.rendererMode, base.rendererMode),
     view,
     export: sanitizeExportState(persisted.export, base.export),
@@ -1823,6 +1850,10 @@ function sanitizePersistedState(value: unknown): PersistedStudioState {
 }
 
 function migratePersistedStudioState(value: unknown, version: number): unknown {
+  if (version < STUDIO_STORE_STORAGE_VERSION) {
+    return {}
+  }
+
   let persisted = readRecord(value)
 
   if (version < 2) {
@@ -2495,7 +2526,10 @@ function sanitizeAnimationState(
 
   return {
     playing: typeof record.playing === 'boolean' ? record.playing : fallback.playing,
-    speed: readClampedNumber(record.speed, fallback.speed, -100, 100),
+    speed: normalizeMotionSpeed(
+      readClampedNumber(record.speed, fallback.speed, MIN_MOTION_SPEED, MAX_MOTION_SPEED),
+    ),
+    reverse: typeof record.reverse === 'boolean' ? record.reverse : fallback.reverse,
     timeOffset: readClampedNumber(record.timeOffset, fallback.timeOffset, 0, 3600),
     animateMorph: typeof record.animateMorph === 'boolean' ? record.animateMorph : fallback.animateMorph,
     animateShaders: typeof record.animateShaders === 'boolean' ? record.animateShaders : fallback.animateShaders,
@@ -2514,12 +2548,33 @@ function sanitizeStudioEffectState(
     record.controlsByTheme,
     fallback.controlsByTheme
   )
-  const controls = controlsByTheme[theme]
+  const sanitizedLegacyControls = sanitizeStudioEffectControls(
+    record.controls,
+    fallback.controlsByTheme[theme],
+  )
+  const legacyControls = readRecord(record.controls)
+  const hasInvalidLegacyValue = STUDIO_EFFECTS.some((effect) => {
+      const legacyEffectControls = readRecord(legacyControls[effect.id])
+      const sanitizedEffectControls = sanitizedLegacyControls[effect.id]
+      return Object.entries(legacyEffectControls).some(
+        ([controlId, value]) => sanitizedEffectControls[controlId] !== value,
+      )
+    })
+  const activeControls = hasInvalidLegacyValue
+    ? sanitizedLegacyControls
+    : Object.fromEntries(
+        STUDIO_EFFECTS.map((effect) => [effect.id, controlsByTheme[theme][effect.id]]),
+      ) as Record<StudioEffectId, Record<string, StudioControlValue>>
+
+  const controls = activeControls
 
   return {
     selectedEffectId: sanitizeStudioEffectId(record.selectedEffectId, fallback.selectedEffectId),
     controls,
-    controlsByTheme,
+    controlsByTheme: {
+      ...controlsByTheme,
+      [theme]: activeControls,
+    },
   }
 }
 

@@ -51,24 +51,42 @@ describe('Studio animated export plan', () => {
     expect(last.rotationY + Math.PI * 2 / plan.frameCount).toBeCloseTo(0.25 + Math.PI * 2)
   })
 
-  it('uses negative Motion Speed for a reverse full turn', () => {
+  it('uses Reverse for a reverse full turn without reversing timeline time', () => {
     const plan = createExportAnimationPlan({
       format: 'mp4',
       autoRotate: true,
       autoRotateSpeed: 1,
-      motionSpeed: -1,
+      motionSpeed: 1,
+      reverse: true,
     })
     const frame = readExportFrame({
       plan,
       frameIndex: 1,
       baseRotationY: 0.25,
       baseTime: 3,
-      motionSpeed: -1,
+      motionSpeed: 1,
+      reverse: true,
     })
 
     expect(frame.rotationY).toBeLessThan(0.25)
-    expect(frame.animationTime).toBeLessThan(3)
+    expect(frame.animationTime).toBeGreaterThan(3)
     expect(plan.durationSeconds).toBeCloseTo(Math.PI * 2, 1)
+  })
+
+  it.each([
+    ['apng', 24],
+    ['gif', 12],
+    ['mp4', 30],
+  ] as const)('allows %s export at Motion Speed 0.5 without a duration cap', (format, fps) => {
+    const plan = createExportAnimationPlan({
+      format,
+      autoRotate: true,
+      autoRotateSpeed: 0.5,
+      motionSpeed: 0.5,
+    })
+
+    expect(plan.durationSeconds).toBeCloseTo(Math.PI * 8, 1)
+    expect(plan.frameCount).toBe(Math.round(Math.PI * 8 * fps))
   })
 
   it('rejects animation when the preview cannot rotate', () => {
@@ -78,6 +96,15 @@ describe('Studio animated export plan', () => {
       autoRotateSpeed: 0.5,
       motionSpeed: 0,
     })).toThrow('3D Motion Speed')
+  })
+
+  it('rejects Motion Speed below the fixed 0.5 minimum', () => {
+    expect(() => createExportAnimationPlan({
+      format: 'gif',
+      autoRotate: true,
+      autoRotateSpeed: 0.5,
+      motionSpeed: 0.49,
+    })).toThrow('0.5 or higher')
   })
 
   it('uses format timing units while preserving the average frame rate', () => {

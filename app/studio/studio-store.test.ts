@@ -121,7 +121,7 @@ describe('studio store', () => {
       },
     }
     const { storage } = createMemoryStorage(
-      JSON.stringify({ state: persisted, version: 7 }),
+      JSON.stringify({ state: persisted, version: 17 }),
     )
     const store = createStudioStore(storage)
 
@@ -336,7 +336,7 @@ describe('studio store', () => {
       },
     }
     const { storage } = createMemoryStorage(
-      JSON.stringify({ state: persisted, version: 7 }),
+      JSON.stringify({ state: persisted, version: 17 }),
     )
     const store = createStudioStore(storage)
 
@@ -352,7 +352,7 @@ describe('studio store', () => {
     })
   })
 
-  it('clamps 3D Motion Scale and Speed to their controller ranges', () => {
+  it('clamps 3D Motion Scale and keeps Motion Speed positive', () => {
     const initial = createInitialStudioStoreState()
     const persisted = {
       ...initial,
@@ -362,7 +362,7 @@ describe('studio store', () => {
       },
     }
     const { storage } = createMemoryStorage(
-      JSON.stringify({ state: persisted, version: 7 }),
+      JSON.stringify({ state: persisted, version: 17 }),
     )
     const store = createStudioStore(storage)
 
@@ -375,7 +375,32 @@ describe('studio store', () => {
     expect(store.getState().animation.speed).toBe(100)
 
     store.getState().setAnimationControl({ speed: -101 })
-    expect(store.getState().animation.speed).toBe(-100)
+    expect(store.getState().animation.speed).toBe(0.5)
+    expect(store.getState().animation.reverse).toBe(false)
+
+    store.getState().setAnimationControl({ reverse: true })
+    expect(store.getState().animation).toMatchObject({ speed: 0.5, reverse: true })
+  })
+
+  it('hydrates current-version Motion Speed and Reverse controls', () => {
+    const initial = createInitialStudioStoreState()
+    const persisted = {
+      ...initial,
+      animation: {
+        ...initial.animation,
+        playing: false,
+        speed: 1.25,
+        reverse: true,
+      },
+    }
+    const { storage } = createMemoryStorage(JSON.stringify({ state: persisted, version: 17 }))
+    const store = createStudioStore(storage)
+
+    expect(store.getState().animation).toMatchObject({
+      playing: false,
+      speed: 1.25,
+      reverse: true,
+    })
   })
 
   it('keeps uploaded displacement image data in runtime state only', () => {
@@ -449,7 +474,7 @@ describe('studio store', () => {
       },
     }
     const { storage } = createMemoryStorage(
-      JSON.stringify({ state: staleState, version: 1 }),
+      JSON.stringify({ state: staleState, version: 17 }),
     )
     const store = createStudioStore(storage)
 
@@ -478,7 +503,7 @@ describe('studio store', () => {
       mesh: { ...initial.mesh, autoRotate: true },
     }
     const { storage } = createMemoryStorage(
-      JSON.stringify({ state: staleState, version: 1 }),
+      JSON.stringify({ state: staleState, version: 17 }),
     )
     const store = createStudioStore(storage)
 

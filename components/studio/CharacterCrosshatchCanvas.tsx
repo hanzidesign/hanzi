@@ -25,6 +25,12 @@ import {
   type ShaderMaterial,
 } from 'three'
 import { useStudioStore } from '@/app/studio/studio-store'
+import {
+  createSourceRenderInvalidationState,
+  markSourceRenderDirty,
+  markSourceRenderRendered,
+  shouldRenderSource,
+} from './source-render-dirty'
 import { withoutSharedControllerValues } from './studio-shared-controls'
 import {
   applyCrosshatchUniforms,
@@ -35,12 +41,14 @@ import {
   createCharacterMeshGeometries,
   type CharacterMeshGeometryResult,
 } from '@/components/studio/character-mesh-geometry'
+import { deriveCharacterMeshGeometrySignature } from '@/components/studio/character-mesh-geometry-signature'
 import { useCharacterMeshAnimation } from '@/components/studio/character-mesh-animation'
 import {
   attachCharacterMeshGpuDeform,
   type CharacterMeshGpuDeformBinding,
 } from '@/components/studio/character-mesh-gpu-deform'
 import { applyDeltaRotation } from '@/components/studio/shader-canvas-math'
+import { getSignedRotationSpeed } from '@/components/studio/motion-speed'
 import {
   addCharacterModelCopies,
   type CharacterRepeatSettings,
@@ -105,6 +113,8 @@ function CharacterCrosshatchScene({
   const meshSettings = useStudioStore((store) => store.mesh)
   const animation = useStudioStore((store) => store.animation)
   const {
+    exportRender,
+    requestId,
     markExportContentReady,
     readAnimationTime,
     reportCharacterRotationY,
@@ -116,6 +126,42 @@ function CharacterCrosshatchScene({
   const sourceRef = useRef<CrosshatchSourceScene | null>(null)
   const materialRef = useRef<ShaderMaterial | null>(null)
   const renderTarget = useMemo(() => new WebGLRenderTarget(1, 1, { depthBuffer: true }), [])
+  const sourceRenderStateRef = useRef(createSourceRenderInvalidationState())
+  const geometryOptionsRef = useRef({
+    extrusionDepth: meshSettings.extrusionDepth,
+    thickness: meshSettings.thickness,
+    bevel: meshSettings.bevel,
+    twist: meshSettings.twist,
+    taper: meshSettings.taper,
+    bend: meshSettings.bend,
+    deform: meshSettings.deform,
+    displacementSubdivisionLevel: 0,
+  })
+  const geometrySignature = deriveCharacterMeshGeometrySignature({
+    ...meshSettings,
+    displacementSubdivisionLevel: 0,
+  })
+
+  useEffect(() => {
+    geometryOptionsRef.current = {
+      extrusionDepth: meshSettings.extrusionDepth,
+      thickness: meshSettings.thickness,
+      bevel: meshSettings.bevel,
+      twist: meshSettings.twist,
+      taper: meshSettings.taper,
+      bend: meshSettings.bend,
+      deform: meshSettings.deform,
+      displacementSubdivisionLevel: 0,
+    }
+  }, [
+    meshSettings.bend,
+    meshSettings.bevel,
+    meshSettings.deform,
+    meshSettings.extrusionDepth,
+    meshSettings.taper,
+    meshSettings.thickness,
+    meshSettings.twist,
+  ])
 
   useEffect(() => {
     if (!svgData || svgLoadError) {
@@ -128,14 +174,7 @@ function CharacterCrosshatchScene({
       const shapes = svg.paths.flatMap((path) => SVGLoader.createShapes(path))
       const nextGeometryResult = createCharacterMeshGeometries({
         shapes,
-        extrusionDepth: meshSettings.extrusionDepth,
-        thickness: meshSettings.thickness,
-        bevel: meshSettings.bevel,
-        twist: meshSettings.twist,
-        taper: meshSettings.taper,
-        bend: meshSettings.bend,
-        deform: meshSettings.deform,
-        displacementSubdivisionLevel: 0,
+        ...geometryOptionsRef.current,
       })
 
       replaceGeometryResult(nextGeometryResult, geometryResultRef, setGeometryResult)
@@ -143,13 +182,7 @@ function CharacterCrosshatchScene({
       replaceGeometryResult(null, geometryResultRef, setGeometryResult)
     }
   }, [
-    meshSettings.bend,
-    meshSettings.bevel,
-    meshSettings.extrusionDepth,
-    meshSettings.taper,
-    meshSettings.thickness,
-    meshSettings.twist,
-    meshSettings.deform,
+    geometrySignature,
     svgData,
     svgLoadError,
   ])
@@ -166,6 +199,7 @@ function CharacterCrosshatchScene({
       ? createCrosshatchSourceScene(geometryResult, meshSettings.repeat)
       : null
     sourceRef.current = nextSource
+    markSourceRenderDirty(sourceRenderStateRef.current)
 
     return () => {
       if (sourceRef.current === nextSource) {
@@ -209,7 +243,12 @@ function CharacterCrosshatchScene({
       meshSettings.rotation.z,
     )
     source.group.scale.setScalar(meshSettings.scale)
+    markSourceRenderDirty(sourceRenderStateRef.current)
   }, [geometryResult, meshSettings.position, meshSettings.rotation, meshSettings.scale])
+
+  useEffect(() => {
+    markSourceRenderDirty(sourceRenderStateRef.current)
+  }, [meshSettings.deform])
 
   useCharacterMeshAnimation(sourceRef, meshSettings.deform)
 
@@ -219,10 +258,10 @@ function CharacterCrosshatchScene({
       return
     }
 
-    if (meshSettings.autoRotate && animation.playing && animation.speed !== 0) {
+    if (meshSettings.autoRotate && animation.playing) {
       source.group.rotation.y = applyDeltaRotation(
         source.group.rotation.y,
-        meshSettings.autoRotateSpeed * animation.speed,
+        meshSettings.autoRotateSpeed * getSignedRotationSpeed(animation.speed, animation.reverse),
         delta,
       )
     }
@@ -234,16 +273,26 @@ function CharacterCrosshatchScene({
     const height = Math.max(1, Math.round(size.height * pixelRatio))
     const visual = resolveVisualFrameSize('canvas', width, height)
 
-    if (renderTarget.width !== width || renderTarget.height !== height) {
+    const sourceResized = renderTarget.width !== width || renderTarget.height !== height
+    if (sourceResized) {
       renderTarget.setSize(width, height)
+      markSourceRenderDirty(sourceRenderStateRef.current)
     }
 
-    const previousTarget = gl.getRenderTarget()
-    gl.setRenderTarget(renderTarget)
-    gl.clear()
-    gl.render(source.scene, camera)
-    gl.setRenderTarget(previousTarget)
-    if (geometryResult?.geometries.length) {
+    const sourceNeedsRender = shouldRenderSource(sourceRenderStateRef.current, {
+      animationPlaying: animation.playing,
+      autoRotateActive: meshSettings.autoRotate,
+      gpuDeformActive: source.gpuDeform !== null,
+      exportRender,
+      requestId,
+    })
+    if (sourceNeedsRender) {
+      const previousTarget = gl.getRenderTarget()
+      gl.setRenderTarget(renderTarget)
+      gl.clear()
+      gl.render(source.scene, camera)
+      gl.setRenderTarget(previousTarget)
+      markSourceRenderRendered(sourceRenderStateRef.current, { exportRender, requestId })
       markExportContentReady()
     }
 

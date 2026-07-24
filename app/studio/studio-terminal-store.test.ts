@@ -28,6 +28,7 @@ function createMemoryStorage(initialValue?: string) {
     },
   }
 
+
   return {
     storage,
     readPersistedState: () => {
@@ -114,7 +115,7 @@ describe('Phase 5D Studio terminal Studio store', () => {
     expect(store.getState().studioEffect.controls.ascii).toMatchObject({
       foreground: '#101010',
       background: '#f4f1e8',
-      scale: 4.3,
+      scale: 6,
     })
     expect(store.getState().ascii).toMatchObject({
       foregroundColor: '#101010',
@@ -236,286 +237,25 @@ describe('Phase 5D Studio terminal Studio store', () => {
     expect(reloadedStore.getState().studioEffect.controls.crosshatch['line-color']).toBe('#112233')
   })
 
-  it('migrates legacy colors into the active theme without overwriting the other defaults', () => {
+  it('discards pre-v17 persisted Studio payloads as a hard update', () => {
     const base = createInitialStudioStoreState()
-    const legacyState = {
-      ...base,
-      view: { ...base.view, theme: 'dark' },
-      ascii: {
-        ...base.ascii,
-        foregroundColor: '#abcdef',
-        backgroundColor: '#010203',
-      },
-      studioEffect: {
-        selectedEffectId: 'ascii',
-        controls: base.studioEffect.controls,
-      },
-    }
-    const { storage } = createMemoryStorage(JSON.stringify({ state: legacyState, version: 2 }))
-    const store = createStudioStore(storage)
 
-    expect(store.getState().studioEffect.controls.ascii).toMatchObject({
-      foreground: '#abcdef',
-      background: '#010203',
-    })
-
-    store.getState().toggleStudioTheme()
-
-    expect(store.getState().studioEffect.controls.ascii).toMatchObject({
-      foreground: '#101010',
-      background: '#f4f1e8',
-    })
-  })
-
-  it('migrates corrected Matrix, Blockify, and Noise Field roles from version 3', () => {
-    const base = createInitialStudioStoreState()
-    const legacyMatrixControls = Object.fromEntries(
-      Object.entries(base.studioEffect.controls['matrix-rain'])
-        .filter(([controlId]) => controlId !== 'foreground'),
-    )
-    const legacyBlockifyControls = Object.fromEntries(
-      Object.entries(base.studioEffect.controls.blockify)
-        .filter(([controlId]) => controlId !== 'foreground' && controlId !== 'background'),
-    )
-    const makeLegacyThemeColors = (theme: 'light' | 'dark') => {
-      const themeColors = base.studioEffect.controlsByTheme[theme]
-      const matrixRain = Object.fromEntries(
-        Object.entries(themeColors['matrix-rain'])
-          .filter(([controlId]) => controlId !== 'foreground'),
-      )
-      const blockify = Object.fromEntries(
-        Object.entries(themeColors.blockify)
-          .filter(([controlId]) => controlId !== 'foreground' && controlId !== 'background'),
-      )
-
-      return {
-        ...themeColors,
-        'matrix-rain': {
-          ...matrixRain,
-          'model-color': theme === 'light' ? '#111111' : '#222222',
-        },
-        blockify: {
-          ...blockify,
-          'border-color': theme === 'light' ? '#333333' : '#444444',
-        },
+    for (const version of [1, 7, 16]) {
+      const staleState = {
+        ...base,
+        character: { country: 'jp', year: '2024', isTc: true },
+        animation: { ...base.animation, speed: 2, reverse: true },
+        mesh: { ...base.mesh, scale: 1.7 },
       }
+      const { storage } = createMemoryStorage(JSON.stringify({ state: staleState, version }))
+      const store = createStudioStore(storage)
+
+      expect(store.getState()).toMatchObject({
+        character: base.character,
+        animation: base.animation,
+        mesh: base.mesh,
+      })
     }
-    const legacyState = {
-      ...base,
-      studioEffect: {
-        ...base.studioEffect,
-        controls: {
-          ...base.studioEffect.controls,
-          'matrix-rain': { ...legacyMatrixControls, 'model-color': '#222222' },
-          blockify: { ...legacyBlockifyControls, 'border-color': '#444444' },
-          'noise-field': {
-            ...base.studioEffect.controls['noise-field'],
-            'distort-only': false,
-          },
-        },
-        colorControlsByTheme: {
-          light: makeLegacyThemeColors('light'),
-          dark: makeLegacyThemeColors('dark'),
-        },
-      },
-    }
-    const { storage } = createMemoryStorage(JSON.stringify({ state: legacyState, version: 3 }))
-    const store = createStudioStore(storage)
-
-    expect(store.getState().studioEffect.controls['matrix-rain'].foreground).toBe('#222222')
-    expect(store.getState().studioEffect.controls.blockify.foreground).toBe('#444444')
-    expect(store.getState().studioEffect.controls.blockify.background).toBe('#101010')
-    expect(store.getState().studioEffect.controls['noise-field']['distort-only']).toBe(true)
-
-    store.getState().toggleStudioTheme()
-    expect(store.getState().studioEffect.controls['matrix-rain'].foreground).toBe('#111111')
-    expect(store.getState().studioEffect.controls.blockify.foreground).toBe('#333333')
-    expect(store.getState().studioEffect.controls.blockify.background).toBe('#f4f1e8')
-  })
-
-  it('migrates the former Matrix Brightness Map default to the neutral value', () => {
-    const base = createInitialStudioStoreState()
-    const persistedState = {
-      ...base,
-      studioEffect: {
-        ...base.studioEffect,
-        controls: {
-          ...base.studioEffect.controls,
-          'matrix-rain': {
-            ...base.studioEffect.controls['matrix-rain'],
-            'brightness-map': 3,
-          },
-        },
-      },
-    }
-    const { storage } = createMemoryStorage(JSON.stringify({ state: persistedState, version: 4 }))
-    const store = createStudioStore(storage)
-
-    expect(store.getState().studioEffect.controls['matrix-rain']['brightness-map']).toBe(1)
-  })
-
-  it('migrates the former Light Matrix color and Rain Opacity defaults', () => {
-    const base = createInitialStudioStoreState()
-    const persistedState = {
-      ...base,
-      view: { ...base.view, theme: 'light' },
-      studioEffect: {
-        ...base.studioEffect,
-        controls: {
-          ...base.studioEffect.controls,
-          'matrix-rain': {
-            ...base.studioEffect.controls['matrix-rain'],
-            foreground: '#101010',
-            'bg-opacity': 0.3,
-          },
-        },
-        colorControlsByTheme: {
-          ...base.studioEffect.controlsByTheme,
-          light: {
-            ...base.studioEffect.controlsByTheme.light,
-            'matrix-rain': {
-              ...base.studioEffect.controlsByTheme.light['matrix-rain'],
-              foreground: '#101010',
-            },
-          },
-        },
-      },
-    }
-    const { storage } = createMemoryStorage(JSON.stringify({ state: persistedState, version: 5 }))
-    const store = createStudioStore(storage)
-
-    expect(store.getState().studioEffect.controls['matrix-rain']).toMatchObject({
-      foreground: '#10da14',
-      'bg-opacity': 0.5,
-    })
-    expect(store.getState().studioEffect.controlsByTheme.light['matrix-rain'].foreground)
-      .toBe('#10da14')
-  })
-
-  it('migrates former Matrix theme defaults without replacing custom colors', () => {
-    const base = createInitialStudioStoreState()
-    const persistedState = {
-      ...base,
-      studioEffect: {
-        ...base.studioEffect,
-        controlsByTheme: {
-          light: {
-            ...base.studioEffect.controlsByTheme.light,
-            'matrix-rain': {
-              ...base.studioEffect.controlsByTheme.light['matrix-rain'],
-              foreground: '#15c15d',
-              'rain-color': '#007a33',
-            },
-          },
-          dark: {
-            ...base.studioEffect.controlsByTheme.dark,
-            'matrix-rain': {
-              ...base.studioEffect.controlsByTheme.dark['matrix-rain'],
-              foreground: '#f4f1e8',
-            },
-          },
-        },
-      },
-    }
-    const { storage } = createMemoryStorage(JSON.stringify({ state: persistedState, version: 7 }))
-    const store = createStudioStore(storage)
-
-    expect(store.getState().studioEffect.controlsByTheme.light['matrix-rain']).toMatchObject({
-      foreground: '#10da14',
-      'rain-color': '#24ee20',
-    })
-    expect(store.getState().studioEffect.controlsByTheme.dark['matrix-rain']).toMatchObject({
-      foreground: '#36d00b',
-      'rain-color': '#00ff00',
-    })
-
-    const customState = {
-      ...persistedState,
-      studioEffect: {
-        ...persistedState.studioEffect,
-        controlsByTheme: {
-          light: {
-            ...persistedState.studioEffect.controlsByTheme.light,
-            'matrix-rain': {
-              ...persistedState.studioEffect.controlsByTheme.light['matrix-rain'],
-              foreground: '#123456',
-              'rain-color': '#234567',
-            },
-          },
-          dark: {
-            ...persistedState.studioEffect.controlsByTheme.dark,
-            'matrix-rain': {
-              ...persistedState.studioEffect.controlsByTheme.dark['matrix-rain'],
-              foreground: '#345678',
-            },
-          },
-        },
-      },
-    }
-    const { storage: customStorage } = createMemoryStorage(JSON.stringify({ state: customState, version: 7 }))
-    const customStore = createStudioStore(customStorage)
-
-    expect(customStore.getState().studioEffect.controlsByTheme.light['matrix-rain']).toMatchObject({
-      foreground: '#123456',
-      'rain-color': '#234567',
-    })
-    expect(customStore.getState().studioEffect.controlsByTheme.dark['matrix-rain'].foreground)
-      .toBe('#345678')
-  })
-
-  it('migrates legacy single-set controls into only the active theme', () => {
-    const base = createInitialStudioStoreState()
-    const { controlsByTheme, ...legacyStudioEffect } = base.studioEffect
-    expect(controlsByTheme).toBeDefined()
-    const legacyColors = (theme: 'light' | 'dark') => Object.fromEntries(
-      STUDIO_EFFECTS.map((effect) => {
-        const colorIds = effect.settingGroups
-          .flatMap((group) => group.controls)
-          .filter(isStudioThemeColorControl)
-          .map((control) => control.id)
-        return [effect.id, Object.fromEntries(
-          colorIds.map((controlId) => [
-            controlId,
-            base.studioEffect.controlsByTheme[theme][effect.id][controlId],
-          ]),
-        )]
-      }),
-    )
-    const persistedState = {
-      ...base,
-      view: { ...base.view, theme: 'dark' as const },
-      studioEffect: {
-        ...legacyStudioEffect,
-        controls: {
-          ...legacyStudioEffect.controls,
-          crosshatch: {
-            ...legacyStudioEffect.controls.crosshatch,
-            density: 9,
-            'line-width': 0.15,
-            brightness: 0,
-          },
-        },
-        colorControlsByTheme: {
-          light: legacyColors('light'),
-          dark: legacyColors('dark'),
-        },
-      },
-    }
-    const { storage } = createMemoryStorage(JSON.stringify({ state: persistedState, version: 6 }))
-    const store = createStudioStore(storage)
-
-    expect(store.getState().studioEffect.controls.crosshatch).toMatchObject({
-      density: 9,
-      'line-width': 0.08,
-      brightness: -4,
-    })
-
-    store.getState().toggleStudioTheme()
-    expect(store.getState().studioEffect.controls.crosshatch).toMatchObject({
-      density: 6,
-      'line-width': 0.08,
-      brightness: -15,
-    })
   })
 
   it('uses the current Matrix visibility defaults through Light theme and Reset', () => {
@@ -541,49 +281,7 @@ describe('Phase 5D Studio terminal Studio store', () => {
     })
   })
 
-  it('migrates the former Pixel Sort Hue default to Depth in both themes', () => {
-    const base = createInitialStudioStoreState()
-    const persistedState = {
-      ...base,
-      view: { ...base.view, theme: 'light' as const },
-      studioEffect: {
-        ...base.studioEffect,
-        controls: {
-          ...base.studioEffect.controls,
-          'pixel-sort': { ...base.studioEffect.controls['pixel-sort'], 'sort-mode': 'hue' },
-        },
-        controlsByTheme: {
-          light: {
-            ...base.studioEffect.controlsByTheme.light,
-            'pixel-sort': {
-              ...base.studioEffect.controlsByTheme.light['pixel-sort'],
-              'sort-mode': 'hue',
-            },
-          },
-          dark: {
-            ...base.studioEffect.controlsByTheme.dark,
-            'pixel-sort': {
-              ...base.studioEffect.controlsByTheme.dark['pixel-sort'],
-              'sort-mode': 'saturation',
-            },
-          },
-        },
-      },
-    }
-    const { storage } = createMemoryStorage(JSON.stringify({ state: persistedState, version: 8 }))
-    const store = createStudioStore(storage)
-
-    expect(store.getState().studioEffect.controlsByTheme.light['pixel-sort']['sort-mode'])
-      .toBe('depth')
-    expect(store.getState().studioEffect.controlsByTheme.dark['pixel-sort']['sort-mode'])
-      .toBe('saturation')
-    expect(store.getState().studioEffect.controls['pixel-sort']['sort-mode']).toBe('depth')
-
-    store.getState().toggleStudioTheme()
-    expect(store.getState().studioEffect.controls['pixel-sort']['sort-mode']).toBe('saturation')
-  })
-
-  it('migrates legacy active Pixel Sort controls and resets invalid values to Depth', () => {
+  it('sanitizes current Pixel Sort controls and resets invalid values to Depth', () => {
     const base = createInitialStudioStoreState()
     const { controlsByTheme: _controlsByTheme, ...legacyStudioEffect } = base.studioEffect
     void _controlsByTheme
@@ -593,11 +291,11 @@ describe('Phase 5D Studio terminal Studio store', () => {
         ...legacyStudioEffect,
         controls: {
           ...legacyStudioEffect.controls,
-          'pixel-sort': { ...legacyStudioEffect.controls['pixel-sort'], 'sort-mode': 'hue' },
+          'pixel-sort': { ...legacyStudioEffect.controls['pixel-sort'], 'sort-mode': 'invalid' },
         },
       },
     }
-    const { storage } = createMemoryStorage(JSON.stringify({ state: persistedState, version: 6 }))
+    const { storage } = createMemoryStorage(JSON.stringify({ state: persistedState, version: 17 }))
     const store = createStudioStore(storage)
 
     expect(store.getState().studioEffect.controls['pixel-sort']['sort-mode']).toBe('depth')
@@ -607,214 +305,6 @@ describe('Phase 5D Studio terminal Studio store', () => {
     store.getState().setStudioEffectControl('pixel-sort', 'sort-mode', 'hue')
     store.getState().resetSelectedEffectControls()
     expect(store.getState().studioEffect.controls['pixel-sort']['sort-mode']).toBe('depth')
-  })
-
-  it('migrates the former Pixel Sort streak default in active and themed controls', () => {
-    const base = createInitialStudioStoreState()
-    const persistedState = {
-      ...base,
-      view: { ...base.view, theme: 'light' as const },
-      studioEffect: {
-        ...base.studioEffect,
-        controls: {
-          ...base.studioEffect.controls,
-          'pixel-sort': {
-            ...base.studioEffect.controls['pixel-sort'],
-            'streak-length': 100,
-          },
-        },
-        controlsByTheme: {
-          light: {
-            ...base.studioEffect.controlsByTheme.light,
-            'pixel-sort': {
-              ...base.studioEffect.controlsByTheme.light['pixel-sort'],
-              'streak-length': 100,
-            },
-          },
-          dark: {
-            ...base.studioEffect.controlsByTheme.dark,
-            'pixel-sort': {
-              ...base.studioEffect.controlsByTheme.dark['pixel-sort'],
-              'streak-length': 270,
-            },
-          },
-        },
-      },
-    }
-    const { storage } = createMemoryStorage(JSON.stringify({ state: persistedState, version: 9 }))
-    const store = createStudioStore(storage)
-
-    expect(store.getState().studioEffect.controls['pixel-sort']['streak-length']).toBe(500)
-    expect(store.getState().studioEffect.controlsByTheme.light['pixel-sort']['streak-length'])
-      .toBe(500)
-    expect(store.getState().studioEffect.controlsByTheme.dark['pixel-sort']['streak-length'])
-      .toBe(270)
-
-    store.getState().toggleStudioTheme()
-    expect(store.getState().studioEffect.controls['pixel-sort']['streak-length']).toBe(270)
-  })
-
-  it('migrates legacy Pixel Sort gradient color ids in active and themed controls', () => {
-    const base = createInitialStudioStoreState()
-    const legacyColors = (
-      controls: Record<string, string | number | boolean>,
-      colors: { shadow: string; midtone: string; highlight: string; startColor?: string },
-    ) => {
-      const rest = { ...controls }
-      delete rest['start-color']
-      delete rest['middle-color']
-      delete rest['end-color']
-      return {
-        ...rest,
-        shadow: colors.shadow,
-        midtone: colors.midtone,
-        highlight: colors.highlight,
-        ...(colors.startColor ? { 'start-color': colors.startColor } : {}),
-      }
-    }
-    const persistedState = {
-      ...base,
-      view: { ...base.view, theme: 'light' as const },
-      studioEffect: {
-        ...base.studioEffect,
-        controls: {
-          ...base.studioEffect.controls,
-          'pixel-sort': legacyColors(base.studioEffect.controls['pixel-sort'], {
-            shadow: '#111111', midtone: '#222222', highlight: '#333333', startColor: '#aaaaaa',
-          }),
-        },
-        controlsByTheme: {
-          light: {
-            ...base.studioEffect.controlsByTheme.light,
-            'pixel-sort': legacyColors(base.studioEffect.controlsByTheme.light['pixel-sort'], {
-              shadow: '#444444', midtone: '#555555', highlight: '#666666', startColor: '#aaaaaa',
-            }),
-          },
-          dark: {
-            ...base.studioEffect.controlsByTheme.dark,
-            'pixel-sort': legacyColors(base.studioEffect.controlsByTheme.dark['pixel-sort'], {
-              shadow: '#777777', midtone: '#888888', highlight: '#999999',
-            }),
-          },
-        },
-      },
-    }
-    const { storage } = createMemoryStorage(JSON.stringify({ state: persistedState, version: 10 }))
-    const store = createStudioStore(storage)
-
-    expect(store.getState().studioEffect.controls['pixel-sort']).toMatchObject({
-      'start-color': '#aaaaaa',
-      'middle-color': '#555555',
-      'end-color': '#666666',
-    })
-    expect(store.getState().studioEffect.controlsByTheme.light['pixel-sort']).toMatchObject({
-      'start-color': '#aaaaaa', 'middle-color': '#555555', 'end-color': '#666666',
-    })
-    expect(store.getState().studioEffect.controlsByTheme.dark['pixel-sort']).toMatchObject({
-      'start-color': '#777777', 'middle-color': '#888888', 'end-color': '#999999',
-    })
-    for (const controls of [
-      store.getState().studioEffect.controls['pixel-sort'],
-      store.getState().studioEffect.controlsByTheme.light['pixel-sort'],
-      store.getState().studioEffect.controlsByTheme.dark['pixel-sort'],
-    ]) {
-      expect(controls).not.toHaveProperty('shadow')
-      expect(controls).not.toHaveProperty('midtone')
-      expect(controls).not.toHaveProperty('highlight')
-    }
-  })
-
-  it('migrates only the former Pixel Sort randomness default in active and themed controls', () => {
-    const base = createInitialStudioStoreState()
-    const persistedState = {
-      ...base,
-      view: { ...base.view, theme: 'light' as const },
-      studioEffect: {
-        ...base.studioEffect,
-        controls: {
-          ...base.studioEffect.controls,
-          'pixel-sort': { ...base.studioEffect.controls['pixel-sort'], randomness: 0.3 },
-        },
-        controlsByTheme: {
-          light: {
-            ...base.studioEffect.controlsByTheme.light,
-            'pixel-sort': { ...base.studioEffect.controlsByTheme.light['pixel-sort'], randomness: 0.3 },
-          },
-          dark: {
-            ...base.studioEffect.controlsByTheme.dark,
-            'pixel-sort': { ...base.studioEffect.controlsByTheme.dark['pixel-sort'], randomness: 2.4 },
-          },
-        },
-      },
-    }
-    const { storage } = createMemoryStorage(JSON.stringify({ state: persistedState, version: 11 }))
-    const store = createStudioStore(storage)
-
-    expect(store.getState().studioEffect.controls['pixel-sort'].randomness).toBe(0.5)
-    expect(store.getState().studioEffect.controlsByTheme.light['pixel-sort'].randomness).toBe(0.5)
-    expect(store.getState().studioEffect.controlsByTheme.dark['pixel-sort'].randomness).toBe(2.4)
-  })
-
-  it('migrates only the former Pixel Sort streak default from 250 to 500', () => {
-    const base = createInitialStudioStoreState()
-    const persistedState = {
-      ...base,
-      view: { ...base.view, theme: 'light' as const },
-      studioEffect: {
-        ...base.studioEffect,
-        controls: {
-          ...base.studioEffect.controls,
-          'pixel-sort': { ...base.studioEffect.controls['pixel-sort'], 'streak-length': 250 },
-        },
-        controlsByTheme: {
-          light: {
-            ...base.studioEffect.controlsByTheme.light,
-            'pixel-sort': { ...base.studioEffect.controlsByTheme.light['pixel-sort'], 'streak-length': 250 },
-          },
-          dark: {
-            ...base.studioEffect.controlsByTheme.dark,
-            'pixel-sort': { ...base.studioEffect.controlsByTheme.dark['pixel-sort'], 'streak-length': 640 },
-          },
-        },
-      },
-    }
-    const { storage } = createMemoryStorage(JSON.stringify({ state: persistedState, version: 12 }))
-    const store = createStudioStore(storage)
-
-    expect(store.getState().studioEffect.controls['pixel-sort']['streak-length']).toBe(500)
-    expect(store.getState().studioEffect.controlsByTheme.light['pixel-sort']['streak-length']).toBe(500)
-    expect(store.getState().studioEffect.controlsByTheme.dark['pixel-sort']['streak-length']).toBe(640)
-  })
-
-  it('migrates only the former Pixel Sort intensity default from 0.8 to 1', () => {
-    const base = createInitialStudioStoreState()
-    const persistedState = {
-      ...base,
-      view: { ...base.view, theme: 'light' as const },
-      studioEffect: {
-        ...base.studioEffect,
-        controls: {
-          ...base.studioEffect.controls,
-          'pixel-sort': { ...base.studioEffect.controls['pixel-sort'], intensity: 0.8 },
-        },
-        controlsByTheme: {
-          light: {
-            ...base.studioEffect.controlsByTheme.light,
-            'pixel-sort': { ...base.studioEffect.controlsByTheme.light['pixel-sort'], intensity: 0.8 },
-          },
-          dark: {
-            ...base.studioEffect.controlsByTheme.dark,
-            'pixel-sort': { ...base.studioEffect.controlsByTheme.dark['pixel-sort'], intensity: 1.4 },
-          },
-        },
-      },
-    }
-    const { storage } = createMemoryStorage(JSON.stringify({ state: persistedState, version: 13 }))
-    const store = createStudioStore(storage)
-
-    expect(store.getState().studioEffect.controls['pixel-sort'].intensity).toBe(1)
-    expect(store.getState().studioEffect.controlsByTheme.light['pixel-sort'].intensity).toBe(1)
-    expect(store.getState().studioEffect.controlsByTheme.dark['pixel-sort'].intensity).toBe(1.4)
   })
 
   it('starts with an effect-scoped storage key and dark Studio theme', () => {
@@ -858,7 +348,7 @@ describe('Phase 5D Studio terminal Studio store', () => {
       studioEffect: store.getState().studioEffect,
     })
     expect(readPersistedEnvelope()).toMatchObject({
-      version: 16,
+      version: 17,
       state: { studioEffect: store.getState().studioEffect },
     })
     expect(persisted.export).toMatchObject({ selectedFormat: 'apng' })
@@ -933,7 +423,7 @@ describe('Phase 5D Studio terminal Studio store', () => {
         expandedSections: expandedSectionsWithoutModelDeform,
       },
     }
-    const { storage } = createMemoryStorage(JSON.stringify({ state: persistedState, version: 8 }))
+    const { storage } = createMemoryStorage(JSON.stringify({ state: persistedState, version: 17 }))
     const store = createStudioStore(storage)
 
     expect(store.getState().view.expandedSections.modelDeform).toBe(true)
@@ -1039,7 +529,7 @@ describe('Phase 5D Studio terminal Studio store', () => {
     }
     const { storage } = createMemoryStorage(JSON.stringify({
       state: persistedState,
-      version: 2,
+      version: 17,
     }))
     const store = createStudioStore(storage)
 
@@ -1105,7 +595,7 @@ describe('Phase 5D Studio terminal Studio store', () => {
     }
     const { storage } = createMemoryStorage(JSON.stringify({
       state: persistedState,
-      version: 2,
+      version: 17,
     }))
     const store = createStudioStore(storage)
 
@@ -1166,7 +656,7 @@ describe('Phase 5D Studio terminal Studio store', () => {
     }
     const { storage } = createMemoryStorage(JSON.stringify({
       state: persistedState,
-      version: 2,
+      version: 17,
     }))
     const store = createStudioStore(storage)
 
@@ -1221,7 +711,7 @@ describe('Phase 5D Studio terminal Studio store', () => {
     }
     const { storage } = createMemoryStorage(JSON.stringify({
       state: persistedState,
-      version: 2,
+      version: 17,
     }))
     const store = createStudioStore(storage)
 
@@ -1285,7 +775,7 @@ describe('Phase 5D Studio terminal Studio store', () => {
     }
     const { storage } = createMemoryStorage(JSON.stringify({
       state: persistedState,
-      version: 2,
+      version: 17,
     }))
     const store = createStudioStore(storage)
 
@@ -1347,7 +837,7 @@ describe('Phase 5D Studio terminal Studio store', () => {
         },
       },
     }
-    const { storage } = createMemoryStorage(JSON.stringify({ state: persistedState, version: 8 }))
+    const { storage } = createMemoryStorage(JSON.stringify({ state: persistedState, version: 17 }))
     const store = createStudioStore(storage)
 
     expect(store.getState().studioEffect.controls['pixel-sort'].direction).toBe('radial')
@@ -1386,7 +876,7 @@ describe('Phase 5D Studio terminal Studio store', () => {
     }
     const { storage } = createMemoryStorage(JSON.stringify({
       state: persistedState,
-      version: 2,
+      version: 17,
     }))
     const store = createStudioStore(storage)
 
@@ -1448,7 +938,7 @@ describe('Phase 5D Studio terminal Studio store', () => {
     }
     const { storage } = createMemoryStorage(JSON.stringify({
       state: persistedState,
-      version: 2,
+      version: 17,
     }))
     const store = createStudioStore(storage)
 
@@ -1510,7 +1000,7 @@ describe('Phase 5D Studio terminal Studio store', () => {
         },
       },
     }
-    const { storage } = createMemoryStorage(JSON.stringify({ state: persistedState, version: 2 }))
+    const { storage } = createMemoryStorage(JSON.stringify({ state: persistedState, version: 17 }))
     const store = createStudioStore(storage)
 
     expect(store.getState().studioEffect.controls['edge-detection']).toMatchObject({
@@ -1571,14 +1061,14 @@ describe('Phase 5D Studio terminal Studio store', () => {
         },
       },
     }
-    const { storage } = createMemoryStorage(JSON.stringify({ state: persistedState, version: 2 }))
+    const { storage } = createMemoryStorage(JSON.stringify({ state: persistedState, version: 17 }))
     const store = createStudioStore(storage)
 
     expect(store.getState().studioEffect.controls.crosshatch).toMatchObject({
       density: 50,
       layers: 1,
       angle: 90,
-      'line-width': 0.08,
+      'line-width': 0.15,
       randomness: 1,
       invert: false,
       brightness: 100,
@@ -1635,7 +1125,7 @@ describe('Phase 5D Studio terminal Studio store', () => {
         },
       },
     }
-    const { storage } = createMemoryStorage(JSON.stringify({ state: persistedState, version: 2 }))
+    const { storage } = createMemoryStorage(JSON.stringify({ state: persistedState, version: 17 }))
     const store = createStudioStore(storage)
 
     expect(store.getState().studioEffect.controls['wave-lines']).toMatchObject({
@@ -1699,7 +1189,7 @@ describe('Phase 5D Studio terminal Studio store', () => {
         },
       },
     }
-    const { storage } = createMemoryStorage(JSON.stringify({ state: persistedState, version: 2 }))
+    const { storage } = createMemoryStorage(JSON.stringify({ state: persistedState, version: 17 }))
     const store = createStudioStore(storage)
 
     expect(store.getState().studioEffect.controls['noise-field']).toMatchObject({
@@ -1742,7 +1232,7 @@ describe('Phase 5D Studio terminal Studio store', () => {
         },
       },
     }
-    const { storage } = createMemoryStorage(JSON.stringify({ state: persistedState, version: 2 }))
+    const { storage } = createMemoryStorage(JSON.stringify({ state: persistedState, version: 17 }))
     const store = createStudioStore(storage)
 
     expect(store.getState().studioEffect.controls.voronoi).toMatchObject({
@@ -1787,7 +1277,7 @@ describe('Phase 5D Studio terminal Studio store', () => {
         },
       },
     }
-    const { storage } = createMemoryStorage(JSON.stringify({ state: persistedState, version: 2 }))
+    const { storage } = createMemoryStorage(JSON.stringify({ state: persistedState, version: 17 }))
     const store = createStudioStore(storage)
 
     expect(store.getState().studioEffect.controls.vhs).toMatchObject({
@@ -1821,24 +1311,4 @@ describe('Phase 5D Studio terminal Studio store', () => {
     expect(store.getState().mesh.bevel).toBe(0.08)
   })
 
-  it('migrates the old persisted ASCII Color Mode default from original to mono', () => {
-    const base = createInitialStudioStoreState()
-    const staleState = {
-      ...base,
-      studioEffect: {
-        ...base.studioEffect,
-        controls: {
-          ...base.studioEffect.controls,
-          ascii: {
-            ...base.studioEffect.controls.ascii,
-            'color-mode': 'original',
-          },
-        },
-      },
-    }
-    const { storage } = createMemoryStorage(JSON.stringify({ state: staleState, version: 1 }))
-    const store = createStudioStore(storage)
-
-    expect(store.getState().studioEffect.controls.ascii['color-mode']).toBe('mono')
-  })
 })

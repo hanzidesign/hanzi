@@ -170,7 +170,7 @@ describe('Studio section Reset actions', () => {
     resetAsciiPrimaryGroup(store.getState().view.theme, setAsciiControl, setStudioEffectControl)
 
     expect(store.getState().ascii).toMatchObject({
-      cellSize: 12,
+      cellSize: 18,
       charsetStyle: 'standard',
       brightness: 0.4,
     })

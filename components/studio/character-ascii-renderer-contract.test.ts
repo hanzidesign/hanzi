@@ -14,7 +14,7 @@ describe('Phase 5C active 3D ASCII renderer contract', () => {
     expect(studioCanvasSource).not.toContain('CharacterSurfaceCanvas')
   })
 
-  it('builds a true SVG mesh and auto-spins it on the Y axis', async () => {
+  it('builds a true SVG mesh, keys structural rebuilds, and gates Y rotation by Play', async () => {
     const rendererSource = await readFile(join(studioDir, 'CharacterAsciiCanvas.tsx'), 'utf8')
 
     expect(rendererSource).toContain('SVGLoader')
@@ -23,20 +23,26 @@ describe('Phase 5C active 3D ASCII renderer contract', () => {
     expect(rendererSource).toContain('groupRef.current.rotation.y')
     expect(rendererSource).toContain('mesh.autoRotate')
     expect(rendererSource).toContain('mesh.autoRotateSpeed')
+    expect(rendererSource).toContain('deriveCharacterMeshGeometrySignature')
+    expect(rendererSource).toContain('geometrySignature,')
+    expect(rendererSource).toContain('animation.playing')
+    expect(rendererSource).toContain('getSignedRotationSpeed(animation.speed, animation.reverse)')
     expect(rendererSource).toContain('readAnimationTime()')
-    expect(rendererSource).toContain('u_asciiCellSize')
+    expect(rendererSource).toContain('updateAsciiShaderUniforms(material, {')
   })
 
-  it('uses only the ASCII effect bucket and never compiles another Effect', async () => {
+  it('uses only the ASCII effect bucket and keeps one material instance per mount', async () => {
     const rendererSource = await readFile(join(studioDir, 'CharacterAsciiCanvas.tsx'), 'utf8')
 
     expect(rendererSource).toContain('studioEffect')
     expect(rendererSource).toContain('compileStudioEffectRuntime')
     expect(rendererSource).toContain("selectedEffectId: 'ascii'")
-    expect(rendererSource).toContain('studioEffect.controls.ascii')
+    expect(rendererSource).toContain('store.studioEffect.controls.ascii')
     expect(rendererSource).not.toContain('studioEffect.selectedEffectId')
     expect(rendererSource).not.toContain('studioEffect.controls[studioEffect.selectedEffectId]')
     expect(rendererSource).toContain('studioRuntime')
-    expect(rendererSource).toContain('applyStudioRuntimeUniforms')
+    expect(rendererSource).toContain('const [material] = useState(() => createAsciiShaderMaterial')
+    expect(rendererSource).toContain('updateAsciiShaderUniforms(material, {')
+    expect(rendererSource).toContain('disposeAsciiShaderMaterial(material)')
   })
 })

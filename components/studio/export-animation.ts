@@ -1,4 +1,8 @@
 import type { StudioExportFormat } from '@/app/studio/studio-store'
+import {
+  getSignedRotationSpeed,
+  MIN_MOTION_SPEED,
+} from '@/components/studio/motion-speed'
 
 export type AnimatedStudioExportFormat = Exclude<StudioExportFormat, 'png'>
 
@@ -25,15 +29,17 @@ export function createExportAnimationPlan({
   autoRotate: boolean
   autoRotateSpeed: number
   motionSpeed: number
+  reverse?: boolean
 }): ExportAnimationPlan {
   const angularSpeed = autoRotateSpeed * motionSpeed
 
-  if (!autoRotate || !Number.isFinite(angularSpeed) || angularSpeed === 0) {
-    throw new Error('Set 3D Motion Speed to a non-zero value before exporting animation')
+  if (!autoRotate || !Number.isFinite(angularSpeed) || autoRotateSpeed <= 0 || motionSpeed < MIN_MOTION_SPEED) {
+    throw new Error('Set 3D Motion Speed to 0.5 or higher before exporting animation')
   }
 
   const fps = EXPORT_FPS[format]
-  const exactDurationSeconds = (Math.PI * 2) / Math.abs(angularSpeed)
+  const exactDurationSeconds = (Math.PI * 2) / angularSpeed
+
   const frameCount = Math.max(1, Math.round(exactDurationSeconds * fps))
 
   return {
@@ -50,23 +56,25 @@ export function readExportFrame({
   baseRotationY,
   baseTime,
   motionSpeed,
+  reverse,
 }: {
   plan: ExportAnimationPlan
   frameIndex: number
   baseRotationY: number
   baseTime: number
   motionSpeed: number
+  reverse?: boolean
 }) {
   if (!Number.isInteger(frameIndex) || frameIndex < 0 || frameIndex >= plan.frameCount) {
     throw new RangeError('Export frame index is outside the animation plan')
   }
 
   const progress = frameIndex / plan.frameCount
-  const direction = Math.sign(motionSpeed)
+  const signedSpeed = getSignedRotationSpeed(motionSpeed, reverse ?? false)
 
   return {
-    rotationY: baseRotationY + Math.PI * 2 * progress * direction,
-    animationTime: baseTime + frameIndex * plan.frameDurationSeconds * motionSpeed,
+    rotationY: baseRotationY + Math.PI * 2 * progress * Math.sign(signedSpeed),
+    animationTime: baseTime + frameIndex * plan.frameDurationSeconds * Math.abs(motionSpeed),
   }
 }
 

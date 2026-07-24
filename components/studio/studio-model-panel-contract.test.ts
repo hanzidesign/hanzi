@@ -91,7 +91,7 @@ describe('Studio shared Model panel contract', () => {
     expect(source).toContain('repeat: { ...DEFAULT_MESH_STATE.repeat, enabled: true }')
     expect(source).toContain('rotation: { ...DEFAULT_MESH_STATE.rotation },')
     expect(source).toContain('scale: DEFAULT_MESH_STATE.scale,')
-    expect(source).toContain('setAnimationControl({ playing: true, speed: 1 })')
+    expect(source).toContain('setAnimationControl({ playing: true, speed: 1, reverse: false })')
     expect(motionSource).toContain('label="X"')
     expect(motionSource).toContain('label="Y"')
     expect(motionSource).toContain('label="Z"')
@@ -119,8 +119,10 @@ describe('Studio shared Model panel contract', () => {
     expect(motionSource).toContain('onChange={(scale) => setMeshControl({ scale })}')
     expect(motionSource).toContain('onReset={() => setMeshControl({ scale: DEFAULT_MESH_STATE.scale })}')
     expect(motionSource).toMatch(/label="Scale"[\s\S]*?min=\{0\.1\}[\s\S]*?max=\{10\}/)
-    expect(motionSource).toMatch(/label="Speed"[\s\S]*?min=\{-100\}[\s\S]*?max=\{100\}/)
+    expect(motionSource).toMatch(/label="Speed"[\s\S]*?min=\{MIN_MOTION_SPEED\}[\s\S]*?max=\{MAX_MOTION_SPEED\}/)
     expect(motionSource).toContain('onReset={() => setAnimationControl({ speed: 1 })}')
+    expect(motionSource).toContain('label="Reverse"')
+    expect(motionSource).toContain('checked={animation.reverse}')
     expect(styles).toMatch(/\.motionScalarControls \.resetButton \{[\s\S]*?width: 42px;/)
     expect(motionSource).not.toContain('motionPreview')
     expect(motionSource).not.toContain('label="Depth"')
@@ -230,7 +232,8 @@ describe('Studio shared Model panel contract', () => {
         expect(source).toContain('source.group.rotation.y = applyDeltaRotation(')
       }
 
-      expect(source).toContain('animation.speed !== 0')
+      expect(source).toContain('animation.playing')
+      expect(source).toContain('getSignedRotationSpeed(animation.speed, animation.reverse)')
       expect(source).toContain('reportCharacterRotationY(')
     }
   })

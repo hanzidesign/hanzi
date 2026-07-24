@@ -31,8 +31,9 @@ export function buildCoherentRandomizePreset({
 }): CoherentRandomizePreset {
   const variant = Math.abs(Math.trunc(seed)) % 7
   const baseAnimation: StudioStoreState['animation'] = {
-    playing: true,
-    speed: variant % 2 === 0 ? 0 : 0.24,
+    playing: variant % 2 !== 0,
+    speed: 0.5,
+    reverse: false,
     timeOffset: variant,
     animateMorph: true,
     animateShaders: true,
@@ -73,7 +74,7 @@ export function buildCoherentRandomizePreset({
           }),
         ],
         postFx: [postFxLayer(0, 'vignette', 0.14)],
-        animation: { ...baseAnimation, speed: 0 },
+        animation: { ...baseAnimation, speed: 0.5 },
       }
     case 'digital-slice':
       return {
@@ -107,7 +108,7 @@ export function buildCoherentRandomizePreset({
           }),
         ],
         postFx: [postFxLayer(0, 'noise', 0.1)],
-        animation: { ...baseAnimation, speed: 0 },
+        animation: { ...baseAnimation, speed: 0.5 },
       }
     case 'oxidized-metal':
       return {
@@ -143,7 +144,7 @@ export function buildCoherentRandomizePreset({
           }),
         ],
         postFx: [postFxLayer(0, 'bloom', 0.22)],
-        animation: { ...baseAnimation, speed: 0.12 },
+        animation: { ...baseAnimation, speed: 0.5 },
       }
     case 'graphite-relief':
     default:
@@ -162,7 +163,7 @@ export function buildCoherentRandomizePreset({
           }),
         ],
         postFx: [postFxLayer(0, 'noise', 0.12)],
-        animation: { ...baseAnimation, speed: 0 },
+        animation: { ...baseAnimation, speed: 0.5 },
       }
   }
 }

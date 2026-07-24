@@ -23,6 +23,11 @@ import type {
 import { resetCharacterMeshDeformFeature } from '@/components/studio/character-mesh-deform'
 import { STUDIO_EFFECTS } from '@/components/studio/studio-effects'
 import { useStudioRenderMode } from '@/components/studio/studio-render-context'
+import {
+  MAX_MOTION_SPEED,
+  MIN_MOTION_SPEED,
+  normalizeMotionSpeed,
+} from '@/components/studio/motion-speed'
 import classes from './StudioShell.module.css'
 
 export default function StudioLeftPanel() {
@@ -126,7 +131,7 @@ function StudioMotionReset() {
           rotation: { ...DEFAULT_MESH_STATE.rotation },
           scale: DEFAULT_MESH_STATE.scale,
         })
-        setAnimationControl({ playing: true, speed: 1 })
+        setAnimationControl({ playing: true, speed: 1, reverse: false })
       }}
     >
       Reset
@@ -446,11 +451,16 @@ export function StudioMotionPanel() {
         <TerminalRangeRow
           label="Speed"
           value={animation.speed}
-          min={-100}
-          max={100}
+          min={MIN_MOTION_SPEED}
+          max={MAX_MOTION_SPEED}
           step={0.01}
-          onChange={(speed) => setAnimationControl({ speed })}
+          onChange={(speed) => setAnimationControl({ speed: normalizeMotionSpeed(speed) })}
           onReset={() => setAnimationControl({ speed: 1 })}
+        />
+        <TerminalToggleRow
+          label="Reverse"
+          checked={animation.reverse}
+          onChange={(reverse) => setAnimationControl({ reverse })}
         />
       </div>
     </div>

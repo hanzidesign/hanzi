@@ -22,6 +22,7 @@ import {
   type AnimatedStudioExportFormat,
   type ExportAnimationPlan,
 } from '@/components/studio/export-animation'
+import { MIN_MOTION_SPEED } from '@/components/studio/motion-speed'
 import {
   readLatestPreviewAnimationTime,
   useStudioPreviewFrameSnapshot,
@@ -85,11 +86,13 @@ export default function StudioExportPanel() {
   const abortControllerRef = useRef<AbortController | null>(null)
   const renderRequestIdRef = useRef(0)
   const pendingExportFrameRef = useRef<PendingExportFrame | null>(null)
-  const pngAvailable = !motionPlaying || motionSpeed === 0
+  const animationSpeedValid = Number.isFinite(motionSpeed)
+    && motionSpeed >= MIN_MOTION_SPEED
+  const pngAvailable = !motionPlaying
   const animationAvailable = motionPlaying
     && autoRotate
     && autoRotateSpeed > 0
-    && motionSpeed !== 0
+    && animationSpeedValid
   const exporting = modal?.status === 'exporting'
 
   const requestExportFrame = useCallback((
@@ -277,7 +280,7 @@ export default function StudioExportPanel() {
           const unavailableReason = option.value === 'png' && !pngAvailable
             ? '3D Motion Play must be off to export PNG'
             : option.value !== 'png' && !animationAvailable
-              ? 'Turn Play on and set a non-zero 3D Motion Speed to export animation'
+              ? 'Turn Play on and set 3D Motion Speed to 0.5 or higher to export animation'
               : undefined
 
           return (
@@ -457,6 +460,7 @@ async function captureAnimationLoop(
     autoRotate: initialMesh.autoRotate,
     autoRotateSpeed: initialMesh.autoRotateSpeed,
     motionSpeed: initialAnimation.speed,
+    reverse: initialAnimation.reverse,
   })
   onProgress(0, plan.frameCount)
   throwIfAborted(signal)
@@ -478,6 +482,7 @@ async function captureAnimationLoop(
         baseRotationY: initialMesh.rotation.y,
         baseTime: baseAnimationTime,
         motionSpeed: initialAnimation.speed,
+        reverse: initialAnimation.reverse,
       })
 
       useStudioStore.setState({

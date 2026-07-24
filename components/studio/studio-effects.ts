@@ -1,3 +1,5 @@
+import { DEFAULT_ASCII_SCALE } from './ascii-cell-metrics'
+
 export type StudioControlValue = string | number | boolean
 
 export type StudioControlCondition =
@@ -398,7 +400,7 @@ export const STUDIO_EFFECTS: StudioEffectDefinition[] = [
         title: 'ASCII',
         controls: [
           rangeControl('size', 'Size', 1, 0.1, 10, 0.1),
-          rangeControl('scale', 'Scale', 4.3, 1, 20, 0.1),
+          rangeControl('scale', 'Scale', DEFAULT_ASCII_SCALE, 1, 20, 0.1),
           selectControl('character-set', 'Character Set', 'standard', [...STUDIO_CHARACTER_SETS]),
           textControl('custom-chars', 'Custom Chars', '█▓▒░@#%*+=-:. '),
         ],

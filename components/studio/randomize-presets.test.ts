@@ -9,7 +9,7 @@ describe('coherent randomize presets', () => {
 
     expect(first).toEqual(second)
     expect(first.shaderLayers.some((layer) => layer.effectId === 'fluid-chrome')).toBe(true)
-    expect(first.animation.speed).toBeGreaterThanOrEqual(0)
+    expect(first.animation.speed).toBeGreaterThanOrEqual(0.5)
   })
 
   it('covers the locked Phase 5B art preset names', () => {

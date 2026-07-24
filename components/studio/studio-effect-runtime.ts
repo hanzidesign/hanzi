@@ -6,6 +6,7 @@ import {
   type StudioEffectId,
   type StudioSelectOption,
 } from './studio-effects'
+import { DEFAULT_ASCII_SCALE } from './ascii-cell-metrics'
 import {
   MATRIX_RAIN_DIRECTION_IDS,
   type MatrixRainDirection,
@@ -495,7 +496,7 @@ export function compileStudioEffectRuntime({
 
   switch (selectedEffectId) {
     case 'ascii':
-      effectValues[0] = read.number('scale', 4.3)
+      effectValues[0] = read.number('scale', DEFAULT_ASCII_SCALE)
       effectValues[1] = read.number('size', 1)
       effectValues[3] = read.select('character-set')
       effectValues[4] = hashText(read.text('custom-chars', '')) / 997

@@ -8,8 +8,12 @@ import {
   createAsciiShaderMaterial,
   disposeAsciiShaderMaterial,
   resolveAsciiCharacterSet,
+  updateAsciiShaderUniforms,
 } from './character-ascii-material'
-import { compileStudioEffectRuntime } from './studio-effect-runtime'
+import {
+  compileStudioEffectRuntime,
+} from './studio-effect-runtime'
+import { createDefaultStudioEffectControls } from './studio-effects'
 
 describe('Phase 5C ASCII shader material', () => {
   it('defines concrete ASCII character strings for every Character Set option', () => {
@@ -103,6 +107,98 @@ describe('Phase 5C ASCII shader material', () => {
 
     expect(textureDispose).toHaveBeenCalledTimes(1)
     expect(materialDispose).toHaveBeenCalledTimes(1)
+  })
+
+  it('keeps the material and atlas stable for non-glyph updates', () => {
+    const initialState = createInitialStudioStoreState()
+    const runtime = compileStudioEffectRuntime({
+      selectedEffectId: 'ascii',
+      controls: createDefaultStudioEffectControls().ascii,
+    })
+    const material = createAsciiShaderMaterial({
+      ascii: initialState.ascii,
+      studioRuntime: runtime,
+      foregroundColor: initialState.ascii.foregroundColor,
+      backgroundColor: initialState.ascii.backgroundColor,
+    })
+    const atlas = material.uniforms.u_asciiGlyphAtlas.value
+    const atlasDispose = vi.spyOn(atlas, 'dispose')
+
+    updateAsciiShaderUniforms(material, {
+      ascii: { ...initialState.ascii, density: 0.25, grain: 0.8 },
+      studioRuntime: runtime,
+      foregroundColor: '#112233',
+      backgroundColor: '#334455',
+    })
+
+    expect(material.uniforms.u_asciiGlyphAtlas.value).toBe(atlas)
+    expect(atlasDispose).not.toHaveBeenCalled()
+    expect(material.uniforms.u_asciiDensity.value).toBe(0.25)
+    expect(material.uniforms.u_grain.value).toBe(0.8)
+    expect(material.uniforms.u_foregroundColor.value.getHexString()).toBe('112233')
+    expect(material.uniforms.u_backgroundColor.value.getHexString()).toBe('334455')
+
+    disposeAsciiShaderMaterial(material)
+  })
+
+  it('reverses the ASCII Adjustment Brightness only for the dark theme', () => {
+    const initialState = createInitialStudioStoreState()
+    const ascii = { ...initialState.ascii, brightness: 0.4 }
+    const material = createAsciiShaderMaterial({
+      ascii,
+      theme: 'dark',
+      foregroundColor: ascii.foregroundColor,
+      backgroundColor: ascii.backgroundColor,
+    })
+
+    expect(material.uniforms.u_asciiBrightness.value).toBe(-0.4)
+
+    updateAsciiShaderUniforms(material, { ascii, theme: 'light' })
+    expect(material.uniforms.u_asciiBrightness.value).toBe(0.4)
+
+    updateAsciiShaderUniforms(material, {
+      ascii: { ...ascii, brightness: -0.25 },
+      theme: 'dark',
+    })
+    expect(material.uniforms.u_asciiBrightness.value).toBe(0.25)
+
+    disposeAsciiShaderMaterial(material)
+  })
+
+  it('swaps and disposes exactly one atlas when effective glyph text changes', () => {
+    const initialState = createInitialStudioStoreState()
+    const controls = createDefaultStudioEffectControls().ascii
+    const baseRuntime = compileStudioEffectRuntime({
+      selectedEffectId: 'ascii',
+      controls,
+    })
+    const material = createAsciiShaderMaterial({
+      ascii: initialState.ascii,
+      studioRuntime: baseRuntime,
+      foregroundColor: initialState.ascii.foregroundColor,
+      backgroundColor: initialState.ascii.backgroundColor,
+    })
+    const priorAtlas = material.uniforms.u_asciiGlyphAtlas.value
+    const priorDispose = vi.spyOn(priorAtlas, 'dispose')
+    const nextRuntime = compileStudioEffectRuntime({
+      selectedEffectId: 'ascii',
+      controls: { ...controls, 'character-set': 'custom', 'custom-chars': '雨電01' },
+    })
+
+    updateAsciiShaderUniforms(material, {
+      ascii: { ...initialState.ascii, charsetStyle: 'custom' },
+      studioRuntime: nextRuntime,
+    })
+    updateAsciiShaderUniforms(material, {
+      ascii: { ...initialState.ascii, charsetStyle: 'custom' },
+      studioRuntime: nextRuntime,
+    })
+
+    expect(material.uniforms.u_asciiGlyphAtlas.value).not.toBe(priorAtlas)
+    expect(priorDispose).toHaveBeenCalledTimes(1)
+    expect(material.uniforms.u_asciiGlyphCount.value).toBe(4)
+
+    disposeAsciiShaderMaterial(material)
   })
 
   it('contains procedural glyph, cell, depth, normal, Studio effects, and post-process shader logic', () => {

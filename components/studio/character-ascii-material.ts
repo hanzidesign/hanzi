@@ -9,6 +9,7 @@ import type {
   StudioAsciiCharsetStyle,
   StudioAsciiPalette,
   StudioAsciiState,
+  StudioTheme,
 } from '@/app/studio/studio-store'
 import {
   compileStudioEffectRuntime,
@@ -495,9 +496,27 @@ void main() {
 type CreateAsciiShaderMaterialOptions = {
   ascii: StudioAsciiState
   studioRuntime?: StudioEffectRuntime
+  theme?: StudioTheme
   foregroundColor: string
   backgroundColor: string
 }
+
+export type UpdateAsciiShaderUniformsOptions = {
+  ascii: StudioAsciiState
+  studioRuntime?: StudioEffectRuntime
+  theme?: StudioTheme
+  foregroundColor?: string
+  backgroundColor?: string
+}
+
+type AsciiMaterialGlyphState = {
+  characters: string
+  disposed: boolean
+}
+
+const asciiMaterialGlyphStates = new WeakMap<ShaderMaterial, AsciiMaterialGlyphState>()
+const asciiUniformGlyphStates = new WeakMap<object, AsciiMaterialGlyphState>()
+const disposedAsciiMaterials = new WeakSet<ShaderMaterial>()
 
 export function createAsciiShaderMaterial({
   ascii,
@@ -505,10 +524,11 @@ export function createAsciiShaderMaterial({
     selectedEffectId: 'ascii',
     controls: {},
   }),
+  theme = 'light',
   foregroundColor,
   backgroundColor,
 }: CreateAsciiShaderMaterialOptions) {
-  return new ShaderMaterial({
+  const material = new ShaderMaterial({
     vertexShader: ASCII_VERTEX_SHADER,
     fragmentShader: ASCII_FRAGMENT_SHADER,
     side: DoubleSide,
@@ -516,24 +536,111 @@ export function createAsciiShaderMaterial({
     uniforms: createAsciiShaderUniforms({
       ascii,
       studioRuntime,
+      theme,
       foregroundColor,
       backgroundColor,
     }),
   })
+
+  const glyphState = {
+    characters: resolveAsciiCharacterSet(ascii.charsetStyle, studioRuntime.customGlyphChars),
+    disposed: false,
+  }
+  asciiMaterialGlyphStates.set(material, glyphState)
+  asciiUniformGlyphStates.set(material.uniforms, glyphState)
+
+  return material
 }
 
 export function disposeAsciiShaderMaterial(material: ShaderMaterial) {
+  if (disposedAsciiMaterials.has(material)) {
+    return
+  }
+
+  disposedAsciiMaterials.add(material)
   const glyphAtlas = material.uniforms.u_asciiGlyphAtlas?.value as
     | { dispose?: () => void }
     | undefined
 
   glyphAtlas?.dispose?.()
+  const state = asciiMaterialGlyphStates.get(material)
+  if (state) {
+    state.disposed = true
+  }
   material.dispose()
 }
+
+/**
+ * Updates every ASCII/material-facing control while retaining material and
+ * glyph-atlas identity. A new atlas is allocated only when the effective
+ * character string changes (for example, a custom charset edit).
+ */
+export function updateAsciiShaderUniforms(
+  target: ShaderMaterial | Record<string, IUniform>,
+  {
+    ascii,
+    studioRuntime = compileStudioEffectRuntime({
+      selectedEffectId: 'ascii',
+      controls: {},
+    }),
+    theme = 'light',
+    foregroundColor = ascii.foregroundColor,
+    backgroundColor = ascii.backgroundColor,
+  }: UpdateAsciiShaderUniformsOptions,
+) {
+  const uniforms = target instanceof ShaderMaterial ? target.uniforms : target
+  setUniformValue(uniforms, 'u_asciiCellSize', ascii.cellSize)
+  setUniformValue(uniforms, 'u_asciiDensity', ascii.density)
+  setUniformValue(uniforms, 'u_asciiContrast', ascii.contrast)
+  setUniformValue(uniforms, 'u_asciiBrightness', resolveAsciiThemeBrightness(ascii.brightness, theme))
+  setUniformValue(uniforms, 'u_asciiSaturation', ascii.saturation)
+  setUniformValue(uniforms, 'u_asciiHueRotation', ascii.hueRotation)
+  setUniformValue(uniforms, 'u_asciiSharpness', ascii.sharpness)
+  setUniformValue(uniforms, 'u_asciiGamma', ascii.gamma)
+  setUniformValue(uniforms, 'u_asciiInvert', ascii.invert ? 1 : 0)
+  setUniformValue(uniforms, 'u_asciiCharsetStyle', charsetStyleToUniform(ascii.charsetStyle))
+  setUniformValue(uniforms, 'u_asciiPalette', paletteToUniform(ascii.palette))
+  setUniformValue(uniforms, 'u_colorIntensity', ascii.colorIntensity)
+  setUniformValue(uniforms, 'u_depthInfluence', ascii.depthInfluence)
+  setUniformValue(uniforms, 'u_normalInfluence', ascii.normalInfluence)
+  setUniformColorValue(uniforms, 'u_foregroundColor', foregroundColor)
+  setUniformColorValue(uniforms, 'u_backgroundColor', backgroundColor)
+  setUniformValue(uniforms, 'u_scanlineAmount', ascii.scanlineAmount)
+  setUniformValue(uniforms, 'u_bloomAmount', ascii.bloomAmount)
+  setUniformValue(uniforms, 'u_curvature', ascii.curvature)
+  setUniformValue(uniforms, 'u_vignette', ascii.vignette)
+  setUniformValue(uniforms, 'u_chromaticOffset', ascii.chromaticOffset)
+  setUniformValue(uniforms, 'u_grain', ascii.grain)
+
+  const glyphState = target instanceof ShaderMaterial
+    ? asciiMaterialGlyphStates.get(target)
+    : asciiUniformGlyphStates.get(target)
+  if (glyphState && !glyphState.disposed) {
+    const characters = resolveAsciiCharacterSet(ascii.charsetStyle, studioRuntime.customGlyphChars)
+    if (glyphState.characters !== characters) {
+      const previousTexture = uniforms.u_asciiGlyphAtlas?.value as
+        | { dispose?: () => void }
+        | undefined
+      const nextAtlas = createCharacterGlyphAtlas(ascii.charsetStyle, studioRuntime.customGlyphChars)
+      uniforms.u_asciiGlyphAtlas.value = nextAtlas.texture
+      uniforms.u_asciiGlyphCount.value = nextAtlas.count
+      uniforms.u_asciiGlyphColumns.value = nextAtlas.columns
+      previousTexture?.dispose?.()
+      glyphState.characters = characters
+    }
+  }
+
+  applyStudioRuntimeUniforms(uniforms, studioRuntime)
+}
+
+// Keep a descriptive alias for callers that treat the material itself as the
+// resource being updated.
+export const applyAsciiShaderUniforms = updateAsciiShaderUniforms
 
 function createAsciiShaderUniforms({
   ascii,
   studioRuntime,
+  theme,
   foregroundColor,
   backgroundColor,
 }: Required<CreateAsciiShaderMaterialOptions>): Record<string, IUniform> {
@@ -549,7 +656,7 @@ function createAsciiShaderUniforms({
     u_asciiCellSize: { value: ascii.cellSize },
     u_asciiDensity: { value: ascii.density },
     u_asciiContrast: { value: ascii.contrast },
-    u_asciiBrightness: { value: ascii.brightness },
+    u_asciiBrightness: { value: resolveAsciiThemeBrightness(ascii.brightness, theme) },
     u_asciiSaturation: { value: ascii.saturation },
     u_asciiHueRotation: { value: ascii.hueRotation },
     u_asciiSharpness: { value: ascii.sharpness },
@@ -576,6 +683,10 @@ function createAsciiShaderUniforms({
   assignStudioRuntimeUniforms(uniforms, studioRuntime)
 
   return uniforms
+}
+
+function resolveAsciiThemeBrightness(brightness: number, theme: StudioTheme) {
+  return theme === 'dark' ? -brightness : brightness
 }
 
 export function applyStudioRuntimeUniforms(
@@ -632,6 +743,22 @@ function readUniformColor(
   color.setRGB(value[0], value[1], value[2])
 
   return color
+}
+
+function setUniformColorValue(
+  uniforms: Record<string, IUniform>,
+  name: string,
+  value: string,
+) {
+  const color = uniforms[name]?.value instanceof Color
+    ? uniforms[name].value as Color
+    : new Color()
+  color.set(value)
+  if (uniforms[name]) {
+    uniforms[name].value = color
+  } else {
+    uniforms[name] = { value: color }
+  }
 }
 
 const EFFECT_SLOT_NAMES = [

@@ -1,5 +1,6 @@
 export const ASCII_SCALE_MIN = 1
 export const ASCII_SCALE_MAX = 20
+export const DEFAULT_ASCII_SCALE = 6
 export const ASCII_CELL_SIZE_MIN = 1
 export const ASCII_CELL_SIZE_MAX = 64
 

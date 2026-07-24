@@ -28,6 +28,7 @@ import {
   createCharacterMeshGeometries,
   type CharacterMeshGeometryResult,
 } from '@/components/studio/character-mesh-geometry'
+import { deriveCharacterMeshGeometrySignature } from '@/components/studio/character-mesh-geometry-signature'
 import { useCharacterMeshAnimation } from '@/components/studio/character-mesh-animation'
 import {
   attachCharacterMeshGpuDeform,
@@ -50,6 +51,7 @@ import {
   type PixelSortTrailResources,
 } from '@/components/studio/pixel-sort-trail-material'
 import { applyDeltaRotation } from '@/components/studio/shader-canvas-math'
+import { getSignedRotationSpeed } from '@/components/studio/motion-speed'
 import {
   addCharacterModelCopies,
   type CharacterRepeatSettings,
@@ -144,6 +146,41 @@ function CharacterPixelSortScene({
       material: createPixelSortPresentMaterial(renderTarget.texture),
     }
   })
+  const geometryOptionsRef = useRef({
+    extrusionDepth: meshSettings.extrusionDepth,
+    thickness: meshSettings.thickness,
+    bevel: meshSettings.bevel,
+    twist: meshSettings.twist,
+    taper: meshSettings.taper,
+    bend: meshSettings.bend,
+    deform: meshSettings.deform,
+    displacementSubdivisionLevel: 0,
+  })
+  const geometrySignature = deriveCharacterMeshGeometrySignature({
+    ...meshSettings,
+    displacementSubdivisionLevel: 0,
+  })
+
+  useEffect(() => {
+    geometryOptionsRef.current = {
+      extrusionDepth: meshSettings.extrusionDepth,
+      thickness: meshSettings.thickness,
+      bevel: meshSettings.bevel,
+      twist: meshSettings.twist,
+      taper: meshSettings.taper,
+      bend: meshSettings.bend,
+      deform: meshSettings.deform,
+      displacementSubdivisionLevel: 0,
+    }
+  }, [
+    meshSettings.bend,
+    meshSettings.bevel,
+    meshSettings.deform,
+    meshSettings.extrusionDepth,
+    meshSettings.taper,
+    meshSettings.thickness,
+    meshSettings.twist,
+  ])
 
   useEffect(() => {
     settingsRef.current = settings
@@ -183,14 +220,7 @@ function CharacterPixelSortScene({
       const shapes = svg.paths.flatMap((path) => SVGLoader.createShapes(path))
       const nextGeometryResult = createCharacterMeshGeometries({
         shapes,
-        extrusionDepth: meshSettings.extrusionDepth,
-        thickness: meshSettings.thickness,
-        bevel: meshSettings.bevel,
-        twist: meshSettings.twist,
-        taper: meshSettings.taper,
-        bend: meshSettings.bend,
-        deform: meshSettings.deform,
-        displacementSubdivisionLevel: 0,
+        ...geometryOptionsRef.current,
       })
 
       replaceGeometryResult(nextGeometryResult, geometryResultRef, setGeometryResult)
@@ -201,13 +231,7 @@ function CharacterPixelSortScene({
       invalidatePixelSortExport(pendingExportAckRef, lastRequestedExportRef, preparedExportAckRef)
     }
   }, [
-    meshSettings.bend,
-    meshSettings.bevel,
-    meshSettings.extrusionDepth,
-    meshSettings.taper,
-    meshSettings.thickness,
-    meshSettings.twist,
-    meshSettings.deform,
+    geometrySignature,
     svgData,
     svgLoadError,
   ])
@@ -249,16 +273,22 @@ function CharacterPixelSortScene({
     invalidatePixelSortExport(pendingExportAckRef, lastRequestedExportRef, preparedExportAckRef)
   }, [geometryResult, meshSettings.position, meshSettings.rotation, meshSettings.scale])
 
+  useEffect(() => {
+    captureQueuedRef.current = true
+    trailDirtyRef.current = true
+    invalidatePixelSortExport(pendingExportAckRef, lastRequestedExportRef, preparedExportAckRef)
+  }, [meshSettings.deform])
+
   useCharacterMeshAnimation(sourceRef, meshSettings.deform)
 
   useFrame((_, delta) => {
     const source = sourceRef.current
     if (!source) return
 
-    if (meshSettings.autoRotate && animation.playing && animation.speed !== 0) {
+    if (meshSettings.autoRotate && animation.playing) {
       source.group.rotation.y = applyDeltaRotation(
         source.group.rotation.y,
-        meshSettings.autoRotateSpeed * animation.speed,
+        meshSettings.autoRotateSpeed * getSignedRotationSpeed(animation.speed, animation.reverse),
         delta,
       )
       captureQueuedRef.current = true
@@ -308,8 +338,8 @@ function CharacterPixelSortScene({
     // Source capture is demand-driven. Settings update uniforms only; source
     // rendering is reserved for dirty geometry, transforms, resize, export,
     // auto-rotation, and active GPU Model Deform animation.
-    const animated = (meshSettings.autoRotate && animation.playing && animation.speed !== 0)
-      || (source.gpuDeform !== null && animation.playing && animation.speed !== 0)
+    const animated = animation.playing
+      && (meshSettings.autoRotate || source.gpuDeform !== null)
     const sourceNeedsRender = captureQueuedRef.current || animated || exportCaptureRequested
     if (sourceNeedsRender) {
       const previousTarget = gl.getRenderTarget()

@@ -12,7 +12,7 @@ import TerminalSection from '@/components/studio/TerminalSection'
 import {
   ASCII_SCALE_MAX,
   ASCII_SCALE_MIN,
-  asciiCellSizeToScale,
+  DEFAULT_ASCII_SCALE,
   asciiScaleToCellSize,
 } from '@/components/studio/ascii-cell-metrics'
 import {
@@ -73,15 +73,14 @@ export default function StudioRightPanel({
   const setStudioEffectControl = useStudioStore((store) => store.setStudioEffectControl)
   const resetSelectedEffectControls = useStudioStore((store) => store.resetSelectedEffectControls)
   const selectedEffect = getStudioEffectById(selectedEffectId)
-  const asciiScale = asciiCellSizeToScale(ascii.cellSize)
-  const defaultAsciiScale = asciiCellSizeToScale(DEFAULT_ASCII_STATE.cellSize)
+  const asciiScale = readNumberControl(effectControls, 'scale', DEFAULT_ASCII_SCALE)
   const setAsciiScale = (scale: number) => {
     setAsciiControl({ cellSize: asciiScaleToCellSize(scale) })
     setStudioEffectControl('ascii', 'scale', scale)
   }
   const resetAsciiScale = () => {
     setAsciiControl({ cellSize: DEFAULT_ASCII_STATE.cellSize })
-    setStudioEffectControl('ascii', 'scale', defaultAsciiScale)
+    setStudioEffectControl('ascii', 'scale', DEFAULT_ASCII_SCALE)
   }
   const setAsciiForegroundColor = (foregroundColor: string) => {
     setAsciiControl({ foregroundColor, palette: 'custom' })
