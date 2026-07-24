@@ -25,7 +25,7 @@ import {
   type ShaderMaterial,
 } from 'three'
 import { useStudioStore } from '@/app/studio/studio-store'
-import { withoutSharedControllerValues } from './grainrad-shared-controls'
+import { withoutSharedControllerValues } from './studio-shared-controls'
 import {
   applyEdgeDetectionUniforms,
   createEdgeDetectionShaderMaterial,
@@ -110,7 +110,7 @@ function CharacterEdgeDetectionScene({
     reportCharacterRotationY,
     resolveVisualFrameSize,
   } = useStudioRenderMode()
-  const controls = useStudioStore((store) => store.grainradEffect.controls['edge-detection'])
+  const controls = useStudioStore((store) => store.studioEffect.controls['edge-detection'])
   const [geometryResult, setGeometryResult] = useState<CharacterMeshGeometryResult | null>(null)
   const geometryResultRef = useRef<CharacterMeshGeometryResult | null>(null)
   const sourceRef = useRef<EdgeDetectionSourceScene | null>(null)

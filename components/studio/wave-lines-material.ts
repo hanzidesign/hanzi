@@ -1,6 +1,14 @@
 import { Color, ShaderMaterial, Vector2, type Texture } from 'three'
 
-export type WaveLinesControlValue = string | number | boolean
+import type { StudioControlValue } from './studio-effects'
+import {
+  readStudioBoolean as readBoolean,
+  readStudioEnum as readEnum,
+  readStudioNumber as readNumber,
+  readStudioString as readString,
+} from './studio-control-readers'
+
+export type WaveLinesControlValue = StudioControlValue
 export type WaveLinesControls = Readonly<Record<string, WaveLinesControlValue>>
 
 export const WAVE_LINES_DIRECTION_IDS = {
@@ -244,26 +252,4 @@ export function applyWaveLinesUniforms(
 
 export function disposeWaveLinesShaderMaterial(material: ShaderMaterial) {
   material.dispose()
-}
-
-function readNumber(value: WaveLinesControlValue | undefined, fallback: number) {
-  return typeof value === 'number' && Number.isFinite(value) ? value : fallback
-}
-
-function readString(value: WaveLinesControlValue | undefined, fallback: string) {
-  return typeof value === 'string' ? value : fallback
-}
-
-function readBoolean(value: WaveLinesControlValue | undefined) {
-  return value === true ? 1 : 0
-}
-
-function readEnum<T extends Record<string, number>>(
-  value: WaveLinesControlValue | undefined,
-  values: T,
-  fallback: keyof T,
-) {
-  return typeof value === 'string' && value in values
-    ? values[value as keyof T]
-    : values[fallback]
 }

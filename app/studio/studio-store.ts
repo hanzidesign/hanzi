@@ -10,6 +10,7 @@ import { getDefaultShaderPreset, getShaderPresetById } from '@/shaders/registry'
 import type { ShaderParamValue, ShaderParamValues } from '@/shaders/types'
 import { createDefaultParams, sanitizeParamsForPreset } from '@/shaders/uniforms'
 import { DEFAULT_PATTERN_ASSET_URL, sanitizePatternUrl, toPatternUrl } from '@/utils/patternAssets'
+import { isSixDigitHexColor } from '@/utils/colorValidation'
 import {
   DEFAULT_GRADIENT_SETTINGS,
   readGradientAngle,
@@ -26,18 +27,18 @@ import {
 } from '@/components/studio/effect-registry'
 import { buildCoherentRandomizePreset, type RandomizePresetId } from '@/components/studio/randomize-presets'
 import {
-  DEFAULT_GRAINRAD_EFFECT_ID,
-  GRAINRAD_COMMON_POST_PROCESSING_GROUPS,
-  GRAINRAD_EFFECTS,
-  GRAINRAD_EFFECT_IDS,
-  createDefaultGrainradEffectControls,
-  getGrainradProcessingGroups,
-  isGrainradThemeColorControl,
-  type GrainradCharacterSet,
-  type GrainradControlValue,
-  type GrainradEffectControl,
-  type GrainradEffectId,
-} from '@/components/studio/grainrad-effects'
+  DEFAULT_STUDIO_EFFECT_ID,
+  STUDIO_COMMON_POST_PROCESSING_GROUPS,
+  STUDIO_EFFECTS,
+  STUDIO_EFFECT_IDS,
+  createDefaultStudioEffectControls,
+  getStudioProcessingGroups,
+  isStudioThemeColorControl,
+  type StudioCharacterSet,
+  type StudioControlValue,
+  type StudioEffectControl,
+  type StudioEffectId,
+} from '@/components/studio/studio-effects'
 import {
   MAX_CHARACTER_REPEAT_COUNT,
   MAX_CHARACTER_REPEAT_ORIENTATION,
@@ -55,8 +56,8 @@ import {
   type CharacterMeshDeformSettings,
 } from '@/components/studio/character-mesh-deform'
 
-export const STUDIO_STORE_STORAGE_KEY = 'hanzi-studio-grainrad-effects-v1'
-const STUDIO_STORE_STORAGE_VERSION = 15
+export const STUDIO_STORE_STORAGE_KEY = 'hanzi-studio-effects-v2'
+const STUDIO_STORE_STORAGE_VERSION = 16
 export const MAX_PATTERN_LAYERS = 3
 const DEFAULT_ART_PATTERN_LAYERS: Array<
   Pick<StudioPatternLayer, 'source' | 'target' | 'enabled' | 'intensity' | 'blendMode' | 'locked'>
@@ -135,7 +136,7 @@ export type StudioActivePanel =
   | 'post'
   | 'randomize'
 export type StudioTheme = 'light' | 'dark'
-export type StudioMobileTab = 'input' | 'effects' | 'animation' | 'export'
+export type StudioMobileTab = 'input' | 'effects' | 'model' | 'settings' | 'export'
 export type StudioSectionId =
   | 'input'
   | 'effects'
@@ -161,19 +162,19 @@ export const ASCII_CHARSET_STYLES = [
   'math',
   'symbols',
   'custom',
-] as const satisfies readonly GrainradCharacterSet[]
+] as const satisfies readonly StudioCharacterSet[]
 export const ASCII_PALETTES = ['green', 'amber', 'noir', 'synthwave', 'custom'] as const
 
-export type StudioAsciiCharsetStyle = GrainradCharacterSet
+export type StudioAsciiCharsetStyle = StudioCharacterSet
 export type StudioAsciiPalette = (typeof ASCII_PALETTES)[number]
 
 export type StudioThemeControls = Record<
   StudioTheme,
-  Record<GrainradEffectId, Record<string, GrainradControlValue>>
+  Record<StudioEffectId, Record<string, StudioControlValue>>
 >
 type StudioThemeColorControls = Record<
   StudioTheme,
-  Record<GrainradEffectId, Record<string, string>>
+  Record<StudioEffectId, Record<string, string>>
 >
 
 export type StudioAsciiState = {
@@ -366,9 +367,9 @@ export type StudioStoreState = {
   postFx: {
     layers: StudioPostFxLayer[]
   }
-  grainradEffect: {
-    selectedEffectId: GrainradEffectId
-    controls: Record<GrainradEffectId, Record<string, GrainradControlValue>>
+  studioEffect: {
+    selectedEffectId: StudioEffectId
+    controls: Record<StudioEffectId, Record<string, StudioControlValue>>
     controlsByTheme: StudioThemeControls
   }
   ascii: StudioAsciiState
@@ -485,8 +486,8 @@ export type StudioStoreActions = {
   setShaderLayerLocked: (layerId: string, locked: boolean) => void
   setSelectedShaderLayer: (layerId: string | null) => void
   setAnimationControl: (partial: Partial<StudioStoreState['animation']>) => void
-  setSelectedEffect: (selectedEffectId: GrainradEffectId) => void
-  setGrainradEffectControl: (effectId: GrainradEffectId, controlId: string, value: GrainradControlValue) => void
+  setSelectedEffect: (selectedEffectId: StudioEffectId) => void
+  setStudioEffectControl: (effectId: StudioEffectId, controlId: string, value: StudioControlValue) => void
   resetSelectedEffectControls: () => void
   setAsciiControl: (partial: Partial<StudioAsciiState>) => void
   addPostFxLayer: (partial?: Partial<StudioPostFxLayer>) => void
@@ -505,7 +506,7 @@ export type StudioStore = StudioStoreState & StudioStoreActions
 
 type PersistedStudioState = Pick<
   StudioStoreState,
-  'character' | 'ascii' | 'mesh' | 'rendererMode' | 'view' | 'export' | 'grainradEffect'
+  'character' | 'ascii' | 'mesh' | 'rendererMode' | 'view' | 'export' | 'studioEffect'
 >
 
 export const useStudioStore = createStudioStore()
@@ -848,19 +849,11 @@ export function createStudioStore(storage?: StateStorage) {
           })
         },
         reorderMorphLayer: (fromIndex, toIndex) => {
-          const layers = [...get().morphStack.layers]
+          const layers = reorderItems(get().morphStack.layers, fromIndex, toIndex)
 
-          if (fromIndex < 0 || fromIndex >= layers.length || toIndex < 0 || toIndex >= layers.length) {
+          if (!layers) {
             return
           }
-
-          const [layer] = layers.splice(fromIndex, 1)
-
-          if (!layer) {
-            return
-          }
-
-          layers.splice(toIndex, 0, layer)
           set({ morphStack: { layers } })
         },
         updateMorphLayerParam: (layerId, paramId, value) => {
@@ -992,19 +985,11 @@ export function createStudioStore(storage?: StateStorage) {
         },
         reorderShaderLayer: (fromIndex, toIndex) => {
           const shaderLayers = get().shaderLayers
-          const layers = [...shaderLayers.layers]
+          const layers = reorderItems(shaderLayers.layers, fromIndex, toIndex)
 
-          if (fromIndex < 0 || fromIndex >= layers.length || toIndex < 0 || toIndex >= layers.length) {
+          if (!layers) {
             return
           }
-
-          const [layer] = layers.splice(fromIndex, 1)
-
-          if (!layer) {
-            return
-          }
-
-          layers.splice(toIndex, 0, layer)
           set({ shaderLayers: { ...shaderLayers, layers } })
         },
         updateShaderLayer: (layerId, partial) => {
@@ -1043,21 +1028,21 @@ export function createStudioStore(storage?: StateStorage) {
         },
         setSelectedEffect: (selectedEffectId) => {
           set({
-            grainradEffect: {
-              ...get().grainradEffect,
-              selectedEffectId: sanitizeGrainradEffectId(selectedEffectId, get().grainradEffect.selectedEffectId),
+            studioEffect: {
+              ...get().studioEffect,
+              selectedEffectId: sanitizeStudioEffectId(selectedEffectId, get().studioEffect.selectedEffectId),
             },
           })
         },
-        setGrainradEffectControl: (effectId, controlId, value) => {
+        setStudioEffectControl: (effectId, controlId, value) => {
           const state = get()
-          const definition = GRAINRAD_EFFECTS.find((effect) => effect.id === effectId)
+          const definition = STUDIO_EFFECTS.find((effect) => effect.id === effectId)
           const control = definition
-            ? findGrainradControl(
+            ? findStudioControl(
                 [
                   ...definition.settingGroups,
-                  ...getGrainradProcessingGroups(effectId),
-                  ...GRAINRAD_COMMON_POST_PROCESSING_GROUPS,
+                  ...getStudioProcessingGroups(effectId),
+                  ...STUDIO_COMMON_POST_PROCESSING_GROUPS,
                 ],
                 controlId
               )
@@ -1067,8 +1052,8 @@ export function createStudioStore(storage?: StateStorage) {
             return
           }
 
-          const currentControls = state.grainradEffect.controls[effectId] ?? {}
-          const sanitizedValue = sanitizeGrainradControlValue(
+          const currentControls = state.studioEffect.controls[effectId] ?? {}
+          const sanitizedValue = sanitizeStudioControlValue(
             control,
             value,
             currentControls[controlId] ?? control.defaultValue
@@ -1079,11 +1064,11 @@ export function createStudioStore(storage?: StateStorage) {
             [controlId]: sanitizedValue,
           }
           const nextControlsByTheme = {
-            ...state.grainradEffect.controlsByTheme,
+            ...state.studioEffect.controlsByTheme,
             [state.view.theme]: {
-              ...state.grainradEffect.controlsByTheme[state.view.theme],
+              ...state.studioEffect.controlsByTheme[state.view.theme],
               [effectId]: {
-                ...state.grainradEffect.controlsByTheme[state.view.theme][effectId],
+                ...state.studioEffect.controlsByTheme[state.view.theme][effectId],
                 [controlId]: sanitizedValue,
               },
             },
@@ -1091,13 +1076,13 @@ export function createStudioStore(storage?: StateStorage) {
 
           set({
             ascii:
-              effectId === 'ascii' && isGrainradThemeColorControl(control)
+              effectId === 'ascii' && isStudioThemeColorControl(control)
                 ? syncAsciiColorsFromControls(state.ascii, nextEffectControls)
                 : state.ascii,
-            grainradEffect: {
-              ...state.grainradEffect,
+            studioEffect: {
+              ...state.studioEffect,
               controls: {
-                ...state.grainradEffect.controls,
+                ...state.studioEffect.controls,
                 [effectId]: nextEffectControls,
               },
               controlsByTheme: nextControlsByTheme,
@@ -1106,9 +1091,9 @@ export function createStudioStore(storage?: StateStorage) {
         },
         resetSelectedEffectControls: () => {
           const state = get()
-          const selectedEffectId = state.grainradEffect.selectedEffectId
-          const defaults = createDefaultGrainradEffectControls(state.view.theme)
-          const defaultThemeControls = createDefaultGrainradThemeControls(state.view.theme)
+          const selectedEffectId = state.studioEffect.selectedEffectId
+          const defaults = createDefaultStudioEffectControls(state.view.theme)
+          const defaultThemeControls = createDefaultStudioThemeControls(state.view.theme)
           const nextSelectedControls = defaults[selectedEffectId]
 
           set({
@@ -1116,16 +1101,16 @@ export function createStudioStore(storage?: StateStorage) {
               selectedEffectId === 'ascii'
                 ? syncAsciiColorsFromControls(DEFAULT_ASCII_STATE, nextSelectedControls)
                 : state.ascii,
-            grainradEffect: {
-              ...state.grainradEffect,
+            studioEffect: {
+              ...state.studioEffect,
               controls: {
-                ...state.grainradEffect.controls,
+                ...state.studioEffect.controls,
                 [selectedEffectId]: nextSelectedControls,
               },
               controlsByTheme: {
-                ...state.grainradEffect.controlsByTheme,
+                ...state.studioEffect.controlsByTheme,
                 [state.view.theme]: {
-                  ...state.grainradEffect.controlsByTheme[state.view.theme],
+                  ...state.studioEffect.controlsByTheme[state.view.theme],
                   [selectedEffectId]: defaultThemeControls[selectedEffectId],
                 },
               },
@@ -1147,21 +1132,21 @@ export function createStudioStore(storage?: StateStorage) {
 
           set({
             ascii,
-            grainradEffect: {
-              ...state.grainradEffect,
+            studioEffect: {
+              ...state.studioEffect,
               controls: {
-                ...state.grainradEffect.controls,
+                ...state.studioEffect.controls,
                 ascii: {
-                  ...state.grainradEffect.controls.ascii,
+                  ...state.studioEffect.controls.ascii,
                   ...colorUpdates,
                 },
               },
               controlsByTheme: {
-                ...state.grainradEffect.controlsByTheme,
+                ...state.studioEffect.controlsByTheme,
                 [state.view.theme]: {
-                  ...state.grainradEffect.controlsByTheme[state.view.theme],
+                  ...state.studioEffect.controlsByTheme[state.view.theme],
                   ascii: {
-                    ...state.grainradEffect.controlsByTheme[state.view.theme].ascii,
+                    ...state.studioEffect.controlsByTheme[state.view.theme].ascii,
                     ...colorUpdates,
                   },
                 },
@@ -1242,19 +1227,11 @@ export function createStudioStore(storage?: StateStorage) {
           })
         },
         reorderPatternLayer: (fromIndex, toIndex) => {
-          const patternLayers = [...get().patternLayers]
+          const patternLayers = reorderItems(get().patternLayers, fromIndex, toIndex)
 
-          if (fromIndex < 0 || fromIndex >= patternLayers.length || toIndex < 0 || toIndex >= patternLayers.length) {
+          if (!patternLayers) {
             return
           }
-
-          const [layer] = patternLayers.splice(fromIndex, 1)
-
-          if (!layer) {
-            return
-          }
-
-          patternLayers.splice(toIndex, 0, layer)
           set({ patternLayers })
         },
         updatePatternLayer: (layerId, partial) => {
@@ -1326,10 +1303,10 @@ export function createStudioStore(storage?: StateStorage) {
 
 export function createInitialStudioStoreState(): StudioStoreState {
   const defaultPreset = getDefaultShaderPreset()
-  const grainradEffect = createDefaultGrainradEffectState()
+  const studioEffect = createDefaultStudioEffectState()
   const ascii = syncAsciiColorsFromControls(
     DEFAULT_ASCII_STATE,
-    grainradEffect.controls.ascii,
+    studioEffect.controls.ascii,
   )
 
   return {
@@ -1349,7 +1326,7 @@ export function createInitialStudioStoreState(): StudioStoreState {
     randomSeed: 0,
     animation: createDefaultAnimationState(),
     ascii,
-    grainradEffect,
+    studioEffect,
     postFx: createDefaultPostFxState(),
     rendererMode: 'webgl',
     mesh: createDefaultMeshState(),
@@ -1461,49 +1438,49 @@ function createDefaultAnimationState(): StudioStoreState['animation'] {
   }
 }
 
-function createDefaultGrainradEffectState(): StudioStoreState['grainradEffect'] {
+function createDefaultStudioEffectState(): StudioStoreState['studioEffect'] {
   const theme = DEFAULT_VIEW_STATE.theme
 
   return {
-    selectedEffectId: DEFAULT_GRAINRAD_EFFECT_ID,
-    controls: createDefaultGrainradEffectControls(theme),
+    selectedEffectId: DEFAULT_STUDIO_EFFECT_ID,
+    controls: createDefaultStudioEffectControls(theme),
     controlsByTheme: {
-      light: createDefaultGrainradThemeControls('light'),
-      dark: createDefaultGrainradThemeControls('dark'),
+      light: createDefaultStudioThemeControls('light'),
+      dark: createDefaultStudioThemeControls('dark'),
     },
   }
 }
 
-function createDefaultGrainradThemeControls(theme: StudioTheme) {
-  return createDefaultGrainradEffectControls(theme)
+function createDefaultStudioThemeControls(theme: StudioTheme) {
+  return createDefaultStudioEffectControls(theme)
 }
 
-function createDefaultGrainradColorControls(theme: StudioTheme) {
-  const defaults = createDefaultGrainradEffectControls(theme)
+function createDefaultStudioColorControls(theme: StudioTheme) {
+  const defaults = createDefaultStudioEffectControls(theme)
 
   return Object.fromEntries(
-    GRAINRAD_EFFECTS.map((effect) => [
+    STUDIO_EFFECTS.map((effect) => [
       effect.id,
       Object.fromEntries(
         effect.settingGroups
           .flatMap((group) => group.controls)
-          .filter(isGrainradThemeColorControl)
+          .filter(isStudioThemeColorControl)
           .map((control) => [control.id, defaults[effect.id][control.id] as string]),
       ),
     ]),
-  ) as Record<GrainradEffectId, Record<string, string>>
+  ) as Record<StudioEffectId, Record<string, string>>
 }
 
 function resolveStudioThemeState(
   state: StudioStore,
   theme: StudioTheme
-): Pick<StudioStoreState, 'view' | 'grainradEffect' | 'ascii'> {
-  const controls = state.grainradEffect.controlsByTheme[theme]
+): Pick<StudioStoreState, 'view' | 'studioEffect' | 'ascii'> {
+  const controls = state.studioEffect.controlsByTheme[theme]
 
   return {
     view: { ...state.view, theme },
-    grainradEffect: {
-      ...state.grainradEffect,
+    studioEffect: {
+      ...state.studioEffect,
       controls,
     },
     ascii: syncAsciiColorsFromControls(state.ascii, controls.ascii),
@@ -1512,7 +1489,7 @@ function resolveStudioThemeState(
 
 function syncAsciiColorsFromControls(
   ascii: StudioAsciiState,
-  controls: Record<string, GrainradControlValue>
+  controls: Record<string, StudioControlValue>
 ): StudioAsciiState {
   return {
     ...ascii,
@@ -1819,7 +1796,7 @@ function selectPersistedState(state: StudioStore): PersistedStudioState {
     rendererMode: state.rendererMode,
     view: state.view,
     export: state.export,
-    grainradEffect: state.grainradEffect,
+    studioEffect: state.studioEffect,
   }
 }
 
@@ -1828,10 +1805,10 @@ function sanitizePersistedState(value: unknown): PersistedStudioState {
   const persisted = isRecord(value) ? value : {}
   const character = sanitizeCharacter(persisted.character, base.character)
   const view = sanitizeViewState(persisted.view, base.view)
-  const grainradEffect = sanitizeGrainradEffectState(persisted.grainradEffect, base.grainradEffect, view.theme)
+  const studioEffect = sanitizeStudioEffectState(persisted.studioEffect, base.studioEffect, view.theme)
   const ascii = syncAsciiColorsFromControls(
     sanitizeAsciiState(persisted.ascii, base.ascii),
-    grainradEffect.controls.ascii
+    studioEffect.controls.ascii
   )
 
   return {
@@ -1841,7 +1818,7 @@ function sanitizePersistedState(value: unknown): PersistedStudioState {
     rendererMode: sanitizeRendererMode(persisted.rendererMode, base.rendererMode),
     view,
     export: sanitizeExportState(persisted.export, base.export),
-    grainradEffect,
+    studioEffect,
   }
 }
 
@@ -1849,14 +1826,14 @@ function migratePersistedStudioState(value: unknown, version: number): unknown {
   let persisted = readRecord(value)
 
   if (version < 2) {
-    const grainradEffect = readRecord(persisted.grainradEffect)
-    const controls = readRecord(grainradEffect.controls)
+    const studioEffect = readRecord(persisted.studioEffect)
+    const controls = readRecord(studioEffect.controls)
     const asciiControls = readRecord(controls.ascii)
 
     persisted = {
       ...persisted,
-      grainradEffect: {
-        ...grainradEffect,
+      studioEffect: {
+        ...studioEffect,
         controls: {
           ...controls,
           ascii: {
@@ -1869,37 +1846,37 @@ function migratePersistedStudioState(value: unknown, version: number): unknown {
   }
 
   if (version < 3) {
-    const grainradEffect = readRecord(persisted.grainradEffect)
-    const controls = readRecord(grainradEffect.controls)
+    const studioEffect = readRecord(persisted.studioEffect)
+    const controls = readRecord(studioEffect.controls)
     const ascii = readRecord(persisted.ascii)
     const theme = sanitizeStudioTheme(readRecord(persisted.view).theme, 'light')
     const colorControlsByTheme: StudioThemeColorControls = {
-      light: createDefaultGrainradColorControls('light'),
-      dark: createDefaultGrainradColorControls('dark'),
+      light: createDefaultStudioColorControls('light'),
+      dark: createDefaultStudioColorControls('dark'),
     }
 
-    colorControlsByTheme[theme] = readLegacyGrainradThemeColors(controls, ascii, colorControlsByTheme[theme])
+    colorControlsByTheme[theme] = readLegacyStudioThemeColors(controls, ascii, colorControlsByTheme[theme])
     persisted = {
       ...persisted,
-      grainradEffect: {
-        ...grainradEffect,
+      studioEffect: {
+        ...studioEffect,
         colorControlsByTheme,
       },
     }
   }
 
   if (version < 4) {
-    const grainradEffect = readRecord(persisted.grainradEffect)
-    const controls = readRecord(grainradEffect.controls)
+    const studioEffect = readRecord(persisted.studioEffect)
+    const controls = readRecord(studioEffect.controls)
     const matrixRain = readRecord(controls['matrix-rain'])
     const blockify = readRecord(controls.blockify)
     const noiseField = readRecord(controls['noise-field'])
-    const colorControlsByTheme = readRecord(grainradEffect.colorControlsByTheme)
+    const colorControlsByTheme = readRecord(studioEffect.colorControlsByTheme)
 
     persisted = {
       ...persisted,
-      grainradEffect: {
-        ...grainradEffect,
+      studioEffect: {
+        ...studioEffect,
         controls: {
           ...controls,
           'matrix-rain': {
@@ -1916,22 +1893,22 @@ function migratePersistedStudioState(value: unknown, version: number): unknown {
           },
         },
         colorControlsByTheme: {
-          light: migrateGrainradColorRoleIds(colorControlsByTheme.light),
-          dark: migrateGrainradColorRoleIds(colorControlsByTheme.dark),
+          light: migrateStudioColorRoleIds(colorControlsByTheme.light),
+          dark: migrateStudioColorRoleIds(colorControlsByTheme.dark),
         },
       },
     }
   }
 
   if (version < 5) {
-    const grainradEffect = readRecord(persisted.grainradEffect)
-    const controls = readRecord(grainradEffect.controls)
+    const studioEffect = readRecord(persisted.studioEffect)
+    const controls = readRecord(studioEffect.controls)
     const matrixRain = readRecord(controls['matrix-rain'])
 
     persisted = {
       ...persisted,
-      grainradEffect: {
-        ...grainradEffect,
+      studioEffect: {
+        ...studioEffect,
         controls: {
           ...controls,
           'matrix-rain': {
@@ -1944,18 +1921,18 @@ function migratePersistedStudioState(value: unknown, version: number): unknown {
   }
 
   if (version < 6) {
-    const grainradEffect = readRecord(persisted.grainradEffect)
-    const controls = readRecord(grainradEffect.controls)
+    const studioEffect = readRecord(persisted.studioEffect)
+    const controls = readRecord(studioEffect.controls)
     const matrixRain = readRecord(controls['matrix-rain'])
-    const colorControlsByTheme = readRecord(grainradEffect.colorControlsByTheme)
+    const colorControlsByTheme = readRecord(studioEffect.colorControlsByTheme)
     const lightColors = readRecord(colorControlsByTheme.light)
     const lightMatrixRain = readRecord(lightColors['matrix-rain'])
     const theme = sanitizeStudioTheme(readRecord(persisted.view).theme, 'dark')
 
     persisted = {
       ...persisted,
-      grainradEffect: {
-        ...grainradEffect,
+      studioEffect: {
+        ...studioEffect,
         controls: {
           ...controls,
           'matrix-rain': {
@@ -1983,18 +1960,18 @@ function migratePersistedStudioState(value: unknown, version: number): unknown {
   }
 
   if (version < 7) {
-    const grainradEffect = readRecord(persisted.grainradEffect)
-    const controls = readRecord(grainradEffect.controls)
+    const studioEffect = readRecord(persisted.studioEffect)
+    const controls = readRecord(studioEffect.controls)
     const crosshatch = readRecord(controls.crosshatch)
     const theme = sanitizeStudioTheme(readRecord(persisted.view).theme, 'dark')
-    const legacyColorsByTheme = readRecord(grainradEffect.colorControlsByTheme)
+    const legacyColorsByTheme = readRecord(studioEffect.colorControlsByTheme)
     const controlsByTheme: StudioThemeControls = {
       light: mergeLegacyColorsIntoThemeControls(
-        createDefaultGrainradThemeControls('light'),
+        createDefaultStudioThemeControls('light'),
         legacyColorsByTheme.light,
       ),
       dark: mergeLegacyColorsIntoThemeControls(
-        createDefaultGrainradThemeControls('dark'),
+        createDefaultStudioThemeControls('dark'),
         legacyColorsByTheme.dark,
       ),
     }
@@ -2004,18 +1981,18 @@ function migratePersistedStudioState(value: unknown, version: number): unknown {
       readRecord(legacyColorsByTheme[theme]),
     )
     const migratedBrightness = crosshatch.brightness === 0
-      ? createDefaultGrainradEffectControls(theme).crosshatch.brightness
+      ? createDefaultStudioEffectControls(theme).crosshatch.brightness
       : crosshatch.brightness
     const migratedLineWidth = crosshatch['line-width'] === 0.15
       ? 0.08
       : crosshatch['line-width']
-    controlsByTheme[theme].crosshatch.brightness = migratedBrightness as GrainradControlValue
-    controlsByTheme[theme].crosshatch['line-width'] = migratedLineWidth as GrainradControlValue
+    controlsByTheme[theme].crosshatch.brightness = migratedBrightness as StudioControlValue
+    controlsByTheme[theme].crosshatch['line-width'] = migratedLineWidth as StudioControlValue
 
     persisted = {
       ...persisted,
-      grainradEffect: {
-        ...grainradEffect,
+      studioEffect: {
+        ...studioEffect,
         controls: {
           ...controls,
           crosshatch: {
@@ -2030,8 +2007,8 @@ function migratePersistedStudioState(value: unknown, version: number): unknown {
   }
 
   if (version < 8) {
-    const grainradEffect = readRecord(persisted.grainradEffect)
-    const controlsByTheme = readRecord(grainradEffect.controlsByTheme)
+    const studioEffect = readRecord(persisted.studioEffect)
+    const controlsByTheme = readRecord(studioEffect.controlsByTheme)
     const lightControls = readRecord(controlsByTheme.light)
     const lightMatrixRain = readRecord(lightControls['matrix-rain'])
     const darkControls = readRecord(controlsByTheme.dark)
@@ -2039,8 +2016,8 @@ function migratePersistedStudioState(value: unknown, version: number): unknown {
 
     persisted = {
       ...persisted,
-      grainradEffect: {
-        ...grainradEffect,
+      studioEffect: {
+        ...studioEffect,
         controlsByTheme: {
           ...controlsByTheme,
           light: {
@@ -2064,8 +2041,8 @@ function migratePersistedStudioState(value: unknown, version: number): unknown {
   }
 
   if (version < 9) {
-    const grainradEffect = readRecord(persisted.grainradEffect)
-    const controlsByTheme = readRecord(grainradEffect.controlsByTheme)
+    const studioEffect = readRecord(persisted.studioEffect)
+    const controlsByTheme = readRecord(studioEffect.controlsByTheme)
     const migratePixelSortDefault = (value: unknown) => {
       const controls = readRecord(value)
       if (!Object.prototype.hasOwnProperty.call(controls, 'pixel-sort')) return controls
@@ -2081,9 +2058,9 @@ function migratePersistedStudioState(value: unknown, version: number): unknown {
 
     persisted = {
       ...persisted,
-      grainradEffect: {
-        ...grainradEffect,
-        controls: migratePixelSortDefault(grainradEffect.controls),
+      studioEffect: {
+        ...studioEffect,
+        controls: migratePixelSortDefault(studioEffect.controls),
         controlsByTheme: {
           ...controlsByTheme,
           light: migratePixelSortDefault(controlsByTheme.light),
@@ -2094,8 +2071,8 @@ function migratePersistedStudioState(value: unknown, version: number): unknown {
   }
 
   if (version < 10) {
-    const grainradEffect = readRecord(persisted.grainradEffect)
-    const controlsByTheme = readRecord(grainradEffect.controlsByTheme)
+    const studioEffect = readRecord(persisted.studioEffect)
+    const controlsByTheme = readRecord(studioEffect.controlsByTheme)
     const migratePixelSortStreakLength = (value: unknown) => {
       const controls = readRecord(value)
       if (!Object.prototype.hasOwnProperty.call(controls, 'pixel-sort')) return controls
@@ -2111,9 +2088,9 @@ function migratePersistedStudioState(value: unknown, version: number): unknown {
 
     persisted = {
       ...persisted,
-      grainradEffect: {
-        ...grainradEffect,
-        controls: migratePixelSortStreakLength(grainradEffect.controls),
+      studioEffect: {
+        ...studioEffect,
+        controls: migratePixelSortStreakLength(studioEffect.controls),
         controlsByTheme: {
           ...controlsByTheme,
           light: migratePixelSortStreakLength(controlsByTheme.light),
@@ -2124,8 +2101,8 @@ function migratePersistedStudioState(value: unknown, version: number): unknown {
   }
 
   if (version < 11) {
-    const grainradEffect = readRecord(persisted.grainradEffect)
-    const controlsByTheme = readRecord(grainradEffect.controlsByTheme)
+    const studioEffect = readRecord(persisted.studioEffect)
+    const controlsByTheme = readRecord(studioEffect.controlsByTheme)
     const migratePixelSortColorIds = (value: unknown) => {
       const controls = readRecord(value)
       if (!Object.prototype.hasOwnProperty.call(controls, 'pixel-sort')) return controls
@@ -2151,9 +2128,9 @@ function migratePersistedStudioState(value: unknown, version: number): unknown {
 
     persisted = {
       ...persisted,
-      grainradEffect: {
-        ...grainradEffect,
-        controls: migratePixelSortColorIds(grainradEffect.controls),
+      studioEffect: {
+        ...studioEffect,
+        controls: migratePixelSortColorIds(studioEffect.controls),
         controlsByTheme: {
           ...controlsByTheme,
           light: migratePixelSortColorIds(controlsByTheme.light),
@@ -2164,8 +2141,8 @@ function migratePersistedStudioState(value: unknown, version: number): unknown {
   }
 
   if (version < 12) {
-    const grainradEffect = readRecord(persisted.grainradEffect)
-    const controlsByTheme = readRecord(grainradEffect.controlsByTheme)
+    const studioEffect = readRecord(persisted.studioEffect)
+    const controlsByTheme = readRecord(studioEffect.controlsByTheme)
     const migratePixelSortRandomness = (value: unknown) => {
       const controls = readRecord(value)
       if (!Object.prototype.hasOwnProperty.call(controls, 'pixel-sort')) return controls
@@ -2180,9 +2157,9 @@ function migratePersistedStudioState(value: unknown, version: number): unknown {
     }
     persisted = {
       ...persisted,
-      grainradEffect: {
-        ...grainradEffect,
-        controls: migratePixelSortRandomness(grainradEffect.controls),
+      studioEffect: {
+        ...studioEffect,
+        controls: migratePixelSortRandomness(studioEffect.controls),
         controlsByTheme: {
           ...controlsByTheme,
           light: migratePixelSortRandomness(controlsByTheme.light),
@@ -2193,8 +2170,8 @@ function migratePersistedStudioState(value: unknown, version: number): unknown {
   }
 
   if (version < 13) {
-    const grainradEffect = readRecord(persisted.grainradEffect)
-    const controlsByTheme = readRecord(grainradEffect.controlsByTheme)
+    const studioEffect = readRecord(persisted.studioEffect)
+    const controlsByTheme = readRecord(studioEffect.controlsByTheme)
     const migratePixelSortStreakLength = (value: unknown) => {
       const controls = readRecord(value)
       if (!Object.prototype.hasOwnProperty.call(controls, 'pixel-sort')) return controls
@@ -2209,9 +2186,9 @@ function migratePersistedStudioState(value: unknown, version: number): unknown {
     }
     persisted = {
       ...persisted,
-      grainradEffect: {
-        ...grainradEffect,
-        controls: migratePixelSortStreakLength(grainradEffect.controls),
+      studioEffect: {
+        ...studioEffect,
+        controls: migratePixelSortStreakLength(studioEffect.controls),
         controlsByTheme: {
           ...controlsByTheme,
           light: migratePixelSortStreakLength(controlsByTheme.light),
@@ -2222,8 +2199,8 @@ function migratePersistedStudioState(value: unknown, version: number): unknown {
   }
 
   if (version < 14) {
-    const grainradEffect = readRecord(persisted.grainradEffect)
-    const controlsByTheme = readRecord(grainradEffect.controlsByTheme)
+    const studioEffect = readRecord(persisted.studioEffect)
+    const controlsByTheme = readRecord(studioEffect.controlsByTheme)
     const migratePixelSortIntensity = (value: unknown) => {
       const controls = readRecord(value)
       if (!Object.prototype.hasOwnProperty.call(controls, 'pixel-sort')) return controls
@@ -2238,9 +2215,9 @@ function migratePersistedStudioState(value: unknown, version: number): unknown {
     }
     persisted = {
       ...persisted,
-      grainradEffect: {
-        ...grainradEffect,
-        controls: migratePixelSortIntensity(grainradEffect.controls),
+      studioEffect: {
+        ...studioEffect,
+        controls: migratePixelSortIntensity(studioEffect.controls),
         controlsByTheme: {
           ...controlsByTheme,
           light: migratePixelSortIntensity(controlsByTheme.light),
@@ -2251,8 +2228,8 @@ function migratePersistedStudioState(value: unknown, version: number): unknown {
   }
 
   if (version < 15) {
-    const grainradEffect = readRecord(persisted.grainradEffect)
-    const controlsByTheme = readRecord(grainradEffect.controlsByTheme)
+    const studioEffect = readRecord(persisted.studioEffect)
+    const controlsByTheme = readRecord(studioEffect.controlsByTheme)
     const migratePixelSortRandomness = (value: unknown) => {
       const controls = readRecord(value)
       if (!Object.prototype.hasOwnProperty.call(controls, 'pixel-sort')) return controls
@@ -2267,9 +2244,9 @@ function migratePersistedStudioState(value: unknown, version: number): unknown {
     }
     persisted = {
       ...persisted,
-      grainradEffect: {
-        ...grainradEffect,
-        controls: migratePixelSortRandomness(grainradEffect.controls),
+      studioEffect: {
+        ...studioEffect,
+        controls: migratePixelSortRandomness(studioEffect.controls),
         controlsByTheme: {
           ...controlsByTheme,
           light: migratePixelSortRandomness(controlsByTheme.light),
@@ -2283,12 +2260,12 @@ function migratePersistedStudioState(value: unknown, version: number): unknown {
 }
 
 function mergeLegacyActiveControls(
-  fallback: Record<GrainradEffectId, Record<string, GrainradControlValue>>,
+  fallback: Record<StudioEffectId, Record<string, StudioControlValue>>,
   legacyControls: Record<string, unknown>,
   legacyColors: Record<string, unknown>,
 ) {
   return Object.fromEntries(
-    GRAINRAD_EFFECTS.map((effect) => [
+    STUDIO_EFFECTS.map((effect) => [
       effect.id,
       {
         ...fallback[effect.id],
@@ -2296,27 +2273,27 @@ function mergeLegacyActiveControls(
         ...readRecord(legacyColors[effect.id]),
       },
     ]),
-  ) as Record<GrainradEffectId, Record<string, GrainradControlValue>>
+  ) as Record<StudioEffectId, Record<string, StudioControlValue>>
 }
 
 function mergeLegacyColorsIntoThemeControls(
-  fallback: Record<GrainradEffectId, Record<string, GrainradControlValue>>,
+  fallback: Record<StudioEffectId, Record<string, StudioControlValue>>,
   legacyColors: unknown,
 ) {
   const colors = readRecord(legacyColors)
 
   return Object.fromEntries(
-    GRAINRAD_EFFECTS.map((effect) => [
+    STUDIO_EFFECTS.map((effect) => [
       effect.id,
       {
         ...fallback[effect.id],
         ...readRecord(colors[effect.id]),
       },
     ]),
-  ) as Record<GrainradEffectId, Record<string, GrainradControlValue>>
+  ) as Record<StudioEffectId, Record<string, StudioControlValue>>
 }
 
-function migrateGrainradColorRoleIds(value: unknown) {
+function migrateStudioColorRoleIds(value: unknown) {
   const colors = readRecord(value)
   const matrixRain = readRecord(colors['matrix-rain'])
   const blockify = readRecord(colors.blockify)
@@ -2334,18 +2311,18 @@ function migrateGrainradColorRoleIds(value: unknown) {
   }
 }
 
-function readLegacyGrainradThemeColors(
+function readLegacyStudioThemeColors(
   controls: Record<string, unknown>,
   ascii: Record<string, unknown>,
-  fallback: Record<GrainradEffectId, Record<string, string>>
+  fallback: Record<StudioEffectId, Record<string, string>>
 ) {
   return Object.fromEntries(
-    GRAINRAD_EFFECTS.map((effect) => {
+    STUDIO_EFFECTS.map((effect) => {
       const effectControls = readRecord(controls[effect.id])
       const colors = Object.fromEntries(
         effect.settingGroups
           .flatMap((group) => group.controls)
-          .filter(isGrainradThemeColorControl)
+          .filter(isStudioThemeColorControl)
           .map((control) => {
             const legacyValue =
               effect.id === 'ascii' && control.id === 'foreground'
@@ -2356,14 +2333,14 @@ function readLegacyGrainradThemeColors(
 
             return [
               control.id,
-              sanitizeGrainradControlValue(control, legacyValue, fallback[effect.id][control.id]) as string,
+              sanitizeStudioControlValue(control, legacyValue, fallback[effect.id][control.id]) as string,
             ]
           })
       )
 
       return [effect.id, colors]
     })
-  ) as Record<GrainradEffectId, Record<string, string>>
+  ) as Record<StudioEffectId, Record<string, string>>
 }
 
 function sanitizeCharacter(value: unknown, fallback: StudioCharacterState): StudioCharacterState {
@@ -2527,62 +2504,62 @@ function sanitizeAnimationState(
   }
 }
 
-function sanitizeGrainradEffectState(
+function sanitizeStudioEffectState(
   value: unknown,
-  fallback: StudioStoreState['grainradEffect'],
+  fallback: StudioStoreState['studioEffect'],
   theme: StudioTheme
-): StudioStoreState['grainradEffect'] {
+): StudioStoreState['studioEffect'] {
   const record = readRecord(value)
-  const controlsByTheme = sanitizeGrainradControlsByTheme(
+  const controlsByTheme = sanitizeStudioControlsByTheme(
     record.controlsByTheme,
     fallback.controlsByTheme
   )
   const controls = controlsByTheme[theme]
 
   return {
-    selectedEffectId: sanitizeGrainradEffectId(record.selectedEffectId, fallback.selectedEffectId),
+    selectedEffectId: sanitizeStudioEffectId(record.selectedEffectId, fallback.selectedEffectId),
     controls,
     controlsByTheme,
   }
 }
 
-function sanitizeGrainradControlsByTheme(
+function sanitizeStudioControlsByTheme(
   value: unknown,
   fallback: StudioThemeControls
 ): StudioThemeControls {
   const record = readRecord(value)
 
   return {
-    light: sanitizeGrainradEffectControls(record.light, fallback.light),
-    dark: sanitizeGrainradEffectControls(record.dark, fallback.dark),
+    light: sanitizeStudioEffectControls(record.light, fallback.light),
+    dark: sanitizeStudioEffectControls(record.dark, fallback.dark),
   }
 }
 
-function sanitizeGrainradEffectId(value: unknown, fallback: GrainradEffectId): GrainradEffectId {
-  return GRAINRAD_EFFECT_IDS.includes(value as GrainradEffectId) ? (value as GrainradEffectId) : fallback
+function sanitizeStudioEffectId(value: unknown, fallback: StudioEffectId): StudioEffectId {
+  return STUDIO_EFFECT_IDS.includes(value as StudioEffectId) ? (value as StudioEffectId) : fallback
 }
 
-function sanitizeGrainradEffectControls(
+function sanitizeStudioEffectControls(
   value: unknown,
-  fallback: Record<GrainradEffectId, Record<string, GrainradControlValue>>
-): Record<GrainradEffectId, Record<string, GrainradControlValue>> {
+  fallback: Record<StudioEffectId, Record<string, StudioControlValue>>
+): Record<StudioEffectId, Record<string, StudioControlValue>> {
   const record = readRecord(value)
-  const defaults = createDefaultGrainradEffectControls()
+  const defaults = createDefaultStudioEffectControls()
 
   return Object.fromEntries(
-    GRAINRAD_EFFECTS.map((effect) => {
+    STUDIO_EFFECTS.map((effect) => {
       const effectRecord = readRecord(record[effect.id])
       const fallbackControls = fallback[effect.id] ?? defaults[effect.id]
       const controls = Object.fromEntries(
         [
           ...effect.settingGroups,
-          ...getGrainradProcessingGroups(effect.id),
-          ...GRAINRAD_COMMON_POST_PROCESSING_GROUPS,
+          ...getStudioProcessingGroups(effect.id),
+          ...STUDIO_COMMON_POST_PROCESSING_GROUPS,
         ]
           .flatMap((group) => group.controls)
           .map((control) => [
             control.id,
-            sanitizeGrainradControlValue(
+            sanitizeStudioControlValue(
               control,
               effectRecord[control.id],
               fallbackControls[control.id] ?? control.defaultValue
@@ -2592,14 +2569,14 @@ function sanitizeGrainradEffectControls(
 
       return [effect.id, controls]
     })
-  ) as Record<GrainradEffectId, Record<string, GrainradControlValue>>
+  ) as Record<StudioEffectId, Record<string, StudioControlValue>>
 }
 
-function sanitizeGrainradControlValue(
-  control: GrainradEffectControl,
+function sanitizeStudioControlValue(
+  control: StudioEffectControl,
   value: unknown,
-  fallback: GrainradControlValue
-): GrainradControlValue {
+  fallback: StudioControlValue
+): StudioControlValue {
   if (control.kind === 'range') {
     const numericFallback = typeof fallback === 'number' ? fallback : control.defaultValue
     const numericValue = typeof value === 'number' && Number.isFinite(value) ? value : numericFallback
@@ -2628,7 +2605,7 @@ function sanitizeGrainradControlValue(
   return sanitizeHexColor(value, typeof fallback === 'string' ? fallback : control.defaultValue)
 }
 
-function findGrainradControl(groups: Array<{ controls: GrainradEffectControl[] }>, controlId: string) {
+function findStudioControl(groups: Array<{ controls: StudioEffectControl[] }>, controlId: string) {
   return groups.flatMap((group) => group.controls).find((control) => control.id === controlId) ?? null
 }
 
@@ -2877,7 +2854,9 @@ function sanitizeStudioTheme(value: unknown, fallback: StudioTheme): StudioTheme
 }
 
 function sanitizeMobileTab(value: unknown, fallback: StudioMobileTab): StudioMobileTab {
-  return value === 'input' || value === 'effects' || value === 'animation' || value === 'export' ? value : fallback
+  return value === 'input' || value === 'effects' || value === 'model' || value === 'settings' || value === 'export'
+    ? value
+    : fallback
 }
 
 function sanitizeExportFormat(value: unknown, fallback: StudioExportFormat): StudioExportFormat {
@@ -2965,7 +2944,24 @@ function readNumber(value: unknown, fallback: number) {
 }
 
 function sanitizeHexColor(value: unknown, fallback: string) {
-  return typeof value === 'string' && /^#[0-9a-fA-F]{6}$/.test(value) ? value : fallback
+  return typeof value === 'string' && isSixDigitHexColor(value) ? value : fallback
+}
+
+function reorderItems<T>(items: readonly T[], fromIndex: number, toIndex: number): T[] | null {
+  const reordered = [...items]
+
+  if (fromIndex < 0 || fromIndex >= reordered.length || toIndex < 0 || toIndex >= reordered.length) {
+    return null
+  }
+
+  const [item] = reordered.splice(fromIndex, 1)
+
+  if (item === undefined) {
+    return null
+  }
+
+  reordered.splice(toIndex, 0, item)
+  return reordered
 }
 
 function readClampedNumber(value: unknown, fallback: number, min: number, max: number) {

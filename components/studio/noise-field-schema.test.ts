@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest'
 
-import { createDefaultGrainradEffectControls, getGrainradEffectById } from './grainrad-effects'
+import { createDefaultStudioEffectControls, getStudioEffectById } from './studio-effects'
 
-describe('Grainrad Noise Field schema', () => {
+describe('Studio Noise Field schema', () => {
   it('publishes an independent renderer and exact group/control order', () => {
-    const definition = getGrainradEffectById('noise-field')
+    const definition = getStudioEffectById('noise-field')
 
     expect(definition.renderer).toBe('noise-field')
     expect(definition.settingGroups.map((group) => group.title)).toEqual(['Noise Field', 'Adjustments', 'Color'])
@@ -15,7 +15,7 @@ describe('Grainrad Noise Field schema', () => {
   })
 
   it('matches every production default, range, option, and always-visible row', () => {
-    const definition = getGrainradEffectById('noise-field')
+    const definition = getStudioEffectById('noise-field')
     const controls = Object.fromEntries(
       definition.settingGroups.flatMap((group) => group.controls).map((control) => [control.id, control]),
     )
@@ -45,7 +45,7 @@ describe('Grainrad Noise Field schema', () => {
       defaultValueByTheme: { light: '#000000', dark: '#000000' },
     })
     expect(Object.values(controls).every((control) => control.visibleWhen === undefined)).toBe(true)
-    expect(createDefaultGrainradEffectControls()['noise-field']).toMatchObject({
+    expect(createDefaultStudioEffectControls()['noise-field']).toMatchObject({
       'noise-type': 'perlin', scale: 50, intensity: 1, octaves: 4, speed: 1,
       animate: true, 'distort-only': true, brightness: 0, contrast: 0,
       foreground: '#ffffff', background: '#000000',

@@ -1,14 +1,14 @@
 import { describe, expect, it } from 'vitest'
 
 import {
-  createDefaultGrainradEffectControls,
-  getGrainradEffectById,
-  isGrainradControlVisible,
-} from './grainrad-effects'
+  createDefaultStudioEffectControls,
+  getStudioEffectById,
+  isStudioControlVisible,
+} from './studio-effects'
 
-describe('Grainrad Halftone schema', () => {
-  it('publishes the independent Halftone renderer and current Grainrad controls', () => {
-    const definition = getGrainradEffectById('halftone')
+describe('Studio Halftone schema', () => {
+  it('publishes the independent Halftone renderer and current Studio controls', () => {
+    const definition = getStudioEffectById('halftone')
     const controls = Object.fromEntries(
       definition.settingGroups.flatMap((group) => group.controls).map((control) => [control.id, control]),
     )
@@ -40,15 +40,15 @@ describe('Grainrad Halftone schema', () => {
   })
 
   it('shows Mono colors only in mono mode', () => {
-    const definition = getGrainradEffectById('halftone')
+    const definition = getStudioEffectById('halftone')
     const controls = definition.settingGroups.flatMap((group) => group.controls)
-    const defaults = createDefaultGrainradEffectControls().halftone
+    const defaults = createDefaultStudioEffectControls().halftone
     const foreground = controls.find((control) => control.id === 'foreground')!
     const background = controls.find((control) => control.id === 'background')!
 
-    expect(isGrainradControlVisible(foreground, defaults)).toBe(true)
-    expect(isGrainradControlVisible(background, defaults)).toBe(true)
-    expect(isGrainradControlVisible(foreground, { ...defaults, 'color-mode': 'color' })).toBe(false)
-    expect(isGrainradControlVisible(background, { ...defaults, 'color-mode': 'color' })).toBe(false)
+    expect(isStudioControlVisible(foreground, defaults)).toBe(true)
+    expect(isStudioControlVisible(background, defaults)).toBe(true)
+    expect(isStudioControlVisible(foreground, { ...defaults, 'color-mode': 'color' })).toBe(false)
+    expect(isStudioControlVisible(background, { ...defaults, 'color-mode': 'color' })).toBe(false)
   })
 })

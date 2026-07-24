@@ -22,7 +22,7 @@ function createFixture() {
 }
 
 describe('Dots shader material', () => {
-  it('owns an independent source shader with Grainrad defaults', () => {
+  it('owns an independent source shader with Studio defaults', () => {
     const { material, sourceTexture } = createFixture()
 
     expect(material.uniforms.u_sourceTexture.value).toBe(sourceTexture)

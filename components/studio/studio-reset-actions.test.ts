@@ -5,24 +5,24 @@ import {
   DEFAULT_ASCII_STATE,
 } from '@/app/studio/studio-store'
 import {
-  GRAINRAD_COMMON_POST_PROCESSING_GROUPS,
-  GRAINRAD_EFFECTS,
-  getGrainradControlDefaultValue,
-  getGrainradProcessingGroups,
-  isGrainradControlVisible,
-  type GrainradEffectControl,
-} from '@/components/studio/grainrad-effects'
+  STUDIO_COMMON_POST_PROCESSING_GROUPS,
+  STUDIO_EFFECTS,
+  getStudioControlDefaultValue,
+  getStudioProcessingGroups,
+  isStudioControlVisible,
+  type StudioEffectControl,
+} from '@/components/studio/studio-effects'
 import {
   resetAsciiColorGroup,
   resetAsciiPrimaryGroup,
-  resetGrainradControlGroups,
+  resetStudioControlGroups,
 } from '@/components/studio/StudioRightPanel'
 
 describe('Studio section Reset actions', () => {
   it('resets Processing defaults for every effect without changing effect-local Settings', () => {
-    for (const effect of GRAINRAD_EFFECTS) {
+    for (const effect of STUDIO_EFFECTS) {
       const store = createStudioStore(createMemoryStorage())
-      const processingGroups = getGrainradProcessingGroups(effect.id)
+      const processingGroups = getStudioProcessingGroups(effect.id)
       const processingControls = processingGroups.flatMap((group) => group.controls)
       const settingsControl = effect.settingGroups
         .flatMap((group) => group.controls)
@@ -31,24 +31,24 @@ describe('Studio section Reset actions', () => {
       expect(settingsControl).toBeDefined()
 
       const settingsValue = nonDefaultValue(settingsControl!)
-      store.getState().setGrainradEffectControl(effect.id, settingsControl!.id, settingsValue)
+      store.getState().setStudioEffectControl(effect.id, settingsControl!.id, settingsValue)
       processingControls.forEach((control) => {
-        store.getState().setGrainradEffectControl(effect.id, control.id, nonDefaultValue(control))
+        store.getState().setStudioEffectControl(effect.id, control.id, nonDefaultValue(control))
       })
 
-      resetGrainradControlGroups(
+      resetStudioControlGroups(
         effect.id,
         processingGroups,
         store.getState().view.theme,
-        store.getState().setGrainradEffectControl,
+        store.getState().setStudioEffectControl,
       )
 
-      expect(store.getState().grainradEffect.controls[effect.id][settingsControl!.id]).toBe(
+      expect(store.getState().studioEffect.controls[effect.id][settingsControl!.id]).toBe(
         settingsValue,
       )
       processingControls.forEach((control) => {
-        expect(store.getState().grainradEffect.controls[effect.id][control.id]).toBe(
-          getGrainradControlDefaultValue(control, store.getState().view.theme),
+        expect(store.getState().studioEffect.controls[effect.id][control.id]).toBe(
+          getStudioControlDefaultValue(control, store.getState().view.theme),
         )
       })
     }
@@ -56,54 +56,54 @@ describe('Studio section Reset actions', () => {
 
   it('keeps Adjustments and Color resets group-local and preserves the inactive theme', () => {
     const store = createStudioStore(createMemoryStorage())
-    const effect = GRAINRAD_EFFECTS.find((candidate) => candidate.id === 'crosshatch')!
+    const effect = STUDIO_EFFECTS.find((candidate) => candidate.id === 'crosshatch')!
     const adjustments = effect.settingGroups.find((group) => group.title === 'Adjustments')!
     const color = effect.settingGroups.find((group) => group.title === 'Color')!
 
-    store.getState().setGrainradEffectControl(effect.id, 'density', 10)
-    store.getState().setGrainradEffectControl(effect.id, 'brightness', 30)
-    store.getState().setGrainradEffectControl(effect.id, 'line-color', '#111111')
+    store.getState().setStudioEffectControl(effect.id, 'density', 10)
+    store.getState().setStudioEffectControl(effect.id, 'brightness', 30)
+    store.getState().setStudioEffectControl(effect.id, 'line-color', '#111111')
     store.getState().toggleStudioTheme()
-    store.getState().setGrainradEffectControl(effect.id, 'line-color', '#222222')
+    store.getState().setStudioEffectControl(effect.id, 'line-color', '#222222')
     store.getState().toggleStudioTheme()
 
-    resetGrainradControlGroups(
+    resetStudioControlGroups(
       effect.id,
       [adjustments],
       store.getState().view.theme,
-      store.getState().setGrainradEffectControl,
+      store.getState().setStudioEffectControl,
     )
 
-    expect(store.getState().grainradEffect.controls[effect.id].density).toBe(10)
-    expect(store.getState().grainradEffect.controls[effect.id].brightness).toBe(
-      getGrainradControlDefaultValue(
+    expect(store.getState().studioEffect.controls[effect.id].density).toBe(10)
+    expect(store.getState().studioEffect.controls[effect.id].brightness).toBe(
+      getStudioControlDefaultValue(
         adjustments.controls.find((control) => control.id === 'brightness')!,
         store.getState().view.theme,
       ),
     )
-    expect(store.getState().grainradEffect.controls[effect.id]['line-color']).toBe('#111111')
+    expect(store.getState().studioEffect.controls[effect.id]['line-color']).toBe('#111111')
 
-    resetGrainradControlGroups(
+    resetStudioControlGroups(
       effect.id,
       [color],
       store.getState().view.theme,
-      store.getState().setGrainradEffectControl,
+      store.getState().setStudioEffectControl,
     )
 
-    expect(store.getState().grainradEffect.controls[effect.id].density).toBe(10)
-    expect(store.getState().grainradEffect.controls[effect.id]['line-color']).toBe(
-      getGrainradControlDefaultValue(
+    expect(store.getState().studioEffect.controls[effect.id].density).toBe(10)
+    expect(store.getState().studioEffect.controls[effect.id]['line-color']).toBe(
+      getStudioControlDefaultValue(
         color.controls.find((control) => control.id === 'line-color')!,
         store.getState().view.theme,
       ),
     )
 
     store.getState().toggleStudioTheme()
-    expect(store.getState().grainradEffect.controls[effect.id]['line-color']).toBe('#222222')
+    expect(store.getState().studioEffect.controls[effect.id]['line-color']).toBe('#222222')
   })
 
   it('provides a group-local Reset for every effect setting group', () => {
-    for (const effect of GRAINRAD_EFFECTS) {
+    for (const effect of STUDIO_EFFECTS) {
       const store = createStudioStore(createMemoryStorage())
       const groups = effect.settingGroups
 
@@ -113,31 +113,31 @@ describe('Studio section Reset actions', () => {
           .find((control) => control.id !== group.controls[0]?.id)
 
         group.controls.forEach((control) => {
-          store.getState().setGrainradEffectControl(effect.id, control.id, nonDefaultValue(control))
+          store.getState().setStudioEffectControl(effect.id, control.id, nonDefaultValue(control))
         })
         if (outsideControl) {
-          store.getState().setGrainradEffectControl(
+          store.getState().setStudioEffectControl(
             effect.id,
             outsideControl.id,
             nonDefaultValue(outsideControl),
           )
         }
 
-        resetGrainradControlGroups(
+        resetStudioControlGroups(
           effect.id,
           [group],
           store.getState().view.theme,
-          store.getState().setGrainradEffectControl,
+          store.getState().setStudioEffectControl,
         )
 
         group.controls.forEach((control) => {
           expect(
-            store.getState().grainradEffect.controls[effect.id][control.id],
+            store.getState().studioEffect.controls[effect.id][control.id],
             `${effect.id}.${group.title}.${control.id}`,
-          ).toBe(getGrainradControlDefaultValue(control, store.getState().view.theme))
+          ).toBe(getStudioControlDefaultValue(control, store.getState().view.theme))
         })
         if (outsideControl) {
-          expect(store.getState().grainradEffect.controls[effect.id][outsideControl.id]).toBe(
+          expect(store.getState().studioEffect.controls[effect.id][outsideControl.id]).toBe(
             nonDefaultValue(outsideControl),
           )
         }
@@ -148,27 +148,26 @@ describe('Studio section Reset actions', () => {
   it('resets ASCII primary controls and the dual ASCII store values only', () => {
     const store = createStudioStore(createMemoryStorage())
     const setAsciiControl = store.getState().setAsciiControl
-    const setGrainradEffectControl = store.getState().setGrainradEffectControl
-    const asciiPrimary = GRAINRAD_EFFECTS.find((effect) => effect.id === 'ascii')!.settingGroups[0]
+    const setStudioEffectControl = store.getState().setStudioEffectControl
+    const asciiPrimary = STUDIO_EFFECTS.find((effect) => effect.id === 'ascii')!.settingGroups[0]
 
     store.getState().setAsciiControl({
       cellSize: 30,
       charsetStyle: 'custom',
       brightness: 0.4,
     })
-    store.getState().setGrainradEffectControl('ascii', 'scale', 12)
-    store.getState().setGrainradEffectControl('ascii', 'spacing', 0.75)
-    store.getState().setGrainradEffectControl('ascii', 'output-width', 300)
-    store.getState().setGrainradEffectControl('ascii', 'character-set', 'custom')
-    store.getState().setGrainradEffectControl('ascii', 'custom-chars', 'changed')
-    store.getState().setGrainradEffectControl('ascii', 'contrast', 1.5)
-    store.getState().setGrainradEffectControl('ascii', 'foreground', '#123456')
-    store.getState().setGrainradEffectControl('ascii', 'processing-invert', true)
-    store.getState().setGrainradEffectControl('ascii', 'bloom', true)
-    store.getState().setGrainradEffectControl('dithering', 'intensity', 0.25)
+    store.getState().setStudioEffectControl('ascii', 'scale', 12)
+    store.getState().setStudioEffectControl('ascii', 'size', 1.7)
+    store.getState().setStudioEffectControl('ascii', 'character-set', 'custom')
+    store.getState().setStudioEffectControl('ascii', 'custom-chars', 'changed')
+    store.getState().setStudioEffectControl('ascii', 'contrast', 1.5)
+    store.getState().setStudioEffectControl('ascii', 'foreground', '#123456')
+    store.getState().setStudioEffectControl('ascii', 'processing-invert', true)
+    store.getState().setStudioEffectControl('ascii', 'bloom', true)
+    store.getState().setStudioEffectControl('dithering', 'intensity', 0.25)
     store.getState().setMeshControl({ scale: 2 })
 
-    resetAsciiPrimaryGroup(store.getState().view.theme, setAsciiControl, setGrainradEffectControl)
+    resetAsciiPrimaryGroup(store.getState().view.theme, setAsciiControl, setStudioEffectControl)
 
     expect(store.getState().ascii).toMatchObject({
       cellSize: 12,
@@ -176,59 +175,59 @@ describe('Studio section Reset actions', () => {
       brightness: 0.4,
     })
     asciiPrimary.controls.forEach((control) => {
-      expect(store.getState().grainradEffect.controls.ascii[control.id]).toBe(
-        getGrainradControlDefaultValue(control, store.getState().view.theme),
+      expect(store.getState().studioEffect.controls.ascii[control.id]).toBe(
+        getStudioControlDefaultValue(control, store.getState().view.theme),
       )
     })
-    expect(store.getState().grainradEffect.controls.ascii.contrast).toBe(1.5)
-    expect(store.getState().grainradEffect.controls.ascii.foreground).toBe('#123456')
-    expect(store.getState().grainradEffect.controls.ascii['processing-invert']).toBe(true)
-    expect(store.getState().grainradEffect.controls.ascii.bloom).toBe(true)
-    expect(store.getState().grainradEffect.controls.dithering.intensity).toBe(0.25)
+    expect(store.getState().studioEffect.controls.ascii.contrast).toBe(1.5)
+    expect(store.getState().studioEffect.controls.ascii.foreground).toBe('#123456')
+    expect(store.getState().studioEffect.controls.ascii['processing-invert']).toBe(true)
+    expect(store.getState().studioEffect.controls.ascii.bloom).toBe(true)
+    expect(store.getState().studioEffect.controls.dithering.intensity).toBe(0.25)
     expect(store.getState().mesh.scale).toBe(2)
   })
 
   it('resets Dithering Chromatic Effects and hides its child controllers only', () => {
     const store = createStudioStore(createMemoryStorage())
-    const effect = GRAINRAD_EFFECTS.find((candidate) => candidate.id === 'dithering')!
+    const effect = STUDIO_EFFECTS.find((candidate) => candidate.id === 'dithering')!
     const chromatic = effect.settingGroups.find((group) => group.title === 'Chromatic Effects')!
     const processingControlIds = new Set(
-      getGrainradProcessingGroups(effect.id)
-        .concat(GRAINRAD_COMMON_POST_PROCESSING_GROUPS)
+      getStudioProcessingGroups(effect.id)
+        .concat(STUDIO_COMMON_POST_PROCESSING_GROUPS)
         .flatMap((group) => group.controls.map((control) => control.id)),
     )
 
-    store.getState().setGrainradEffectControl(effect.id, 'intensity', 0.25)
+    store.getState().setStudioEffectControl(effect.id, 'intensity', 0.25)
     chromatic.controls.forEach((control) => {
-      store.getState().setGrainradEffectControl(effect.id, control.id, nonDefaultValue(control))
+      store.getState().setStudioEffectControl(effect.id, control.id, nonDefaultValue(control))
     })
 
-    resetGrainradControlGroups(
+    resetStudioControlGroups(
       effect.id,
       [chromatic],
       store.getState().view.theme,
-      store.getState().setGrainradEffectControl,
+      store.getState().setStudioEffectControl,
     )
 
-    const controls = store.getState().grainradEffect.controls[effect.id]
+    const controls = store.getState().studioEffect.controls[effect.id]
     expect(controls.intensity).toBe(0.25)
     expect(controls['chromatic-enabled']).toBe(false)
     chromatic.controls.slice(1).forEach((control) => {
       expect(controls[control.id]).toBe(
-        getGrainradControlDefaultValue(control, store.getState().view.theme),
+        getStudioControlDefaultValue(control, store.getState().view.theme),
       )
-      expect(isGrainradControlVisible(control, controls)).toBe(false)
+      expect(isStudioControlVisible(control, controls)).toBe(false)
       expect(processingControlIds.has(control.id)).toBe(false)
     })
   })
 
-  it('resets ASCII Color across Grainrad and ASCII state without changing the inactive theme', () => {
+  it('resets ASCII Color across Studio and ASCII state without changing the inactive theme', () => {
     const store = createStudioStore(createMemoryStorage())
 
     store.getState().toggleStudioTheme()
     store.getState().setAsciiControl({ foregroundColor: '#112233' })
     store.getState().toggleStudioTheme()
-    store.getState().setGrainradEffectControl('ascii', 'color-mode', 'original')
+    store.getState().setStudioEffectControl('ascii', 'color-mode', 'original')
     store.getState().setAsciiControl({
       foregroundColor: '#445566',
       backgroundColor: '#778899',
@@ -239,10 +238,10 @@ describe('Studio section Reset actions', () => {
     resetAsciiColorGroup(
       store.getState().view.theme,
       store.getState().setAsciiControl,
-      store.getState().setGrainradEffectControl,
+      store.getState().setStudioEffectControl,
     )
 
-    expect(store.getState().grainradEffect.controls.ascii['color-mode']).toBe('mono')
+    expect(store.getState().studioEffect.controls.ascii['color-mode']).toBe('mono')
     expect(store.getState().ascii).toMatchObject({
       foregroundColor: '#f4f1e8',
       backgroundColor: '#101010',
@@ -255,7 +254,7 @@ describe('Studio section Reset actions', () => {
   })
 })
 
-function nonDefaultValue(control: GrainradEffectControl) {
+function nonDefaultValue(control: StudioEffectControl) {
   if (control.kind === 'toggle') {
     return !control.defaultValue
   }

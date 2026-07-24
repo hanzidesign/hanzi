@@ -12,11 +12,11 @@ import classes from './StudioShell.module.css'
 
 export default function StudioCanvas() {
   const character = useStudioStore((store) => store.character)
-  const selectedEffectId = useStudioStore((store) => store.grainradEffect.selectedEffectId)
+  const selectedEffectId = useStudioStore((store) => store.studioEffect.selectedEffectId)
   const theme = useStudioStore((store) => store.view.theme)
   const asciiBackgroundColor = useStudioStore((store) => store.ascii.backgroundColor)
   const effectControls = useStudioStore(
-    (store) => store.grainradEffect.controls[selectedEffectId],
+    (store) => store.studioEffect.controls[selectedEffectId],
   )
   const previewZoom = useStudioStore((store) => store.view.previewZoom)
   const setPreviewZoom = useStudioStore((store) => store.setPreviewZoom)

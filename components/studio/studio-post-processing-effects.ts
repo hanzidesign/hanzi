@@ -103,7 +103,7 @@ export class StudioGrainEffect extends Effect {
     super('StudioGrainEffect', GRAIN_FRAGMENT_SHADER, {
       blendFunction: BlendFunction.NORMAL,
       uniforms: new Map<string, Uniform>([
-        ['uIntensity', new Uniform(0)],
+        ['uIntensity', new Uniform(0.01)],
         ['uMode', new Uniform(0)],
         ['uSize', new Uniform(2)],
         ['uSpeed', new Uniform(50)],
@@ -151,7 +151,7 @@ export class StudioCrtCurveEffect extends Effect {
     super('StudioCrtCurveEffect', CRT_CURVE_FRAGMENT_SHADER, {
       blendFunction: BlendFunction.NORMAL,
       uniforms: new Map<string, Uniform>([
-        ['uAmount', new Uniform(0.12)],
+        ['uAmount', new Uniform(0.1)],
       ]),
     })
   }
@@ -166,7 +166,7 @@ export class StudioScanlineEffect extends Effect {
     super('StudioScanlineEffect', SCANLINE_FRAGMENT_SHADER, {
       blendFunction: BlendFunction.NORMAL,
       uniforms: new Map<string, Uniform>([
-        ['uOpacity', new Uniform(0.5)],
+        ['uOpacity', new Uniform(0.2)],
         ['uSpacing', new Uniform(80)],
         ['uOffset', new Uniform(0)],
         ['uSpeed', new Uniform(1)],

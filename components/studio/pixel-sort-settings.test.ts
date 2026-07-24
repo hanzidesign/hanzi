@@ -55,6 +55,29 @@ describe('Pixel Sort independent renderer settings adapter', () => {
     })).toMatchObject({ ...DEFAULT_PIXEL_SORT_SETTINGS, mode: 'depth', background: '#ffffff' })
   })
 
+  it.each(['#123456', '#ABCDEF'])('accepts six-digit color values (%s)', (value) => {
+    expect(readPixelSortSettings({
+      'start-color': value,
+      'middle-color': value,
+      'end-color': value,
+      background: value,
+    })).toMatchObject({
+      startColor: value,
+      middleColor: value,
+      endColor: value,
+      background: value,
+    })
+  })
+
+  it.each(['#12345', '#1234567', '#12345678', '123456', '#12345g', 123456, true])(
+    'uses defaults for invalid color values (%s)',
+    (value) => {
+      expect(readPixelSortSettings({ 'start-color': value })).toMatchObject({
+        startColor: '#35115c',
+      })
+    },
+  )
+
   it.each(['horizontal', 'vertical', 'diagonal', 'anti-diagonal', 'radial'] as const)(
     'accepts the %s direction value',
     (direction) => {

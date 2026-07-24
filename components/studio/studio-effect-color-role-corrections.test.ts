@@ -8,9 +8,9 @@ import { createBlockifyShaderMaterial } from './blockify-material'
 import { CONTOUR_FRAGMENT_SHADER } from './contour-material'
 import { CROSSHATCH_FRAGMENT_SHADER } from './crosshatch-material'
 import {
-  createDefaultGrainradEffectControls,
-  getGrainradEffectById,
-} from './grainrad-effects'
+  createDefaultStudioEffectControls,
+  getStudioEffectById,
+} from './studio-effects'
 import { WAVE_LINES_FRAGMENT_SHADER } from './wave-lines-material'
 import {
   MATRIX_RAIN_FRAGMENT_SHADER,
@@ -31,7 +31,7 @@ describe('corrected Studio Effect color roles', () => {
   })
 
   it('uses Foreground for model ASCII glyphs and keeps Rain Color independent', async () => {
-    const definition = getGrainradEffectById('matrix-rain')
+    const definition = getStudioEffectById('matrix-rain')
     const colors = definition.settingGroups
       .find((group) => group.title === 'Color')!
       .controls
@@ -69,7 +69,7 @@ describe('corrected Studio Effect color roles', () => {
   })
 
   it('uses independent Blockify Foreground and Background controls', () => {
-    const definition = getGrainradEffectById('blockify')
+    const definition = getStudioEffectById('blockify')
     const colors = definition.settingGroups
       .find((group) => group.title === 'Color')!
       .controls
@@ -99,20 +99,20 @@ describe('corrected Studio Effect color roles', () => {
 
   it('keeps Crosshatch state unchanged when another Effect is edited and reset', () => {
     const store = createStudioStore()
-    const beforeControls = structuredClone(store.getState().grainradEffect.controls.crosshatch)
+    const beforeControls = structuredClone(store.getState().studioEffect.controls.crosshatch)
     const beforeThemeColors = {
-      light: structuredClone(store.getState().grainradEffect.controlsByTheme.light.crosshatch),
-      dark: structuredClone(store.getState().grainradEffect.controlsByTheme.dark.crosshatch),
+      light: structuredClone(store.getState().studioEffect.controlsByTheme.light.crosshatch),
+      dark: structuredClone(store.getState().studioEffect.controlsByTheme.dark.crosshatch),
     }
 
     store.getState().setSelectedEffect('vhs')
-    store.getState().setGrainradEffectControl('vhs', 'distortion', 0.9)
+    store.getState().setStudioEffectControl('vhs', 'distortion', 0.9)
     store.getState().resetSelectedEffectControls()
 
-    expect(store.getState().grainradEffect.controls.crosshatch).toEqual(beforeControls)
-    expect(store.getState().grainradEffect.controlsByTheme.light.crosshatch)
+    expect(store.getState().studioEffect.controls.crosshatch).toEqual(beforeControls)
+    expect(store.getState().studioEffect.controlsByTheme.light.crosshatch)
       .toEqual(beforeThemeColors.light)
-    expect(store.getState().grainradEffect.controlsByTheme.dark.crosshatch)
+    expect(store.getState().studioEffect.controlsByTheme.dark.crosshatch)
       .toEqual(beforeThemeColors.dark)
   })
 
@@ -126,13 +126,13 @@ describe('corrected Studio Effect color roles', () => {
   })
 
   it('defaults and resets Noise Field Distort Only to enabled', () => {
-    const defaults = createDefaultGrainradEffectControls()['noise-field']
+    const defaults = createDefaultStudioEffectControls()['noise-field']
     const store = createStudioStore()
 
     expect(defaults['distort-only']).toBe(true)
     store.getState().setSelectedEffect('noise-field')
-    store.getState().setGrainradEffectControl('noise-field', 'distort-only', false)
+    store.getState().setStudioEffectControl('noise-field', 'distort-only', false)
     store.getState().resetSelectedEffectControls()
-    expect(store.getState().grainradEffect.controls['noise-field']['distort-only']).toBe(true)
+    expect(store.getState().studioEffect.controls['noise-field']['distort-only']).toBe(true)
   })
 })

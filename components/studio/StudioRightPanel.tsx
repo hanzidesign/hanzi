@@ -25,21 +25,21 @@ import {
   type TerminalSelectOption,
 } from '@/components/studio/TerminalRows'
 import {
-  ASCII_OUTPUT_WIDTH_MAX,
-  GRAINRAD_COMMON_POST_PROCESSING_GROUPS,
-  getGrainradControlDefaultValue,
-  getGrainradEffectById,
-  getGrainradProcessingGroups,
-  isGrainradControlVisible,
-  type GrainradControlValue,
-  type GrainradEffectControl,
-  type GrainradEffectId,
-  type GrainradSettingGroup,
-} from '@/components/studio/grainrad-effects'
+  STUDIO_COMMON_POST_PROCESSING_GROUPS,
+  getStudioControlDefaultValue,
+  getStudioEffectById,
+  getStudioProcessingGroups,
+  isStudioControlVisible,
+  type StudioControlValue,
+  type StudioEffectControl,
+  type StudioEffectId,
+  type StudioSettingGroup,
+} from '@/components/studio/studio-effects'
 import classes from './StudioShell.module.css'
 
 type StudioRightPanelProps = {
   includeExport?: boolean
+  title?: string
 }
 
 const characterSetOptions: Array<TerminalSelectOption<StudioAsciiCharsetStyle>> =
@@ -63,24 +63,25 @@ const colorModeOptions: Array<TerminalSelectOption<string>> = [
 
 export default function StudioRightPanel({
   includeExport = true,
+  title = 'Settings',
 }: StudioRightPanelProps) {
   const ascii = useStudioStore((store) => store.ascii)
   const theme = useStudioStore((store) => store.view.theme)
-  const selectedEffectId = useStudioStore((store) => store.grainradEffect.selectedEffectId)
-  const effectControls = useStudioStore((store) => store.grainradEffect.controls[selectedEffectId])
+  const selectedEffectId = useStudioStore((store) => store.studioEffect.selectedEffectId)
+  const effectControls = useStudioStore((store) => store.studioEffect.controls[selectedEffectId])
   const setAsciiControl = useStudioStore((store) => store.setAsciiControl)
-  const setGrainradEffectControl = useStudioStore((store) => store.setGrainradEffectControl)
+  const setStudioEffectControl = useStudioStore((store) => store.setStudioEffectControl)
   const resetSelectedEffectControls = useStudioStore((store) => store.resetSelectedEffectControls)
-  const selectedEffect = getGrainradEffectById(selectedEffectId)
+  const selectedEffect = getStudioEffectById(selectedEffectId)
   const asciiScale = asciiCellSizeToScale(ascii.cellSize)
   const defaultAsciiScale = asciiCellSizeToScale(DEFAULT_ASCII_STATE.cellSize)
   const setAsciiScale = (scale: number) => {
     setAsciiControl({ cellSize: asciiScaleToCellSize(scale) })
-    setGrainradEffectControl('ascii', 'scale', scale)
+    setStudioEffectControl('ascii', 'scale', scale)
   }
   const resetAsciiScale = () => {
     setAsciiControl({ cellSize: DEFAULT_ASCII_STATE.cellSize })
-    setGrainradEffectControl('ascii', 'scale', defaultAsciiScale)
+    setStudioEffectControl('ascii', 'scale', defaultAsciiScale)
   }
   const setAsciiForegroundColor = (foregroundColor: string) => {
     setAsciiControl({ foregroundColor, palette: 'custom' })
@@ -99,17 +100,17 @@ export default function StudioRightPanel({
     })
   }
   const resetAsciiColor = () => {
-    resetAsciiColorGroup(theme, setAsciiControl, setGrainradEffectControl)
+    resetAsciiColorGroup(theme, setAsciiControl, setStudioEffectControl)
   }
   const resetAsciiPrimary = () => {
-    resetAsciiPrimaryGroup(theme, setAsciiControl, setGrainradEffectControl)
+    resetAsciiPrimaryGroup(theme, setAsciiControl, setStudioEffectControl)
   }
-  const resetEffectGroups = (groups: GrainradSettingGroup[]) => {
-    resetGrainradControlGroups(
+  const resetEffectGroups = (groups: StudioSettingGroup[]) => {
+    resetStudioControlGroups(
       selectedEffectId,
       groups,
       theme,
-      setGrainradEffectControl,
+      setStudioEffectControl,
     )
   }
 
@@ -117,7 +118,7 @@ export default function StudioRightPanel({
     <div className={classes.rightContent}>
       <TerminalSection
         id="settings"
-        title="Settings"
+        title={title}
         action={<button
           type="button"
           className={classes.sectionResetButton}
@@ -141,6 +142,16 @@ export default function StudioRightPanel({
               )}
             >
               <TerminalRangeRow
+                label="Size"
+                value={readNumberControl(effectControls, 'size', 1) * 10}
+                min={1}
+                max={100}
+                step={1}
+                displayValue={formatDecimal(readNumberControl(effectControls, 'size', 1) * 10)}
+                onChange={(value) => setStudioEffectControl('ascii', 'size', value / 10)}
+                onReset={() => setStudioEffectControl('ascii', 'size', 1)}
+              />
+              <TerminalRangeRow
                 label="Scale"
                 value={asciiScale}
                 min={ASCII_SCALE_MIN}
@@ -149,25 +160,6 @@ export default function StudioRightPanel({
                 displayValue={formatDecimal(asciiScale)}
                 onChange={setAsciiScale}
                 onReset={resetAsciiScale}
-              />
-              <TerminalRangeRow
-                label="Spacing"
-                value={readNumberControl(effectControls, 'spacing', 0)}
-                min={0}
-                max={1}
-                step={0.01}
-                displayValue={formatDecimal(readNumberControl(effectControls, 'spacing', 0))}
-                onChange={(value) => setGrainradEffectControl('ascii', 'spacing', value)}
-                onReset={() => setGrainradEffectControl('ascii', 'spacing', 0)}
-              />
-              <TerminalRangeRow
-                label="Output Width"
-                value={readNumberControl(effectControls, 'output-width', 0)}
-                min={0}
-                max={ASCII_OUTPUT_WIDTH_MAX}
-                step={1}
-                onChange={(value) => setGrainradEffectControl('ascii', 'output-width', value)}
-                onReset={() => setGrainradEffectControl('ascii', 'output-width', 0)}
               />
               <TerminalDropdownRow
                 label="Character Set"
@@ -180,8 +172,8 @@ export default function StudioRightPanel({
                 <TerminalTextRow
                   label="Custom Chars"
                   value={readStringControl(effectControls, 'custom-chars', '█▓▒░@#%*+=-:. ')}
-                  onChange={(value) => setGrainradEffectControl('ascii', 'custom-chars', value)}
-                  onReset={() => setGrainradEffectControl('ascii', 'custom-chars', '█▓▒░@#%*+=-:. ')}
+                  onChange={(value) => setStudioEffectControl('ascii', 'custom-chars', value)}
+                  onReset={() => setStudioEffectControl('ascii', 'custom-chars', '█▓▒░@#%*+=-:. ')}
                 />
               ) : null}
             </TerminalRowGroup>
@@ -272,8 +264,8 @@ export default function StudioRightPanel({
                 label="Mode"
                 value={readStringControl(effectControls, 'color-mode', 'mono')}
                 options={colorModeOptions}
-                onChange={(value) => setGrainradEffectControl('ascii', 'color-mode', value)}
-                onReset={() => setGrainradEffectControl('ascii', 'color-mode', 'mono')}
+                onChange={(value) => setStudioEffectControl('ascii', 'color-mode', value)}
+                onReset={() => setStudioEffectControl('ascii', 'color-mode', 'mono')}
               />
               <TerminalColorRow
                 label="Foreground"
@@ -309,7 +301,7 @@ export default function StudioRightPanel({
             groups: selectedEffect.settingGroups,
             controls: effectControls,
             theme,
-            onChange: setGrainradEffectControl,
+            onChange: setStudioEffectControl,
             resetGroups: resetEffectGroups,
           })
         )}
@@ -322,7 +314,7 @@ export default function StudioRightPanel({
           <button
             type="button"
             className={classes.sectionResetButton}
-            onClick={() => resetEffectGroups(getGrainradProcessingGroups(selectedEffectId))}
+            onClick={() => resetEffectGroups(getStudioProcessingGroups(selectedEffectId))}
           >
             Reset
           </button>
@@ -330,10 +322,10 @@ export default function StudioRightPanel({
       >
         {renderEffectSettings({
           selectedEffectId,
-          groups: getGrainradProcessingGroups(selectedEffectId),
+          groups: getStudioProcessingGroups(selectedEffectId),
           controls: effectControls,
           theme,
-          onChange: setGrainradEffectControl,
+          onChange: setStudioEffectControl,
           resetGroups: resetEffectGroups,
         })}
       </TerminalSection>
@@ -342,10 +334,10 @@ export default function StudioRightPanel({
         <div className={classes.postProcessingGroups}>
           {renderPostProcessingSettings({
             selectedEffectId,
-            groups: GRAINRAD_COMMON_POST_PROCESSING_GROUPS,
+            groups: STUDIO_COMMON_POST_PROCESSING_GROUPS,
             controls: effectControls,
             theme,
-            onChange: setGrainradEffectControl,
+            onChange: setStudioEffectControl,
           })}
         </div>
       </TerminalSection>
@@ -359,23 +351,23 @@ export default function StudioRightPanel({
   )
 }
 
-type SetGrainradEffectControl = (
-  effectId: GrainradEffectId,
+type SetStudioEffectControl = (
+  effectId: StudioEffectId,
   controlId: string,
-  value: GrainradControlValue,
+  value: StudioControlValue,
 ) => void
 
-export function resetGrainradControlGroups(
-  effectId: GrainradEffectId,
-  groups: GrainradSettingGroup[],
+export function resetStudioControlGroups(
+  effectId: StudioEffectId,
+  groups: StudioSettingGroup[],
   theme: StudioTheme,
-  onChange: SetGrainradEffectControl,
+  onChange: SetStudioEffectControl,
 ) {
   groups.forEach((group) => group.controls.forEach((control) => {
     onChange(
       effectId,
       control.id,
-      getGrainradControlDefaultValue(control, theme),
+      getStudioControlDefaultValue(control, theme),
     )
   }))
 }
@@ -383,9 +375,9 @@ export function resetGrainradControlGroups(
 export function resetAsciiColorGroup(
   theme: StudioTheme,
   setAsciiControl: (partial: Partial<StudioAsciiState>) => void,
-  setGrainradEffectControl: SetGrainradEffectControl,
+  setStudioEffectControl: SetStudioEffectControl,
 ) {
-  setGrainradEffectControl('ascii', 'color-mode', 'mono')
+  setStudioEffectControl('ascii', 'color-mode', 'mono')
   setAsciiControl({
     foregroundColor: readThemeDefaultColor('ascii', 'foreground', theme),
     backgroundColor: readThemeDefaultColor('ascii', 'background', theme),
@@ -397,18 +389,18 @@ export function resetAsciiColorGroup(
 export function resetAsciiPrimaryGroup(
   theme: StudioTheme,
   setAsciiControl: (partial: Partial<StudioAsciiState>) => void,
-  setGrainradEffectControl: SetGrainradEffectControl,
+  setStudioEffectControl: SetStudioEffectControl,
 ) {
-  const asciiGroup = getGrainradEffectById('ascii').settingGroups.find(
+  const asciiGroup = getStudioEffectById('ascii').settingGroups.find(
     (group) => group.title === 'ASCII',
   )
 
   if (asciiGroup) {
-    resetGrainradControlGroups(
+    resetStudioControlGroups(
       'ascii',
       [asciiGroup],
       theme,
-      setGrainradEffectControl,
+      setStudioEffectControl,
     )
   }
 
@@ -426,12 +418,12 @@ function renderEffectSettings({
   onChange,
   resetGroups,
 }: {
-  selectedEffectId: GrainradEffectId
-  groups: GrainradSettingGroup[]
-  controls: Record<string, GrainradControlValue> | undefined
+  selectedEffectId: StudioEffectId
+  groups: StudioSettingGroup[]
+  controls: Record<string, StudioControlValue> | undefined
   theme: 'light' | 'dark'
-  onChange: (effectId: GrainradEffectId, controlId: string, value: GrainradControlValue) => void
-  resetGroups: (groups: GrainradSettingGroup[]) => void
+  onChange: (effectId: StudioEffectId, controlId: string, value: StudioControlValue) => void
+  resetGroups: (groups: StudioSettingGroup[]) => void
 }) {
   return (
     <>
@@ -450,7 +442,7 @@ function renderEffectSettings({
           ) : undefined}
         >
           {group.controls
-            .filter((control) => isGrainradControlVisible(control, controls))
+            .filter((control) => isStudioControlVisible(control, controls))
             .map((control) => renderEffectControl({
               selectedEffectId,
               control,
@@ -471,11 +463,11 @@ function renderPostProcessingSettings({
   theme,
   onChange,
 }: {
-  selectedEffectId: GrainradEffectId
-  groups: GrainradSettingGroup[]
-  controls: Record<string, GrainradControlValue> | undefined
+  selectedEffectId: StudioEffectId
+  groups: StudioSettingGroup[]
+  controls: Record<string, StudioControlValue> | undefined
   theme: 'light' | 'dark'
-  onChange: (effectId: GrainradEffectId, controlId: string, value: GrainradControlValue) => void
+  onChange: (effectId: StudioEffectId, controlId: string, value: StudioControlValue) => void
 }) {
   return groups.map((group) => {
     const toggle = group.controls[0]
@@ -500,7 +492,7 @@ function renderPostProcessingSettings({
               onChange(
                 selectedEffectId,
                 control.id,
-                getGrainradControlDefaultValue(control, theme),
+                getStudioControlDefaultValue(control, theme),
               )
             })}
           >
@@ -508,7 +500,7 @@ function renderPostProcessingSettings({
           </button>
         ) : null}
         {group.controls
-          .filter((control) => isGrainradControlVisible(control, controls))
+          .filter((control) => isStudioControlVisible(control, controls))
           .map((control) => renderEffectControl({
             selectedEffectId,
             control,
@@ -528,14 +520,14 @@ function renderEffectControl({
   theme,
   onChange,
 }: {
-  selectedEffectId: GrainradEffectId
-  control: GrainradEffectControl
-  controls: Record<string, GrainradControlValue> | undefined
+  selectedEffectId: StudioEffectId
+  control: StudioEffectControl
+  controls: Record<string, StudioControlValue> | undefined
   theme: 'light' | 'dark'
-  onChange: (effectId: GrainradEffectId, controlId: string, value: GrainradControlValue) => void
+  onChange: (effectId: StudioEffectId, controlId: string, value: StudioControlValue) => void
 }) {
   const value = controls?.[control.id] ?? control.defaultValue
-  const defaultValue = getGrainradControlDefaultValue(control, theme)
+  const defaultValue = getStudioControlDefaultValue(control, theme)
 
   if (control.kind === 'range') {
     const numberValue = typeof value === 'number' ? value : control.defaultValue
@@ -612,21 +604,21 @@ function renderEffectControl({
 }
 
 function readThemeDefaultColor(
-  effectId: GrainradEffectId,
+  effectId: StudioEffectId,
   controlId: string,
   theme: 'light' | 'dark',
 ) {
-  const control = getGrainradEffectById(effectId).settingGroups
+  const control = getStudioEffectById(effectId).settingGroups
     .flatMap((group) => group.controls)
     .find((candidate) => candidate.id === controlId)
 
-  return control && typeof getGrainradControlDefaultValue(control, theme) === 'string'
-    ? getGrainradControlDefaultValue(control, theme) as string
+  return control && typeof getStudioControlDefaultValue(control, theme) === 'string'
+    ? getStudioControlDefaultValue(control, theme) as string
     : '#000000'
 }
 
 function readNumberControl(
-  controls: Record<string, GrainradControlValue> | undefined,
+  controls: Record<string, StudioControlValue> | undefined,
   controlId: string,
   fallback: number
 ) {
@@ -636,7 +628,7 @@ function readNumberControl(
 }
 
 function readStringControl(
-  controls: Record<string, GrainradControlValue> | undefined,
+  controls: Record<string, StudioControlValue> | undefined,
   controlId: string,
   fallback: string
 ) {

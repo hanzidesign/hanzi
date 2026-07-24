@@ -9,7 +9,7 @@ import {
 } from './halftone-material'
 
 describe('Halftone shader material', () => {
-  it('samples the Character render texture on a Grainrad halftone grid', () => {
+  it('samples the Character render texture on a Studio halftone grid', () => {
     const sourceTexture = new DataTexture()
     const material = createHalftoneShaderMaterial({
       controls: {},
@@ -36,7 +36,7 @@ describe('Halftone shader material', () => {
     expect(material.uniforms.u_resolution.value.toArray()).toEqual([640, 360])
   })
 
-  it('maps every effect-local control using Grainrad units and enum ids', () => {
+  it('maps every effect-local control using Studio units and enum ids', () => {
     const material = createHalftoneShaderMaterial({
       controls: {},
       sourceTexture: new DataTexture(),
@@ -125,7 +125,7 @@ describe('Halftone shader material', () => {
     )
   })
 
-  it('preserves Grainrad shape, luminance, radius, rotation, and Dot Scale semantics', () => {
+  it('preserves Studio shape, luminance, radius, rotation, and Dot Scale semantics', () => {
     expect(HALFTONE_FRAGMENT_SHADER).toContain('dot(color, vec3(0.299, 0.587, 0.114))')
     expect(HALFTONE_FRAGMENT_SHADER).toContain(
       'float radians = u_angle * 0.017453292519943295;',

@@ -5,7 +5,15 @@ import {
   type Texture,
 } from 'three'
 
-export type ThresholdControlValue = string | number | boolean
+import type { StudioControlValue } from './studio-effects'
+import {
+  readStudioBoolean as readBoolean,
+  readStudioEnum as readEnum,
+  readStudioNumber as readNumber,
+  readStudioString as readString,
+} from './studio-control-readers'
+
+export type ThresholdControlValue = StudioControlValue
 export type ThresholdControls = Readonly<Record<string, ThresholdControlValue>>
 
 export const THRESHOLD_COLOR_MODE_IDS = {
@@ -257,26 +265,4 @@ export function applyThresholdUniforms(
 
 export function disposeThresholdShaderMaterial(material: ShaderMaterial) {
   material.dispose()
-}
-
-function readNumber(value: ThresholdControlValue | undefined, fallback: number) {
-  return typeof value === 'number' && Number.isFinite(value) ? value : fallback
-}
-
-function readString(value: ThresholdControlValue | undefined, fallback: string) {
-  return typeof value === 'string' ? value : fallback
-}
-
-function readBoolean(value: ThresholdControlValue | undefined) {
-  return value === true ? 1 : 0
-}
-
-function readEnum<T extends Record<string, number>>(
-  value: ThresholdControlValue | undefined,
-  values: T,
-  fallback: keyof T,
-) {
-  return typeof value === 'string' && value in values
-    ? values[value as keyof T]
-    : values[fallback]
 }

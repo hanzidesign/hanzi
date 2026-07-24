@@ -1,14 +1,14 @@
 import { describe, expect, it } from 'vitest'
 
 import {
-  createDefaultGrainradEffectControls,
-  getGrainradEffectById,
-  isGrainradControlVisible,
-} from './grainrad-effects'
+  createDefaultStudioEffectControls,
+  getStudioEffectById,
+  isStudioControlVisible,
+} from './studio-effects'
 
-describe('Grainrad Edge Detection schema', () => {
+describe('Studio Edge Detection schema', () => {
   it('publishes an independent renderer and exact group/control order', () => {
-    const definition = getGrainradEffectById('edge-detection')
+    const definition = getStudioEffectById('edge-detection')
 
     expect(definition.renderer).toBe('edge-detection')
     expect(definition.settingGroups.map((group) => group.title)).toEqual([
@@ -30,7 +30,7 @@ describe('Grainrad Edge Detection schema', () => {
   })
 
   it('matches every option, default, range, step, and label', () => {
-    const definition = getGrainradEffectById('edge-detection')
+    const definition = getStudioEffectById('edge-detection')
     const controls = Object.fromEntries(
       definition.settingGroups.flatMap((group) => group.controls).map((control) => [control.id, control]),
     )
@@ -67,7 +67,7 @@ describe('Grainrad Edge Detection schema', () => {
       defaultValue: '#000000',
       visibleWhen: { controlId: 'color-mode', operator: 'equals', value: 'mono' },
     })
-    expect(createDefaultGrainradEffectControls()['edge-detection']).toMatchObject({
+    expect(createDefaultStudioEffectControls()['edge-detection']).toMatchObject({
       algorithm: 'sobel',
       threshold: 0.3,
       'line-width': 1,
@@ -81,15 +81,15 @@ describe('Grainrad Edge Detection schema', () => {
   })
 
   it('hides both color pickers in Original while preserving their stored values', () => {
-    const definition = getGrainradEffectById('edge-detection')
+    const definition = getStudioEffectById('edge-detection')
     const controls = definition.settingGroups.flatMap((group) => group.controls)
-    const defaults = createDefaultGrainradEffectControls()['edge-detection']
+    const defaults = createDefaultStudioEffectControls()['edge-detection']
     const edgeColor = controls.find((control) => control.id === 'edge-color')!
     const background = controls.find((control) => control.id === 'background')!
 
-    expect(isGrainradControlVisible(edgeColor, defaults)).toBe(true)
-    expect(isGrainradControlVisible(background, defaults)).toBe(true)
-    expect(isGrainradControlVisible(edgeColor, { ...defaults, 'color-mode': 'original' })).toBe(false)
-    expect(isGrainradControlVisible(background, { ...defaults, 'color-mode': 'original' })).toBe(false)
+    expect(isStudioControlVisible(edgeColor, defaults)).toBe(true)
+    expect(isStudioControlVisible(background, defaults)).toBe(true)
+    expect(isStudioControlVisible(edgeColor, { ...defaults, 'color-mode': 'original' })).toBe(false)
+    expect(isStudioControlVisible(background, { ...defaults, 'color-mode': 'original' })).toBe(false)
   })
 })

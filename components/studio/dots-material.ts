@@ -5,7 +5,15 @@ import {
   type Texture,
 } from 'three'
 
-export type DotsControlValue = string | number | boolean
+import type { StudioControlValue } from './studio-effects'
+import {
+  readStudioBoolean as readBoolean,
+  readStudioEnum as readEnum,
+  readStudioNumber as readNumber,
+  readStudioString as readString,
+} from './studio-control-readers'
+
+export type DotsControlValue = StudioControlValue
 export type DotsControls = Readonly<Record<string, DotsControlValue>>
 
 export const DOTS_SHAPE_IDS = {
@@ -223,39 +231,21 @@ export function applyDotsUniforms(material: ShaderMaterial, controls: DotsContro
   material.uniforms.u_colorMode.value =
     readString(controls['color-mode'], 'mono') === 'original' ? 0 : 1
   material.uniforms.u_foreground.value.set(readString(controls.foreground, '#ffffff'))
-  material.uniforms.u_invert.value = controls.invert === true ? 1 : 0
-  material.uniforms.u_processingInvert.value = controls['processing-invert'] === true ? 1 : 0
+  material.uniforms.u_invert.value = readBoolean(controls.invert)
+  material.uniforms.u_processingInvert.value = readBoolean(controls['processing-invert'])
   material.uniforms.u_brightnessMap.value = readNumber(controls['brightness-map'], 1)
   material.uniforms.u_edgeEnhance.value = readNumber(controls['edge-enhance'], 0)
   material.uniforms.u_blur.value = readNumber(controls.blur, 0)
   material.uniforms.u_quantizeColors.value = readNumber(controls['quantize-colors'], 0)
   material.uniforms.u_shapeMatching.value = readNumber(controls['shape-matching'], 0)
-  material.uniforms.u_bloom.value = controls.bloom === true ? 1 : 0
-  material.uniforms.u_postChromatic.value = controls.chromatic === true ? 1 : 0
-  material.uniforms.u_scanlines.value = controls.scanlines === true ? 1 : 0
-  material.uniforms.u_vignette.value = controls.vignette === true ? 1 : 0
-  material.uniforms.u_crtCurve.value = controls['crt-curve'] === true ? 1 : 0
-  material.uniforms.u_phosphor.value = controls.phosphor === true ? 1 : 0
+  material.uniforms.u_bloom.value = readBoolean(controls.bloom)
+  material.uniforms.u_postChromatic.value = readBoolean(controls.chromatic)
+  material.uniforms.u_scanlines.value = readBoolean(controls.scanlines)
+  material.uniforms.u_vignette.value = readBoolean(controls.vignette)
+  material.uniforms.u_crtCurve.value = readBoolean(controls['crt-curve'])
+  material.uniforms.u_phosphor.value = readBoolean(controls.phosphor)
 }
 
 export function disposeDotsShaderMaterial(material: ShaderMaterial) {
   material.dispose()
-}
-
-function readNumber(value: DotsControlValue | undefined, fallback: number) {
-  return typeof value === 'number' && Number.isFinite(value) ? value : fallback
-}
-
-function readString(value: DotsControlValue | undefined, fallback: string) {
-  return typeof value === 'string' ? value : fallback
-}
-
-function readEnum<T extends Record<string, number>>(
-  value: DotsControlValue | undefined,
-  values: T,
-  fallback: keyof T,
-) {
-  return typeof value === 'string' && value in values
-    ? values[value as keyof T]
-    : values[fallback]
 }

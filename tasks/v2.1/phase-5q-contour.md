@@ -2,7 +2,7 @@
 
 ## Objective
 
-Implement Contour as the sixth independent Character effect. It must not import or fall through ASCII, Dithering, Halftone, Matrix Rain, or Dots. Local input remains the selected extruded/deformed 3D Character; `data/sample.jpg` remains a Grainrad-side probe only.
+Implement Contour as the sixth independent Character effect. It must not import or fall through ASCII, Dithering, Halftone, Matrix Rain, or Dots. Local input remains the selected extruded/deformed 3D Character; `data/sample.jpg` remains a reference-behavior probe only.
 
 ## Authoritative Settings contract
 
@@ -55,8 +55,8 @@ Group and row order must match the table. Reset affects only Contour and restore
 
 ## Primary sources
 
-- `https://grainrad.com/assets/index-D5s-AdpN.js` — current state, Settings UI, defaults, and Contour WGSL.
-- `https://grainrad.com/assets/index-DWlNRnaQ.js` — current WebGPU Contour uniform writes.
-- `https://grainrad.com/assets/index-D4g1FOHw.js` — WebGL2 compatibility fallback; authoritative Contour effect behavior is WebGPU-only.
+- Reference public bundle — current state, Settings UI, defaults, and Contour WGSL.
+- Reference public bundle — current WebGPU Contour uniform writes.
+- Reference public bundle — WebGL2 compatibility fallback; authoritative Contour effect behavior is WebGPU-only.
 
 Current production asset ETags: main `2dab4b6866ace0e7533e9b4ba9f11803`, WebGPU renderer `ba02c2c47ba6903bf24449e932fc725f`, WebGL2 fallback `a42c53dbf773f2222aee514a5053b9f4`.

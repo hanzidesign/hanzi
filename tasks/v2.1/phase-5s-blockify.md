@@ -1,18 +1,15 @@
-# Phase 5S — Grainrad Blockify parity
+# Phase 5S — reference editor Blockify parity
 
 Date: 2026-07-13
 
 ## Production sources
 
-- UI defaults and WGSL: `https://grainrad.com/assets/index-D5s-AdpN.js`
-  - ETag: `2dab4b6866ace0e7533e9b4ba9f11803`
-- WebGPU uploader: `https://grainrad.com/assets/index-DWlNRnaQ.js`
-  - ETag: `ba02c2c47ba6903bf24449e932fc725f`
-- WebGL fallback: `https://grainrad.com/assets/index-D4g1FOHw.js`
-  - ETag: `a42c53dbf773f2222aee514a5053b9f4`
+- UI defaults and WGSL: reference public bundle (ETag `2dab4b6866ace0e7533e9b4ba9f11803`)
+- WebGPU uploader: reference public bundle (ETag `ba02c2c47ba6903bf24449e932fc725f`)
+- WebGL fallback: reference public bundle (ETag `a42c53dbf773f2222aee514a5053b9f4`)
   - Only ASCII is implemented; Blockify is source passthrough followed by global Post.
 
-`data/sample.jpg` remains a Grainrad-only research probe. Hanzi Studio continues to render the selected 3D Character.
+`data/sample.jpg` remains a reference-only research probe. Hanzi Studio continues to render the selected 3D Character.
 
 ## Exact Settings contract
 
@@ -87,6 +84,6 @@ The aligned production struct is 64 bytes.
 
 - Add a dedicated `blockify` renderer discriminator and explicit route.
 - Keep the selected SVG Character, Model geometry state, transform, auto-rotation, and animation time as the source.
-- Add an independent deterministic CPU oracle and independent shader material; do not import prior effect materials or the generic Grainrad runtime into the canvas.
+- Add an independent deterministic CPU oracle and independent shader material; do not import prior effect materials or the generic Studio runtime into the canvas.
 - Preserve source render-target and material/geometry disposal ownership.
 - Range interaction is verified through schema/core/material/store tests because the in-app browser wrapper does not reliably dispatch React range events.

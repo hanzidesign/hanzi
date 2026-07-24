@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest'
 
 const studioDir = join(process.cwd(), 'components', 'studio')
 
-describe('Phase 5D Grainrad terminal Studio layout contract', () => {
+describe('Phase 5D Studio terminal Studio layout contract', () => {
   it('uses a route-local terminal shell instead of the old AppShell workbench', async () => {
     const shellSource = await readFile(join(studioDir, 'StudioShell.tsx'), 'utf8')
     const mobileHeader = await readFile(join(studioDir, 'StudioMobileHeader.tsx'), 'utf8')
@@ -125,12 +125,12 @@ describe('Phase 5D Grainrad terminal Studio layout contract', () => {
     expect(shellStyles).toContain('transition: background-color 160ms ease')
   })
 
-  it('has dedicated desktop panels, mobile tabs, and a mobile settings sheet', async () => {
+  it('has dedicated desktop panels and complete mobile tabs', async () => {
+    const shellSource = await readFile(join(studioDir, 'StudioShell.tsx'), 'utf8')
     const leftPanel = await readFile(join(studioDir, 'StudioLeftPanel.tsx'), 'utf8')
     const rightPanel = await readFile(join(studioDir, 'StudioRightPanel.tsx'), 'utf8')
     const shellStyles = await readFile(join(studioDir, 'StudioShell.module.css'), 'utf8')
     const mobileTabs = await readFile(join(studioDir, 'StudioMobileTabs.tsx'), 'utf8')
-    const settingsSheet = await readFile(join(studioDir, 'StudioSettingsSheet.tsx'), 'utf8')
 
     expect(leftPanel).toContain('CharacterPanel')
     expect(leftPanel).toContain('Input')
@@ -138,7 +138,7 @@ describe('Phase 5D Grainrad terminal Studio layout contract', () => {
     expect(leftPanel).toContain('StudioMotionPanel')
     expect(leftPanel).toContain('3D Motion')
     expect(leftPanel).toContain('Presets')
-    expect(leftPanel).toContain('GRAINRAD_EFFECTS')
+    expect(leftPanel).toContain('STUDIO_EFFECTS')
     expect(leftPanel).not.toContain('id="animation"')
     expect(leftPanel.indexOf('title="Input"')).toBeLessThan(leftPanel.indexOf('title="Effects"'))
     expect(leftPanel.indexOf('title="Effects"')).toBeLessThan(leftPanel.indexOf('title="Presets"'))
@@ -149,7 +149,7 @@ describe('Phase 5D Grainrad terminal Studio layout contract', () => {
     expect(rightPanel).toContain('resetAsciiPrimaryGroup')
     expect(rightPanel).toContain('action={(')
     expect(rightPanel).toContain('id="processing"')
-    expect(rightPanel).toContain('getGrainradProcessingGroups(selectedEffectId)')
+    expect(rightPanel).toContain('getStudioProcessingGroups(selectedEffectId)')
     expect(rightPanel).toContain('onClick={resetAsciiAdjustments}')
     expect(rightPanel).toContain('onClick={resetAsciiColor}')
     expect(rightPanel).toContain('brightness: DEFAULT_ASCII_STATE.brightness')
@@ -170,13 +170,22 @@ describe('Phase 5D Grainrad terminal Studio layout contract', () => {
     expect(shellStyles).toMatch(/\.leftPanel \{[\s\S]*?padding-bottom: 40px;/)
     expect(shellStyles).toMatch(/\.rightContent \{[\s\S]*?padding-bottom: 40px;/)
     expect(rightPanel).toContain('Export')
+    expect(rightPanel).toContain('title?: string')
+    expect(rightPanel).toContain("title = 'Settings'")
     expect(mobileTabs).toContain('Input')
     expect(mobileTabs).toContain('Effects')
+    expect(mobileTabs).toContain("id: 'model'")
+    expect(mobileTabs).toContain("id: 'settings'")
+    expect(mobileTabs.indexOf("id: 'model'")).toBeLessThan(mobileTabs.indexOf("id: 'effects'"))
+    expect(mobileTabs.indexOf("id: 'effects'")).toBeLessThan(mobileTabs.indexOf("id: 'settings'"))
+    expect(mobileTabs).toContain('StudioModelPanel')
+    expect(mobileTabs).toContain('StudioModelDeformPanel')
+    expect(mobileTabs).toContain('StudioRightPanel includeExport={false} title="Controllers"')
     expect(mobileTabs).toContain('StudioMotionPanel')
     expect(mobileTabs).not.toContain("id: 'animation'")
     expect(mobileTabs).toContain('Export')
     expect(mobileTabs).toContain('data-studio-mobile-tabs')
-    expect(settingsSheet).toContain('data-studio-settings-sheet')
-    expect(settingsSheet).toContain('Settings')
+    expect(mobileTabs).toContain('aria-pressed={mobileTab === id}')
+    expect(shellSource).not.toContain('StudioSettingsSheet')
   })
 })

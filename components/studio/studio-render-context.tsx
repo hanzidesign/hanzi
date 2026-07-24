@@ -312,7 +312,7 @@ export function StudioRenderModeProvider({
   const inheritedPreviewFrameRegistry = useContext(StudioPreviewFrameRegistryContext)
   const [fallbackPreviewFrameRegistry] = useState(createStudioPreviewFrameRegistry)
   const previewFrameRegistry = inheritedPreviewFrameRegistry ?? fallbackPreviewFrameRegistry
-  const selectedEffectId = useStudioStore((store) => store.grainradEffect.selectedEffectId)
+  const selectedEffectId = useStudioStore((store) => store.studioEffect.selectedEffectId)
   const voronoiMaskTextureRef = useRef<Texture | null>(null)
   const [characterRotationSnapshot] = useState(createCharacterRotationSnapshot)
   const [animationTimeline] = useState(
@@ -442,7 +442,7 @@ function StudioRenderFrameObserver({
   resolveVisualFrameSize,
 }: StudioRenderContextValue) {
   const animation = useStudioStore((store) => store.animation)
-  const selectedEffectId = useStudioStore((store) => store.grainradEffect.selectedEffectId)
+  const selectedEffectId = useStudioStore((store) => store.studioEffect.selectedEffectId)
   useFrame((_, delta) => {
     const animationTime = advanceAnimationTime(
       delta,

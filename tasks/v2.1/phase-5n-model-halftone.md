@@ -8,7 +8,7 @@ Status: approved by direct user request; implementation in progress
 1. Add a shared `Model` panel directly below Character.
 2. Keep geometry controls separate from `3D Motion`.
 3. Implement Halftone as the second independent non-ASCII renderer.
-4. Keep local input Character-only. `data/sample.jpg` remains a Grainrad-side research probe.
+4. Keep local input Character-only. `data/sample.jpg` remains a reference-behavior research probe.
 
 ## Shared Model contract
 
@@ -25,9 +25,9 @@ The active 3D Character source uses one effect-independent geometry state:
 
 ASCII, Dithering, Halftone, and every future 3D effect must consume these same geometry parameters. Rotation X/Y/Z and Speed remain in `3D Motion`.
 
-## Authoritative Grainrad Halftone schema
+## Authoritative reference editor Halftone schema
 
-Verified from the current Grainrad UI and public bundles:
+Verified from the current reference editor UI and public bundles:
 
 - `Shape`: Circle / Square / Diamond / Line; default Circle.
 - `Dot Scale`: 0.5..2, step 0.1, default 1.
@@ -39,7 +39,7 @@ Verified from the current Grainrad UI and public bundles:
 - `Mode`: `bw` / Mono or `color` / Original; default Mono.
 - `Foreground`: #ffffff and `Background`: #000000, visible only in Mono.
 
-Local Settings Reset resets Halftone only. Grainrad's current global non-ASCII reset bug is intentionally not copied.
+Local Settings Reset resets Halftone only. the reference editor's current global non-ASCII reset bug is intentionally not copied.
 
 ## Halftone renderer semantics
 
@@ -48,7 +48,7 @@ Local Settings Reset resets Halftone only. Grainrad's current global non-ASCII r
 - Grid: rotate fragment coordinates around the origin by Angle; divide by Spacing; use centered fractional cell coordinates.
 - Distances: Circle `length(local)`; Square `max(abs(x),abs(y))`; Diamond `abs(x)+abs(y)`; Line `abs(y)`.
 - Radius: `sqrt(luminance) * .5`; antialias around the distance boundary.
-- Dot Scale follows Grainrad's current implementation: it scales only the subtle multi-octave paper-noise luminance perturbation (`.02 * dotScale`), not grid spacing or base radius.
+- Dot Scale follows the reference editor's current implementation: it scales only the subtle multi-octave paper-noise luminance perturbation (`.02 * dotScale`), not grid spacing or base radius.
 - Mono output mixes Foreground ink and Background paper. Original uses adjusted source as ink and Background as paper.
 - Shared Processing and Post-Processing are real downstream shader stages.
 
@@ -62,5 +62,5 @@ Local Settings Reset resets Halftone only. Grainrad's current global non-ASCII r
 
 ## Primary research sources
 
-- `https://grainrad.com/assets/index-D5s-AdpN.js` — UI, defaults, Halftone WGSL.
-- `https://grainrad.com/assets/index-DWlNRnaQ.js` — WebGPU uniform packing.
+- Reference public bundle — UI, defaults, Halftone WGSL.
+- Reference public bundle — WebGPU uniform packing.

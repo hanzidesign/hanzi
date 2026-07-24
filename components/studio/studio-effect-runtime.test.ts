@@ -1,35 +1,35 @@
 import { describe, expect, it } from 'vitest'
 
 import {
-  GRAINRAD_COMMON_POST_PROCESSING_GROUPS,
-  GRAINRAD_COMMON_PROCESSING_GROUPS,
-  GRAINRAD_EFFECTS,
-  createDefaultGrainradEffectControls,
-  getGrainradProcessingGroups,
-  isGrainradThemeColorControl,
-  type GrainradControlValue,
-  type GrainradEffectControl,
-  type GrainradEffectId,
-} from './grainrad-effects'
+  STUDIO_COMMON_POST_PROCESSING_GROUPS,
+  STUDIO_COMMON_PROCESSING_GROUPS,
+  STUDIO_EFFECTS,
+  createDefaultStudioEffectControls,
+  getStudioProcessingGroups,
+  isStudioThemeColorControl,
+  type StudioControlValue,
+  type StudioEffectControl,
+  type StudioEffectId,
+} from './studio-effects'
 import {
-  GRAINRAD_EFFECT_SHADER_IDS,
+  STUDIO_EFFECT_SHADER_IDS,
   PIXEL_SORT_DEDICATED_CONTROL_IDS,
   POST_VALUE_SLOT_COUNT,
   VORONOI_DEDICATED_COLOR_CONTROL_IDS,
-  compileGrainradEffectRuntime,
-  getUnmappedGrainradControls,
-} from './grainrad-effect-runtime'
+  compileStudioEffectRuntime,
+  getUnmappedStudioControls,
+} from './studio-effect-runtime'
 
-describe('Phase 5F Grainrad runtime effect compiler', () => {
+describe('Phase 5F Studio runtime effect compiler', () => {
   it('defines valid light and dark defaults for every color control', () => {
     const colorControlIds: string[] = []
-    const lightDefaults = createDefaultGrainradEffectControls('light')
-    const darkDefaults = createDefaultGrainradEffectControls('dark')
+    const lightDefaults = createDefaultStudioEffectControls('light')
+    const darkDefaults = createDefaultStudioEffectControls('dark')
 
-    for (const effect of GRAINRAD_EFFECTS) {
+    for (const effect of STUDIO_EFFECTS) {
       for (const group of effect.settingGroups) {
         for (const control of group.controls) {
-          if (!isGrainradThemeColorControl(control)) {
+          if (!isStudioThemeColorControl(control)) {
             continue
           }
 
@@ -96,20 +96,20 @@ describe('Phase 5F Grainrad runtime effect compiler', () => {
   })
 
   it('publishes all 15 Effects as independent renderers with no unimplemented fallback', () => {
-    expect(GRAINRAD_EFFECTS).toHaveLength(15)
-    expect(GRAINRAD_EFFECTS.map((effect) => effect.renderer)).toEqual(
-      GRAINRAD_EFFECTS.map((effect) => effect.id),
+    expect(STUDIO_EFFECTS).toHaveLength(15)
+    expect(STUDIO_EFFECTS.map((effect) => effect.renderer)).toEqual(
+      STUDIO_EFFECTS.map((effect) => effect.id),
     )
-    expect(GRAINRAD_EFFECTS.some((effect) => effect.renderer === 'unimplemented')).toBe(false)
+    expect(STUDIO_EFFECTS.some((effect) => effect.renderer === 'unimplemented')).toBe(false)
   })
 
   it('keeps effect-local control ids disjoint from shared Processing and Post ids', () => {
     const sharedIds = new Set([
-      ...GRAINRAD_COMMON_PROCESSING_GROUPS,
-      ...GRAINRAD_COMMON_POST_PROCESSING_GROUPS,
+      ...STUDIO_COMMON_PROCESSING_GROUPS,
+      ...STUDIO_COMMON_POST_PROCESSING_GROUPS,
     ].flatMap((group) => group.controls.map((control) => control.id)))
 
-    for (const effect of GRAINRAD_EFFECTS) {
+    for (const effect of STUDIO_EFFECTS) {
       const collisions = effect.settingGroups
         .flatMap((group) => group.controls.map((control) => control.id))
         .filter((id) => sharedIds.has(id))
@@ -118,22 +118,22 @@ describe('Phase 5F Grainrad runtime effect compiler', () => {
     }
   })
 
-  it('assigns each Grainrad effect a unique shader id', () => {
-    const ids = GRAINRAD_EFFECTS.map((effect) => GRAINRAD_EFFECT_SHADER_IDS[effect.id])
+  it('assigns each Studio effect a unique shader id', () => {
+    const ids = STUDIO_EFFECTS.map((effect) => STUDIO_EFFECT_SHADER_IDS[effect.id])
 
-    expect(ids).toHaveLength(GRAINRAD_EFFECTS.length)
-    expect(new Set(ids).size).toBe(GRAINRAD_EFFECTS.length)
+    expect(ids).toHaveLength(STUDIO_EFFECTS.length)
+    expect(new Set(ids).size).toBe(STUDIO_EFFECTS.length)
     expect(ids.every((id) => Number.isInteger(id) && id >= 0)).toBe(true)
   })
 
   it('maps every visible Settings, Processing, and Post-Processing control into runtime output', () => {
-    expect(getUnmappedGrainradControls()).toEqual([])
+    expect(getUnmappedStudioControls()).toEqual([])
   })
 
   it('changes runtime signature when any selected-effect control changes', () => {
-    const defaults = createDefaultGrainradEffectControls()
+    const defaults = createDefaultStudioEffectControls()
 
-    for (const effect of GRAINRAD_EFFECTS) {
+    for (const effect of STUDIO_EFFECTS) {
       const baseControls = defaults[effect.id]
       const baseSignature = signatureFor(effect.id, baseControls)
 
@@ -158,12 +158,12 @@ describe('Phase 5F Grainrad runtime effect compiler', () => {
   })
 
   it('changes runtime signature when any shared Processing or Post-Processing control changes', () => {
-    const defaults = createDefaultGrainradEffectControls()
+    const defaults = createDefaultStudioEffectControls()
 
-    for (const effect of GRAINRAD_EFFECTS) {
+    for (const effect of STUDIO_EFFECTS) {
       const sharedControls = [
-        ...getGrainradProcessingGroups(effect.id),
-        ...GRAINRAD_COMMON_POST_PROCESSING_GROUPS,
+        ...getStudioProcessingGroups(effect.id),
+        ...STUDIO_COMMON_POST_PROCESSING_GROUPS,
       ].flatMap((group) => group.controls)
       const baseControls = defaults[effect.id]
       const baseSignature = signatureFor(effect.id, baseControls)
@@ -180,9 +180,9 @@ describe('Phase 5F Grainrad runtime effect compiler', () => {
   })
 
   it('changes runtime signature for every select option', () => {
-    const defaults = createDefaultGrainradEffectControls()
+    const defaults = createDefaultStudioEffectControls()
 
-    for (const effect of GRAINRAD_EFFECTS) {
+    for (const effect of STUDIO_EFFECTS) {
       const selectControls = effect.settingGroups
         .flatMap((group) => group.controls)
         .filter((control) => control.kind === 'select')
@@ -198,31 +198,16 @@ describe('Phase 5F Grainrad runtime effect compiler', () => {
     }
   })
 
-  it('clamps ASCII Output Width to the visible column-count range', () => {
-    const oversizedRuntime = compileGrainradEffectRuntime({
-      selectedEffectId: 'ascii',
-      controls: {
-        ...createDefaultGrainradEffectControls().ascii,
-        'output-width': 1024,
-      },
-    })
-    const undersizedRuntime = compileGrainradEffectRuntime({
-      selectedEffectId: 'ascii',
-      controls: {
-        ...createDefaultGrainradEffectControls().ascii,
-        'output-width': -1,
-      },
-    })
-
-    expect(oversizedRuntime.effectValues[2]).toBe(600)
-    expect(undersizedRuntime.effectValues[2]).toBe(0)
-  })
-
-  it('defines ASCII Scale, Spacing, and Output Width with corrected control semantics', () => {
-    const ascii = GRAINRAD_EFFECTS.find((effect) => effect.id === 'ascii')
+  it('defines ASCII Size and Scale with corrected control semantics', () => {
+    const ascii = STUDIO_EFFECTS.find((effect) => effect.id === 'ascii')
     const controls = Object.fromEntries(
       ascii?.settingGroups.flatMap((group) => group.controls).map((control) => [control.id, control]) ?? []
     )
+    expect(ascii?.settingGroups[0]?.controls.slice(0, 3).map((control) => control.id)).toEqual([
+      'size',
+      'scale',
+      'character-set',
+    ])
 
     expect(controls.scale).toMatchObject({
       kind: 'range',
@@ -230,23 +215,34 @@ describe('Phase 5F Grainrad runtime effect compiler', () => {
       max: 20,
       step: 0.1,
     })
-    expect(controls.spacing).toMatchObject({
+    expect(controls.size).toMatchObject({
       kind: 'range',
-      min: 0,
-      max: 1,
-      step: 0.01,
+      label: 'Size',
+      defaultValue: 1,
+      min: 0.1,
+      max: 10,
+      step: 0.1,
     })
-    expect(controls['output-width']).toMatchObject({
-      kind: 'range',
-      min: 0,
-      max: 600,
-      step: 1,
-    })
+    expect(controls).not.toHaveProperty('spacing')
+    expect(controls).not.toHaveProperty('output-width')
+
+    expect(compileStudioEffectRuntime({
+      selectedEffectId: 'ascii',
+      controls: { ...createDefaultStudioEffectControls().ascii, size: 1.7 },
+    }).effectValues[1]).toBe(1.7)
+    expect(compileStudioEffectRuntime({
+      selectedEffectId: 'ascii',
+      controls: {},
+    }).effectValues[1]).toBe(1)
+    expect(compileStudioEffectRuntime({
+      selectedEffectId: 'ascii',
+      controls: { spacing: 0.75 },
+    }).effectValues[1]).toBe(1)
   })
 
   it('defaults ASCII Color Mode to mono for initial state and resets', () => {
-    const defaultControls = createDefaultGrainradEffectControls().ascii
-    const runtime = compileGrainradEffectRuntime({
+    const defaultControls = createDefaultStudioEffectControls().ascii
+    const runtime = compileStudioEffectRuntime({
       selectedEffectId: 'ascii',
       controls: defaultControls,
     })
@@ -256,14 +252,14 @@ describe('Phase 5F Grainrad runtime effect compiler', () => {
   })
 
   it('maps ASCII Foreground and Background color controls into runtime colors', () => {
-    const ascii = GRAINRAD_EFFECTS.find((effect) => effect.id === 'ascii')
+    const ascii = STUDIO_EFFECTS.find((effect) => effect.id === 'ascii')
     const controls = Object.fromEntries(
       ascii?.settingGroups.flatMap((group) => group.controls).map((control) => [control.id, control]) ?? []
     )
-    const runtime = compileGrainradEffectRuntime({
+    const runtime = compileStudioEffectRuntime({
       selectedEffectId: 'ascii',
       controls: {
-        ...createDefaultGrainradEffectControls().ascii,
+        ...createDefaultStudioEffectControls().ascii,
         foreground: '#123456',
         background: '#abcdef',
       },
@@ -285,39 +281,39 @@ describe('Phase 5F Grainrad runtime effect compiler', () => {
     ])
   })
 
-  it('uses Grainrad Dithering algorithm ids instead of catalogue ordinals', () => {
-    const defaults = createDefaultGrainradEffectControls().dithering
+  it('uses Studio Dithering algorithm ids instead of catalogue ordinals', () => {
+    const defaults = createDefaultStudioEffectControls().dithering
 
-    expect(compileGrainradEffectRuntime({
+    expect(compileStudioEffectRuntime({
       selectedEffectId: 'dithering',
       controls: { ...defaults, algorithm: 'floyd-steinberg' },
     }).effectValues[0]).toBe(0)
-    expect(compileGrainradEffectRuntime({
+    expect(compileStudioEffectRuntime({
       selectedEffectId: 'dithering',
       controls: { ...defaults, algorithm: 'bayer-8x8' },
     }).effectValues[0]).toBe(10)
-    expect(compileGrainradEffectRuntime({
+    expect(compileStudioEffectRuntime({
       selectedEffectId: 'dithering',
       controls: { ...defaults, algorithm: 'crosshatch' },
     }).effectValues[0]).toBe(20)
   })
 
   it('keeps Dithering matrix size in source-pixel units', () => {
-    const defaults = createDefaultGrainradEffectControls().dithering
+    const defaults = createDefaultStudioEffectControls().dithering
 
-    expect(compileGrainradEffectRuntime({
+    expect(compileStudioEffectRuntime({
       selectedEffectId: 'dithering',
       controls: defaults,
     }).effectValues[2]).toBe(4)
-    expect(compileGrainradEffectRuntime({
+    expect(compileStudioEffectRuntime({
       selectedEffectId: 'dithering',
       controls: { ...defaults, 'matrix-size': '16' },
     }).effectValues[2]).toBe(16)
   })
 
-  it('keeps Halftone values in the renderer units verified from Grainrad', () => {
-    const defaults = createDefaultGrainradEffectControls().halftone
-    const runtime = compileGrainradEffectRuntime({
+  it('keeps Halftone values in the renderer units verified from Studio', () => {
+    const defaults = createDefaultStudioEffectControls().halftone
+    const runtime = compileStudioEffectRuntime({
       selectedEffectId: 'halftone',
       controls: {
         ...defaults,
@@ -348,9 +344,9 @@ describe('Phase 5F Grainrad runtime effect compiler', () => {
     expect(runtime.effectColorB).toEqual([0xab / 255, 0xcd / 255, 0xef / 255])
   })
 
-  it('packs Matrix Rain controls in Grainrad uniform units and preserves custom glyphs', () => {
-    const defaults = createDefaultGrainradEffectControls()['matrix-rain']
-    const runtime = compileGrainradEffectRuntime({
+  it('packs Matrix Rain controls in Studio uniform units and preserves custom glyphs', () => {
+    const defaults = createDefaultStudioEffectControls()['matrix-rain']
+    const runtime = compileStudioEffectRuntime({
       selectedEffectId: 'matrix-rain',
       controls: {
         ...defaults,
@@ -398,7 +394,7 @@ describe('Phase 5F Grainrad runtime effect compiler', () => {
   })
 
   it('uses the Matrix Rain Opacity fallback when controls are absent', () => {
-    const runtime = compileGrainradEffectRuntime({
+    const runtime = compileStudioEffectRuntime({
       selectedEffectId: 'matrix-rain',
       controls: {},
     })
@@ -407,8 +403,8 @@ describe('Phase 5F Grainrad runtime effect compiler', () => {
   })
 
   it('packs Dots controls in the exact production uniform units and ids', () => {
-    const defaults = createDefaultGrainradEffectControls().dots
-    const runtime = compileGrainradEffectRuntime({
+    const defaults = createDefaultStudioEffectControls().dots
+    const runtime = compileStudioEffectRuntime({
       selectedEffectId: 'dots',
       controls: {
         ...defaults,
@@ -440,8 +436,8 @@ describe('Phase 5F Grainrad runtime effect compiler', () => {
   })
 
   it('packs Contour controls in the exact production uniform units and ids', () => {
-    const defaults = createDefaultGrainradEffectControls().contour
-    const runtime = compileGrainradEffectRuntime({
+    const defaults = createDefaultStudioEffectControls().contour
+    const runtime = compileStudioEffectRuntime({
       selectedEffectId: 'contour',
       controls: {
         ...defaults,
@@ -473,8 +469,8 @@ describe('Phase 5F Grainrad runtime effect compiler', () => {
   })
 
   it('packs Pixel Sort controls in the exact production uniform units and ids', () => {
-    const defaults = createDefaultGrainradEffectControls()['pixel-sort']
-    const runtime = compileGrainradEffectRuntime({
+    const defaults = createDefaultStudioEffectControls()['pixel-sort']
+    const runtime = compileStudioEffectRuntime({
       selectedEffectId: 'pixel-sort',
       controls: {
         ...defaults,
@@ -504,35 +500,35 @@ describe('Phase 5F Grainrad runtime effect compiler', () => {
     expect(runtime.effectColorA).toEqual([1, 1, 1])
     expect(runtime.effectColorB).toEqual([0, 0, 0])
 
-    expect(compileGrainradEffectRuntime({
+    expect(compileStudioEffectRuntime({
       selectedEffectId: 'pixel-sort',
       controls: { ...defaults, 'sort-mode': 'depth' },
     }).effectValues[1]).toBe(4)
 
     expect(['horizontal', 'vertical', 'diagonal', 'anti-diagonal', 'radial'].map((direction) => (
-      compileGrainradEffectRuntime({
+      compileStudioEffectRuntime({
         selectedEffectId: 'pixel-sort',
         controls: { ...defaults, direction },
       }).effectValues[0]
     ))).toEqual([0, 1, 2, 3, 4])
 
-    expect(compileGrainradEffectRuntime({
+    expect(compileStudioEffectRuntime({
       selectedEffectId: 'pixel-sort',
       controls: {},
     }).effectValues[3]).toBe(500)
-    expect(compileGrainradEffectRuntime({
+    expect(compileStudioEffectRuntime({
       selectedEffectId: 'pixel-sort',
       controls: {},
     }).effectValues[4]).toBe(1)
-    expect(compileGrainradEffectRuntime({
+    expect(compileStudioEffectRuntime({
       selectedEffectId: 'pixel-sort',
       controls: {},
     }).effectValues[5]).toBe(0.5)
   })
 
   it('packs Blockify controls in the exact production uniform units and ids', () => {
-    const defaults = createDefaultGrainradEffectControls().blockify
-    const runtime = compileGrainradEffectRuntime({
+    const defaults = createDefaultStudioEffectControls().blockify
+    const runtime = compileStudioEffectRuntime({
       selectedEffectId: 'blockify',
       controls: {
         ...defaults,
@@ -560,8 +556,8 @@ describe('Phase 5F Grainrad runtime effect compiler', () => {
   })
 
   it('packs Threshold controls in the exact production uniform units and ids', () => {
-    const defaults = createDefaultGrainradEffectControls().threshold
-    const runtime = compileGrainradEffectRuntime({
+    const defaults = createDefaultStudioEffectControls().threshold
+    const runtime = compileStudioEffectRuntime({
       selectedEffectId: 'threshold',
       controls: {
         ...defaults,
@@ -591,8 +587,8 @@ describe('Phase 5F Grainrad runtime effect compiler', () => {
   })
 
   it('packs Edge Detection controls in the exact production uniform units and ids', () => {
-    const defaults = createDefaultGrainradEffectControls()['edge-detection']
-    const runtime = compileGrainradEffectRuntime({
+    const defaults = createDefaultStudioEffectControls()['edge-detection']
+    const runtime = compileStudioEffectRuntime({
       selectedEffectId: 'edge-detection',
       controls: {
         ...defaults,
@@ -622,13 +618,13 @@ describe('Phase 5F Grainrad runtime effect compiler', () => {
   })
 
   it('packs Crosshatch controls in exact physical units', () => {
-    const defaults = createDefaultGrainradEffectControls().crosshatch
-    expect(compileGrainradEffectRuntime({
+    const defaults = createDefaultStudioEffectControls().crosshatch
+    expect(compileStudioEffectRuntime({
       selectedEffectId: 'crosshatch',
       controls: defaults,
     }).effectValues[3]).toBe(0.08)
 
-    const runtime = compileGrainradEffectRuntime({
+    const runtime = compileStudioEffectRuntime({
       selectedEffectId: 'crosshatch',
       controls: {
         ...defaults,
@@ -672,13 +668,13 @@ describe('Phase 5F Grainrad runtime effect compiler', () => {
   })
 
   it('packs Wave Lines controls in exact production units and preserves the below-minimum default thickness', () => {
-    const defaults = createDefaultGrainradEffectControls()['wave-lines']
-    expect(compileGrainradEffectRuntime({
+    const defaults = createDefaultStudioEffectControls()['wave-lines']
+    expect(compileStudioEffectRuntime({
       selectedEffectId: 'wave-lines',
       controls: defaults,
     }).effectValues[4]).toBe(0.4)
 
-    const runtime = compileGrainradEffectRuntime({
+    const runtime = compileStudioEffectRuntime({
       selectedEffectId: 'wave-lines',
       controls: {
         ...defaults,
@@ -704,8 +700,8 @@ describe('Phase 5F Grainrad runtime effect compiler', () => {
   })
 
   it('packs Noise Field controls in exact production units and ids', () => {
-    const defaults = createDefaultGrainradEffectControls()['noise-field']
-    const runtime = compileGrainradEffectRuntime({
+    const defaults = createDefaultStudioEffectControls()['noise-field']
+    const runtime = compileStudioEffectRuntime({
       selectedEffectId: 'noise-field',
       controls: {
         ...defaults,
@@ -731,8 +727,8 @@ describe('Phase 5F Grainrad runtime effect compiler', () => {
   })
 
   it('packs Voronoi controls in exact production units and numeric ids', () => {
-    const defaults = createDefaultGrainradEffectControls().voronoi
-    const runtime = compileGrainradEffectRuntime({
+    const defaults = createDefaultStudioEffectControls().voronoi
+    const runtime = compileStudioEffectRuntime({
       selectedEffectId: 'voronoi',
       controls: {
         ...defaults,
@@ -755,8 +751,8 @@ describe('Phase 5F Grainrad runtime effect compiler', () => {
   })
 
   it('packs VHS controls in exact production units and does not confuse Post Scanlines', () => {
-    const defaults = createDefaultGrainradEffectControls().vhs
-    const runtime = compileGrainradEffectRuntime({
+    const defaults = createDefaultStudioEffectControls().vhs
+    const runtime = compileStudioEffectRuntime({
       selectedEffectId: 'vhs',
       controls: {
         ...defaults,
@@ -786,8 +782,8 @@ describe('Phase 5F Grainrad runtime effect compiler', () => {
 
   it('packs the expanded Post-Processing controls without changing legacy slots', () => {
     expect(POST_VALUE_SLOT_COUNT).toBe(28)
-    const defaults = createDefaultGrainradEffectControls().ascii
-    const runtime = compileGrainradEffectRuntime({
+    const defaults = createDefaultStudioEffectControls().ascii
+    const runtime = compileStudioEffectRuntime({
       selectedEffectId: 'ascii',
       controls: {
         ...defaults,
@@ -829,16 +825,16 @@ describe('Phase 5F Grainrad runtime effect compiler', () => {
 })
 
 function signatureFor(
-  selectedEffectId: GrainradEffectId,
-  controls: Record<string, GrainradControlValue>,
+  selectedEffectId: StudioEffectId,
+  controls: Record<string, StudioControlValue>,
 ) {
-  return JSON.stringify(compileGrainradEffectRuntime({
+  return JSON.stringify(compileStudioEffectRuntime({
     selectedEffectId,
     controls,
   }))
 }
 
-function changedValueFor(control: GrainradEffectControl): GrainradControlValue {
+function changedValueFor(control: StudioEffectControl): StudioControlValue {
   if (control.kind === 'range') {
     return control.defaultValue === control.max ? control.min : control.max
   }

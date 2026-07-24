@@ -25,7 +25,7 @@ import {
   type ShaderMaterial,
 } from 'three'
 import { useStudioStore } from '@/app/studio/studio-store'
-import { withoutSharedControllerValues } from './grainrad-shared-controls'
+import { withoutSharedControllerValues } from './studio-shared-controls'
 import {
   createCharacterMeshGeometries,
   type CharacterMeshGeometryResult,
@@ -109,7 +109,7 @@ function CharacterDitheringScene({
     reportCharacterRotationY,
     resolveVisualFrameSize,
   } = useStudioRenderMode()
-  const controls = useStudioStore((store) => store.grainradEffect.controls.dithering)
+  const controls = useStudioStore((store) => store.studioEffect.controls.dithering)
   const [geometryResult, setGeometryResult] = useState<CharacterMeshGeometryResult | null>(null)
   const geometryResultRef = useRef<CharacterMeshGeometryResult | null>(null)
   const sourceRef = useRef<DitheringSourceScene | null>(null)
@@ -290,9 +290,9 @@ function createDitheringSourceScene(
 
   scene.background = new Color('#000000')
   scene.add(new AmbientLight('#ffffff', 0.85))
-  scene.add(new DirectionalLight('#ffffff', 1.4))
-  const directional = scene.children[1] as DirectionalLight
+  const directional = new DirectionalLight('#ffffff', 1.4)
   directional.position.set(2, 3, 4)
+  scene.add(directional)
 
   addCharacterModelCopies(group, geometryResult.geometries, material, repeat)
   scene.add(group)

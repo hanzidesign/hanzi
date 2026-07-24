@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest'
 const studioDir = join(process.cwd(), 'components', 'studio')
 const appStudioDir = join(process.cwd(), 'app', 'studio')
 
-const grainradEffects = [
+const studioEffects = [
   'ASCII',
   'Dithering',
   'Halftone',
@@ -59,13 +59,13 @@ const liveDropdownOptionLabels = [
   'Worley',
 ]
 
-describe('Phase 5D Grainrad follow-up parity contract', () => {
+describe('Phase 5D Studio follow-up parity contract', () => {
   it('matches the generated-image Input, Effects, and Presets catalogue', async () => {
     const leftPanel = await readFile(join(studioDir, 'StudioLeftPanel.tsx'), 'utf8')
     const mobileTabs = await readFile(join(studioDir, 'StudioMobileTabs.tsx'), 'utf8')
-    const effects = await readFile(join(studioDir, 'grainrad-effects.ts'), 'utf8')
+    const effects = await readFile(join(studioDir, 'studio-effects.ts'), 'utf8')
 
-    for (const effect of grainradEffects) {
+    for (const effect of studioEffects) {
       expect(effects).toContain(effect)
     }
 
@@ -73,14 +73,18 @@ describe('Phase 5D Grainrad follow-up parity contract', () => {
     expect(leftPanel).toContain('3D Motion')
     expect(leftPanel).toContain('Presets')
     expect(leftPanel).not.toContain('StudioPresetsPanel')
+    expect(mobileTabs).toContain("id: 'model'")
+    expect(mobileTabs).toContain("id: 'settings'")
+    expect(mobileTabs).toContain('StudioModelDeformPanel')
+    expect(mobileTabs).toContain('StudioRightPanel includeExport={false}')
     expect(mobileTabs).not.toContain("id: 'animation'")
   })
 
-  it('uses Grainrad Character Set dropdown options instead of a native select', async () => {
+  it('uses Studio Character Set dropdown options instead of a native select', async () => {
     const terminalRows = await readFile(join(studioDir, 'TerminalRows.tsx'), 'utf8')
     const rightPanel = await readFile(join(studioDir, 'StudioRightPanel.tsx'), 'utf8')
     const store = await readFile(join(appStudioDir, 'studio-store.ts'), 'utf8')
-    const effects = await readFile(join(studioDir, 'grainrad-effects.ts'), 'utf8')
+    const effects = await readFile(join(studioDir, 'studio-effects.ts'), 'utf8')
 
     expect(terminalRows).toContain('TerminalDropdownRow')
     expect(terminalRows).toContain('dropdownMenu')
@@ -102,13 +106,21 @@ describe('Phase 5D Grainrad follow-up parity contract', () => {
     expect(rightPanel).toContain("ascii.charsetStyle === 'custom'")
   })
 
-  it('matches Grainrad settings labels and adds section reset', async () => {
+  it('matches Studio settings labels and adds section reset', async () => {
     const rightPanel = await readFile(join(studioDir, 'StudioRightPanel.tsx'), 'utf8')
 
     expect(rightPanel).toContain('action={<button')
     expect(rightPanel).toContain('Reset')
-    expect(rightPanel).toContain('Spacing')
-    expect(rightPanel).toContain('Output Width')
+    expect(rightPanel).toContain('label="Size"')
+    expect(rightPanel).not.toContain('Spacing')
+    expect(rightPanel).not.toContain('Output Width')
+    expect(rightPanel.indexOf('label="Size"')).toBeLessThan(rightPanel.indexOf('label="Scale"'))
+    expect(rightPanel.indexOf('label="Scale"')).toBeLessThan(rightPanel.indexOf('label="Character Set"'))
+    expect(rightPanel).toContain("value={readNumberControl(effectControls, 'size', 1) * 10}")
+    expect(rightPanel).toContain('min={1}')
+    expect(rightPanel).toContain('max={100}')
+    expect(rightPanel).toContain('step={1}')
+    expect(rightPanel).toContain("value / 10")
     expect(rightPanel).toContain('Hue Rotation')
     expect(rightPanel).toContain('label="Mode"')
     expect(rightPanel).toContain("readStringControl(effectControls, 'color-mode', 'mono')")
@@ -150,8 +162,8 @@ describe('Phase 5D Grainrad follow-up parity contract', () => {
     }
   })
 
-  it('includes Grainrad effect setting groups for Processing and Post-Processing parity', async () => {
-    const effects = await readFile(join(studioDir, 'grainrad-effects.ts'), 'utf8')
+  it('includes Studio effect setting groups for Processing and Post-Processing parity', async () => {
+    const effects = await readFile(join(studioDir, 'studio-effects.ts'), 'utf8')
     const rightPanel = await readFile(join(studioDir, 'StudioRightPanel.tsx'), 'utf8')
 
     expect(effects).toContain('Dithering')

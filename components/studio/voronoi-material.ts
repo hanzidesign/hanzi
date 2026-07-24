@@ -1,6 +1,12 @@
 import { ShaderMaterial, Vector2, type Texture } from 'three'
 
-export type VoronoiControlValue = string | number | boolean
+import type { StudioControlValue } from './studio-effects'
+import {
+  readStudioBoolean as readBoolean,
+  readStudioNumber as readNumber,
+} from './studio-control-readers'
+
+export type VoronoiControlValue = StudioControlValue
 export type VoronoiControls = Readonly<Record<string, VoronoiControlValue>>
 
 export type CreateVoronoiShaderMaterialOptions = Readonly<{
@@ -267,14 +273,6 @@ export function applyVoronoiUniforms(
 
 export function disposeVoronoiShaderMaterial(material: ShaderMaterial) {
   material.dispose()
-}
-
-function readNumber(value: VoronoiControlValue | undefined, fallback: number) {
-  return typeof value === 'number' && Number.isFinite(value) ? value : fallback
-}
-
-function readBoolean(value: VoronoiControlValue | undefined) {
-  return value === true ? 1 : 0
 }
 
 function readColor(value: VoronoiControlValue | undefined, fallback: string): [number, number, number] {

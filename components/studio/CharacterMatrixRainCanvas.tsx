@@ -25,7 +25,7 @@ import {
   type ShaderMaterial,
 } from 'three'
 import { useStudioStore } from '@/app/studio/studio-store'
-import { withoutSharedControllerValues } from './grainrad-shared-controls'
+import { withoutSharedControllerValues } from './studio-shared-controls'
 import {
   createCharacterMeshGeometries,
   type CharacterMeshGeometryResult,
@@ -116,7 +116,7 @@ function CharacterMatrixRainScene({
     reportCharacterRotationY,
     resolveVisualFrameSize,
   } = useStudioRenderMode()
-  const controls = useStudioStore((store) => store.grainradEffect.controls['matrix-rain'])
+  const controls = useStudioStore((store) => store.studioEffect.controls['matrix-rain'])
   const selectedCharacterSet = typeof controls['character-set'] === 'string'
     ? controls['character-set']
     : 'standard'

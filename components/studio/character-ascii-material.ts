@@ -11,9 +11,9 @@ import type {
   StudioAsciiState,
 } from '@/app/studio/studio-store'
 import {
-  compileGrainradEffectRuntime,
-  type GrainradEffectRuntime,
-} from '@/components/studio/grainrad-effect-runtime'
+  compileStudioEffectRuntime,
+  type StudioEffectRuntime,
+} from '@/components/studio/studio-effect-runtime'
 import {
   CHARACTER_SETS,
   createCharacterGlyphAtlas,
@@ -73,7 +73,7 @@ uniform float u_curvature;
 uniform float u_vignette;
 uniform float u_chromaticOffset;
 uniform float u_grain;
-uniform float u_grainradEffectId;
+uniform float u_studioEffectId;
 uniform float u_effectA;
 uniform float u_effectB;
 uniform float u_effectC;
@@ -127,7 +127,7 @@ float hash12(vec2 p) {
   return fract((p3.x + p3.y) * p3.z);
 }
 
-float grainradLuma(vec3 color) {
+float studioLuma(vec3 color) {
   return dot(color, vec3(0.299, 0.587, 0.114));
 }
 
@@ -294,10 +294,10 @@ float sampleAsciiGlyphAtlas(float brightness, vec2 cellUv) {
   vec2 atlasUv = (glyphCell + clamp(cellUv, vec2(0.01), vec2(0.99))) / vec2(columns, rows);
   vec4 glyphSample = texture2D(u_asciiGlyphAtlas, atlasUv);
 
-  return max(glyphSample.a, grainradLuma(glyphSample.rgb));
+  return max(glyphSample.a, studioLuma(glyphSample.rgb));
 }
 
-float grainradAsciiGlyph(float brightness, vec2 cellUv, vec2 cellId, float setId) {
+float studioAsciiGlyph(float brightness, vec2 cellUv, vec2 cellId, float setId) {
   float standardGlyph = asciiCell(brightness, cellUv, 0.0);
   float blockBody = smoothstep(0.02, 0.12, cellUv.x) *
     smoothstep(0.02, 0.12, cellUv.y) *
@@ -396,11 +396,11 @@ vec3 applyEffectAdjustments(vec3 color, float brightnessDelta, float contrastDel
   return clamp(color, 0.0, 1.0);
 }
 
-vec4 applyGrainradAscii(vec3 color, float glyph, float brightness, vec2 cellUv, vec2 cellId) {
+vec4 applyStudioAscii(vec3 color, float glyph, float brightness, vec2 cellUv, vec2 cellId) {
   float mask = glyph;
-  float grainradAsciiIntensity = max(u_effectM, 0.01) * max(u_colorIntensity, 0.0);
-  vec3 monoAsciiColor = mix(u_effectColorB, u_effectColorA, mask * grainradAsciiIntensity);
-  vec3 originalAsciiColor = mix(u_backgroundColor, color, mask * grainradAsciiIntensity);
+  float studioAsciiIntensity = max(u_effectM, 0.01) * max(u_colorIntensity, 0.0);
+  vec3 monoAsciiColor = mix(u_effectColorB, u_effectColorA, mask * studioAsciiIntensity);
+  vec3 originalAsciiColor = mix(u_backgroundColor, color, mask * studioAsciiIntensity);
   vec3 asciiColor = mix(monoAsciiColor, originalAsciiColor, step(0.5, u_effectL));
   asciiColor = applyEffectAdjustments(asciiColor, u_effectF, u_effectG);
   asciiColor = adjustSaturation(asciiColor, u_effectH);
@@ -410,13 +410,13 @@ vec4 applyGrainradAscii(vec3 color, float glyph, float brightness, vec2 cellUv, 
   return vec4(asciiColor, mask);
 }
 
-vec4 applyGrainradProcessing(vec4 effectColor, float brightness) {
+vec4 applyStudioProcessing(vec4 effectColor, float brightness) {
   vec3 color = effectColor.rgb;
   float mask = effectColor.a;
   color = mix(color, 1.0 - color, u_processingA);
   color *= u_processingB;
   color += fwidth(brightness) * u_processingC * 4.0;
-  vec3 softenedProcessingColor = mix(vec3(grainradLuma(color)), color, 0.35 + smoothstep(0.0, 1.0, mask) * 0.4);
+  vec3 softenedProcessingColor = mix(vec3(studioLuma(color)), color, 0.35 + smoothstep(0.0, 1.0, mask) * 0.4);
   softenedProcessingColor = mix(softenedProcessingColor, vec3(brightness), 0.25);
   color = mix(color, softenedProcessingColor, clamp(u_processingD, 0.0, 1.0));
   if (u_processingE > 0.0) {
@@ -427,7 +427,7 @@ vec4 applyGrainradProcessing(vec4 effectColor, float brightness) {
   return vec4(clamp(color, 0.0, 1.0), mask);
 }
 
-vec3 applyGrainradPostProcessing(vec3 color, float brightness, vec2 screenUv, vec2 centered, vec2 cellId, vec2 visualPixel) {
+vec3 applyStudioPostProcessing(vec3 color, float brightness, vec2 screenUv, vec2 centered, vec2 cellId, vec2 visualPixel) {
   color += smoothstep(0.58, 1.0, brightness) * u_postA * 0.35;
   color.r += (hash12(cellId + 12.0) - 0.5) * u_postE * 0.1;
   color.b -= (hash12(cellId + 15.0) - 0.5) * u_postE * 0.1;
@@ -445,13 +445,10 @@ void main() {
   float curve = dot(centered, centered) * u_curvature;
   vec2 curvedUv = screenUv + centered * curve * 0.08;
   vec2 cellId = floor(curvedUv * u_visualResolution / max(u_asciiCellSize, 1.0));
-  vec2 cellUv = fract(curvedUv * u_visualResolution / max(u_asciiCellSize, 1.0));
-  float outputColumnCount = clamp(u_effectC, 0.0, 600.0);
-  float outputCellSize = max(u_visualResolution.x / max(outputColumnCount, 1.0), 1.0);
-  float asciiEffectCellSize = mix(max(u_asciiCellSize, 1.0), outputCellSize, step(1.0, outputColumnCount));
+  float asciiEffectCellSize = max(u_asciiCellSize, 1.0);
   vec2 asciiEffectCellId = floor(curvedUv * u_visualResolution / asciiEffectCellSize);
   vec2 asciiEffectCellUv = fract(curvedUv * u_visualResolution / asciiEffectCellSize);
-  float glyphScale = mix(1.0, 0.25, clamp(u_effectB, 0.0, 1.0));
+  float glyphScale = max(u_effectB, 0.01);
   vec2 spacedAsciiEffectCellUv = (asciiEffectCellUv - 0.5) / max(glyphScale, 0.001) + 0.5;
   float insideGlyphBox = step(0.0, min(spacedAsciiEffectCellUv.x, spacedAsciiEffectCellUv.y)) *
     step(max(spacedAsciiEffectCellUv.x, spacedAsciiEffectCellUv.y), 1.0);
@@ -469,20 +466,18 @@ void main() {
   brightness = mix(brightness, smoothstep(0.35, 0.65, brightness), u_asciiSharpness);
   brightness = mix(brightness, 1.0 - brightness, u_asciiInvert);
 
-  float glyph = asciiCell(brightness, cellUv, u_asciiCharsetStyle);
-  glyph *= smoothstep(0.0, 0.12, u_asciiDensity);
   float atlasGlyph = sampleAsciiGlyphAtlas(brightness, spacedAsciiEffectCellUv);
-  float grainradAsciiMask = grainradAsciiGlyph(brightness, spacedAsciiEffectCellUv, asciiEffectCellId, u_asciiCharsetStyle);
-  grainradAsciiMask = mix(grainradAsciiMask, atlasGlyph, step(0.5, u_asciiGlyphCount));
-  grainradAsciiMask *= insideGlyphBox;
-  grainradAsciiMask *= smoothstep(0.0, 0.12, u_asciiDensity);
+  float studioAsciiMask = studioAsciiGlyph(brightness, spacedAsciiEffectCellUv, asciiEffectCellId, u_asciiCharsetStyle);
+  studioAsciiMask = mix(studioAsciiMask, atlasGlyph, step(0.5, u_asciiGlyphCount));
+  studioAsciiMask *= insideGlyphBox;
+  studioAsciiMask *= smoothstep(0.0, 0.12, u_asciiDensity);
 
-  vec3 color = paletteColor(brightness, glyph);
-  vec4 grainradColor = applyGrainradAscii(color, grainradAsciiMask, brightness, spacedAsciiEffectCellUv, asciiEffectCellId);
+  vec3 color = paletteColor(brightness, studioAsciiMask);
+  vec4 studioColor = applyStudioAscii(color, studioAsciiMask, brightness, spacedAsciiEffectCellUv, asciiEffectCellId);
 
-  grainradColor = applyGrainradProcessing(grainradColor, brightness);
-  float finalAlpha = max(grainradAsciiMask, grainradColor.a);
-  color = grainradColor.rgb;
+  studioColor = applyStudioProcessing(studioColor, brightness);
+  float finalAlpha = max(studioAsciiMask, studioColor.a);
+  color = studioColor.rgb;
   float scanline = 1.0 - sin(visualPixel.y * 3.14159) * 0.5 * u_scanlineAmount;
   float vignette = smoothstep(1.15, 0.2, length(centered)) * u_vignette + (1.0 - u_vignette);
   float grain = (hash12(visualPixel + u_time * 17.0) - 0.5) * u_grain;
@@ -492,21 +487,21 @@ void main() {
   color = adjustSaturation(color, u_asciiSaturation);
   color = rotateHue(color, u_asciiHueRotation);
   color = color * scanline * vignette + bloom + grain + chroma;
-  color = applyGrainradPostProcessing(color, brightness, screenUv, centered, cellId, visualPixel);
+  color = applyStudioPostProcessing(color, brightness, screenUv, centered, cellId, visualPixel);
   gl_FragColor = vec4(clamp(color, 0.0, 1.0), finalAlpha);
 }
 `
 
 type CreateAsciiShaderMaterialOptions = {
   ascii: StudioAsciiState
-  grainradRuntime?: GrainradEffectRuntime
+  studioRuntime?: StudioEffectRuntime
   foregroundColor: string
   backgroundColor: string
 }
 
 export function createAsciiShaderMaterial({
   ascii,
-  grainradRuntime = compileGrainradEffectRuntime({
+  studioRuntime = compileStudioEffectRuntime({
     selectedEffectId: 'ascii',
     controls: {},
   }),
@@ -520,7 +515,7 @@ export function createAsciiShaderMaterial({
     transparent: true,
     uniforms: createAsciiShaderUniforms({
       ascii,
-      grainradRuntime,
+      studioRuntime,
       foregroundColor,
       backgroundColor,
     }),
@@ -538,13 +533,13 @@ export function disposeAsciiShaderMaterial(material: ShaderMaterial) {
 
 function createAsciiShaderUniforms({
   ascii,
-  grainradRuntime,
+  studioRuntime,
   foregroundColor,
   backgroundColor,
 }: Required<CreateAsciiShaderMaterialOptions>): Record<string, IUniform> {
   const glyphAtlas = createCharacterGlyphAtlas(
     ascii.charsetStyle,
-    grainradRuntime.customGlyphChars,
+    studioRuntime.customGlyphChars,
   )
   const uniforms: Record<string, IUniform> = {
     u_time: { value: 0 },
@@ -578,23 +573,23 @@ function createAsciiShaderUniforms({
     u_asciiGlyphColumns: { value: glyphAtlas.columns },
   }
 
-  assignGrainradRuntimeUniforms(uniforms, grainradRuntime)
+  assignStudioRuntimeUniforms(uniforms, studioRuntime)
 
   return uniforms
 }
 
-export function applyGrainradRuntimeUniforms(
+export function applyStudioRuntimeUniforms(
   uniforms: Record<string, IUniform>,
-  runtime: GrainradEffectRuntime,
+  runtime: StudioEffectRuntime,
 ) {
-  assignGrainradRuntimeUniforms(uniforms, runtime)
+  assignStudioRuntimeUniforms(uniforms, runtime)
 }
 
-function assignGrainradRuntimeUniforms(
+function assignStudioRuntimeUniforms(
   uniforms: Record<string, IUniform>,
-  runtime: GrainradEffectRuntime,
+  runtime: StudioEffectRuntime,
 ) {
-  setUniformValue(uniforms, 'u_grainradEffectId', runtime.effectId)
+  setUniformValue(uniforms, 'u_studioEffectId', runtime.effectId)
   setUniformValue(uniforms, 'u_effectColorA', readUniformColor(uniforms, 'u_effectColorA', runtime.effectColorA))
   setUniformValue(uniforms, 'u_effectColorB', readUniformColor(uniforms, 'u_effectColorB', runtime.effectColorB))
   setUniformValue(uniforms, 'u_customGlyphHash', runtime.customGlyphHash)

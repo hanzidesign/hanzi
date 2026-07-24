@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest'
 
 const studioDir = join(process.cwd(), 'components', 'studio')
 
-describe('Phase 5D Grainrad terminal workbench layout contract', () => {
+describe('Phase 5D Studio terminal workbench layout contract', () => {
   it('splits Studio into left input, center preview, right controls, and mobile tabs', async () => {
     const shellSource = await readFile(join(studioDir, 'StudioShell.tsx'), 'utf8')
     const mobileTabsSource = await readFile(join(studioDir, 'StudioMobileTabs.tsx'), 'utf8')

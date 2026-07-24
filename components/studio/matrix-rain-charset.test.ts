@@ -14,7 +14,7 @@ import {
 } from './matrix-rain-charset'
 
 describe('Matrix Rain character resources', () => {
-  it('preserves every exact Grainrad character vocabulary', () => {
+  it('preserves every exact Studio character vocabulary', () => {
     expect(MATRIX_RAIN_CHARACTER_SETS).toEqual({
       standard: ' .:-=+*#%@',
       blocks: ' ░▒▓█',
@@ -32,7 +32,7 @@ describe('Matrix Rain character resources', () => {
     )
   })
 
-  it('uses typed custom characters and Grainrad standard fallback for an empty custom field', () => {
+  it('uses typed custom characters and Studio standard fallback for an empty custom field', () => {
     expect(resolveMatrixRainCharacterSet('custom', '字💧')).toBe('字💧')
     expect(resolveMatrixRainCharacterSet('custom', '')).toBe(
       MATRIX_RAIN_CHARACTER_SETS.standard,
@@ -59,7 +59,7 @@ describe('Matrix Rain character resources', () => {
     expect(atlas.texture.wrapT).toBe(ClampToEdgeWrapping)
   })
 
-  it('preserves Grainrad JavaScript UTF-16 indexing for non-BMP custom glyphs', () => {
+  it('preserves Studio JavaScript UTF-16 indexing for non-BMP custom glyphs', () => {
     const atlas = createMatrixRainGlyphAtlas('custom', '💧字')
 
     expect(atlas.count).toBe(3)
@@ -67,7 +67,7 @@ describe('Matrix Rain character resources', () => {
     expect(atlas.rows).toBe(1)
   })
 
-  it('draws the browser atlas with Grainrad canvas dimensions and typography', () => {
+  it('draws the browser atlas with Studio canvas dimensions and typography', () => {
     const assignments: Record<string, string>[] = []
     const fillRect = vi.fn()
     const fillText = vi.fn()

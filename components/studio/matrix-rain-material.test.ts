@@ -25,7 +25,7 @@ function createFixture() {
 }
 
 describe('Matrix Rain shader material', () => {
-  it('owns an independent source/atlas shader with Grainrad defaults and metadata', () => {
+  it('owns an independent source/atlas shader with Studio defaults and metadata', () => {
     const { glyphAtlas, material, sourceTexture } = createFixture()
 
     expect(material.uniforms.u_sourceTexture.value).toBe(sourceTexture)
@@ -47,7 +47,7 @@ describe('Matrix Rain shader material', () => {
     expect(material.uniforms.u_background.value.getHexString()).toBe('000000')
   })
 
-  it('maps every Matrix-local control in exact Grainrad units', () => {
+  it('maps every Matrix-local control in exact Studio units', () => {
     const { glyphAtlas, material } = createFixture()
 
     applyMatrixRainUniforms(material, {

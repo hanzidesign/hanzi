@@ -2,7 +2,7 @@
 
 ## Objective
 
-Implement Dots as the fifth independent Character effect. Dots must not import or fall through ASCII, Dithering, Halftone, or Matrix Rain. The local input remains the selected 3D Character and consumes the shared Model panel; `data/sample.jpg` remains a Grainrad-side behavior probe only.
+Implement Dots as the fifth independent Character effect. Dots must not import or fall through ASCII, Dithering, Halftone, or Matrix Rain. The local input remains the selected 3D Character and consumes the shared Model panel; `data/sample.jpg` remains a reference behavior probe only.
 
 ## Authoritative Settings contract
 
@@ -16,7 +16,7 @@ Implement Dots as the fifth independent Character effect. Dots must not import o
 | Adjustments | Brightness | `0` | `-100..100`, step `1`; uniform value `/100` |
 | Adjustments | Contrast | `0` | `-100..100`, step `1`; uniform value `/100` |
 | Color | Mode | `original` | Mono stores `custom`; Original stores `original` |
-| Color | Dot Color | `#ffffff` | Visible only in Mono; current Grainrad uploader makes this control a deliberate parity no-op |
+| Color | Dot Color | `#ffffff` | Visible only in Mono; the current reference uploader makes this control a deliberate parity no-op |
 | Color | Background | `#000000` | Visible only in Mono; remains the output background in both modes |
 
 Group and row order must match the table. Reset affects only Dots and restores these defaults.
@@ -32,7 +32,7 @@ Group and row order must match the table. Reset affects only Dots and restores t
 7. Circle uses squared Euclidean distance; Square uses `max(absX, absY) < radius`; Diamond uses `absX + absY < radius * 1.4`. These are strict comparisons.
 8. Original dot color is the adjusted sampled source. The current production uploader maps UI `custom`/Mono to shader mode `1`, which renders `vec3(luminance)`; shader mode `2` (`dotColor * luminance`) is unreachable. Preserve this actual behavior: Dot Color is visible but has no output effect.
 9. Background uses the configured background color in both modes even though its control is hidden in Original. Output alpha is always `1`.
-10. Grainrad exposes shared Processing for Dots, but the Dots uploader/shader consumes none of it; all Processing rows are parity no-ops. Shared Post-Processing runs after the Dots intermediate texture.
+10. The reference editor exposes shared Processing for Dots, but the Dots uploader/shader consumes none of it; all Processing rows are parity no-ops. Shared Post-Processing runs after the Dots intermediate texture.
 
 ## Uniform packing
 
@@ -59,8 +59,8 @@ Group and row order must match the table. Reset affects only Dots and restores t
 
 ## Primary sources
 
-- `https://grainrad.com/assets/index-D5s-AdpN.js` — current Dots state, Settings UI, defaults, and WGSL.
-- `https://grainrad.com/assets/index-DWlNRnaQ.js` — current Dots uniform writes.
-- `https://grainrad.com/assets/index-D4g1FOHw.js` — current WebGL2 compatibility fallback; non-ASCII effects are passthrough there, while authoritative Dots behavior is WebGPU-only.
+- Reference public bundle — current Dots state, Settings UI, defaults, and WGSL.
+- Reference public bundle — current Dots uniform writes.
+- Reference public bundle — current WebGL2 compatibility fallback; non-ASCII effects are passthrough there, while authoritative Dots behavior is WebGPU-only.
 
 Current production asset ETags: main `2dab4b6866ace0e7533e9b4ba9f11803`, WebGPU renderer `ba02c2c47ba6903bf24449e932fc725f`, WebGL2 fallback `a42c53dbf773f2222aee514a5053b9f4`.

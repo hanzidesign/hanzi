@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest'
 
-import { createDefaultGrainradEffectControls, getGrainradEffectById } from './grainrad-effects'
+import { createDefaultStudioEffectControls, getStudioEffectById } from './studio-effects'
 
-describe('Grainrad Voronoi schema', () => {
+describe('Studio Voronoi schema', () => {
   it('publishes an independent renderer and exact group/control order', () => {
-    const definition = getGrainradEffectById('voronoi')
+    const definition = getStudioEffectById('voronoi')
 
     expect(definition.renderer).toBe('voronoi')
     expect(definition.settingGroups.map((group) => group.title)).toEqual(['Voronoi', 'Adjustments', 'Color'])
@@ -15,7 +15,7 @@ describe('Grainrad Voronoi schema', () => {
   })
 
   it('matches every production default, range, enum option, and always-visible row', () => {
-    const definition = getGrainradEffectById('voronoi')
+    const definition = getStudioEffectById('voronoi')
     const controls = Object.fromEntries(
       definition.settingGroups.flatMap((group) => group.controls).map((control) => [control.id, control]),
     )
@@ -39,7 +39,7 @@ describe('Grainrad Voronoi schema', () => {
       kind: 'color', defaultValueByTheme: { light: '#101010', dark: '#f4f1e8' },
     })
     expect(controls['fill-canvas']).toMatchObject({ kind: 'toggle', defaultValue: false })
-    expect(createDefaultGrainradEffectControls().voronoi).toMatchObject({
+    expect(createDefaultStudioEffectControls().voronoi).toMatchObject({
       'cell-size': 30, 'edge-width': 0.3, 'edge-color': '#101010',
       randomize: 0.8, brightness: 0, contrast: 0,
       'cell-shadow': '#2b2d42', 'cell-midtone': '#6d597a', 'cell-highlight': '#e9c46a',

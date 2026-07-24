@@ -9,7 +9,7 @@ import {
 import { SVGLoader } from 'three/addons/loaders/SVGLoader.js'
 import { Group, Vector2, type ShaderMaterial } from 'three'
 import { useStudioStore } from '@/app/studio/studio-store'
-import { withoutSharedControllerValues } from './grainrad-shared-controls'
+import { withoutSharedControllerValues } from './studio-shared-controls'
 import {
   createCharacterMeshGeometries,
   type CharacterMeshGeometryResult,
@@ -20,11 +20,11 @@ import {
   type CharacterMeshGpuDeformBinding,
 } from '@/components/studio/character-mesh-gpu-deform'
 import {
-  applyGrainradRuntimeUniforms,
+  applyStudioRuntimeUniforms,
   createAsciiShaderMaterial,
   disposeAsciiShaderMaterial,
 } from '@/components/studio/character-ascii-material'
-import { compileGrainradEffectRuntime } from '@/components/studio/grainrad-effect-runtime'
+import { compileStudioEffectRuntime } from '@/components/studio/studio-effect-runtime'
 import { applyDeltaRotation } from '@/components/studio/shader-canvas-math'
 import { createCharacterRepeatTransforms } from '@/components/studio/character-model-arrangement'
 
@@ -97,7 +97,7 @@ function CharacterAsciiScene({
   const mesh = useStudioStore((store) => store.mesh)
   const ascii = useStudioStore((store) => store.ascii)
   const animation = useStudioStore((store) => store.animation)
-  const grainradEffect = useStudioStore((store) => store.grainradEffect)
+  const studioEffect = useStudioStore((store) => store.studioEffect)
   const {
     exportRender,
     markExportContentReady,
@@ -179,10 +179,10 @@ function CharacterAsciiScene({
     }
   }, [])
 
-  const grainradRuntime = useMemo(() => compileGrainradEffectRuntime({
+  const studioRuntime = useMemo(() => compileStudioEffectRuntime({
     selectedEffectId: 'ascii',
-    controls: withoutSharedControllerValues(grainradEffect.controls.ascii),
-  }), [grainradEffect])
+    controls: withoutSharedControllerValues(studioEffect.controls.ascii),
+  }), [studioEffect])
   const repeatTransforms = useMemo(
     () => createCharacterRepeatTransforms(mesh.repeat),
     [mesh.repeat],
@@ -190,10 +190,10 @@ function CharacterAsciiScene({
 
   const material = useMemo(() => createAsciiShaderMaterial({
     ascii,
-    grainradRuntime,
+    studioRuntime,
     foregroundColor: ascii.foregroundColor,
     backgroundColor: ascii.backgroundColor,
-  }), [ascii, grainradRuntime])
+  }), [ascii, studioRuntime])
 
   useEffect(() => {
     materialRef.current = material
@@ -248,7 +248,7 @@ function CharacterAsciiScene({
       activeMaterial.uniforms.u_colorIntensity.value = ascii.colorIntensity
       activeMaterial.uniforms.u_depthInfluence.value = ascii.depthInfluence
       activeMaterial.uniforms.u_normalInfluence.value = ascii.normalInfluence
-      applyGrainradRuntimeUniforms(activeMaterial.uniforms, grainradRuntime)
+      applyStudioRuntimeUniforms(activeMaterial.uniforms, studioRuntime)
     }
 
     if (groupRef.current) {

@@ -5,11 +5,12 @@ import { describe, expect, it } from 'vitest'
 
 const studioDir = join(process.cwd(), 'components', 'studio')
 
-describe('Phase 5D Grainrad terminal controller contract', () => {
-  it('uses shared compact controller primitives instead of Mantine card controls', async () => {
+describe('Phase 5D Studio terminal controller contract', () => {
+  it('uses shared compact controller primitives with Mantine sliders', async () => {
     const rowSource = await readFile(join(studioDir, 'TerminalRows.tsx'), 'utf8')
     const sectionSource = await readFile(join(studioDir, 'TerminalSection.tsx'), 'utf8')
     const rightPanel = await readFile(join(studioDir, 'StudioRightPanel.tsx'), 'utf8')
+    const themeSource = await readFile(join(process.cwd(), 'theme', 'index.ts'), 'utf8')
 
     expect(sectionSource).toContain('TerminalSection')
     expect(sectionSource).toContain('expandedSections')
@@ -26,10 +27,15 @@ describe('Phase 5D Grainrad terminal controller contract', () => {
     expect(rowSource).toContain('TerminalColorRow')
     expect(rowSource).toContain('TerminalToggleRow')
     expect(rowSource).toContain('TerminalOptionGrid')
-    expect(rowSource).toContain('type="range"')
+    expect(rowSource).toContain("import { Slider } from '@mantine/core'")
+    expect(rowSource).toContain('<Slider')
+    expect(rowSource).toContain('thumbLabel={label}')
+    expect(rowSource).not.toContain('type="range"')
     expect(rowSource).toContain('type="color"')
     expect(rowSource).toContain('type="checkbox"')
-    expect(rowSource).not.toContain('@mantine/core')
+    expect(themeSource).toContain('Slider: {')
+    expect(themeSource).toContain('RangeSlider: {')
+    expect(themeSource).toContain('showLabelOnHover: true')
     expect(rightPanel).toContain('TerminalRangeRow')
     expect(rightPanel).toContain('TerminalDropdownRow')
     expect(rightPanel).toContain('renderEffectSettings')
@@ -69,7 +75,7 @@ describe('Phase 5D Grainrad terminal controller contract', () => {
   })
 
   it('renders Scanlines Direction through the shared selector UI', async () => {
-    const effects = await readFile(join(studioDir, 'grainrad-effects.ts'), 'utf8')
+    const effects = await readFile(join(studioDir, 'studio-effects.ts'), 'utf8')
     const rightPanel = await readFile(join(studioDir, 'StudioRightPanel.tsx'), 'utf8')
 
     expect(effects).toContain("selectControl('scanline-direction', 'Direction'")

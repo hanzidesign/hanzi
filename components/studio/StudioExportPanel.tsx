@@ -27,6 +27,7 @@ import {
   useStudioPreviewFrameSnapshot,
   type StudioVisualFrameSnapshot,
 } from '@/components/studio/studio-render-context'
+import { isAbortError } from '@/utils/dataUrl'
 import classes from './StudioShell.module.css'
 
 type ExportGridOption = {
@@ -64,7 +65,7 @@ type PendingExportFrame = {
 }
 
 export default function StudioExportPanel() {
-  const selectedEffectId = useStudioStore((store) => store.grainradEffect.selectedEffectId)
+  const selectedEffectId = useStudioStore((store) => store.studioEffect.selectedEffectId)
   const selectedFormat = useStudioStore((store) => store.export.selectedFormat)
   const autoRotate = useStudioStore((store) => store.mesh.autoRotate)
   const autoRotateSpeed = useStudioStore((store) => store.mesh.autoRotateSpeed)
@@ -674,10 +675,6 @@ function throwIfAborted(signal: AbortSignal) {
   if (signal.aborted) {
     throw new DOMException('Export canceled', 'AbortError')
   }
-}
-
-function isAbortError(error: unknown) {
-  return error instanceof DOMException && error.name === 'AbortError'
 }
 
 function canvasToBlob(canvas: HTMLCanvasElement, type: string) {

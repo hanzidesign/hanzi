@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest'
 
-import { createDefaultGrainradEffectControls, getGrainradEffectById } from './grainrad-effects'
+import { createDefaultStudioEffectControls, getStudioEffectById } from './studio-effects'
 
-describe('Grainrad VHS schema', () => {
+describe('Studio VHS schema', () => {
   it('publishes an independent renderer and exact group/control order', () => {
-    const definition = getGrainradEffectById('vhs')
+    const definition = getStudioEffectById('vhs')
 
     expect(definition.renderer).toBe('vhs')
     expect(definition.settingGroups.map((group) => group.title)).toEqual(['VHS', 'Adjustments', 'Color'])
@@ -16,7 +16,7 @@ describe('Grainrad VHS schema', () => {
   })
 
   it('matches every production default/range and keeps effect Scanlines distinct from Post Scanlines', () => {
-    const definition = getGrainradEffectById('vhs')
+    const definition = getStudioEffectById('vhs')
     const controls = Object.fromEntries(
       definition.settingGroups.flatMap((group) => group.controls).map((control) => [control.id, control]),
     )
@@ -40,7 +40,7 @@ describe('Grainrad VHS schema', () => {
     expect(controls.brightness).toMatchObject({ defaultValue: 0, min: -100, max: 100, step: 1 })
     expect(controls.contrast).toMatchObject({ defaultValue: 0, min: -100, max: 100, step: 1 })
     expect(controls['chroma-blur'].visibleWhen).toEqual({ controlId: 'color-bleed', operator: 'greater-than', value: 0 })
-    expect(createDefaultGrainradEffectControls().vhs).toMatchObject({
+    expect(createDefaultStudioEffectControls().vhs).toMatchObject({
       distortion: 0.5,
       noise: 0.3,
       'color-bleed': 0.5,

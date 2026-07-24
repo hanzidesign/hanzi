@@ -25,7 +25,7 @@ import {
   type ShaderMaterial,
 } from 'three'
 import { useStudioStore } from '@/app/studio/studio-store'
-import { withoutSharedControllerValues } from './grainrad-shared-controls'
+import { withoutSharedControllerValues } from './studio-shared-controls'
 import {
   createCharacterMeshGeometries,
   type CharacterMeshGeometryResult,
@@ -110,7 +110,7 @@ function CharacterDotsScene({
     reportCharacterRotationY,
     resolveVisualFrameSize,
   } = useStudioRenderMode()
-  const controls = useStudioStore((store) => store.grainradEffect.controls.dots)
+  const controls = useStudioStore((store) => store.studioEffect.controls.dots)
   const [geometryResult, setGeometryResult] = useState<CharacterMeshGeometryResult | null>(null)
   const geometryResultRef = useRef<CharacterMeshGeometryResult | null>(null)
   const sourceRef = useRef<DotsSourceScene | null>(null)

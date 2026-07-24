@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import type { ShaderPreset } from './types'
-import { validateShaderPreset } from './validation'
+import { isHexColor, validateShaderPreset } from './validation'
 
 const validPreset: ShaderPreset = {
   id: 'valid-preset',
@@ -24,6 +24,32 @@ const validPreset: ShaderPreset = {
 }
 
 describe('shader preset validation', () => {
+  it.each(['#123456', '#ABCDEF'])('keeps the compatibility color guard for valid values (%s)', (value) => {
+    expect(isHexColor(value)).toBe(true)
+  })
+
+  it.each(['#12345', '#1234567', '#12345678', '123456', '#12345g'])('rejects invalid compatibility color values (%s)', (value) => {
+    expect(isHexColor(value)).toBe(false)
+  })
+
+  it.each(['#12345', '#1234567', '#12345678', '123456', '#12345g', 123456])(
+    'rejects invalid color defaults at preset validation (%s)',
+    (value) => {
+      const invalidPreset: ShaderPreset = {
+        ...validPreset,
+        params: [{
+          type: 'color',
+          id: 'color',
+          uniformName: 'u_color',
+          label: 'Color',
+          default: value as string,
+        }],
+      }
+
+      expect(() => validateShaderPreset(invalidPreset)).toThrow(/invalid color default/)
+    },
+  )
+
   it('allows params that do not collide with reserved uniforms', () => {
     expect(() => validateShaderPreset(validPreset)).not.toThrow()
   })

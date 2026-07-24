@@ -2,17 +2,23 @@
 
 import type { IconType } from 'react-icons'
 import {
+  IoCubeOutline,
   IoDownloadOutline,
   IoOptionsOutline,
+  IoSettingsOutline,
   IoTextOutline,
 } from 'react-icons/io5'
 import { useStudioStore, type StudioMobileTab } from '@/app/studio/studio-store'
 import CharacterPanel from '@/components/studio/CharacterPanel'
 import StudioExportPanel from '@/components/studio/StudioExportPanel'
 import {
+  StudioModelDeformPanel,
+  StudioModelPanel,
   StudioEffectsPanel,
   StudioMotionPanel,
+  StudioModelReset,
 } from '@/components/studio/StudioLeftPanel'
+import StudioRightPanel from '@/components/studio/StudioRightPanel'
 import classes from './StudioShell.module.css'
 
 type MobileTabDefinition = {
@@ -23,7 +29,9 @@ type MobileTabDefinition = {
 
 const mobileTabs: MobileTabDefinition[] = [
   { id: 'input', label: 'Input', Icon: IoTextOutline },
+  { id: 'model', label: 'Model', Icon: IoCubeOutline },
   { id: 'effects', label: 'Effects', Icon: IoOptionsOutline },
+  { id: 'settings', label: 'Settings', Icon: IoSettingsOutline },
   { id: 'export', label: 'Export', Icon: IoDownloadOutline },
 ]
 
@@ -45,6 +53,20 @@ export default function StudioMobileTabs() {
             </>
           ) : null}
           {mobileTab === 'effects' ? <StudioEffectsPanel /> : null}
+          {mobileTab === 'model' ? (
+            <>
+              <div className={classes.inputGroupHeader}>
+                <div className={classes.inputLabel}>Model</div>
+                <StudioModelReset />
+              </div>
+              <StudioModelPanel />
+              <div className={classes.inputGroupHeader}>
+                <div className={classes.inputLabel}>Model Deform</div>
+              </div>
+              <StudioModelDeformPanel />
+            </>
+          ) : null}
+          {mobileTab === 'settings' ? <StudioRightPanel includeExport={false} title="Controllers" /> : null}
           {mobileTab === 'export' ? <StudioExportPanel /> : null}
         </div>
       </div>
@@ -58,6 +80,7 @@ export default function StudioMobileTabs() {
             type="button"
             className={classes.mobileTabButton}
             data-active={mobileTab === id}
+            aria-pressed={mobileTab === id}
             onClick={() => setMobileTab(id)}
           >
             <Icon aria-hidden width={18} height={18} />

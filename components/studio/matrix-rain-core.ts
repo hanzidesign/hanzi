@@ -74,7 +74,7 @@ export const DEFAULT_MATRIX_RAIN_SETTINGS: MatrixRainSettings = {
 
 const DROP_COUNT = 3
 
-/** Grainrad's scalar hash, kept public so shader parity tests can share fixed vectors. */
+/** Studio's scalar hash, kept public so shader parity tests can share fixed vectors. */
 export function hash11(value: number) {
   let hashed = fract(value * 0.1031)
   hashed *= hashed + 33.33
@@ -82,7 +82,7 @@ export function hash11(value: number) {
   return fract(hashed)
 }
 
-/** Grainrad's vec2 hash, kept public so glyph selection can be tested independently. */
+/** Studio's vec2 hash, kept public so glyph selection can be tested independently. */
 export function hash21([x, y]: MatrixVec2) {
   const p = [fract(x * 0.1031), fract(y * 0.1031), fract(x * 0.1031)]
   const dot = p[0] * (p[1] + 33.33)
@@ -131,7 +131,7 @@ export function selectMatrixGlyphIndex(
   cell: MatrixVec2,
   time: number,
   charsetLength: number,
-  // Accepted only by parity probes: Grainrad deliberately excludes rain Speed here.
+  // Accepted only by parity probes: Studio deliberately excludes rain Speed here.
   _rainSpeed?: number,
 ) {
   void _rainSpeed

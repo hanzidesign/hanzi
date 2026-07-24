@@ -5,7 +5,15 @@ import {
   type Texture,
 } from 'three'
 
-export type ContourControlValue = string | number | boolean
+import type { StudioControlValue } from './studio-effects'
+import {
+  readStudioBoolean as readBoolean,
+  readStudioEnum as readEnum,
+  readStudioNumber as readNumber,
+  readStudioString as readString,
+} from './studio-control-readers'
+
+export type ContourControlValue = StudioControlValue
 export type ContourControls = Readonly<Record<string, ContourControlValue>>
 
 export const CONTOUR_FILL_MODE_IDS = {
@@ -82,7 +90,7 @@ void main() {
   float top = sampleContourBrightness(v_uv + vec2(0.0, -pixelSize.y));
   float bottom = sampleContourBrightness(v_uv + vec2(0.0, pixelSize.y));
 
-  // Grainrad production leaves this neighbor-invert block empty. Only the
+  // Studio production leaves this neighbor-invert block empty. Only the
   // center brightness above is inverted before comparing quantized bands.
   if (u_invert > 0.5) {
   }
@@ -167,26 +175,4 @@ export function applyContourUniforms(
 
 export function disposeContourShaderMaterial(material: ShaderMaterial) {
   material.dispose()
-}
-
-function readNumber(value: ContourControlValue | undefined, fallback: number) {
-  return typeof value === 'number' && Number.isFinite(value) ? value : fallback
-}
-
-function readBoolean(value: ContourControlValue | undefined) {
-  return value === true ? 1 : 0
-}
-
-function readString(value: ContourControlValue | undefined, fallback: string) {
-  return typeof value === 'string' ? value : fallback
-}
-
-function readEnum<T extends Record<string, number>>(
-  value: ContourControlValue | undefined,
-  values: T,
-  fallback: keyof T,
-) {
-  return typeof value === 'string' && value in values
-    ? values[value as keyof T]
-    : values[fallback]
 }

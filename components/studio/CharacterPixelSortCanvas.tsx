@@ -23,7 +23,7 @@ import {
   WebGLRenderTarget,
 } from 'three'
 import { useStudioStore } from '@/app/studio/studio-store'
-import { withoutSharedControllerValues } from './grainrad-shared-controls'
+import { withoutSharedControllerValues } from './studio-shared-controls'
 import {
   createCharacterMeshGeometries,
   type CharacterMeshGeometryResult,
@@ -119,7 +119,7 @@ function CharacterPixelSortScene({
   const meshSettings = useStudioStore((store) => store.mesh)
   const theme = useStudioStore((store) => store.view.theme)
   const animation = useStudioStore((store) => store.animation)
-  const controls = useStudioStore((store) => store.grainradEffect.controls['pixel-sort'])
+  const controls = useStudioStore((store) => store.studioEffect.controls['pixel-sort'])
   const pixelSortControls = useMemo(
     () => withoutSharedControllerValues(controls),
     [controls],

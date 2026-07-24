@@ -73,7 +73,7 @@ export function getDotsCellCenter(
   ]
 }
 
-/** Uses strict comparisons because Grainrad leaves exact shape boundaries outside. */
+/** Uses strict comparisons because Studio leaves exact shape boundaries outside. */
 export function isInsideDotsShape(
   localX: number,
   localY: number,
@@ -103,7 +103,7 @@ export function renderDotsReference({
   const baseRadius = baseSpacing * 0.4 * settings.sizeMultiplier
   const background = normalizeRgb(settings.background)
 
-  // Grainrad uploads UI `custom` as shader mode 1 (grayscale), not mode 2
+  // Studio uploads UI `custom` as shader mode 1 (grayscale), not mode 2
   // (foreground tint). Keep foreground validated but deliberately unused.
   void settings.foreground
 

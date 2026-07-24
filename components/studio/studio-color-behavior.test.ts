@@ -7,10 +7,10 @@ import {
   createStudioStore,
 } from '@/app/studio/studio-store'
 import {
-  GRAINRAD_EFFECTS,
-  getGrainradControlDefaultValue,
-  isGrainradThemeColorControl,
-} from './grainrad-effects'
+  STUDIO_EFFECTS,
+  getStudioControlDefaultValue,
+  isStudioThemeColorControl,
+} from './studio-effects'
 import {
   DOTS_FRAGMENT_SHADER,
   createDotsShaderMaterial,
@@ -24,28 +24,28 @@ describe('Studio color behavior', () => {
     const store = createStudioStore(createMemoryStorage())
 
     expect(initial.view.theme).toBe(DEFAULT_VIEW_STATE.theme)
-    expect(initial.ascii.foregroundColor).toBe(initial.grainradEffect.controls.ascii.foreground)
-    expect(initial.ascii.backgroundColor).toBe(initial.grainradEffect.controls.ascii.background)
+    expect(initial.ascii.foregroundColor).toBe(initial.studioEffect.controls.ascii.foreground)
+    expect(initial.ascii.backgroundColor).toBe(initial.studioEffect.controls.ascii.background)
 
-    for (const effect of GRAINRAD_EFFECTS) {
+    for (const effect of STUDIO_EFFECTS) {
       const colorControls = effect.settingGroups
         .flatMap((group) => group.controls)
-        .filter(isGrainradThemeColorControl)
+        .filter(isStudioThemeColorControl)
 
       for (const control of colorControls) {
-        const expected = getGrainradControlDefaultValue(control, DEFAULT_VIEW_STATE.theme)
+        const expected = getStudioControlDefaultValue(control, DEFAULT_VIEW_STATE.theme)
 
-        expect(initial.grainradEffect.controls[effect.id][control.id]).toBe(expected)
+        expect(initial.studioEffect.controls[effect.id][control.id]).toBe(expected)
         store.getState().setSelectedEffect(effect.id)
-        store.getState().setGrainradEffectControl(effect.id, control.id, '#123456')
+        store.getState().setStudioEffectControl(effect.id, control.id, '#123456')
         store.getState().resetSelectedEffectControls()
-        expect(store.getState().grainradEffect.controls[effect.id][control.id]).toBe(expected)
+        expect(store.getState().studioEffect.controls[effect.id][control.id]).toBe(expected)
       }
     }
   })
 
   it('uses mono as the default for every remaining Color Mode control', () => {
-    const colorModeControls = GRAINRAD_EFFECTS.flatMap((effect) =>
+    const colorModeControls = STUDIO_EFFECTS.flatMap((effect) =>
       effect.settingGroups
         .flatMap((group) => group.controls)
         .filter((control) => control.kind === 'select' && control.id === 'color-mode')
@@ -63,10 +63,10 @@ describe('Studio color behavior', () => {
   })
 
   it('keeps Matrix Rain foreground, rain, and background colors as separate controls', () => {
-    const matrixRain = GRAINRAD_EFFECTS.find((effect) => effect.id === 'matrix-rain')!
+    const matrixRain = STUDIO_EFFECTS.find((effect) => effect.id === 'matrix-rain')!
     const colorIds = matrixRain.settingGroups
       .flatMap((group) => group.controls)
-      .filter(isGrainradThemeColorControl)
+      .filter(isStudioThemeColorControl)
       .map((control) => control.id)
 
     expect(colorIds).toEqual(['foreground', 'rain-color', 'background'])
@@ -97,7 +97,7 @@ describe('Studio color behavior', () => {
   })
 
   it('defaults Pixel Sort mode to Depth', () => {
-    const pixelSort = GRAINRAD_EFFECTS.find((effect) => effect.id === 'pixel-sort')!
+    const pixelSort = STUDIO_EFFECTS.find((effect) => effect.id === 'pixel-sort')!
     const sortMode = pixelSort.settingGroups
       .flatMap((group) => group.controls)
       .find((control) => control.id === 'sort-mode')

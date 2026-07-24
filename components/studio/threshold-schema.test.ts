@@ -1,14 +1,14 @@
 import { describe, expect, it } from 'vitest'
 
 import {
-  createDefaultGrainradEffectControls,
-  getGrainradEffectById,
-  isGrainradControlVisible,
-} from './grainrad-effects'
+  createDefaultStudioEffectControls,
+  getStudioEffectById,
+  isStudioControlVisible,
+} from './studio-effects'
 
-describe('Grainrad Threshold schema', () => {
+describe('Studio Threshold schema', () => {
   it('publishes an independent renderer and exact group/control order', () => {
-    const definition = getGrainradEffectById('threshold')
+    const definition = getStudioEffectById('threshold')
 
     expect(definition.renderer).toBe('threshold')
     expect(definition.settingGroups.map((group) => group.title)).toEqual([
@@ -30,7 +30,7 @@ describe('Grainrad Threshold schema', () => {
   })
 
   it('matches every option, default, range, step, and label', () => {
-    const definition = getGrainradEffectById('threshold')
+    const definition = getStudioEffectById('threshold')
     const controls = Object.fromEntries(
       definition.settingGroups.flatMap((group) => group.controls).map((control) => [control.id, control]),
     )
@@ -59,7 +59,7 @@ describe('Grainrad Threshold schema', () => {
       defaultValue: '#000000',
       visibleWhen: { controlId: 'color-mode', operator: 'equals', value: 'mono' },
     })
-    expect(createDefaultGrainradEffectControls().threshold).toMatchObject({
+    expect(createDefaultStudioEffectControls().threshold).toMatchObject({
       levels: 2,
       'threshold-point': 0.5,
       dither: false,
@@ -73,15 +73,15 @@ describe('Grainrad Threshold schema', () => {
   })
 
   it('shows Foreground and Background only in Mono mode', () => {
-    const definition = getGrainradEffectById('threshold')
+    const definition = getStudioEffectById('threshold')
     const controls = definition.settingGroups.flatMap((group) => group.controls)
-    const defaults = createDefaultGrainradEffectControls().threshold
+    const defaults = createDefaultStudioEffectControls().threshold
     const foreground = controls.find((control) => control.id === 'foreground')!
     const background = controls.find((control) => control.id === 'background')!
 
-    expect(isGrainradControlVisible(foreground, defaults)).toBe(true)
-    expect(isGrainradControlVisible(background, defaults)).toBe(true)
-    expect(isGrainradControlVisible(foreground, { ...defaults, 'color-mode': 'color' })).toBe(false)
-    expect(isGrainradControlVisible(background, { ...defaults, 'color-mode': 'color' })).toBe(false)
+    expect(isStudioControlVisible(foreground, defaults)).toBe(true)
+    expect(isStudioControlVisible(background, defaults)).toBe(true)
+    expect(isStudioControlVisible(foreground, { ...defaults, 'color-mode': 'color' })).toBe(false)
+    expect(isStudioControlVisible(background, { ...defaults, 'color-mode': 'color' })).toBe(false)
   })
 })

@@ -34,6 +34,8 @@ describe('Studio shared post-processing effects', () => {
   it('maps Grain controls into deterministic bounded uniforms', () => {
     const effect = new StudioGrainEffect()
 
+    expect(effect.uniforms.get('uIntensity')?.value).toBe(0.01)
+
     effect.setParameters({ intensity: 1.5, mode: 'pixel', size: 18, speed: 200, time: 4.25 })
     effect.setSize(640, 360)
     effect.setVisualSize(320, 180)
@@ -66,6 +68,8 @@ describe('Studio shared post-processing effects', () => {
   it('uses a UV warp for CRT Curve instead of a brightness-only grade', () => {
     const effect = new StudioCrtCurveEffect()
 
+    expect(effect.uniforms.get('uAmount')?.value).toBe(0.1)
+
     effect.setAmount(0.2)
 
     expect(effect.uniforms.get('uAmount')?.value).toBe(0.2)
@@ -78,7 +82,7 @@ describe('Studio shared post-processing effects', () => {
   it('uses clamped framebuffer-sized uniforms for custom Scanlines', () => {
     const effect = new StudioScanlineEffect()
 
-    expect(effect.uniforms.get('uOpacity')?.value).toBe(0.5)
+    expect(effect.uniforms.get('uOpacity')?.value).toBe(0.2)
     expect(effect.uniforms.get('uSpacing')?.value).toBe(80)
     expect(effect.uniforms.get('uOffset')?.value).toBe(0)
     expect(effect.uniforms.get('uSpeed')?.value).toBe(1)

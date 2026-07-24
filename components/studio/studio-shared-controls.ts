@@ -1,6 +1,6 @@
-import type { GrainradControlValue } from './grainrad-effects'
+import type { StudioControlValue } from './studio-effects'
 
-export const GRAINRAD_SHARED_CONTROLLER_IDS = new Set([
+export const STUDIO_SHARED_CONTROLLER_IDS = new Set([
   'processing-invert',
   'brightness-map',
   'edge-enhance',
@@ -36,9 +36,9 @@ export const GRAINRAD_SHARED_CONTROLLER_IDS = new Set([
 ])
 
 export function withoutSharedControllerValues(
-  controls: Record<string, GrainradControlValue>,
+  controls: Record<string, StudioControlValue>,
 ) {
   return Object.fromEntries(
-    Object.entries(controls).filter(([id]) => !GRAINRAD_SHARED_CONTROLLER_IDS.has(id)),
+    Object.entries(controls).filter(([id]) => !STUDIO_SHARED_CONTROLLER_IDS.has(id)),
   )
 }

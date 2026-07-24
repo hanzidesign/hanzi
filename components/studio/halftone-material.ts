@@ -5,7 +5,14 @@ import {
   type Texture,
 } from 'three'
 
-export type HalftoneControlValue = string | number | boolean
+import type { StudioControlValue } from './studio-effects'
+import {
+  readStudioBoolean as readBoolean,
+  readStudioNumber as readNumber,
+  readStudioString as readString,
+} from './studio-control-readers'
+
+export type HalftoneControlValue = StudioControlValue
 export type HalftoneControls = Readonly<Record<string, HalftoneControlValue>>
 
 export type CreateHalftoneShaderMaterialOptions = Readonly<{
@@ -285,18 +292,6 @@ export function applyHalftoneUniforms(
   material.uniforms.u_vignette.value = readBoolean(controls.vignette)
   material.uniforms.u_crtCurve.value = readBoolean(controls['crt-curve'])
   material.uniforms.u_phosphor.value = readBoolean(controls.phosphor)
-}
-
-function readNumber(value: HalftoneControlValue | undefined, fallback: number) {
-  return typeof value === 'number' && Number.isFinite(value) ? value : fallback
-}
-
-function readBoolean(value: HalftoneControlValue | undefined) {
-  return value === true ? 1 : 0
-}
-
-function readString(value: HalftoneControlValue | undefined, fallback: string) {
-  return typeof value === 'string' ? value : fallback
 }
 
 function readShape(value: HalftoneControlValue | undefined) {

@@ -39,7 +39,7 @@ export const DEFAULT_BLOCKIFY_SETTINGS: BlockifySettings = {
 }
 
 /**
- * Mirrors Grainrad's normalized-coordinate linear clamp sampler. Coordinates
+ * Mirrors Studio's normalized-coordinate linear clamp sampler. Coordinates
  * outside the texture are clamped before bilinear interpolation.
  */
 export function sampleBlockifySourceLinear(
@@ -68,7 +68,7 @@ export function sampleBlockifySourceLinear(
   return [sampleChannel(0), sampleChannel(1), sampleChannel(2)]
 }
 
-/** Grainrad uses strict comparisons, leaving values exactly on an edge inside. */
+/** Studio uses strict comparisons, leaving values exactly on an edge inside. */
 export function isBlockifyOutlinePixel(
   localX: number,
   localY: number,

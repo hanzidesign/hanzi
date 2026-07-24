@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest'
 
-import { createDefaultGrainradEffectControls, getGrainradEffectById } from './grainrad-effects'
+import { createDefaultStudioEffectControls, getStudioEffectById } from './studio-effects'
 
-describe('Grainrad Crosshatch schema', () => {
+describe('Studio Crosshatch schema', () => {
   it('publishes an independent renderer and exact group/control order', () => {
-    const definition = getGrainradEffectById('crosshatch')
+    const definition = getStudioEffectById('crosshatch')
     expect(definition.renderer).toBe('crosshatch')
     expect(definition.settingGroups.map((group) => group.title)).toEqual([
       'Crosshatch', 'Background Lines', 'Adjustments', 'Color',
@@ -18,7 +18,7 @@ describe('Grainrad Crosshatch schema', () => {
   })
 
   it('matches every production default, range, step, label, and always-visible row', () => {
-    const definition = getGrainradEffectById('crosshatch')
+    const definition = getStudioEffectById('crosshatch')
     const controls = Object.fromEntries(
       definition.settingGroups.flatMap((group) => group.controls).map((control) => [control.id, control]),
     )
@@ -58,13 +58,13 @@ describe('Grainrad Crosshatch schema', () => {
     expect(controls['line-color']).toMatchObject({ kind: 'color', defaultValue: '#000000' })
     expect(controls.background).toMatchObject({ kind: 'color', defaultValue: '#ffffff' })
     expect(Object.values(controls).every((control) => control.visibleWhen === undefined)).toBe(true)
-    expect(createDefaultGrainradEffectControls('light').crosshatch).toMatchObject({
+    expect(createDefaultStudioEffectControls('light').crosshatch).toMatchObject({
       density: 6, layers: 3, angle: 45, 'line-width': 0.08, randomness: 0,
       'background-density': 12, 'background-layers': 1, 'background-angle': 45,
       'background-line-width': 0.08, 'background-randomness': 0, 'background-speed': 0.1,
       invert: false, brightness: -15, contrast: 0, 'line-color': '#000000', background: '#ffffff',
     })
-    expect(createDefaultGrainradEffectControls('dark').crosshatch).toMatchObject({
+    expect(createDefaultStudioEffectControls('dark').crosshatch).toMatchObject({
       'background-density': 12,
       'background-layers': 1,
       'background-angle': 45,

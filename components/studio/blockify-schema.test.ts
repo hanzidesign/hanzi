@@ -1,14 +1,14 @@
 import { describe, expect, it } from 'vitest'
 
 import {
-  createDefaultGrainradEffectControls,
-  getGrainradEffectById,
-  isGrainradControlVisible,
-} from './grainrad-effects'
+  createDefaultStudioEffectControls,
+  getStudioEffectById,
+  isStudioControlVisible,
+} from './studio-effects'
 
-describe('Grainrad Blockify schema', () => {
+describe('Studio Blockify schema', () => {
   it('publishes an independent renderer and exact group/control order', () => {
-    const definition = getGrainradEffectById('blockify')
+    const definition = getStudioEffectById('blockify')
 
     expect(definition.renderer).toBe('blockify')
     expect(definition.settingGroups.map((group) => group.title)).toEqual([
@@ -29,7 +29,7 @@ describe('Grainrad Blockify schema', () => {
   })
 
   it('matches every option, default, range, step, and label', () => {
-    const definition = getGrainradEffectById('blockify')
+    const definition = getStudioEffectById('blockify')
     const controls = Object.fromEntries(
       definition.settingGroups.flatMap((group) => group.controls).map((control) => [control.id, control]),
     )
@@ -67,7 +67,7 @@ describe('Grainrad Blockify schema', () => {
       defaultValue: '#000000',
       visibleWhen: { controlId: 'color-mode', operator: 'equals', value: 'mono' },
     })
-    expect(createDefaultGrainradEffectControls().blockify).toMatchObject({
+    expect(createDefaultStudioEffectControls().blockify).toMatchObject({
       style: 'full',
       'block-size': 8,
       'border-width': 1,
@@ -80,18 +80,18 @@ describe('Grainrad Blockify schema', () => {
   })
 
   it('shows Foreground and Background exactly in Mono mode', () => {
-    const definition = getGrainradEffectById('blockify')
+    const definition = getStudioEffectById('blockify')
     const foreground = definition.settingGroups
       .flatMap((group) => group.controls)
       .find((control) => control.id === 'foreground')!
     const background = definition.settingGroups
       .flatMap((group) => group.controls)
       .find((control) => control.id === 'background')!
-    const defaults = createDefaultGrainradEffectControls().blockify
+    const defaults = createDefaultStudioEffectControls().blockify
 
-    expect(isGrainradControlVisible(foreground, defaults)).toBe(true)
-    expect(isGrainradControlVisible(background, defaults)).toBe(true)
-    expect(isGrainradControlVisible(foreground, { ...defaults, 'color-mode': 'color' })).toBe(false)
-    expect(isGrainradControlVisible(background, { ...defaults, 'color-mode': 'color' })).toBe(false)
+    expect(isStudioControlVisible(foreground, defaults)).toBe(true)
+    expect(isStudioControlVisible(background, defaults)).toBe(true)
+    expect(isStudioControlVisible(foreground, { ...defaults, 'color-mode': 'color' })).toBe(false)
+    expect(isStudioControlVisible(background, { ...defaults, 'color-mode': 'color' })).toBe(false)
   })
 })

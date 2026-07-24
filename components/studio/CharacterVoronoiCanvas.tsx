@@ -22,7 +22,7 @@ import {
   WebGLRenderTarget,
 } from 'three'
 import { useStudioStore } from '@/app/studio/studio-store'
-import { withoutSharedControllerValues } from './grainrad-shared-controls'
+import { withoutSharedControllerValues } from './studio-shared-controls'
 import {
   applyVoronoiUniforms,
   createVoronoiShaderMaterial,
@@ -109,7 +109,7 @@ function CharacterVoronoiScene({
   const { camera, gl, size } = useThree()
   const meshSettings = useStudioStore((store) => store.mesh)
   const animation = useStudioStore((store) => store.animation)
-  const controls = useStudioStore((store) => store.grainradEffect.controls['voronoi'])
+  const controls = useStudioStore((store) => store.studioEffect.controls['voronoi'])
   const [geometryResult, setGeometryResult] = useState<CharacterMeshGeometryResult | null>(null)
   const geometryResultRef = useRef<CharacterMeshGeometryResult | null>(null)
   const sourceRef = useRef<VoronoiSourceScene | null>(null)

@@ -6,6 +6,7 @@ import {
   createStudioStore,
   STUDIO_STORE_STORAGE_KEY,
 } from './studio-store'
+type StudioStoreHook = ReturnType<typeof createStudioStore>
 import { createDefaultParams } from '@/shaders/uniforms'
 import { getDefaultShaderPreset, getShaderPresetById } from '@/shaders/registry'
 import { DEFAULT_CHARACTER_MESH_DEFORM } from '@/components/studio/character-mesh-deform'
@@ -72,6 +73,35 @@ describe('studio store', () => {
     expect(state.displacement.patternUrl).toBe('/images/patterns/000.jpg')
     expect(state.displacement.subdivisionLevel).toBe(0)
     expect(state.view.activePanel).toBe('character')
+  })
+
+  it('sanitizes ASCII color controls through the shared six-digit color guard', () => {
+    const { storage } = createMemoryStorage()
+    const store = createStudioStore(storage)
+    store.getState().setAsciiControl({
+      foregroundColor: '#ABCDEF',
+      backgroundColor: '#123456',
+    })
+    expect(store.getState().ascii).toMatchObject({
+      foregroundColor: '#ABCDEF',
+      backgroundColor: '#123456',
+    })
+    const validColors = {
+      foregroundColor: store.getState().ascii.foregroundColor,
+      backgroundColor: store.getState().ascii.backgroundColor,
+    }
+
+    store.getState().setAsciiControl({
+      foregroundColor: '#12345',
+      backgroundColor: '#12345678',
+    })
+    expect(store.getState().ascii).toMatchObject(validColors)
+
+    store.getState().setAsciiControl({
+      foregroundColor: 123456 as never,
+      backgroundColor: null as never,
+    })
+    expect(store.getState().ascii).toMatchObject(validColors)
   })
 
   it('falls back and clamps persisted Model Deform controls', () => {
@@ -179,7 +209,7 @@ describe('studio store', () => {
     })
   })
 
-  it('uses a clean Grainrad ASCII storage key without reading old mesh or displacement state', () => {
+  it('uses a clean Studio ASCII storage key without reading old mesh or displacement state', () => {
     const initial = createInitialStudioStoreState()
     const oldState = {
       ...initial,
@@ -197,7 +227,7 @@ describe('studio store', () => {
     )
     const store = createStudioStore(storage)
 
-    expect(STUDIO_STORE_STORAGE_KEY).toBe('hanzi-studio-grainrad-effects-v1')
+    expect(STUDIO_STORE_STORAGE_KEY).toBe('hanzi-studio-effects-v2')
     expect(store.getState().character).toEqual(initial.character)
     expect(store.getState().mesh).toEqual(initial.mesh)
     expect(store.getState().displacement).toEqual(initial.displacement)
@@ -577,5 +607,51 @@ describe('studio store', () => {
       },
     })
     expect(readPersistedState()).not.toHaveProperty('shaderLayers')
+  })
+
+  it('shares reorder behavior across Morph, Shader, and Pattern Layers', () => {
+    const scenarios: Array<{
+      name: string
+      readLayers: (store: StudioStoreHook) => readonly { id: string }[]
+      reorder: (store: StudioStoreHook, fromIndex: number, toIndex: number) => void
+    }> = [
+      {
+        name: 'Morph',
+        readLayers: (store) => store.getState().morphStack.layers,
+        reorder: (store, fromIndex, toIndex) => store.getState().reorderMorphLayer(fromIndex, toIndex),
+      },
+      {
+        name: 'Shader',
+        readLayers: (store) => store.getState().shaderLayers.layers,
+        reorder: (store, fromIndex, toIndex) => store.getState().reorderShaderLayer(fromIndex, toIndex),
+      },
+      {
+        name: 'Pattern',
+        readLayers: (store) => store.getState().patternLayers,
+        reorder: (store, fromIndex, toIndex) => store.getState().reorderPatternLayer(fromIndex, toIndex),
+      },
+    ]
+
+    for (const scenario of scenarios) {
+      const { storage } = createMemoryStorage()
+      const store = createStudioStore(storage)
+      const original = scenario.readLayers(store)
+
+      expect(original.length, `${scenario.name} layers`).toBeGreaterThan(1)
+
+      scenario.reorder(store, 1, 0)
+      expect(scenario.readLayers(store)).toEqual([original[1], original[0], ...original.slice(2)])
+
+      const sameIndexBefore = scenario.readLayers(store)
+      scenario.reorder(store, 0, 0)
+      expect(scenario.readLayers(store)).toEqual(sameIndexBefore)
+      expect(scenario.readLayers(store)).not.toBe(sameIndexBefore)
+
+      const invalidBefore = scenario.readLayers(store)
+      scenario.reorder(store, -1, 0)
+      expect(scenario.readLayers(store)).toBe(invalidBefore)
+      scenario.reorder(store, 0, invalidBefore.length)
+      expect(scenario.readLayers(store)).toBe(invalidBefore)
+    }
   })
 })

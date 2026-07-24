@@ -1,12 +1,12 @@
-# Phase 5D Grainrad Studio Refactor Plan
+# Phase 5D Studio Refactor Plan
 
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
 **Status:** Implemented and verified on 2026-06-18.
 
-**Goal:** Rebuild only `/studio` to match Grainrad's editor architecture, UI layout, and compact effect-controller language while preserving Hanzi Studio's current character selector and current configured font stack.
+**Goal:** Rebuild only `/studio` to match reference editor architecture, UI layout, and compact effect-controller language while preserving Hanzi Studio's current character selector and current configured font stack.
 
-**Architecture:** Replace the current Mantine AppShell/accordion workbench with a route-local, terminal-like Studio shell modeled on Grainrad: fixed desktop sidebars, full-height center preview, compact collapsible sections, mobile bottom tabs, and a mobile settings bottom sheet. Keep light mode as the default, but support both light and dark `/studio` themes through the same controller primitives. Keep the active rendering target ASCII-only: selected Hanzi SVG -> true 3D/ASCII preview -> ASCII settings and export. Remove old non-ASCII visual effect UI and state instead of preserving backward compatibility.
+**Architecture:** Replace the current Mantine AppShell/accordion workbench with a route-local, terminal-like Studio shell modeled on reference editor: fixed desktop sidebars, full-height center preview, compact collapsible sections, mobile bottom tabs, and a mobile settings bottom sheet. Keep light mode as the default, but support both light and dark `/studio` themes through the same controller primitives. Keep the active rendering target ASCII-only: selected Hanzi SVG -> true 3D/ASCII preview -> ASCII settings and export. Remove old non-ASCII visual effect UI and state instead of preserving backward compatibility.
 
 **Tech Stack:** Next.js App Router, React, Mantine where it does not fight the target UI, CSS Modules, Zustand, Three.js, `@react-three/fiber`, Vitest.
 
@@ -14,7 +14,7 @@
 
 ## Reference Analysis
 
-Reference inspected on 2026-06-18: https://grainrad.com/
+Reference inspected on 2026-06-18: 
 
 Desktop structure:
 
@@ -46,25 +46,25 @@ Visual tokens to mirror:
 - Dark border: near `#222`.
 - Dark text tiers: dim `#555`, normal `#888`, bright `#ccc`.
 - Light theme is the default and must keep the same layout and controller language, using quiet light neutrals rather than returning to the old colorful/light Mantine panel style.
-- No Grainrad font import. Preserve this repo's current font setup from `theme/font.ts`.
+- No reference editor font import. Preserve this repo's current font setup from `theme/font.ts`.
 
 Theme behavior:
 
 - `/studio` defaults to light.
 - `/studio` supports light and dark with route-local tokens, for example `data-studio-theme="dark"` and `data-studio-theme="light"`.
 - Theme choice can persist in the new clean Studio store if it does not affect `/`.
-- The top-right preview action cluster should include a compact theme toggle/control inspired by Grainrad's theme button, but it must switch between Hanzi Studio light/dark tokens.
+- The top-right preview action cluster should include a compact theme toggle/control inspired by the reference editor's theme button, but it must switch between Hanzi Studio light/dark tokens.
 - Effect controllers, export controls, tabs, disclosures, and mobile settings sheet must use the same component primitives in both themes.
 
 ## Scope Locks
 
 - Only `/studio` is in scope. Do not redesign `/`.
-- Keep the current character selector as the Studio input. Do not add Grainrad's file uploader as the primary input.
-- Keep current Hanzi font configuration. Do not import or switch to Grainrad's IBM Plex Mono / JetBrains Mono stack.
+- Keep the current character selector as the Studio input. Do not add the reference editor's file uploader as the primary input.
+- Keep current Hanzi font configuration. Do not import or switch to the reference editor's IBM Plex Mono / JetBrains Mono stack.
 - Default `/studio` to light locally, while supporting light/dark Studio theme tokens. Do not change global homepage color behavior unless the user separately asks.
 - Remove old non-ASCII effect design, controls, and state from the active `/studio` surface. Do not keep compatibility paths for Morph Stack, Pattern Layers, Surface Shader Layers, Randomize, or legacy Phase 5B visual controls unless a piece is directly needed by ASCII.
 - Keep ASCII-related renderer code and controls: `CharacterAsciiCanvas`, ASCII material/shader controls, mesh auto-rotation, camera/interaction, ASCII style, post/CRT finishing if panel-backed.
-- Use existing dependencies. Do not introduce Tailwind just because Grainrad uses utility classes.
+- Use existing dependencies. Do not introduce Tailwind just because reference editor uses utility classes.
 - Do not run Prettier. Use targeted formatting, tests, typecheck, build, lint, and `git diff --check`.
 
 ## Target `/studio` Information Architecture
@@ -73,7 +73,7 @@ Desktop:
 
 - Left sidebar:
   - Brand row: `Hanzi Studio`.
-  - `Input`: current `CharacterPanel` selector, rethemed to the Grainrad panel density.
+  - `Input`: current `CharacterPanel` selector, rethemed to the reference editor panel density.
   - `Effects`: ASCII is the only active effect row. Do not show fake non-ASCII effects as usable controls.
   - `Presets`: ASCII-only presets if they are real and wired; otherwise collapsed empty state.
 - Center preview:
@@ -81,13 +81,13 @@ Desktop:
   - Top-right compact icon buttons for light/dark theme, camera/interaction if retained, and fullscreen.
   - Top-center status such as `ASCII [WEBGL]` or actual renderer mode.
   - Center status only for empty/error/loading.
-  - Bottom zoom/reset HUD matching Grainrad's `- 100% + | Reset 100%` layout.
+  - Bottom zoom/reset HUD matching the reference editor's `- 100% + | Reset 100%` layout.
 - Right sidebar:
   - `Settings`: ASCII scale, spacing/density, output width if supported, charset/style, brightness/contrast, color/background, and intensity.
   - `Processing`: ASCII-related mesh/animation/pointer behavior only.
   - `Post-Processing`: ASCII-related CRT/bloom/scanline/grain/chromatic controls only.
   - `Export`: supported real exports only. Prefer PNG first; add text export only if the renderer can produce meaningful ASCII text.
-  - Every effect/controller row must use the Grainrad-like controller shape: label, current value, compact control, optional reset, no expanded cards.
+  - Every effect/controller row must use the reference-style controller shape: label, current value, compact control, optional reset, no expanded cards.
 
 Mobile:
 
@@ -100,7 +100,7 @@ Mobile:
 
 ## State And Data Model Direction
 
-- Create a clean Studio storage key for this Grainrad/ASCII direction, for example `hanzi-studio-grainrad-ascii-v1`.
+- Create a clean Studio storage key for this reference editor's ASCII direction, for example `hanzi-studio-ascii-v1`.
 - Keep persisted state compact:
   - `character`
   - `ascii`
@@ -157,7 +157,7 @@ Delete or disconnect from active `/studio`:
 - Old accordion ownership in `StudioControls`.
 - Old Phase 5B effect panels that are not ASCII-related.
 - Old light panel primitives.
-- Tests that assert the Efecto/Mantine accordion structure after new Grainrad contracts replace them.
+- Tests that assert the Efecto/Mantine accordion structure after new reference editor contracts replace them.
 
 ## Implementation Phases
 
@@ -166,7 +166,7 @@ Delete or disconnect from active `/studio`:
 - Review this plan with the user.
 - Resolve open questions before implementation:
   - Which export formats are required for the first pass: PNG only, PNG plus text, or all currently possible formats?
-  - Should the `Effects` panel display only active ASCII, or show Grainrad-like disabled future rows?
+  - Should the `Effects` panel display only active ASCII, or show reference-style disabled future rows?
   - Should footer links exist in the left sidebar, and if so should they link to `/`, docs, or be omitted?
 
 ### Phase 1: Terminal Shell Contract
@@ -194,7 +194,7 @@ Delete or disconnect from active `/studio`:
 ### Phase 3: ASCII Settings Mapping
 
 - Write failing tests for the right sidebar Settings rows, effect-controller primitives, and their store mappings.
-- Move ASCII controls into Grainrad-like row groups:
+- Move ASCII controls into reference-style row groups:
   - ASCII
   - Adjustments
   - Color
@@ -208,7 +208,7 @@ Delete or disconnect from active `/studio`:
 ### Phase 4: Preview Stage And Mobile Settings Sheet
 
 - Write failing tests for preview HUD/status/floating actions and mobile settings sheet state.
-- Update `StudioCanvas` to match Grainrad's preview hierarchy:
+- Update `StudioCanvas` to match the reference editor's preview hierarchy:
   - themed preview root
   - top-center renderer status
   - top-right tools
@@ -242,7 +242,7 @@ Delete or disconnect from active `/studio`:
 
 - Remove obsolete code paths and obsolete tests that only support old non-ASCII design.
 - Confirm no old Mantine panel colors or shell styles remain in active `/studio` CSS.
-- Confirm no Grainrad font imports were added.
+- Confirm no reference editor font imports were added.
 - Confirm `/` still renders the existing homepage.
 - Run final verification:
   - `pnpm test`
@@ -254,9 +254,9 @@ Delete or disconnect from active `/studio`:
 
 ## Acceptance Criteria
 
-- `/studio` desktop layout visually follows Grainrad's editor architecture: left `18rem`, center preview, right `22rem`, full `100dvh`, terminal-style panels with light as default and dark support.
-- `/studio` mobile layout follows Grainrad's architecture: brand header, preview, bottom tabs, floating settings button, settings bottom sheet.
-- `/studio` effect/controller UI follows Grainrad's compact row, disclosure, range, select, and option-grid design language.
+- `/studio` desktop layout visually follows reference editor architecture: left `18rem`, center preview, right `22rem`, full `100dvh`, terminal-style panels with light as default and dark support.
+- `/studio` mobile layout follows the reference editor's architecture: brand header, preview, bottom tabs, floating settings button, settings bottom sheet.
+- `/studio` effect/controller UI follows the reference editor's compact row, disclosure, range, select, and option-grid design language.
 - Current character selector remains the input mechanism.
 - Current configured fonts remain in use.
 - `/` homepage is unchanged.
@@ -269,7 +269,7 @@ Delete or disconnect from active `/studio`:
 
 After implementation phases are approved and completed, ask the user to open `/studio` and verify:
 
-- Desktop: left input/effects/presets, center preview, right settings/export match the Grainrad structure.
+- Desktop: left input/effects/presets, center preview, right settings/export match the reference editor structure.
 - Desktop: no old light Mantine header or accordion shell remains.
 - Desktop: changing country/year in Input updates the ASCII character.
 - Desktop: ASCII Settings rows visibly affect the renderer.
@@ -287,10 +287,10 @@ After implementation phases are approved and completed, ask the user to open `/s
 - Added light/dark Studio theme tokens with light as default and a preview action theme toggle.
 - Added shared `TerminalSection` and `TerminalRows` primitives for compact disclosures, ranges, selects, colors, toggles, and option grids.
 - Rebuilt active panels as ASCII-only: `StudioLeftPanel`, `StudioRightPanel`, `StudioMobileTabs`, `StudioSettingsSheet`, `StudioExportPanel`, and `StudioThemeToggle`.
-- Added Grainrad-like mobile bottom tabs and settings bottom sheet.
-- Simplified active persistence under `hanzi-studio-grainrad-ascii-v1` to character, ASCII, mesh, renderer, view, and export state.
+- Added reference-style mobile bottom tabs and settings bottom sheet.
+- Simplified active persistence under `hanzi-studio-ascii-v1` to character, ASCII, mesh, renderer, view, and export state.
 - Updated ASCII shader controls for brightness, saturation, hue rotation, sharpness, gamma, foreground/background color, and color intensity.
 - Fixed the WebGL canvas to fill the preview stage and preserve its drawing buffer for PNG export.
-- Live Grainrad comparison confirmed the reference structure and operation model: left 288px sidebar, center preview, right 352px sidebar, compact sections/rows, bottom mobile tabs, and settings sheet.
+- Live reference editor comparison confirmed the reference structure and operation model: left 288px sidebar, center preview, right 352px sidebar, compact sections/rows, bottom mobile tabs, and settings sheet.
 - Local browser verification passed at desktop and 390px mobile: canvas filled preview, theme toggle worked, presets expanded/applied, charset select changed to `matrix`, export panel was visible, mobile tabs worked, and settings sheet opened.
 - Automated verification passed: Phase 5D focused tests, full `pnpm test` (40 files / 165 tests), `pnpm exec tsc --noEmit`, and `pnpm run build`.

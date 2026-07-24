@@ -1,14 +1,14 @@
 import { describe, expect, it } from 'vitest'
 
 import {
-  createDefaultGrainradEffectControls,
-  getGrainradEffectById,
-  isGrainradControlVisible,
-} from './grainrad-effects'
+  createDefaultStudioEffectControls,
+  getStudioEffectById,
+  isStudioControlVisible,
+} from './studio-effects'
 
-describe('Grainrad Dithering schema', () => {
-  it('publishes the Dithering renderer and Grainrad core control contract', () => {
-    const definition = getGrainradEffectById('dithering')
+describe('Studio Dithering schema', () => {
+  it('publishes the Dithering renderer and Studio core control contract', () => {
+    const definition = getStudioEffectById('dithering')
     const controls = Object.fromEntries(
       definition.settingGroups.flatMap((group) => group.controls).map((control) => [control.id, control]),
     )
@@ -55,7 +55,7 @@ describe('Grainrad Dithering schema', () => {
   })
 
   it('publishes every dynamic Dithering control with its effect-local visibility rule', () => {
-    const definition = getGrainradEffectById('dithering')
+    const definition = getStudioEffectById('dithering')
     const controls = Object.fromEntries(
       definition.settingGroups.flatMap((group) => group.controls).map((control) => [control.id, control]),
     )
@@ -134,11 +134,11 @@ describe('Grainrad Dithering schema', () => {
   })
 
   it('shows only the Settings that apply to the active Dithering modes', () => {
-    const definition = getGrainradEffectById('dithering')
+    const definition = getStudioEffectById('dithering')
     const controls = definition.settingGroups.flatMap((group) => group.controls)
-    const defaults = createDefaultGrainradEffectControls().dithering
+    const defaults = createDefaultStudioEffectControls().dithering
     const visibleDefaults = controls
-      .filter((control) => isGrainradControlVisible(control, defaults))
+      .filter((control) => isStudioControlVisible(control, defaults))
       .map((control) => control.id)
 
     expect(visibleDefaults).toContain('matrix-size')
@@ -161,7 +161,7 @@ describe('Grainrad Dithering schema', () => {
       'chromatic-enabled': true,
     }
     const visibleRgbCrosshatch = controls
-      .filter((control) => isGrainradControlVisible(control, rgbCrosshatch))
+      .filter((control) => isStudioControlVisible(control, rgbCrosshatch))
       .map((control) => control.id)
 
     expect(visibleRgbCrosshatch).toEqual(expect.arrayContaining([
@@ -180,7 +180,7 @@ describe('Grainrad Dithering schema', () => {
   })
 
   it('shows an editable custom palette only for Palette + Custom', () => {
-    const definition = getGrainradEffectById('dithering')
+    const definition = getStudioEffectById('dithering')
     const customPalette = definition.settingGroups
       .flatMap((group) => group.controls)
       .find((control) => control.id === 'custom-palette')
@@ -189,11 +189,11 @@ describe('Grainrad Dithering schema', () => {
       kind: 'text',
       defaultValue: '#9bbc0f,#8bac0f,#306230,#0f380f',
     })
-    expect(isGrainradControlVisible(customPalette!, {
+    expect(isStudioControlVisible(customPalette!, {
       'color-mode': 'palette',
       palette: 'custom',
     })).toBe(true)
-    expect(isGrainradControlVisible(customPalette!, {
+    expect(isStudioControlVisible(customPalette!, {
       'color-mode': 'palette',
       palette: 'gameboy-4',
     })).toBe(false)

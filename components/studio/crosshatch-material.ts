@@ -1,6 +1,13 @@
 import { Color, ShaderMaterial, Vector2, type Texture } from 'three'
 
-export type CrosshatchControlValue = string | number | boolean
+import type { StudioControlValue } from './studio-effects'
+import {
+  readStudioBoolean as readBoolean,
+  readStudioNumber as readNumber,
+  readStudioString as readString,
+} from './studio-control-readers'
+
+export type CrosshatchControlValue = StudioControlValue
 export type CrosshatchControls = Readonly<Record<string, CrosshatchControlValue>>
 
 export type CreateCrosshatchShaderMaterialOptions = Readonly<{
@@ -337,16 +344,4 @@ export function applyCrosshatchUniforms(
 
 export function disposeCrosshatchShaderMaterial(material: ShaderMaterial) {
   material.dispose()
-}
-
-function readNumber(value: CrosshatchControlValue | undefined, fallback: number) {
-  return typeof value === 'number' && Number.isFinite(value) ? value : fallback
-}
-
-function readString(value: CrosshatchControlValue | undefined, fallback: string) {
-  return typeof value === 'string' ? value : fallback
-}
-
-function readBoolean(value: CrosshatchControlValue | undefined) {
-  return value === true ? 1 : 0
 }

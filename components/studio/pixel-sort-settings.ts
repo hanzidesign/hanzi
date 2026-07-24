@@ -1,4 +1,5 @@
-import type { GrainradControlValue } from './grainrad-effects'
+import type { StudioControlValue } from './studio-effects'
+import { isSixDigitHexColor } from '@/utils/colorValidation'
 import {
   DEFAULT_PIXEL_SORT_SETTINGS,
   type PixelSortDirection,
@@ -8,7 +9,7 @@ import {
 } from './pixel-sort-core'
 
 export function readPixelSortSettings(
-  controls: Readonly<Record<string, GrainradControlValue>>,
+  controls: Readonly<Record<string, StudioControlValue>>,
   theme: PixelSortTheme = 'light',
 ): PixelSortSettings {
   return {
@@ -33,18 +34,18 @@ export function readPixelSortSettings(
   }
 }
 
-function readNumber(value: GrainradControlValue | undefined, fallback: number) {
+function readNumber(value: StudioControlValue | undefined, fallback: number) {
   return typeof value === 'number' && Number.isFinite(value) ? value : fallback
 }
 
 function readEnum<T extends PixelSortDirection | PixelSortMode>(
-  value: GrainradControlValue | undefined,
+  value: StudioControlValue | undefined,
   options: readonly T[],
   fallback: T,
 ) {
   return typeof value === 'string' && options.includes(value as T) ? value as T : fallback
 }
 
-function readColor(value: GrainradControlValue | undefined, fallback: string) {
-  return typeof value === 'string' && /^#[\da-f]{6}$/i.test(value) ? value : fallback
+function readColor(value: StudioControlValue | undefined, fallback: string) {
+  return typeof value === 'string' && isSixDigitHexColor(value) ? value : fallback
 }

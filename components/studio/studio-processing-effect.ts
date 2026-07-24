@@ -6,12 +6,12 @@ import {
   type WebGLRenderTarget,
 } from 'three'
 
-import type { GrainradControlValue } from './grainrad-effects'
+import type { StudioControlValue } from './studio-effects'
 
 export const STUDIO_PROCESSING_LIMITS = {
   brightnessMap: { min: 0, max: 6, defaultValue: 1 },
   edgeEnhance: { min: 0, max: 4, defaultValue: 0 },
-  blurRadius: { min: 0, max: 64, defaultValue: 0 },
+  blurRadius: { min: 0, max: 100, defaultValue: 0 },
   quantizeLevels: { min: 0, max: 64, defaultValue: 0 },
   shapeMatching: { min: 0, max: 1, defaultValue: 0 },
 } as const
@@ -106,7 +106,7 @@ void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor)
 `
 
 export function resolveStudioProcessingValues(
-  controls: Record<string, GrainradControlValue> | undefined,
+  controls: Record<string, StudioControlValue> | undefined,
 ): StudioProcessingValues {
   return {
     invert: controls?.['processing-invert'] === true ? 1 : 0,
@@ -132,7 +132,7 @@ export function resolveStudioProcessingValues(
 
 export class StudioProcessingEffect extends Effect {
   constructor(
-    controls: Record<string, GrainradControlValue> | undefined = undefined,
+    controls: Record<string, StudioControlValue> | undefined = undefined,
     resolution = new Vector2(1, 1),
   ) {
     const values = resolveStudioProcessingValues(controls)
@@ -157,7 +157,7 @@ export class StudioProcessingEffect extends Effect {
   }
 
   updateFromControls(
-    controls: Record<string, GrainradControlValue> | undefined,
+    controls: Record<string, StudioControlValue> | undefined,
   ) {
     const values = resolveStudioProcessingValues(controls)
     this.uniforms.get('u_processingInvert')!.value = values.invert
@@ -186,7 +186,7 @@ export class StudioProcessingEffect extends Effect {
   }
 }
 
-function resolveQuantizeLevels(value: GrainradControlValue | undefined) {
+function resolveQuantizeLevels(value: StudioControlValue | undefined) {
   if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) {
     return STUDIO_PROCESSING_LIMITS.quantizeLevels.defaultValue
   }
@@ -204,7 +204,7 @@ function resolveQuantizeLevels(value: GrainradControlValue | undefined) {
 }
 
 function readClampedControl(
-  value: GrainradControlValue | undefined,
+  value: StudioControlValue | undefined,
   limits: Readonly<{ min: number; max: number; defaultValue: number }>,
 ) {
   if (typeof value !== 'number' || !Number.isFinite(value)) {

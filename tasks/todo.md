@@ -1,8 +1,8 @@
 # Hanzi Studio Current Task State
 
-Active implementation package: `tasks/v2.1/phase-5d-grainrad-studio-refactor-plan.md`.
+Active implementation package: `tasks/v2.1/phase-5d-studio-effects-refactor-plan.md`.
 Direct development branch for v2.1 architecture: `v2.1`.
-Current status: Phase 5M now has all 15 Effects implemented as independent renderers with effect-specific Grainrad Settings and rendering logic. The shared Character Model panel is implemented below Character, no Effect falls through ASCII or remains marked unimplemented, and scope stays route-local to `/studio`; homepage `/` is not redesigned. Preserve the current character selector and 3D motion panel as Input, and use `data/Generated image 1.png` as the authoritative UI-layout reference.
+Current status: Phase 5M now has all 15 Effects implemented as independent renderers with effect-specific reference editor Settings and rendering logic. The shared Character Model panel is implemented below Character, no Effect falls through ASCII or remains marked unimplemented, and scope stays route-local to `/studio`; homepage `/` is not redesigned. Preserve the current character selector and 3D motion panel as Input, and use `data/Generated image 1.png` as the authoritative UI-layout reference.
 
 Keep this file as current-state tracking only. Historical phase logs belong in the superseded task docs or git history, not here.
 
@@ -216,7 +216,7 @@ Implementation plan — completed:
   - Do not introduce a second visual system or change the Character selector content.
 - [x] Replace Studio accordion glyphs with the explicit state mapping: collapsed `+`, expanded `−`; update the matching source-contract tests.
 - [x] Add theme-scoped complete Effect control state for Settings, Processing, and Post-Processing.
-  - Preserve `grainradEffect.controls` as the active resolved controls used by all existing renderers.
+  - Preserve `studioEffect.controls` as the active resolved controls used by all existing renderers.
   - Add persisted, sanitized light/dark color buckets containing every theme-sensitive color value.
   - Give each schema color control explicit light and dark defaults; light defaults must retain readable dark-on-light contrast and dark defaults readable light-on-dark contrast while preserving effect-specific color intent.
   - Cover every color picker plus Dithering Custom Palette and Voronoi Edge Color; do not special-case only ASCII Foreground and Background.
@@ -225,7 +225,7 @@ Implementation plan — completed:
   - Toggle to `dark`: immediately replace every active effect color with its saved dark color set.
   - Theme switching must update the complete Settings, Processing, Post-Processing, and Canvas state in the same transition; shared Model and 3D Motion remain effect-independent.
   - Reset Settings restores the selected Effect only for the active theme and leaves the other theme's custom controls intact.
-  - Keep ASCII `foregroundColor` / `backgroundColor` synchronized with its active resolved Grainrad controls on edit, reset, migration, and theme switch.
+  - Keep ASCII `foregroundColor` / `backgroundColor` synchronized with its active resolved reference editor controls on edit, reset, migration, and theme switch.
   - Make the preview fallback background theme-aware for effects without an explicit Background color control.
 - [x] Bump persisted Studio state version and implement a sequential migration.
   - Preserve the existing ASCII `original` to `mono` migration.
@@ -244,7 +244,7 @@ Review — implementation complete:
 - Verification passed after the final exhaustive color-set regression: 89 test files / 588 tests, TypeScript, ESLint, production build, and diff hygiene.
 - Manual `/studio` visual verification remains for the user: check all Effect colors across both themes, theme round-trip restoration, Character popover overflow, both reset-all actions, section glyphs, and absence of page-level y-scroll.
 
-## Phase 5M Grainrad Effect Architecture Correction - 2026-07-13
+## Phase 5M Studio Effect Architecture Correction - 2026-07-13
 
 ### Shared Model Panel addition - 2026-07-13
 
@@ -266,7 +266,7 @@ Implementation plan:
 
 ### Halftone vertical slice
 
-- [x] Verify the live Grainrad Halftone UI and current public bundle schema/runtime equations.
+- [x] Verify the live reference editor Halftone UI and current public bundle schema/runtime equations.
 - [x] Correct Halftone defaults, ranges, options, conditional colors, and renderer discriminator with RED→GREEN schema tests.
 - [x] Add the deterministic Halftone CPU oracle one behavior at a time.
 - [x] Add the independent Halftone shader material and shared Processing/Post stages.
@@ -279,7 +279,7 @@ Review result:
 
 - `Model` now sits directly below Character and owns Extrude, Thickness, Bevel, Twist, Taper, and Bend. `3D Motion` contains only X/Y/Z rotation and Speed. The shared geometry helper creates real bevel geometry and CPU-applies twist, taper, and bend before UV/bounds calculation.
 - ASCII, Dithering, and Halftone all consume the same persisted/sanitized Model state. Browser pixel checks changed for every Model controller on ASCII and for Bend on Dithering; routing/geometry tests cover the same contract for Halftone.
-- Halftone now has an independent CPU oracle, shader material, offscreen 3D Character source, explicit renderer route, exact Grainrad schema, selected-only reset, conditional Mono colors, and shared Processing/Post-Processing stages.
+- Halftone now has an independent CPU oracle, shader material, offscreen 3D Character source, explicit renderer route, exact reference editor schema, selected-only reset, conditional Mono colors, and shared Processing/Post-Processing stages.
 - Live browser verification caught and fixed a real Three.js shader helper collision (`luminance`). After renaming the local helper, Halftone renders the Character correctly; Shape, Invert, Mode, Foreground, and Background visibly change output, Original hides Mono-only colors, and no new shader errors appear after the fix. Range semantics are covered by the CPU/material tests because the in-app browser wrapper does not dispatch React range changes reliably.
 - Verification passed: full Vitest `52` files / `266` tests, TypeScript, ESLint, production build, and `git diff --check`. The only environment warning is Node 24.18.0 while the repository requests Node 22.x.
 - Remaining Phase 5M queue: Matrix Rain, Dots, Contour, Pixel Sort, Blockify, Threshold, Edge Detection, Crosshatch, Wave Lines, Noise Field, Voronoi, and VHS.
@@ -288,7 +288,7 @@ Detailed specification: `tasks/v2.1/phase-5n-model-halftone.md`.
 
 ### Matrix Rain vertical slice
 
-- [x] Audit the placeholder schema/runtime and verify current Grainrad Matrix Rain UI, defaults, character sets, WGSL, atlas, and uniform packing.
+- [x] Audit the placeholder schema/runtime and verify current reference editor Matrix Rain UI, defaults, character sets, WGSL, atlas, and uniform packing.
 - [x] RED→GREEN: correct Matrix Rain schema, renderer discriminator, Custom Chars visibility, ranges, defaults, and effect-local runtime units.
 - [x] Add a deterministic Matrix Rain CPU oracle proving every visible Settings row changes output.
 - [x] Add an independent Matrix glyph atlas and Matrix Rain shader material with shared Processing/Post stages.
@@ -302,17 +302,17 @@ Detailed specification: `tasks/v2.1/phase-5o-matrix-rain.md`.
 Matrix Rain review — 2026-07-13:
 
 - Matrix Rain now has an explicit independent renderer route, deterministic CPU oracle, fixed 16-column `20×32` glyph atlas, exact built-in/custom charset behavior, and its own shader/material lifecycle. It does not import or fall through ASCII, Dithering, or Halftone.
-- Settings match the current Grainrad contract: exact groups/order, defaults, ranges, Custom Chars visibility, direction IDs, runtime units, threshold/background/head-glow behavior, shared Processing/Post stages, and selected-only reset/sanitization/persistence.
+- Settings match the current reference editor contract: exact groups/order, defaults, ranges, Custom Chars visibility, direction IDs, runtime units, threshold/background/head-glow behavior, shared Processing/Post stages, and selected-only reset/sanitization/persistence.
 - Browser verification rendered the selected 3D Character with Matrix glyphs, verified CUSTOM text and LEFT direction interactions, and found no console errors or shader compilation errors. Range changes remain covered by deterministic CPU/material/store tests because the in-app browser wrapper does not dispatch React range changes reliably.
 - Verification passed: focused Matrix suites `7` files / `64` tests, full Vitest `56` files / `309` tests, TypeScript, ESLint, production build, and `git diff --check`. The only environment warning is Node 24.18.0 while the repository requests Node 22.x.
 - Remaining independent-effect queue: Dots, Contour, Pixel Sort, Blockify, Threshold, Edge Detection, Crosshatch, Wave Lines, Noise Field, Voronoi, and VHS.
 
 ### Dots vertical slice
 
-- [x] Audit the Dots placeholder and verify the current Grainrad Dots UI, defaults, uniform packing, shader equations, and quirks.
+- [x] Audit the Dots placeholder and verify the current reference editor Dots UI, defaults, uniform packing, shader equations, and quirks.
 - [x] Write the detailed Dots specification before application-code implementation.
 - [x] RED→GREEN: correct Dots schema, renderer discriminator, exact options/ranges/defaults, runtime units, reset, persistence, and sanitization.
-- [x] Add a deterministic Dots CPU oracle proving every functional Dots Setting changes output and locking Grainrad's Dot Color no-op.
+- [x] Add a deterministic Dots CPU oracle proving every functional Dots Setting changes output and locking the reference editor's Dot Color no-op.
 - [x] Add an independent Dots material and `CharacterDotsCanvas` using the shared 3D Character Model source.
 - [x] Prove explicit routing with no ASCII/Dithering/Halftone/Matrix fallback and full Model/animation wiring.
 - [x] Browser-test Dots selects/toggle/conditional colors, representative output, shared Model wiring, and console/WebGL errors; range semantics use deterministic CPU/material/store tests because the browser wrapper does not dispatch range input.
@@ -331,7 +331,7 @@ Dots review — 2026-07-13:
 
 ### Contour vertical slice
 
-- [x] Audit the Contour placeholder and verify current Grainrad UI, defaults, uniforms, shader equations, Processing/Post behavior, and quirks.
+- [x] Audit the Contour placeholder and verify current reference editor UI, defaults, uniforms, shader equations, Processing/Post behavior, and quirks.
 - [x] Write the detailed Contour specification before application-code implementation.
 - [x] RED→GREEN: correct Contour schema, renderer discriminator, exact controls, runtime units, reset, persistence, and sanitization.
 - [x] Add a deterministic Contour CPU oracle proving every functional setting and production quirk/no-op.
@@ -353,7 +353,7 @@ Contour review — 2026-07-13:
 
 ### Pixel Sort vertical slice
 
-- [x] Audit the Pixel Sort placeholder and verify current Grainrad UI, defaults, uniforms, shader equations, Processing/Post behavior, and quirks.
+- [x] Audit the Pixel Sort placeholder and verify current reference editor UI, defaults, uniforms, shader equations, Processing/Post behavior, and quirks.
 - [x] Write the detailed Pixel Sort specification before application-code implementation.
 - [x] RED→GREEN: correct Pixel Sort schema, renderer discriminator, exact controls, runtime units, reset, persistence, and sanitization.
 - [x] Add a deterministic Pixel Sort CPU oracle proving every functional setting and production no-op/limit.
@@ -373,7 +373,7 @@ Pixel Sort review — 2026-07-13:
 
 ### Blockify vertical slice
 
-- [x] Audit the Blockify placeholder and verify current Grainrad UI, defaults, uniforms, shader equations, Processing/Post behavior, and quirks.
+- [x] Audit the Blockify placeholder and verify current reference editor UI, defaults, uniforms, shader equations, Processing/Post behavior, and quirks.
 - [x] Write the detailed Blockify specification before application-code implementation.
 - [x] RED→GREEN: correct Blockify schema, renderer discriminator, exact controls, runtime units, reset, persistence, and sanitization.
 - [x] Add a deterministic Blockify CPU oracle proving every functional setting and production no-op/limit.
@@ -393,7 +393,7 @@ Blockify review — 2026-07-13:
 
 ### Threshold vertical slice
 
-- [x] Audit the Threshold placeholder and verify current Grainrad UI, defaults, uniforms, shader equations, Processing/Post behavior, and quirks.
+- [x] Audit the Threshold placeholder and verify current reference editor UI, defaults, uniforms, shader equations, Processing/Post behavior, and quirks.
 - [x] Write the detailed Threshold specification before application-code implementation.
 - [x] RED→GREEN: correct Threshold schema, renderer discriminator, exact controls, runtime units, reset, persistence, and sanitization.
 - [x] Add a deterministic Threshold CPU oracle proving every functional setting and production no-op/limit.
@@ -413,7 +413,7 @@ Threshold review — 2026-07-13:
 
 ### Edge Detection vertical slice
 
-- [x] Audit the Edge Detection placeholder and verify current Grainrad UI, defaults, uniforms, shader equations, Processing/Post behavior, and quirks.
+- [x] Audit the Edge Detection placeholder and verify current reference editor UI, defaults, uniforms, shader equations, Processing/Post behavior, and quirks.
 - [x] Write the detailed Edge Detection specification before application-code implementation.
 - [x] RED→GREEN: correct Edge Detection schema, renderer discriminator, exact controls, runtime units, reset, persistence, and sanitization.
 - [x] Add a deterministic Edge Detection CPU oracle proving every functional setting and production no-op/limit.
@@ -433,7 +433,7 @@ Edge Detection review — 2026-07-14:
 
 ### Crosshatch vertical slice
 
-- [x] Audit the Crosshatch placeholder and verify current Grainrad UI, defaults, uniforms, shader equations, Processing/Post behavior, and quirks.
+- [x] Audit the Crosshatch placeholder and verify current reference editor UI, defaults, uniforms, shader equations, Processing/Post behavior, and quirks.
 - [x] Write the detailed Crosshatch specification before application-code implementation.
 - [x] RED→GREEN: correct Crosshatch schema, renderer discriminator, exact controls, runtime units, reset, persistence, and sanitization.
 - [x] Add a deterministic Crosshatch CPU oracle proving every functional setting and production no-op/limit.
@@ -454,7 +454,7 @@ Crosshatch review — 2026-07-14:
 
 ### Wave Lines vertical slice
 
-- [x] Audit the Wave Lines placeholder and verify current Grainrad UI, defaults, uniforms, shader equations, Processing/Post behavior, and quirks.
+- [x] Audit the Wave Lines placeholder and verify current reference editor UI, defaults, uniforms, shader equations, Processing/Post behavior, and quirks.
 - [x] Write the detailed Wave Lines specification before application-code implementation.
 - [x] RED→GREEN: correct Wave Lines schema, renderer discriminator, exact controls, runtime units, reset, persistence, and sanitization.
 - [x] Add a deterministic Wave Lines CPU oracle proving every functional setting and production no-op/limit.
@@ -474,7 +474,7 @@ Wave Lines review — 2026-07-14:
 
 ### Noise Field vertical slice
 
-- [x] Audit the Noise Field placeholder and verify current Grainrad UI, defaults, uniform ABI, shader equations, Processing/Post behavior, WebGL fallback, and quirks.
+- [x] Audit the Noise Field placeholder and verify current reference editor UI, defaults, uniform ABI, shader equations, Processing/Post behavior, WebGL fallback, and quirks.
 - [x] Write the detailed Noise Field specification before application-code implementation.
 - [x] RED→GREEN: correct Noise Field schema, renderer discriminator, exact controls, runtime units, reset, persistence, and sanitization.
 - [x] Add a deterministic Noise Field CPU oracle proving all functional settings and contextual no-ops.
@@ -496,7 +496,7 @@ Detailed specification: `tasks/v2.1/phase-5x-noise-field.md`.
 
 ### Voronoi vertical slice
 
-- [x] Audit the Voronoi placeholder and verify current Grainrad UI, defaults, uniform ABI, shader equations, Processing/Post behavior, WebGL fallback, and quirks.
+- [x] Audit the Voronoi placeholder and verify current reference editor UI, defaults, uniform ABI, shader equations, Processing/Post behavior, WebGL fallback, and quirks.
 - [x] Write the detailed Voronoi specification before application-code implementation.
 - [x] RED→GREEN: correct Voronoi schema, renderer discriminator, exact controls, runtime units, reset, persistence, and sanitization.
 - [x] Add a deterministic Voronoi CPU oracle proving all functional settings and contextual no-ops.
@@ -518,7 +518,7 @@ Detailed specification: `tasks/v2.1/phase-5y-voronoi.md`.
 
 ### VHS vertical slice
 
-- [x] Audit the VHS placeholder and verify current Grainrad UI, defaults, uniform ABI, shader equations, time behavior, Processing/Post, WebGL fallback, and quirks.
+- [x] Audit the VHS placeholder and verify current reference editor UI, defaults, uniform ABI, shader equations, time behavior, Processing/Post, WebGL fallback, and quirks.
 - [x] Write the detailed VHS specification before application-code implementation.
 - [x] RED→GREEN: correct VHS schema, renderer discriminator, exact controls, runtime units, reset, persistence, and sanitization.
 - [x] Add a deterministic VHS CPU oracle proving all functional settings, temporal branches, and unconditional VHS grading.
@@ -549,17 +549,17 @@ User correction:
 
 - Only ASCII has completed Settings behavior.
 - Every other Effect currently has the wrong Settings and is incorrectly treated as ASCII.
-- Grainrad Effects have different parameter sets and different rendering logic; parity must be proven one Effect and one setting change at a time.
+- reference effects have different parameter sets and different rendering logic; parity must be proven one Effect and one setting change at a time.
 
 Selected first vertical slice: **Dithering**.
 
 Plan checkpoint before implementation:
 
-- [x] Capture Grainrad's desktop three-column layout, section hierarchy, spacing, borders, typography, canvas toolbar, and export panel.
-- [x] Confirm `data/sample.jpg` is the Grainrad-only behavior probe and that the local app remains Character-only. Browser upload is not exposed by the available browser-control API, so manual Grainrad upload remains the visual checkpoint.
+- [x] Capture the reference editor's desktop three-column layout, section hierarchy, spacing, borders, typography, canvas toolbar, and export panel.
+- [x] Confirm `data/sample.jpg` is the reference-only behavior probe and that the local app remains Character-only. Browser upload is not exposed by the available browser-control API, so manual reference editor upload remains the visual checkpoint.
 - [x] Record every Dithering Settings row, control type, default, min/max/step/options, reset behavior, conditional visibility, and runtime change logic.
-- [x] Audit `grainrad-effects.ts`, `grainrad-effect-runtime.ts`, store persistence/reset/sanitization, `StudioRightPanel`, and the active renderer path to locate the shared-ASCII coupling.
-- [x] Generate and inspect a Grainrad-aligned `/studio` reference image before implementation, using the external site as the visual source of truth.
+- [x] Audit `studio-effects.ts`, `studio-effect-runtime.ts`, store persistence/reset/sanitization, `StudioRightPanel`, and the active renderer path to locate the shared-ASCII coupling.
+- [x] Generate and inspect a reference editor-aligned `/studio` reference image before implementation, using the external site as the visual source of truth.
 - [x] Check this plan with the user before modifying application code; approved on 2026-07-13.
 
 Implementation checklist after plan approval:
@@ -569,17 +569,17 @@ Implementation checklist after plan approval:
 - [x] Add a Dithering-specific renderer/runtime compiler whose every visible control changes output.
 - [x] Rebuild `/studio` shell to the generated-image layout while retaining the existing Character selector and 3D Motion panel in Input.
 - [x] Keep ASCII on its dedicated glyph-atlas renderer and route Dithering to its own pipeline.
-- [x] Verify Dithering setting mappings, conditional visibility, reset isolation, algorithms, color modes, palette/custom palette, modulation, chromatic, Processing, and Post-Processing behavior with pure-oracle/material/runtime tests; use `data/sample.jpg` only for the Grainrad-side research checkpoint.
+- [x] Verify Dithering setting mappings, conditional visibility, reset isolation, algorithms, color modes, palette/custom palette, modulation, chromatic, Processing, and Post-Processing behavior with pure-oracle/material/runtime tests; use `data/sample.jpg` only for the reference-behavior research checkpoint.
 - [x] Run focused Vitest, full Vitest, TypeScript, lint, build, `git diff --check`, and browser console checks.
 - [x] Record the implementation review, evidence, remaining deltas, and the next Effect slice.
 
 Acceptance criteria:
 
 - Selecting Dithering never shows ASCII-only Character Set, Scale, Spacing, Output Width, or ASCII color-mode controls.
-- Dithering Settings match Grainrad's labels, order, control types, defaults, ranges/options, and reset behavior.
+- Dithering Settings match the reference editor's labels, order, control types, defaults, ranges/options, and reset behavior.
 - Every visible Dithering setting has a tested mapping to a Dithering renderer parameter and causes the intended visible change.
 - Switching ASCII ↔ Dithering preserves effect-local settings without cross-contamination.
-- `/studio` matches Grainrad's desktop architecture and UI layout, except Input uses the existing Character selector and 3D Motion panel.
+- `/studio` matches the reference editor's desktop architecture and UI layout, except Input uses the existing Character selector and 3D Motion panel.
 - `/studio` visual placement, density, and component proportions match `data/Generated image 1.png`, which is the authoritative UI-layout reference.
 - The local app accepts only the existing Character input; `data/sample.jpg` is never exposed as a local input or persisted in local state.
 
@@ -587,7 +587,7 @@ Review result:
 
 - Removed every non-ASCII branch from the ASCII shader. `StudioCanvas` now routes by explicit renderer discriminator: ASCII → `CharacterAsciiCanvas`, Dithering → `CharacterDitheringCanvas`, and the other 13 effects → an explicit not-implemented state.
 - Dithering now has an independent offscreen 3D Character source scene and full-screen shader material. Its tests cover 16 algorithms, ordered/error-diffusion oracle behavior, Clustered Dot, Crosshatch, adjustments, all color modes, 11 built-in palettes plus a 64-color custom palette, modulation modes, RGB split, chromatic displacement, shared Processing, and shared Post-Processing.
-- Effect state is local to the selected effect. Settings Reset resets only that effect, storage uses `hanzi-studio-grainrad-effects-v1`, and dynamic controls follow `visibleWhen` conditions.
+- Effect state is local to the selected effect. Settings Reset resets only that effect, storage uses a dedicated effects key, and dynamic controls follow `visibleWhen` conditions.
 - `/studio` now matches `data/Generated image 1.png` at the reference 1586×992 viewport: measured columns are exactly 329 / 843 / 414px, with 50px top and 60px bottom rails, collapsed Character trigger/popover, Input → Effects → Presets, compact right rows, and the 4×2 Export grid.
 - Browser verification on `https://localhost:3100/studio` passed: Character popover opens/closes, Dithering becomes active, its independent canvas mounts, Algorithm/Intensity are present, all eight Export cells render, and console/page errors are empty. Screenshot: `.codex/visualizations/2026/07/13/019f5b7d-b520-77f0-8100-297099448021/studio-dithering.png`.
 - Verification passed: full Vitest 48 files / 237 tests, TypeScript, ESLint, production build, and `git diff --check`. The only environment warning is the repository's Node 22 requirement while this shell runs Node 24.18.0.
@@ -598,7 +598,7 @@ Review result:
 Scope:
 
 - Review commit `462878dff484a3122` for local simplifications without changing the `/studio` public behavior.
-- Keep the active Grainrad `/studio` UI and current typography intact.
+- Keep the active reference editor `/studio` UI and current typography intact.
 - Prefer small, testable cleanup over deleting broad legacy code in this pass.
 
 Implementation checklist:
@@ -639,7 +639,7 @@ Implementation checklist:
 
 Review result:
 
-- ASCII `Color / Mode` now defaults to `mono` in the Grainrad effect catalogue, so fresh initial state and `resetSelectedEffectControls()` both restore `mono`.
+- ASCII `Color / Mode` now defaults to `mono` in the reference editor effect catalogue, so fresh initial state and `resetSelectedEffectControls()` both restore `mono`.
 - `StudioRightPanel` now falls back to `mono` if ASCII `color-mode` is missing.
 - Store persistence version moved to `2`; v1 persisted ASCII `color-mode: original` is migrated to `mono` once so old default state does not override the corrected default.
 - Verification passed: focused red/green tests, full Vitest (`43` files, `191` tests), `pnpm exec tsc --noEmit --pretty false`, `git diff --check`, and `pnpm build`.
@@ -666,7 +666,7 @@ Implementation checklist:
 
 Review result:
 
-- `Output Width` now uses a shared `ASCII_OUTPUT_WIDTH_MAX = 600` for the Grainrad effect catalogue and right Settings slider.
+- `Output Width` now uses a shared `ASCII_OUTPUT_WIDTH_MAX = 600` for the reference editor effect catalogue and right Settings slider.
 - Store sanitization clamps persisted/direct `output-width` values to `0..600`; `0` still means automatic/manual `Scale`.
 - Runtime compile output clamps `effectValues[2]` to `0..600`, and the ASCII shader also clamps `u_effectC` as a fallback before computing `canvasWidth / outputColumnCount`.
 - Verification passed: focused red/green tests, full Vitest (`43` files, `188` tests), `pnpm exec tsc --noEmit --pretty false`, `git diff --check`, and `pnpm build`.
@@ -680,7 +680,7 @@ User correction:
 
 Implementation direction:
 
-- Add `Foreground` to the ASCII `Color` group in the Grainrad effect catalogue and the right Settings panel.
+- Add `Foreground` to the ASCII `Color` group in the reference editor effect catalogue and the right Settings panel.
 - Map `Foreground` into the ASCII runtime as `effectColorA`.
 - Use `Foreground` as the glyph/ink color in mono-style ASCII output while preserving `Mode: original` behavior.
 
@@ -694,7 +694,7 @@ Implementation checklist:
 Review result:
 
 - ASCII `Color` now includes `Foreground` between `Mode` and `Background` in the right Settings panel.
-- The Grainrad ASCII effect catalogue now includes a `foreground` color control, and the runtime maps it to `effectColorA`; `background` remains mapped to `effectColorB`.
+- The reference editor ASCII effect catalogue now includes a `foreground` color control, and the runtime maps it to `effectColorA`; `background` remains mapped to `effectColorB`.
 - The ASCII shader now uses `effectColorA/effectColorB` for mono-style glyph/background output while preserving `Mode: original` with the existing source/palette color path.
 - Verification passed: focused Foreground tests, full Vitest (`43` files, `187` tests), `pnpm exec tsc --noEmit --pretty false`, `git diff --check`, and `pnpm build`.
 - Browser load check passed on `http://localhost:3002/studio`: the `Color` group shows `Mode`, `Foreground`, `Background`, and `Intensity`; browser console errors are empty.
@@ -753,7 +753,7 @@ Implementation checklist:
 
 - [x] Record the correction in `tasks/lessons.md`.
 - [x] Add failing tests for concrete character-set strings and glyph-atlas shader sampling.
-- [x] Preserve `Custom Chars` text in the Grainrad runtime so the material can build a real custom glyph atlas.
+- [x] Preserve `Custom Chars` text in the Studio runtime so the material can build a real custom glyph atlas.
 - [x] Generate an ASCII glyph atlas texture from the selected character string using the current site font variables, with a fallback texture for non-browser tests.
 - [x] Update the fragment shader to sample the atlas by brightness, preserving dark-to-light density order and treating trailing spaces as empty glyph cells.
 - [x] Browser-smoke `standard`, `blocks`, `binary`, `numeric`, and `custom=01` to prove visible output changes with the selected character vocabulary.
@@ -766,17 +766,17 @@ Review result:
 - Verification passed: focused material/runtime tests, full Vitest (`42` files, `182` tests), `pnpm exec tsc --noEmit --pretty false`, `git diff --check`, and `pnpm build`.
 - Browser smoke passed on local `/studio`: canvas hashes were distinct for `STANDARD`, `BLOCKS`, `BINARY`, `NUMERIC`, and `CUSTOM` with `01`; browser console errors were empty.
 
-## Phase 5G Grainrad Setting-Effect Contract Audit - 2026-06-18
+## Phase 5G Studio Setting-Effect Contract Audit - 2026-06-18
 
 User correction:
 
-- Before implementation or rework, the plan must list settings in the same grouped style as Grainrad and explain the expected effect of every setting.
+- Before implementation or rework, the plan must list settings in the same grouped style as reference editor and explain the expected effect of every setting.
 - A setting is not complete if changing it only updates state, labels, metadata, or uniforms without a visible/runtime effect.
 - For each row below, validation must use at least one of: runtime signature change, shader uniform assertion, representative pixel-hash smoke, export-dimension check, or dynamic-row DOM check.
 
 Audit rules:
 
-- Every visible control id from `components/studio/grainrad-effects.ts` must appear in this contract.
+- Every visible control id from `components/studio/studio-effects.ts` must appear in this contract.
 - Every select option must change either the runtime numeric mode, glyph set, color mode, algorithm branch, or export behavior.
 - Dynamic rows must be validated by both UI state and runtime behavior. Example: `Character Set: custom` must show `Custom Chars` and the typed characters must change the glyph hash/count used by the renderer.
 - Controls with non-pixel outcomes must have a direct validation target. Example: `Output Width` should affect sampling/export width or be renamed/removed if it cannot honestly do so.
@@ -1143,32 +1143,32 @@ Implementation checklist:
 
 - [x] Record the setting-list correction in `tasks/lessons.md`.
 - [x] Add this grouped setting-effect contract to `tasks/todo.md`.
-- [x] Re-audit `grainrad-effect-runtime.ts` against every row above before the next shader/UI change.
+- [x] Re-audit `studio-effect-runtime.ts` against every row above before the next shader/UI change.
 - [x] Add or tighten tests for settings whose validation was indirect: ASCII `Output Width`, ASCII `Character Set`, ASCII UI uniform wiring, shared `Processing / Blur`, `Pixel Sort / Streak Length`, and MP4 export label.
 - [x] Browser-smoke representative controls for ASCII `Character Set`, ASCII `Output Width`, shared `Processing / Blur`, `Pixel Sort / Streak Length`, GIF export gating, and MP4 export gating.
 
 Review result:
 
 - Tightened the runtime contract so ASCII `Output Width` is preserved as a column-count target instead of a pre-divided scalar. The shader now uses it to alter ASCII sampling density.
-- Reworked the Grainrad ASCII shader branch so `Scale`, `Output Width`, and `Character Set` affect the actual glyph sampling path. The branch now has distinct glyph families for `standard`, `blocks`, `binary`, `detailed`, `minimal`, `alphabetic`, `numeric`, `math`, `symbols`, and `custom`.
-- Corrected ASCII UI/runtime wiring: the active branch reads the existing ASCII uniforms that the UI actually updates for `Character Set`, `Background`, and `Intensity`, while keeping `Custom Chars` wired through the Grainrad runtime glyph hash/count.
+- Reworked the reference editor ASCII shader branch so `Scale`, `Output Width`, and `Character Set` affect the actual glyph sampling path. The branch now has distinct glyph families for `standard`, `blocks`, `binary`, `detailed`, `minimal`, `alphabetic`, `numeric`, `math`, `symbols`, and `custom`.
+- Corrected ASCII UI/runtime wiring: the active branch reads the existing ASCII uniforms that the UI actually updates for `Character Set`, `Background`, and `Intensity`, while keeping `Custom Chars` wired through the Studio runtime glyph hash/count.
 - Corrected shared `Processing / Blur` from a grayscale replacement into a softening pass, and corrected `Pixel Sort / Streak Length` so larger values produce longer streaks.
 - Export wording now shows `MP4` instead of `Video` while keeping GIF/MP4 gated behind active animation.
-- Verification passed: focused Grainrad runtime/material/export tests, full Vitest (`42` files, `181` tests), `pnpm exec tsc --noEmit --pretty false`, `git diff --check`, and `pnpm build`.
+- Verification passed: focused Studio runtime/material/export tests, full Vitest (`42` files, `181` tests), `pnpm exec tsc --noEmit --pretty false`, `git diff --check`, and `pnpm build`.
 - Browser smoke passed on local `/studio`: playing export formats were `PNG/GIF/MP4`, paused export formats were `PNG` only, and canvas hashes were distinct for baseline ASCII, `BLOCKS`, `Output Width = 512`, `Processing Blur = 12`, Pixel Sort default, and `Streak Length = 300`; browser console errors were empty.
 
-## Phase 5F Grainrad Runtime Effect Parity - 2026-06-18
+## Phase 5F Studio Runtime Effect Parity - 2026-06-18
 
 User correction:
 
-- Every visible `Settings`, `Processing`, and `Post-Processing` option must have a real visual effect, matching Grainrad's behavior model as closely as possible inside Hanzi's current 3D ASCII character renderer.
+- Every visible `Settings`, `Processing`, and `Post-Processing` option must have a real visual effect, matching the reference editor's behavior model as closely as possible inside Hanzi's current 3D ASCII character renderer.
 - Effect parity is not just UI parity. If a row exists, changing it must alter shader/runtime output or be removed.
 
 Implementation direction:
 
-- Add a runtime compiler module that takes `grainradEffect.selectedEffectId` and `grainradEffect.controls[selectedEffectId]`, plus shared Processing/Post-Processing controls, and produces stable shader uniforms.
-- Keep the current 3D ASCII mesh renderer as the active preview. Grainrad's source is image/video, but Hanzi's intentional input difference remains the selected character mesh.
-- Add one shader branch per Grainrad effect:
+- Add a runtime compiler module that takes `studioEffect.selectedEffectId` and `studioEffect.controls[selectedEffectId]`, plus shared Processing/Post-Processing controls, and produces stable shader uniforms.
+- Keep the current 3D ASCII mesh renderer as the active preview. the reference editor's source is image/video, but Hanzi's intentional input difference remains the selected character mesh.
+- Add one shader branch per reference editor effect:
   - `ASCII`: current cell/glyph shader, with `Scale`, `Spacing`, `Output Width`, `Character Set`, `Custom Chars`, adjustments, and `Mode`.
   - `Dithering`: ordered/error-style threshold patterns, matrix size, algorithm seed/style, modulation, mono/tonal/palette/RGB/original coloring, chromatic channel displacement.
   - `Halftone`: circle/square/diamond/line masks driven by dot scale, spacing, angle, invert, mono/original color.
@@ -1189,14 +1189,14 @@ Implementation direction:
 
 Testing strategy:
 
-- Add unit tests for a new `grainrad-effect-runtime.ts` compiler:
+- Add unit tests for a new `studio-effect-runtime.ts` compiler:
   - every registered effect id maps to a unique numeric shader id;
   - every visible control id from selected effect + shared Processing/Post-Processing is consumed by runtime mapping;
   - every select option changes the runtime numeric value;
   - `Custom Chars` changes a custom glyph hash/count uniform;
   - shared Processing/Post-Processing controls map to dedicated uniforms.
 - Add material tests that require all new uniforms to exist and shader source to contain all effect branch function names.
-- Add renderer wiring tests that `CharacterAsciiCanvas` reads `grainradEffect` and updates uniforms every frame.
+- Add renderer wiring tests that `CharacterAsciiCanvas` reads `studioEffect` and updates uniforms every frame.
 - Browser smoke representative interactions:
   - switching `ASCII -> Dithering -> Halftone -> VHS` changes canvas pixel hash;
   - changing a representative setting inside each family changes canvas pixel hash;
@@ -1208,31 +1208,31 @@ Implementation checklist:
 - [x] Record this correction in `tasks/lessons.md`.
 - [x] Write this Phase 5F plan into `tasks/todo.md`.
 - [x] Add failing runtime compiler/material/renderer tests.
-- [x] Implement `components/studio/grainrad-effect-runtime.ts`.
+- [x] Implement `components/studio/studio-effect-runtime.ts`.
 - [x] Extend `character-ascii-material.ts` uniforms and shader branches for all 15 effects.
-- [x] Wire `CharacterAsciiCanvas` to compile/update Grainrad runtime uniforms from store state.
+- [x] Wire `CharacterAsciiCanvas` to compile/update Studio runtime uniforms from store state.
 - [x] Re-run focused tests, full Vitest, TypeScript, `git diff --check`, and production build.
 - [x] Run browser pixel smoke against local `/studio`.
 - [x] Update review result in this section.
 
 Review result:
 
-- Added `grainrad-effect-runtime.ts` as the contract layer between the Grainrad UI and shader runtime. It assigns unique shader ids for all 15 effects, maps selected-effect controls, maps shared Processing/Post-Processing controls, converts select options to numeric uniforms, parses colors, and turns `Custom Chars` into glyph hash/count uniforms.
+- Added `studio-effect-runtime.ts` as the contract layer between the reference editor UI and shader runtime. It assigns unique shader ids for all 15 effects, maps selected-effect controls, maps shared Processing/Post-Processing controls, converts select options to numeric uniforms, parses colors, and turns `Custom Chars` into glyph hash/count uniforms.
 - Added runtime tests proving every visible Settings/Processing/Post-Processing control changes the runtime signature, every select option changes the runtime signature, every effect has a unique shader id, and no visible control is unmapped.
-- Added material tests requiring Grainrad uniforms and all 15 shader branch function names: ASCII, Dithering, Halftone, Matrix Rain, Dots, Contour, Pixel Sort, Blockify, Threshold, Edge Detection, Crosshatch, Wave Lines, Noise Field, Voronoi, and VHS.
-- Added renderer wiring contract so `CharacterAsciiCanvas` must read `grainradEffect`, compile the selected effect controls, pass `grainradRuntime` into `createAsciiShaderMaterial`, and update uniforms via `applyGrainradRuntimeUniforms`.
+- Added material tests requiring reference editor uniforms and all 15 shader branch function names: ASCII, Dithering, Halftone, Matrix Rain, Dots, Contour, Pixel Sort, Blockify, Threshold, Edge Detection, Crosshatch, Wave Lines, Noise Field, Voronoi, and VHS.
+- Added renderer wiring contract so `CharacterAsciiCanvas` must read `studioEffect`, compile the selected effect controls, pass `studioRuntime` into `createAsciiShaderMaterial`, and update uniforms via `applyStudioRuntimeUniforms`.
 - The active shader now applies the selected effect branch first, then shared Processing (`Invert`, `Brightness Map`, `Edge Enhance`, `Blur`, `Quantize Colors`, `Shape Matching`), then shared Post-Processing (`Bloom`, `Grain`, `Chromatic`, `Scanlines`, `Vignette`, `CRT Curve`, `Phosphor`).
-- Verification passed: focused Grainrad runtime/material/renderer tests, full Vitest (`42` files, `177` tests), `pnpm exec tsc --noEmit --pretty false`, `git diff --check`, and `pnpm build`.
+- Verification passed: focused Studio runtime/material/renderer tests, full Vitest (`42` files, `177` tests), `pnpm exec tsc --noEmit --pretty false`, `git diff --check`, and `pnpm build`.
 - Browser pixel smoke passed on local `/studio`: ASCII, Dithering, VHS, and Processing Invert produced four distinct canvas hashes, the canvas was nonblank, and console/WebGL/shader errors were empty. A representative Dithering `Intensity` change also produced a distinct pixel hash.
 
-## Phase 5E Grainrad Effect Dynamics Correction - 2026-06-18
+## Phase 5E Studio Effect Dynamics Correction - 2026-06-18
 
-Live Grainrad analysis source: `https://grainrad.com/` desktop DOM inspected on 2026-06-18 before implementation.
+Live reference editor analysis performed on 2026-06-18; desktop DOM inspected before implementation.
 
 User correction:
 
-- Original Hanzi `Processing` rows named `Motion` or `Transform` are animation/mesh controls, not Grainrad `Processing`.
-- Grainrad `Processing` is the shared image/effect pipeline: `Invert`, `Brightness Map`, `Edge Enhance`, `Blur`, `Quantize Colors`, `Shape Matching`.
+- Original Hanzi `Processing` rows named `Motion` or `Transform` are animation/mesh controls, not reference editor `Processing`.
+- The reference editor `Processing` is the shared image/effect pipeline: `Invert`, `Brightness Map`, `Edge Enhance`, `Blur`, `Quantize Colors`, `Shape Matching`.
 - Motion and transform controls belong in the left `Animation` section. They must not appear in the right `Processing` section.
 
 Effect UI/UX model to match:
@@ -1272,69 +1272,69 @@ Shared sections reference:
 Implementation checklist:
 
 - [x] Record the Processing-vs-Animation correction in `tasks/lessons.md`.
-- [x] Re-analyze live Grainrad effect settings, dropdown options, and dynamic rows before implementation.
+- [x] Re-analyze live reference editor effect settings, dropdown options, and dynamic rows before implementation.
 - [x] Write this plan into `tasks/todo.md` before implementation.
 - [x] Add failing contracts that `Motion`/`Transform` controls live under left `Animation` and do not appear in right `Processing`.
-- [x] Add failing contracts for live Grainrad setting names/options: ASCII `CUSTOM`, dynamic `Custom Chars`, `Color` -> `Mode`, and richer per-effect dropdown options.
+- [x] Add failing contracts for live reference editor setting names/options: ASCII `CUSTOM`, dynamic `Custom Chars`, `Color` -> `Mode`, and richer per-effect dropdown options.
 - [x] Implement left `Animation` transform rows: `Y Rotate`, `X Rotate`, `Depth`, `Scale`, plus a grouped transform reset.
 - [x] Implement `CUSTOM` Character Set and `Custom Chars` dynamic row while preserving current font stack and existing character selector input.
-- [x] Update effect catalogue metadata to match live Grainrad option lists and labels.
-- [x] Verify with focused tests, full Vitest, TypeScript, `git diff --check`, production build, and browser operation checks against Grainrad.
+- [x] Update effect catalogue metadata to match live reference editor option lists and labels.
+- [x] Verify with focused tests, full Vitest, TypeScript, `git diff --check`, production build, and browser operation checks against reference editor.
 
 Review result:
 
-- Reconfirmed live Grainrad Settings behavior before implementation: per-effect dynamic rows, full dropdown option lists, ASCII `CUSTOM -> Custom Chars`, and shared Processing/Post-Processing sections.
+- Reconfirmed live reference editor Settings behavior before implementation: per-effect dynamic rows, full dropdown option lists, ASCII `CUSTOM -> Custom Chars`, and shared Processing/Post-Processing sections.
 - Corrected ownership: `Motion` and `Transform` are now left `Animation` groups. `Y Rotate`, `X Rotate`, `Depth`, `Scale`, and `Reset Transform` are visible there on desktop and mobile; right `Processing` has no animation/mesh controls.
 - ASCII controls now match the live reference labels: `Character Set` includes `CUSTOM`, selecting it shows `Custom Chars`, and the `Color` group uses `Mode` instead of `Color Mode`.
-- Effect metadata now includes the live Grainrad dropdown options, including Dithering algorithms, Matrix Size variants, Halftone `Line`, Dots `Hexagonal Grid`, Pixel Sort `Diagonal`, Blockify `Shaded/Grayscale`, Noise Field `Worley`, and Voronoi `Darkened/Center Sample/Gradient`.
+- Effect metadata now includes the live reference editor dropdown options, including Dithering algorithms, Matrix Size variants, Halftone `Line`, Dots `Hexagonal Grid`, Pixel Sort `Diagonal`, Blockify `Shaded/Grayscale`, Noise Field `Worley`, and Voronoi `Darkened/Center Sample/Gradient`.
 - Common `Processing` remains `Invert`, `Brightness Map`, `Edge Enhance`, `Blur`, `Quantize Colors`, `Shape Matching`. Common `Post-Processing` now exposes `Bloom`, `Grain` with `Intensity/Size/Speed`, then `Chromatic`, `Scanlines`, `Vignette`, `CRT Curve`, and `Phosphor`.
-- Verification passed: focused Grainrad follow-up contract, adjacent ASCII material/state tests, full Vitest (`41` files, `171` tests), `pnpm exec tsc --noEmit --pretty false`, `git diff --check`, and `pnpm build`.
+- Verification passed: focused reference editor follow-up contract, adjacent ASCII material/state tests, full Vitest (`41` files, `171` tests), `pnpm exec tsc --noEmit --pretty false`, `git diff --check`, and `pnpm build`.
 - Browser smoke passed on local `/studio`: desktop and mobile canvases rendered nonblank, `CUSTOM` dropdown produced `Custom Chars`, Dithering dynamic options opened with live option names, Post-Processing showed `Grain`, and browser console errors were empty.
 
-## Phase 5D Follow-Up Grainrad Parity - 2026-06-18
+## Phase 5D Follow-Up Studio Parity - 2026-06-18
 
-- [x] Inspect Grainrad effect catalogue settings and Character Set dropdown behavior.
-- [x] Add failing contracts for the full left Effects catalogue, left Animation panel, removed Presets panel, right Settings reset, Grainrad ASCII labels, Processing/Post-Processing parity, and gated export formats.
-- [x] Implement left `Effects` catalogue with Grainrad names and active markers.
+- [x] Inspect reference editor effect catalogue settings and Character Set dropdown behavior.
+- [x] Add failing contracts for the full left Effects catalogue, left Animation panel, removed Presets panel, right Settings reset, the reference editor's ASCII labels, Processing/Post-Processing parity, and gated export formats.
+- [x] Implement left `Effects` catalogue with reference editor names and active markers.
 - [x] Move animation controls to the left as `Animation`; remove left `Presets`.
-- [x] Replace native Character Set select with Grainrad-style dropdown and option set: `STANDARD`, `BLOCKS`, `BINARY`, `DETAILED`, `MINIMAL`, `ALPHABETIC`, `NUMERIC`, `MATH`, `SYMBOLS`.
-- [x] Add right-side whole-section `Reset` and match ASCII control names to Grainrad.
-- [x] Match Processing and Post-Processing settings content/structure to Grainrad for the selected effect.
+- [x] Replace native Character Set select with reference editor-style dropdown and option set: `STANDARD`, `BLOCKS`, `BINARY`, `DETAILED`, `MINIMAL`, `ALPHABETIC`, `NUMERIC`, `MATH`, `SYMBOLS`.
+- [x] Add right-side whole-section `Reset` and match ASCII control names to reference editor.
+- [x] Match Processing and Post-Processing settings content/structure to reference editor for the selected effect.
 - [x] Add GIF and MP4 export options when animation is enabled; keep only PNG when animation is disabled.
 - [x] Simplify export wording.
 - [x] Verify with focused tests, full tests, typecheck, build, and browser comparison.
 
 Review result:
 
-- Grainrad Character Set dropdown now matches the reference option set and menu behavior: `STANDARD`, `BLOCKS`, `BINARY`, `DETAILED`, `MINIMAL`, `ALPHABETIC`, `NUMERIC`, `MATH`, `SYMBOLS`; Escape/outside click closes the menu.
+- The reference editor Character Set dropdown now matches the reference option set and menu behavior: `STANDARD`, `BLOCKS`, `BINARY`, `DETAILED`, `MINIMAL`, `ALPHABETIC`, `NUMERIC`, `MATH`, `SYMBOLS`; Escape/outside click closes the menu.
 - `/studio` left panel now uses `Input`, `Effects`, and `Animation`; left `Presets` was removed.
-- Right `Settings` has a section-level `Reset`, Grainrad ASCII labels, selected-effect setting rows, and the live Grainrad Processing/Post-Processing rows.
+- Right `Settings` has a section-level `Reset`, the reference editor's ASCII labels, selected-effect setting rows, and the live reference editor's Processing/Post-Processing rows.
 - Export now shows PNG/GIF/Video only while animation is playing and falls back to PNG-only when animation is paused; export wording is `High quality image`.
 - GIF export uses `gifenc` to capture an animated canvas loop; MP4 export uses browser `MediaRecorder` when `video/mp4` is available. Both were live-smoked through browser downloads.
 - Verified with full Vitest (`41` files, `170` tests), `tsc --noEmit`, `git diff --check`, `pnpm build`, and Playwright smoke checks on desktop and mobile.
 
-## Phase 5D Grainrad Studio Refactor Planning - 2026-06-18
+## Phase 5D Studio Refactor Planning - 2026-06-18
 
 - [x] Inspect current `/studio` architecture and dirty worktree without touching implementation files.
-- [x] Analyze Grainrad desktop layout, mobile layout, dark terminal tokens, panels, and interaction model.
-- [x] Capture user correction: do not copy Grainrad fonts; preserve the current configured font stack.
+- [x] Analyze reference editor desktop layout, mobile layout, dark terminal tokens, panels, and interaction model.
+- [x] Capture user correction: do not copy reference editor fonts; preserve the current configured font stack.
 - [x] Capture user correction: only `/studio` is in scope; do not redesign `/`.
-- [x] Capture user correction: effect controller UI should follow Grainrad's design and support both light/dark themes.
+- [x] Capture user correction: effect controller UI should follow the reference editor's design and support both light/dark themes.
 - [x] Capture user correction: `/studio` theme default should be light, with dark still supported.
-- [x] Add detailed plan: `tasks/v2.1/phase-5d-grainrad-studio-refactor-plan.md`.
+- [x] Add detailed plan: `tasks/v2.1/phase-5d-studio-effects-refactor-plan.md`.
 - [x] User approval checkpoint before implementation.
-- [x] Phase 5D implementation in progress: execute all plan items, compare `/studio` operation against Grainrad, and keep iterating until aligned except for Character selector input.
+- [x] Phase 5D implementation in progress: execute all plan items, compare `/studio` operation against reference editor, and keep iterating until aligned except for Character selector input.
 
 Review result:
 
-- Grainrad desktop target verified live on 2026-06-18: `100dvh` editor with left 18rem sidebar, center preview, right 22rem settings/export sidebar, compact `+`/`-` sections, row-based controls, and a terminal-style light/dark color system.
-- Grainrad mobile target verified live on 2026-06-18: brand header, center preview, bottom tabs for Input/Effects/Presets/Export, floating settings button, and settings bottom sheet.
-- Hanzi adaptation: Input uses the existing `CharacterPanel`/character selector instead of Grainrad file upload.
+- The reference editor desktop target verified live on 2026-06-18: `100dvh` editor with left 18rem sidebar, center preview, right 22rem settings/export sidebar, compact `+`/`-` sections, row-based controls, and a terminal-style light/dark color system.
+- The reference editor mobile target verified live on 2026-06-18: brand header, center preview, bottom tabs for Input/Effects/Presets/Export, floating settings button, and settings bottom sheet.
+- Hanzi adaptation: Input uses the existing `CharacterPanel`/character selector instead of reference editor file upload.
 - Hanzi adaptation: active effect surface is ASCII-only; remove old non-ASCII Morph/Pattern/Shader Layer/Randomize UI from active `/studio`.
 - Hanzi adaptation: preserve `theme/font.ts` current fonts; no IBM Plex Mono / JetBrains Mono import.
-- Hanzi adaptation: effect controllers use Grainrad-like compact sections/rows/ranges/selects/grids, with route-local light default plus dark theme support.
-- Implementation added the route-local terminal shell, desktop left/preview/right layout, mobile bottom tabs, mobile settings sheet, light/dark theme toggle, compact controller primitives, ASCII-only presets/effects, right-side Settings/Processing/Post-Processing/Export panels, canvas fill fix, and clean `hanzi-studio-grainrad-ascii-v1` active persistence.
-- Browser operation comparison passed against Grainrad's live layout except for the intended Hanzi character selector input: desktop dimensions matched 288px/flex/352px, theme toggle changed light/dark, presets expanded and applied, charset select changed to `matrix`, export panel was visible, canvas filled the center preview, mobile tabs worked, and settings sheet opened.
+- Hanzi adaptation: effect controllers use reference-style compact sections/rows/ranges/selects/grids, with route-local light default plus dark theme support.
+- Implementation added the route-local terminal shell, desktop left/preview/right layout, mobile bottom tabs, mobile settings sheet, light/dark theme toggle, compact controller primitives, ASCII-only presets/effects, right-side Settings/Processing/Post-Processing/Export panels, canvas fill fix, and clean `hanzi-studio-ascii-v1` active persistence.
+- Browser operation comparison passed against the reference editor's live layout except for the intended Hanzi character selector input: desktop dimensions matched 288px/flex/352px, theme toggle changed light/dark, presets expanded and applied, charset select changed to `matrix`, export panel was visible, canvas filled the center preview, mobile tabs worked, and settings sheet opened.
 - Verification passed: Phase 5D focused tests, full `pnpm test` (40 files / 165 tests), `pnpm exec tsc --noEmit`, and `pnpm run build`.
 
 ## Phase 5C True 3D Shader Art Engine Re-Plan - 2026-06-18
@@ -2130,7 +2130,7 @@ Review result:
 Review result:
 
 - Matrix Rain now interprets Up, Down, Left, and Right as the destination the rain moves `to`; both opposing pairs are reversed from the prior source/from semantics.
-- One shared direction-ID map now feeds the dedicated Matrix Rain material and generic Grainrad runtime compiler, while the deterministic CPU oracle uses the same destination-direction branch.
+- One shared direction-ID map now feeds the dedicated Matrix Rain material and generic Studio runtime compiler, while the deterministic CPU oracle uses the same destination-direction branch.
 - Verification passed: focused Matrix Rain/runtime suites `3` files / `59` tests, TypeScript, focused ESLint, and `git diff --check`.
 - The broader Studio store file remains independently red because the pre-existing dark-theme change conflicts with light-theme assertions; the three direction-specific suites pass.
 
@@ -2239,7 +2239,7 @@ Checklist:
 
 Review result:
 
-- Color/reset root causes: select, dropdown, and color rows never received reset callbacks; initial Grainrad colors were always created from the light palette even though Studio starts dark; several Effects encoded the visible Mono option with incompatible runtime IDs. Every theme-aware color row now resets against the active theme, all actual `color-mode` controls initialize/reset to canonical `mono`, and initial ASCII colors are synchronized from the active Grainrad palette.
+- Color/reset root causes: select, dropdown, and color rows never received reset callbacks; initial reference editor colors were always created from the light palette even though Studio starts dark; several Effects encoded the visible Mono option with incompatible runtime IDs. Every theme-aware color row now resets against the active theme, all actual `color-mode` controls initialize/reset to canonical `mono`, and initial ASCII colors are synchronized from the active reference editor palette.
 - Color routing repairs: Matrix Rain now exposes independent Model Color and Rain Color roles; Dots Mono now consumes Dot Color; Blockify applies Border Color in every style whenever Border Width is active; Voronoi's algorithmic source selector is renamed Cell Color Source so it is no longer confused with visual Color Mode. Pixel Sort schema, sanitizer, GPU fallback, and CPU oracle now default to Hue.
 - Post root cause: all nine controls existed in each material, but Bloom, Chromatic, Scanlines, CRT Curve, and Phosphor were local single-pixel approximations rather than a framebuffer compositor. Studio now mounts one shared `EffectComposer` after all 15 source renderers, using real mipmap Bloom, channel-offset Chromatic Aberration, Scanline, Vignette, UV-warp CRT Curve, phosphor RGB triads, and resolution/time-aware ASCII Grain. Export capture runs after composition.
 - Processing root cause: the former per-material math was capped or visually ineffective and the earlier source-marker regression only proved uniform names existed. One shared framebuffer Processing effect now applies spatial Blur, neighbor Edge Enhance, Brightness Map, Invert, Quantize Colors, and Shape Matching exactly once. Useful ranges are Brightness Map `0..4` (Matrix `0..6`, default `3`), Edge Enhance `0..4`, Blur `0..64`, Quantize Colors `0..64`, Shape Matching `0..1`.
@@ -2385,7 +2385,7 @@ Specification:
 Root-cause evidence:
 
 - `CharacterContourCanvas` currently renders the 3D Character into a color texture, then displays `contour-material` on a fullscreen plane. The visible result is therefore a 2D luminance posterization of a lit snapshot, not a contour material attached to the 3D Character.
-- Grainrad's production Contour is itself an image-space luminance quantizer with four-neighbor band-edge detection. Porting that equation exactly does not make it a convincing 3D Character effect.
+- the reference editor's production Contour is itself an image-space luminance quantizer with four-neighbor band-edge detection. Porting that equation exactly does not make it a convincing 3D Character effect.
 - The existing ASCII renderer already proves the required reusable seams: true extruded SVG geometry, mesh-attached `ShaderMaterial`, real Character Set glyph atlas data, animation time, and auto-spin.
 
 Proposed implementation checkpoints:
@@ -2409,22 +2409,22 @@ Review result:
 - Verification passed for Contour: focused atlas/material/core/schema/runtime/routing/store suites (`9` files / `79` tests), TypeScript, full ESLint, production build, and staged/unstaged `git diff --check`. The current full Vitest run passes `628` tests but is red on `3` unrelated concurrent Matrix Rain assertions (`matrix-rain-core`, `matrix-rain-material`, and `matrix-rain-schema`); no Contour suite fails. The existing Node engine warning remains because the active runtime is Node `24.18.0` while the package requests `22.x`.
 - Checkpoint 1 remains open for the required user-run `/studio` visual pass.
 
-## Contour Grainrad parity correction (2026-07-14)
+## Contour reference parity correction (2026-07-14)
 
 Specification:
 
 - Supersede the rejected mesh-attached Contour direction above.
-- Research the current Grainrad production bundle before implementation and keep source-backed evidence for the Contour shader, defaults, 3D input renderer, and downstream Processing/Post stages.
-- Render the selected extruded/deformed 3D Character to an intermediate color frame, then apply Grainrad's image-space luminance quantization and four-neighbor contour pass to that frame.
+- Research the current reference editor's production bundle before implementation and keep source-backed evidence for the Contour shader, defaults, 3D input renderer, and downstream Processing/Post stages.
+- Render the selected extruded/deformed 3D Character to an intermediate color frame, then apply the reference editor's image-space luminance quantization and four-neighbor contour pass to that frame.
 - Remove Contour Source, Line Style, Character Set, Custom Chars, Glyph Scale, and Glyph Spacing controls. Character Set remains an ASCII concern and must not affect Contour.
 - Preserve existing Character geometry, Model controls, 3D Motion, shared Processing/Post, hidden-square export, and concurrent non-Contour work.
 
 Research evidence:
 
-- Grainrad's production Contour defaults are Levels `8`, Line Thickness `1`, Filled Bands, Original color, black Line Color, white Background, Invert off, Brightness `0`, and Contrast `0`.
+- the reference editor's production Contour defaults are Levels `8`, Line Thickness `1`, Filled Bands, Original color, black Line Color, white Background, Invert off, Brightness `0`, and Contrast `0`.
 - Its Contour shader samples a 2D source texture, applies brightness/contrast and Rec.601 luminance, quantizes the center and four cardinal neighbors, and marks a contour when a neighbor band differs. It does not use geometry depth, normals, SDF, or a glyph atlas.
-- For GLB input, Grainrad first renders the model with its original glTF materials in a separate Three.js canvas using a perspective camera, ambient plus directional light, black scene background, normalized model scale, and optional Y auto-rotation. That canvas is then passed to the same effect renderer as image/video input.
-- Grainrad Processing/Post are downstream stages. Default Post Grain is enabled at intensity `35`, size `2`, speed `50`; this can add texture after Contour but is not part of the Contour shader itself.
+- For GLB input, the reference editor first renders the model with its original glTF materials in a separate Three.js canvas using a perspective camera, ambient plus directional light, black scene background, normalized model scale, and optional Y auto-rotation. That canvas is then passed to the same effect renderer as image/video input.
+- The reference editor's Processing/Post are downstream stages. Default Post Grain is enabled at intensity `35`, size `2`, speed `50`; this can add texture after Contour but is not part of the Contour shader itself.
 
 Checklist:
 
@@ -2437,11 +2437,11 @@ Checklist:
 
 Review result:
 
-- Root cause: the rejected renderer replaced Grainrad's fullscreen source-texture algorithm with a custom mesh-attached depth/normal/SDF material and made Character Lines the default. That path could only produce glyph-covered gray faces; it could not reproduce the reference's dense boundaries over a detailed luminance frame.
-- Restored the verified production architecture: the selected 3D Character is lit in an intermediate scene, rendered to a framebuffer, and passed to the exact Rec.601 brightness/contrast, quantized-band, four-neighbor Contour shader. The source camera and lighting now match Grainrad's 3D renderer defaults: 50-degree perspective at z=5, ambient 0.6, directional 1 at (5,5,5), and black source background.
-- Contour exposes only the website control set, with the user-selected Hanzi default of Mono: Filled Bands, Levels 8, Line Thickness 1, Invert off, Brightness/Contrast 0, black Line Color, and white Background. Mono keeps Grainrad's exact two-color midpoint mix.
+- Root cause: the rejected renderer replaced the reference editor's fullscreen source-texture algorithm with a custom mesh-attached depth/normal/SDF material and made Character Lines the default. That path could only produce glyph-covered gray faces; it could not reproduce the reference's dense boundaries over a detailed luminance frame.
+- Restored the verified production architecture: the selected 3D Character is lit in an intermediate scene, rendered to a framebuffer, and passed to the exact Rec.601 brightness/contrast, quantized-band, four-neighbor Contour shader. The source camera and lighting now match the reference editor's 3D renderer defaults: 50-degree perspective at z=5, ambient 0.6, directional 1 at (5,5,5), and black source background.
+- Contour exposes only the website control set, with the user-selected Hanzi default of Mono: Filled Bands, Levels 8, Line Thickness 1, Invert off, Brightness/Contrast 0, black Line Color, and white Background. Mono keeps the reference editor's exact two-color midpoint mix.
 - Removed Contour's Source, Line Style, Character Set, Custom Chars, Glyph Scale, Glyph Spacing, glyph-atlas, SDF, and derivative-isoline paths. The shared atlas utility remains for ASCII, where it belongs.
-- Processing/Post stay downstream in the current Studio compositor and are applied once. Grainrad's default Grain explains part of the reference texture, but no glyph or directional-streak stage exists in the Contour shader.
+- Processing/Post stay downstream in the current Studio compositor and are applied once. the reference editor's default Grain explains part of the reference texture, but no glyph or directional-streak stage exists in the Contour shader.
 - Verification passed: focused Contour/store/routing/compositor suites `7` files / `78` tests, full Vitest `102` files / `640` tests, TypeScript, focused ESLint, production build, and staged/unstaged diff checks. Build still reports the existing Node engine warning because the active runtime is Node `24.18.0` while `package.json` requests `22.x`.
 
 ## Model Twist axis and Bend range correction (2026-07-14)

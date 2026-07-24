@@ -1,6 +1,12 @@
 import { ShaderMaterial, Vector2, type Texture } from 'three'
 
-export type VhsControlValue = string | number | boolean
+import type { StudioControlValue } from './studio-effects'
+import {
+  readStudioBoolean as readBoolean,
+  readStudioNumber as readNumber,
+} from './studio-control-readers'
+
+export type VhsControlValue = StudioControlValue
 export type VhsControls = Readonly<Record<string, VhsControlValue>>
 
 export type CreateVhsShaderMaterialOptions = Readonly<{
@@ -294,12 +300,4 @@ export function applyVhsUniforms(material: ShaderMaterial, controls: VhsControls
 
 export function disposeVhsShaderMaterial(material: ShaderMaterial) {
   material.dispose()
-}
-
-function readNumber(value: VhsControlValue | undefined, fallback: number) {
-  return typeof value === 'number' && Number.isFinite(value) ? value : fallback
-}
-
-function readBoolean(value: VhsControlValue | undefined) {
-  return value === true ? 1 : 0
 }

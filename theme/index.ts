@@ -17,6 +17,16 @@ const theme = createTheme({
         size: 'md',
       },
     },
+    Slider: {
+      defaultProps: {
+        showLabelOnHover: true,
+      },
+    },
+    RangeSlider: {
+      defaultProps: {
+        showLabelOnHover: true,
+      },
+    },
   },
 })
 

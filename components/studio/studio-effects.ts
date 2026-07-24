@@ -1,17 +1,15 @@
-export type GrainradControlValue = string | number | boolean
+export type StudioControlValue = string | number | boolean
 
-export const ASCII_OUTPUT_WIDTH_MAX = 600
-
-export type GrainradControlCondition =
+export type StudioControlCondition =
   | {
       controlId: string
       operator: 'equals'
-      value: GrainradControlValue
+      value: StudioControlValue
     }
   | {
       controlId: string
       operator: 'in'
-      values: GrainradControlValue[]
+      values: StudioControlValue[]
     }
   | {
       controlId: string
@@ -19,23 +17,23 @@ export type GrainradControlCondition =
       value: number
     }
 
-export type GrainradControlVisibility =
-  | GrainradControlCondition
-  | { all: GrainradControlCondition[] }
+export type StudioControlVisibility =
+  | StudioControlCondition
+  | { all: StudioControlCondition[] }
 
-type GrainradControlBase = {
+type StudioControlBase = {
   id: string
   label: string
-  visibleWhen?: GrainradControlVisibility
+  visibleWhen?: StudioControlVisibility
 }
 
-export type GrainradSelectOption<T extends string = string> = {
+export type StudioSelectOption<T extends string = string> = {
   value: T
   label: string
   meta?: string
 }
 
-export type GrainradRangeControl = GrainradControlBase & {
+export type StudioRangeControl = StudioControlBase & {
   kind: 'range'
   defaultValue: number
   defaultValueByTheme?: Record<'light' | 'dark', number>
@@ -47,56 +45,56 @@ export type GrainradRangeControl = GrainradControlBase & {
   displayScaleByTheme?: Record<'light' | 'dark', number>
 }
 
-export type GrainradSelectControl = GrainradControlBase & {
+export type StudioSelectControl = StudioControlBase & {
   kind: 'select'
   defaultValue: string
   defaultValueByTheme?: Record<'light' | 'dark', string>
-  options: Array<GrainradSelectOption>
+  options: Array<StudioSelectOption>
 }
 
-export type GrainradTextControl = GrainradControlBase & {
+export type StudioTextControl = StudioControlBase & {
   kind: 'text'
   defaultValue: string
   defaultValueByTheme?: Record<'light' | 'dark', string>
 }
 
-export type GrainradToggleControl = GrainradControlBase & {
+export type StudioToggleControl = StudioControlBase & {
   kind: 'toggle'
   defaultValue: boolean
   defaultValueByTheme?: Record<'light' | 'dark', boolean>
 }
 
-export type GrainradColorControl = GrainradControlBase & {
+export type StudioColorControl = StudioControlBase & {
   kind: 'color'
   defaultValue: string
   defaultValueByTheme: Record<'light' | 'dark', string>
 }
 
-export type GrainradEffectControl =
-  | GrainradRangeControl
-  | GrainradSelectControl
-  | GrainradTextControl
-  | GrainradToggleControl
-  | GrainradColorControl
+export type StudioEffectControl =
+  | StudioRangeControl
+  | StudioSelectControl
+  | StudioTextControl
+  | StudioToggleControl
+  | StudioColorControl
 
-export type GrainradThemeColorControl =
-  | GrainradColorControl
-  | (GrainradSelectControl & { defaultValueByTheme: Record<'light' | 'dark', string> })
-  | (GrainradTextControl & { defaultValueByTheme: Record<'light' | 'dark', string> })
+export type StudioThemeColorControl =
+  | StudioColorControl
+  | (StudioSelectControl & { defaultValueByTheme: Record<'light' | 'dark', string> })
+  | (StudioTextControl & { defaultValueByTheme: Record<'light' | 'dark', string> })
 
-export type GrainradSettingGroup = {
+export type StudioSettingGroup = {
   title?: string
-  controls: GrainradEffectControl[]
+  controls: StudioEffectControl[]
 }
 
-export type GrainradEffectDefinition = {
-  id: GrainradEffectId
+export type StudioEffectDefinition = {
+  id: StudioEffectId
   label: string
-  renderer: GrainradEffectRenderer
-  settingGroups: GrainradSettingGroup[]
+  renderer: StudioEffectRenderer
+  settingGroups: StudioSettingGroup[]
 }
 
-export type GrainradEffectRenderer =
+export type StudioEffectRenderer =
   | 'ascii'
   | 'dithering'
   | 'halftone'
@@ -114,7 +112,7 @@ export type GrainradEffectRenderer =
   | 'vhs'
   | 'unimplemented'
 
-export const GRAINRAD_CHARACTER_SETS = [
+export const STUDIO_CHARACTER_SETS = [
   { value: 'standard', label: 'STANDARD' },
   { value: 'blocks', label: 'BLOCKS' },
   { value: 'binary', label: 'BINARY' },
@@ -127,11 +125,11 @@ export const GRAINRAD_CHARACTER_SETS = [
   { value: 'custom', label: 'CUSTOM' },
 ] as const
 
-export type GrainradCharacterSet = (typeof GRAINRAD_CHARACTER_SETS)[number]['value']
+export type StudioCharacterSet = (typeof STUDIO_CHARACTER_SETS)[number]['value']
 
-export const GRAINRAD_CHARACTER_SET_IDS = GRAINRAD_CHARACTER_SETS.map((option) => option.value)
+export const STUDIO_CHARACTER_SET_IDS = STUDIO_CHARACTER_SETS.map((option) => option.value)
 
-export const MATRIX_RAIN_CHARACTER_SETS = GRAINRAD_CHARACTER_SETS.map((option) =>
+export const MATRIX_RAIN_CHARACTER_SETS = STUDIO_CHARACTER_SETS.map((option) =>
   option.value === 'symbols'
     ? { value: 'emoji', label: option.label }
     : { ...option },
@@ -192,21 +190,21 @@ const pixelSortDirectionOptions = [
   { value: 'radial', label: 'Radial' },
 ]
 
-export const GRAINRAD_COMMON_PROCESSING_GROUPS: GrainradSettingGroup[] = [
+export const STUDIO_COMMON_PROCESSING_GROUPS: StudioSettingGroup[] = [
   {
     controls: [
       toggleControl('processing-invert', 'Invert', false),
       rangeControl('brightness-map', 'Brightness Map', 1, 0, 4, 0.01),
       rangeControl('edge-enhance', 'Edge Enhance', 0, 0, 4, 0.01),
-      rangeControl('blur', 'Blur', 0, 0, 64, 1),
+      rangeControl('blur', 'Blur', 0, 0, 100, 1),
       rangeControl('quantize-colors', 'Quantize Colors', 0, 0, 64, 1),
       rangeControl('shape-matching', 'Shape Matching', 0, 0, 1, 0.01),
     ],
   },
 ]
 
-const MATRIX_RAIN_PROCESSING_GROUPS: GrainradSettingGroup[] =
-  GRAINRAD_COMMON_PROCESSING_GROUPS.map((group) => ({
+const MATRIX_RAIN_PROCESSING_GROUPS: StudioSettingGroup[] =
+  STUDIO_COMMON_PROCESSING_GROUPS.map((group) => ({
     ...group,
     controls: group.controls.map((control) =>
       control.kind === 'range' && control.id === 'brightness-map'
@@ -215,15 +213,15 @@ const MATRIX_RAIN_PROCESSING_GROUPS: GrainradSettingGroup[] =
     ),
   }))
 
-export function getGrainradProcessingGroups(
-  effectId: GrainradEffectId,
-): GrainradSettingGroup[] {
+export function getStudioProcessingGroups(
+  effectId: StudioEffectId,
+): StudioSettingGroup[] {
   return effectId === 'matrix-rain'
     ? MATRIX_RAIN_PROCESSING_GROUPS
-    : GRAINRAD_COMMON_PROCESSING_GROUPS
+    : STUDIO_COMMON_PROCESSING_GROUPS
 }
 
-export const GRAINRAD_COMMON_POST_PROCESSING_GROUPS: GrainradSettingGroup[] = [
+export const STUDIO_COMMON_POST_PROCESSING_GROUPS: StudioSettingGroup[] = [
   {
     controls: [
       toggleControl('bloom', 'Bloom', false),
@@ -260,7 +258,7 @@ export const GRAINRAD_COMMON_POST_PROCESSING_GROUPS: GrainradSettingGroup[] = [
         operator: 'equals',
         value: true,
       }),
-      rangeControl('grain-intensity', 'Intensity', 5, 0, 200, 1, undefined, {
+      rangeControl('grain-intensity', 'Intensity', 1, 0, 200, 1, undefined, {
         controlId: 'grain',
         operator: 'equals',
         value: true,
@@ -280,7 +278,7 @@ export const GRAINRAD_COMMON_POST_PROCESSING_GROUPS: GrainradSettingGroup[] = [
   {
     controls: [
       toggleControl('chromatic', 'Chromatic', false),
-      rangeControl('chromatic-offset', 'Offset', 5, 0, 50, 1, undefined, {
+      rangeControl('chromatic-offset', 'Offset', 5, 0, 100, 1, undefined, {
         controlId: 'chromatic',
         operator: 'equals',
         value: true,
@@ -290,7 +288,7 @@ export const GRAINRAD_COMMON_POST_PROCESSING_GROUPS: GrainradSettingGroup[] = [
   {
     controls: [
       toggleControl('scanlines', 'Scanlines', false),
-      rangeControl('scanline-opacity', 'Opacity', 0.5, 0, 1, 0.05, undefined, {
+      rangeControl('scanline-opacity', 'Opacity', 0.2, 0, 1, 0.05, undefined, {
         controlId: 'scanlines',
         operator: 'equals',
         value: true,
@@ -338,7 +336,7 @@ export const GRAINRAD_COMMON_POST_PROCESSING_GROUPS: GrainradSettingGroup[] = [
   {
     controls: [
       toggleControl('crt-curve', 'CRT Curve', false),
-      rangeControl('crt-amount', 'Amount', 0.1, 0, 0.5, 0.01, undefined, {
+      scaledRangeControl('crt-amount', 'Amount', 0.1, 0, 0.5, 0.01, 100, undefined, {
         controlId: 'crt-curve',
         operator: 'equals',
         value: true,
@@ -371,7 +369,7 @@ export const GRAINRAD_COMMON_POST_PROCESSING_GROUPS: GrainradSettingGroup[] = [
   },
 ]
 
-export type GrainradEffectId =
+export type StudioEffectId =
   | 'ascii'
   | 'dithering'
   | 'halftone'
@@ -388,9 +386,9 @@ export type GrainradEffectId =
   | 'voronoi'
   | 'vhs'
 
-export const DEFAULT_GRAINRAD_EFFECT_ID: GrainradEffectId = 'ascii'
+export const DEFAULT_STUDIO_EFFECT_ID: StudioEffectId = 'ascii'
 
-export const GRAINRAD_EFFECTS: GrainradEffectDefinition[] = [
+export const STUDIO_EFFECTS: StudioEffectDefinition[] = [
   {
     id: 'ascii',
     label: 'ASCII',
@@ -399,10 +397,9 @@ export const GRAINRAD_EFFECTS: GrainradEffectDefinition[] = [
       {
         title: 'ASCII',
         controls: [
+          rangeControl('size', 'Size', 1, 0.1, 10, 0.1),
           rangeControl('scale', 'Scale', 4.3, 1, 20, 0.1),
-          rangeControl('spacing', 'Spacing', 0, 0, 1, 0.01),
-          rangeControl('output-width', 'Output Width', 0, 0, ASCII_OUTPUT_WIDTH_MAX, 1),
-          selectControl('character-set', 'Character Set', 'standard', [...GRAINRAD_CHARACTER_SETS]),
+          selectControl('character-set', 'Character Set', 'standard', [...STUDIO_CHARACTER_SETS]),
           textControl('custom-chars', 'Custom Chars', '█▓▒░@#%*+=-:. '),
         ],
       },
@@ -1127,15 +1124,15 @@ export const GRAINRAD_EFFECTS: GrainradEffectDefinition[] = [
   },
 ]
 
-export const GRAINRAD_EFFECT_IDS = GRAINRAD_EFFECTS.map((effect) => effect.id)
+export const STUDIO_EFFECT_IDS = STUDIO_EFFECTS.map((effect) => effect.id)
 
-export function getGrainradEffectById(effectId: GrainradEffectId) {
-  return GRAINRAD_EFFECTS.find((effect) => effect.id === effectId) ?? GRAINRAD_EFFECTS[0]
+export function getStudioEffectById(effectId: StudioEffectId) {
+  return STUDIO_EFFECTS.find((effect) => effect.id === effectId) ?? STUDIO_EFFECTS[0]
 }
 
-export function isGrainradControlVisible(
-  control: GrainradEffectControl,
-  values: Record<string, GrainradControlValue> | undefined,
+export function isStudioControlVisible(
+  control: StudioEffectControl,
+  values: Record<string, StudioControlValue> | undefined,
 ) {
   const condition = control.visibleWhen
 
@@ -1151,8 +1148,8 @@ export function isGrainradControlVisible(
 }
 
 function matchesVisibilityCondition(
-  condition: GrainradControlCondition,
-  values: Record<string, GrainradControlValue> | undefined,
+  condition: StudioControlCondition,
+  values: Record<string, StudioControlValue> | undefined,
 ) {
 
   const currentValue = values?.[condition.controlId]
@@ -1168,46 +1165,46 @@ function matchesVisibilityCondition(
   return condition.values.includes(currentValue ?? '')
 }
 
-export function createDefaultGrainradEffectControls(theme: 'light' | 'dark' = 'light') {
+export function createDefaultStudioEffectControls(theme: 'light' | 'dark' = 'light') {
   return Object.fromEntries(
-    GRAINRAD_EFFECTS.map((effect) => [
+    STUDIO_EFFECTS.map((effect) => [
       effect.id,
       Object.fromEntries(
         flattenGroups(effect.settingGroups)
-          .concat(flattenGroups(getGrainradProcessingGroups(effect.id)))
-          .concat(flattenGroups(GRAINRAD_COMMON_POST_PROCESSING_GROUPS))
-          .map((control) => [control.id, getGrainradControlDefaultValue(control, theme)]),
+          .concat(flattenGroups(getStudioProcessingGroups(effect.id)))
+          .concat(flattenGroups(STUDIO_COMMON_POST_PROCESSING_GROUPS))
+          .map((control) => [control.id, getStudioControlDefaultValue(control, theme)]),
       ),
     ]),
-  ) as Record<GrainradEffectId, Record<string, GrainradControlValue>>
+  ) as Record<StudioEffectId, Record<string, StudioControlValue>>
 }
 
-export function getGrainradControlDefaultValue(
-  control: GrainradEffectControl,
+export function getStudioControlDefaultValue(
+  control: StudioEffectControl,
   theme: 'light' | 'dark',
 ) {
-  return hasGrainradThemeDefaultValue(control)
+  return hasStudioThemeDefaultValue(control)
     ? control.defaultValueByTheme[theme]
     : control.defaultValue
 }
 
-export function hasGrainradThemeDefaultValue(
-  control: GrainradEffectControl,
-): control is GrainradEffectControl & {
-  defaultValueByTheme: Record<'light' | 'dark', GrainradControlValue>
+export function hasStudioThemeDefaultValue(
+  control: StudioEffectControl,
+): control is StudioEffectControl & {
+  defaultValueByTheme: Record<'light' | 'dark', StudioControlValue>
 } {
   return 'defaultValueByTheme' in control && control.defaultValueByTheme !== undefined
 }
 
-export function isGrainradThemeColorControl(
-  control: GrainradEffectControl,
-): control is GrainradThemeColorControl {
+export function isStudioThemeColorControl(
+  control: StudioEffectControl,
+): control is StudioThemeColorControl {
   return control.kind !== 'range'
     && control.kind !== 'toggle'
-    && hasGrainradThemeDefaultValue(control)
+    && hasStudioThemeDefaultValue(control)
 }
 
-function flattenGroups(groups: GrainradSettingGroup[]) {
+function flattenGroups(groups: StudioSettingGroup[]) {
   return groups.flatMap((group) => group.controls)
 }
 
@@ -1218,7 +1215,7 @@ function adjustmentGroup(labels: string[] = [
   'Hue Rotation',
   'Sharpness',
   'Gamma',
-]): GrainradSettingGroup {
+]): StudioSettingGroup {
   return {
     title: 'Adjustments',
     controls: labels.map((label) => {
@@ -1253,9 +1250,9 @@ function adjustmentGroup(labels: string[] = [
 
 function colorModeGroup(
   defaultValue: string,
-  options: Array<GrainradSelectOption> = monoOriginalColorModeOptions,
-  additionalControls: GrainradEffectControl[] = [],
-): GrainradSettingGroup {
+  options: Array<StudioSelectOption> = monoOriginalColorModeOptions,
+  additionalControls: StudioEffectControl[] = [],
+): StudioSettingGroup {
   return {
     title: 'Color',
     controls: [
@@ -1273,8 +1270,8 @@ function rangeControl(
   max: number,
   step: number,
   unit?: string,
-  visibleWhen?: GrainradControlVisibility,
-): GrainradRangeControl {
+  visibleWhen?: StudioControlVisibility,
+): StudioRangeControl {
   return {
     kind: 'range',
     id,
@@ -1297,9 +1294,10 @@ function scaledRangeControl(
   step: number,
   displayScale: number,
   unit?: string,
-): GrainradRangeControl {
+  visibleWhen?: StudioControlVisibility,
+): StudioRangeControl {
   return {
-    ...rangeControl(id, label, defaultValue, min, max, step, unit),
+    ...rangeControl(id, label, defaultValue, min, max, step, unit, visibleWhen),
     displayScale,
   }
 }
@@ -1313,7 +1311,7 @@ function themedRangeControl(
   step: number,
   defaultValueByTheme: Record<'light' | 'dark', number>,
   unit?: string,
-): GrainradRangeControl {
+): StudioRangeControl {
   return {
     ...rangeControl(id, label, defaultValue, min, max, step, unit),
     defaultValueByTheme,
@@ -1324,9 +1322,9 @@ function selectControl(
   id: string,
   label: string,
   defaultValue: string,
-  options: Array<GrainradSelectOption>,
-  visibleWhen?: GrainradControlVisibility,
-): GrainradSelectControl {
+  options: Array<StudioSelectOption>,
+  visibleWhen?: StudioControlVisibility,
+): StudioSelectControl {
   return {
     kind: 'select',
     id,
@@ -1341,9 +1339,9 @@ function textControl(
   id: string,
   label: string,
   defaultValue: string,
-  defaultValueByThemeOrVisibleWhen?: Record<'light' | 'dark', string> | GrainradControlVisibility,
-  visibleWhen?: GrainradControlVisibility,
-): GrainradTextControl {
+  defaultValueByThemeOrVisibleWhen?: Record<'light' | 'dark', string> | StudioControlVisibility,
+  visibleWhen?: StudioControlVisibility,
+): StudioTextControl {
   const defaultValueByTheme = defaultValueByThemeOrVisibleWhen
     && 'light' in defaultValueByThemeOrVisibleWhen
     && 'dark' in defaultValueByThemeOrVisibleWhen
@@ -1351,7 +1349,7 @@ function textControl(
       : undefined
   const resolvedVisibleWhen = defaultValueByTheme
     ? visibleWhen
-    : defaultValueByThemeOrVisibleWhen as GrainradControlVisibility | undefined
+    : defaultValueByThemeOrVisibleWhen as StudioControlVisibility | undefined
 
   return {
     kind: 'text',
@@ -1363,7 +1361,7 @@ function textControl(
   }
 }
 
-function toggleControl(id: string, label: string, defaultValue: boolean): GrainradToggleControl {
+function toggleControl(id: string, label: string, defaultValue: boolean): StudioToggleControl {
   return {
     kind: 'toggle',
     id,
@@ -1377,8 +1375,8 @@ function colorControl(
   label: string,
   defaultValue: string,
   defaultValueByTheme: Record<'light' | 'dark', string>,
-  visibleWhen?: GrainradControlVisibility,
-): GrainradColorControl {
+  visibleWhen?: StudioControlVisibility,
+): StudioColorControl {
   return {
     kind: 'color',
     id,

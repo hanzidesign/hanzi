@@ -1,7 +1,7 @@
 import { DataTexture, Vector2 } from 'three'
 import { describe, expect, it } from 'vitest'
 
-import { createDefaultGrainradEffectControls } from './grainrad-effects'
+import { createDefaultStudioEffectControls } from './studio-effects'
 import {
   DITHERING_ALGORITHM_IDS,
   DITHERING_FRAGMENT_SHADER,
@@ -30,7 +30,7 @@ describe('Dithering shader material', () => {
   })
 
   it('uses the Dithering schema defaults for every visible setting', () => {
-    const controls = createDefaultGrainradEffectControls().dithering
+    const controls = createDefaultStudioEffectControls().dithering
     const material = createDitheringShaderMaterial({
       controls,
       sourceTexture: new DataTexture(),

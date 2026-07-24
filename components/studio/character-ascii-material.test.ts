@@ -9,7 +9,7 @@ import {
   disposeAsciiShaderMaterial,
   resolveAsciiCharacterSet,
 } from './character-ascii-material'
-import { compileGrainradEffectRuntime } from './grainrad-effect-runtime'
+import { compileStudioEffectRuntime } from './studio-effect-runtime'
 
 describe('Phase 5C ASCII shader material', () => {
   it('defines concrete ASCII character strings for every Character Set option', () => {
@@ -54,7 +54,7 @@ describe('Phase 5C ASCII shader material', () => {
         chromaticOffset: 0.1,
         grain: 0.15,
       },
-      grainradRuntime: compileGrainradEffectRuntime({
+      studioRuntime: compileStudioEffectRuntime({
         selectedEffectId: 'ascii',
         controls: {},
       }),
@@ -73,7 +73,7 @@ describe('Phase 5C ASCII shader material', () => {
     expect(material.uniforms.u_scanlineAmount.value).toBe(0.2)
     expect(material.uniforms.u_bloomAmount.value).toBe(0.3)
     expect(material.uniforms.u_curvature.value).toBe(0.1)
-    expect(material.uniforms.u_grainradEffectId.value).toBe(0)
+    expect(material.uniforms.u_studioEffectId.value).toBe(0)
     expect(material.uniforms).toHaveProperty('u_effectA')
     expect(material.uniforms).toHaveProperty('u_effectT')
     expect(material.uniforms).toHaveProperty('u_processingA')
@@ -89,7 +89,7 @@ describe('Phase 5C ASCII shader material', () => {
     const initialState = createInitialStudioStoreState()
     const material = createAsciiShaderMaterial({
       ascii: initialState.ascii,
-      grainradRuntime: compileGrainradEffectRuntime({
+      studioRuntime: compileStudioEffectRuntime({
         selectedEffectId: 'ascii',
         controls: {},
       }),
@@ -105,35 +105,35 @@ describe('Phase 5C ASCII shader material', () => {
     expect(materialDispose).toHaveBeenCalledTimes(1)
   })
 
-  it('contains procedural glyph, cell, depth, normal, Grainrad effects, and post-process shader logic', () => {
+  it('contains procedural glyph, cell, depth, normal, Studio effects, and post-process shader logic', () => {
     expect(ASCII_VERTEX_SHADER).toContain('v_worldNormal')
     expect(ASCII_VERTEX_SHADER).toContain('v_viewDepth')
     expect(ASCII_FRAGMENT_SHADER).toContain('asciiCell')
     expect(ASCII_FRAGMENT_SHADER).toContain('glyph5x7')
-    expect(ASCII_FRAGMENT_SHADER).toContain('applyGrainradAscii')
-    expect(ASCII_FRAGMENT_SHADER).not.toContain('applyGrainradDithering')
-    expect(ASCII_FRAGMENT_SHADER).not.toContain('applyGrainradHalftone')
-    expect(ASCII_FRAGMENT_SHADER).not.toContain('applyGrainradMatrixRain')
-    expect(ASCII_FRAGMENT_SHADER).not.toContain('applyGrainradDots')
-    expect(ASCII_FRAGMENT_SHADER).not.toContain('applyGrainradContour')
-    expect(ASCII_FRAGMENT_SHADER).not.toContain('applyGrainradPixelSort')
-    expect(ASCII_FRAGMENT_SHADER).not.toContain('applyGrainradBlockify')
-    expect(ASCII_FRAGMENT_SHADER).not.toContain('applyGrainradThreshold')
-    expect(ASCII_FRAGMENT_SHADER).not.toContain('applyGrainradEdgeDetection')
-    expect(ASCII_FRAGMENT_SHADER).not.toContain('applyGrainradCrosshatch')
-    expect(ASCII_FRAGMENT_SHADER).not.toContain('applyGrainradWaveLines')
-    expect(ASCII_FRAGMENT_SHADER).not.toContain('applyGrainradNoiseField')
-    expect(ASCII_FRAGMENT_SHADER).not.toContain('applyGrainradVoronoi')
-    expect(ASCII_FRAGMENT_SHADER).not.toContain('applyGrainradVhs')
-    expect(ASCII_FRAGMENT_SHADER).toContain('applyGrainradProcessing')
-    expect(ASCII_FRAGMENT_SHADER).toContain('applyGrainradPostProcessing')
+    expect(ASCII_FRAGMENT_SHADER).toContain('applyStudioAscii')
+    expect(ASCII_FRAGMENT_SHADER).not.toContain('applyStudioDithering')
+    expect(ASCII_FRAGMENT_SHADER).not.toContain('applyStudioHalftone')
+    expect(ASCII_FRAGMENT_SHADER).not.toContain('applyStudioMatrixRain')
+    expect(ASCII_FRAGMENT_SHADER).not.toContain('applyStudioDots')
+    expect(ASCII_FRAGMENT_SHADER).not.toContain('applyStudioContour')
+    expect(ASCII_FRAGMENT_SHADER).not.toContain('applyStudioPixelSort')
+    expect(ASCII_FRAGMENT_SHADER).not.toContain('applyStudioBlockify')
+    expect(ASCII_FRAGMENT_SHADER).not.toContain('applyStudioThreshold')
+    expect(ASCII_FRAGMENT_SHADER).not.toContain('applyStudioEdgeDetection')
+    expect(ASCII_FRAGMENT_SHADER).not.toContain('applyStudioCrosshatch')
+    expect(ASCII_FRAGMENT_SHADER).not.toContain('applyStudioWaveLines')
+    expect(ASCII_FRAGMENT_SHADER).not.toContain('applyStudioNoiseField')
+    expect(ASCII_FRAGMENT_SHADER).not.toContain('applyStudioVoronoi')
+    expect(ASCII_FRAGMENT_SHADER).not.toContain('applyStudioVhs')
+    expect(ASCII_FRAGMENT_SHADER).toContain('applyStudioProcessing')
+    expect(ASCII_FRAGMENT_SHADER).toContain('applyStudioPostProcessing')
     expect(ASCII_FRAGMENT_SHADER).not.toContain('float grainAmount = u_postB')
     expect(ASCII_FRAGMENT_SHADER).toContain("* u_grain;")
     expect(ASCII_FRAGMENT_SHADER).toContain('u_asciiCellSize')
     expect(ASCII_FRAGMENT_SHADER).toContain('u_asciiCharsetStyle')
     expect(ASCII_FRAGMENT_SHADER).toContain('uniform sampler2D u_asciiGlyphAtlas')
     expect(ASCII_FRAGMENT_SHADER).toContain('sampleAsciiGlyphAtlas')
-    expect(ASCII_FRAGMENT_SHADER).toContain('u_grainradEffectId')
+    expect(ASCII_FRAGMENT_SHADER).toContain('u_studioEffectId')
     expect(ASCII_FRAGMENT_SHADER).toContain('u_depthInfluence')
     expect(ASCII_FRAGMENT_SHADER).toContain('u_normalInfluence')
     expect(ASCII_FRAGMENT_SHADER).toContain('u_scanlineAmount')
@@ -141,21 +141,24 @@ describe('Phase 5C ASCII shader material', () => {
     expect(ASCII_FRAGMENT_SHADER).toContain('u_curvature')
   })
 
-  it('routes Grainrad ASCII Scale, Spacing, Output Width, and Character Set into glyph sampling behavior', () => {
+  it('routes Studio ASCII Scale, Size, and Character Set into glyph sampling behavior', () => {
     expect(ASCII_FRAGMENT_SHADER).toContain('asciiEffectCellSize')
-    expect(ASCII_FRAGMENT_SHADER).toContain('outputColumnCount')
-    expect(ASCII_FRAGMENT_SHADER).toContain('outputColumnCount = clamp(u_effectC, 0.0, 600.0)')
-    expect(ASCII_FRAGMENT_SHADER).toContain('outputCellSize = max(u_visualResolution.x / max(outputColumnCount, 1.0), 1.0)')
+    expect(ASCII_FRAGMENT_SHADER).toContain('float asciiEffectCellSize = max(u_asciiCellSize, 1.0)')
+    expect(ASCII_FRAGMENT_SHADER).not.toContain('outputColumnCount')
+    expect(ASCII_FRAGMENT_SHADER).not.toContain('outputCellSize')
     expect(ASCII_FRAGMENT_SHADER).toContain('vec2 visualPixel = screenUv * u_visualResolution')
     expect(ASCII_FRAGMENT_SHADER).not.toContain('sin(gl_FragCoord.y * 3.14159)')
-    expect(ASCII_FRAGMENT_SHADER).toContain('glyphScale = mix(1.0, 0.25, clamp(u_effectB, 0.0, 1.0))')
+    expect(ASCII_FRAGMENT_SHADER).toContain('glyphScale = max(u_effectB, 0.01)')
+    expect(ASCII_FRAGMENT_SHADER).not.toContain('glyphScale = max(u_effectN')
     expect(ASCII_FRAGMENT_SHADER).toContain('insideGlyphBox')
-    expect(ASCII_FRAGMENT_SHADER).toContain('grainradAsciiGlyph')
+    expect(ASCII_FRAGMENT_SHADER).toContain('studioAsciiGlyph')
     expect(ASCII_FRAGMENT_SHADER).toContain('sampleAsciiGlyphAtlas(brightness, spacedAsciiEffectCellUv)')
-    expect(ASCII_FRAGMENT_SHADER).toContain('grainradAsciiGlyph(brightness, spacedAsciiEffectCellUv, asciiEffectCellId, u_asciiCharsetStyle)')
-    expect(ASCII_FRAGMENT_SHADER).toContain('grainradAsciiIntensity')
+    expect(ASCII_FRAGMENT_SHADER).toContain('studioAsciiGlyph(brightness, spacedAsciiEffectCellUv, asciiEffectCellId, u_asciiCharsetStyle)')
+    expect(ASCII_FRAGMENT_SHADER).toContain('studioAsciiIntensity')
     expect(ASCII_FRAGMENT_SHADER).toContain('u_backgroundColor')
-    expect(ASCII_FRAGMENT_SHADER).toContain('monoAsciiColor = mix(u_effectColorB, u_effectColorA, mask * grainradAsciiIntensity)')
+    expect(ASCII_FRAGMENT_SHADER).toContain('paletteColor(brightness, studioAsciiMask)')
+    expect(ASCII_FRAGMENT_SHADER).not.toContain('paletteColor(brightness, glyph)')
+    expect(ASCII_FRAGMENT_SHADER).toContain('monoAsciiColor = mix(u_effectColorB, u_effectColorA, mask * studioAsciiIntensity)')
     expect(ASCII_FRAGMENT_SHADER).toContain('asciiColor = mix(monoAsciiColor, originalAsciiColor, step(0.5, u_effectL))')
     expect(ASCII_FRAGMENT_SHADER).not.toContain('u_asciiCellSize * max(u_effectA')
     expect(ASCII_FRAGMENT_SHADER).not.toContain('glyph * (1.0 - spacing)')

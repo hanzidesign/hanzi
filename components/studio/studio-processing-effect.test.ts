@@ -8,14 +8,14 @@ import {
   StudioProcessingEffect,
   resolveStudioProcessingValues,
 } from './studio-processing-effect'
-import { getGrainradProcessingGroups } from './grainrad-effects'
+import { getStudioProcessingGroups } from './studio-effects'
 
 describe('StudioProcessingEffect', () => {
   it('exposes useful controller ranges while preserving normalized blend bounds', () => {
     expect(rangeControl('ascii', 'brightness-map')).toMatchObject({ min: 0, max: 4, step: 0.01 })
     expect(rangeControl('matrix-rain', 'brightness-map')).toMatchObject({ min: 0, max: 6, defaultValue: 1 })
     expect(rangeControl('ascii', 'edge-enhance')).toMatchObject({ min: 0, max: 4, step: 0.01 })
-    expect(rangeControl('ascii', 'blur')).toMatchObject({ min: 0, max: 64, step: 1 })
+    expect(rangeControl('ascii', 'blur')).toMatchObject({ min: 0, max: 100, step: 1 })
     expect(rangeControl('ascii', 'quantize-colors')).toMatchObject({ min: 0, max: 64, step: 1 })
     expect(rangeControl('ascii', 'shape-matching')).toMatchObject({ min: 0, max: 1, step: 0.01 })
   })
@@ -64,7 +64,7 @@ describe('StudioProcessingEffect', () => {
     expect(resolveStudioProcessingValues({
       'brightness-map': 100,
       'edge-enhance': 100,
-      blur: 100,
+      blur: 101,
       'quantize-colors': 100,
       'shape-matching': 100,
     })).toEqual({
@@ -98,14 +98,14 @@ describe('StudioProcessingEffect', () => {
     }
   })
 
-  it('updates all Processing uniforms from Grainrad controls', () => {
+  it('updates all Processing uniforms from Studio controls', () => {
     const effect = new StudioProcessingEffect()
 
     effect.updateFromControls({
       'processing-invert': true,
       'brightness-map': 3,
       'edge-enhance': 2.5,
-      blur: 32,
+      blur: 100,
       'quantize-colors': 12,
       'shape-matching': 0.75,
     })
@@ -113,7 +113,7 @@ describe('StudioProcessingEffect', () => {
     expect(uniformValue(effect, 'u_processingInvert')).toBe(1)
     expect(uniformValue(effect, 'u_brightnessMap')).toBe(3)
     expect(uniformValue(effect, 'u_edgeEnhance')).toBe(2.5)
-    expect(uniformValue(effect, 'u_blurRadius')).toBe(32)
+    expect(uniformValue(effect, 'u_blurRadius')).toBe(100)
     expect(uniformValue(effect, 'u_quantizeLevels')).toBe(
       resolveStudioProcessingValues({ 'quantize-colors': 12 }).quantizeLevels,
     )
@@ -183,7 +183,7 @@ function occurrences(value: string, pattern: string) {
 }
 
 function rangeControl(effectId: 'ascii' | 'matrix-rain', controlId: string) {
-  return getGrainradProcessingGroups(effectId)
+  return getStudioProcessingGroups(effectId)
     .flatMap((group) => group.controls)
     .find((control) => control.id === controlId)
 }

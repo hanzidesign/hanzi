@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest'
 
-import { createDefaultGrainradEffectControls, getGrainradEffectById } from './grainrad-effects'
+import { createDefaultStudioEffectControls, getStudioEffectById } from './studio-effects'
 
-describe('Grainrad Wave Lines schema', () => {
+describe('Studio Wave Lines schema', () => {
   it('publishes an independent renderer and exact group/control order', () => {
-    const definition = getGrainradEffectById('wave-lines')
+    const definition = getStudioEffectById('wave-lines')
 
     expect(definition.renderer).toBe('wave-lines')
     expect(definition.settingGroups.map((group) => group.title)).toEqual([
@@ -17,7 +17,7 @@ describe('Grainrad Wave Lines schema', () => {
   })
 
   it('matches every production default, range, option, and conditional color row', () => {
-    const definition = getGrainradEffectById('wave-lines')
+    const definition = getStudioEffectById('wave-lines')
     const controls = Object.fromEntries(
       definition.settingGroups.flatMap((group) => group.controls).map((control) => [control.id, control]),
     )
@@ -51,7 +51,7 @@ describe('Grainrad Wave Lines schema', () => {
     }
     expect(controls['line-color']).toMatchObject({ defaultValue: '#ffffff' })
     expect(controls.background).toMatchObject({ defaultValue: '#000000' })
-    expect(createDefaultGrainradEffectControls()['wave-lines']).toMatchObject({
+    expect(createDefaultStudioEffectControls()['wave-lines']).toMatchObject({
       'line-count': 50,
       amplitude: 20,
       frequency: 1,

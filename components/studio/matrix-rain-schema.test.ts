@@ -1,18 +1,18 @@
 import { describe, expect, it } from 'vitest'
 
 import {
-  createDefaultGrainradEffectControls,
-  getGrainradControlDefaultValue,
-  getGrainradEffectById,
-  isGrainradControlVisible,
-} from './grainrad-effects'
+  createDefaultStudioEffectControls,
+  getStudioControlDefaultValue,
+  getStudioEffectById,
+  isStudioControlVisible,
+} from './studio-effects'
 
 const MATRIX_CUSTOM_DEFAULT =
   'ｱｲｳｴｵｶｷｸｹｺｻｼｽｾｿﾀﾁﾂﾃﾄﾅﾆﾇﾈﾉﾊﾋﾌﾍﾎﾏﾐﾑﾒﾓﾔﾕﾖﾗﾘﾙﾚﾛﾜﾝ0123456789'
 
-describe('Grainrad Matrix Rain schema', () => {
+describe('Studio Matrix Rain schema', () => {
   it('publishes an independent renderer and the exact current Settings order', () => {
-    const definition = getGrainradEffectById('matrix-rain')
+    const definition = getStudioEffectById('matrix-rain')
 
     expect(definition.renderer).toBe('matrix-rain')
     expect(definition.settingGroups.map((group) => group.title)).toEqual([
@@ -38,7 +38,7 @@ describe('Grainrad Matrix Rain schema', () => {
   })
 
   it('matches every Matrix Rain option, default, range, and step', () => {
-    const definition = getGrainradEffectById('matrix-rain')
+    const definition = getStudioEffectById('matrix-rain')
     const controls = Object.fromEntries(
       definition.settingGroups.flatMap((group) => group.controls).map((control) => [control.id, control]),
     )
@@ -89,26 +89,26 @@ describe('Grainrad Matrix Rain schema', () => {
     expect(controls.contrast).toMatchObject({ defaultValue: 0, min: -100, max: 100, step: 1 })
     expect(controls.threshold).toMatchObject({ defaultValue: 0, min: 0, max: 0.5, step: 0.01 })
     expect(controls.foreground).toMatchObject({ kind: 'color', label: 'Foreground', defaultValue: '#ffffff' })
-    expect(getGrainradControlDefaultValue(controls.foreground, 'light')).toBe('#10da14')
-    expect(getGrainradControlDefaultValue(controls.foreground, 'dark')).toBe('#36d00b')
+    expect(getStudioControlDefaultValue(controls.foreground, 'light')).toBe('#10da14')
+    expect(getStudioControlDefaultValue(controls.foreground, 'dark')).toBe('#36d00b')
     expect(controls['rain-color']).toMatchObject({ kind: 'color', defaultValue: '#00ff00' })
-    expect(getGrainradControlDefaultValue(controls['rain-color'], 'light')).toBe('#24ee20')
-    expect(getGrainradControlDefaultValue(controls['rain-color'], 'dark')).toBe('#00ff00')
+    expect(getStudioControlDefaultValue(controls['rain-color'], 'light')).toBe('#24ee20')
+    expect(getStudioControlDefaultValue(controls['rain-color'], 'dark')).toBe('#00ff00')
     expect(controls.background).toMatchObject({ kind: 'color', label: 'Background', defaultValue: '#000000' })
-    expect(getGrainradControlDefaultValue(controls.background, 'dark')).toBe('#000000')
-    expect(getGrainradControlDefaultValue(controls.background, 'light')).toBe('#f4f1e8')
+    expect(getStudioControlDefaultValue(controls.background, 'dark')).toBe('#000000')
+    expect(getStudioControlDefaultValue(controls.background, 'light')).toBe('#f4f1e8')
     expect(controls.density).toBeUndefined()
   })
 
   it('shows Custom Chars only for the custom Matrix character set', () => {
-    const definition = getGrainradEffectById('matrix-rain')
+    const definition = getStudioEffectById('matrix-rain')
     const customChars = definition.settingGroups
       .flatMap((group) => group.controls)
       .find((control) => control.id === 'custom-chars')!
-    const defaults = createDefaultGrainradEffectControls()['matrix-rain']
+    const defaults = createDefaultStudioEffectControls()['matrix-rain']
 
-    expect(isGrainradControlVisible(customChars, defaults)).toBe(false)
-    expect(isGrainradControlVisible(customChars, {
+    expect(isStudioControlVisible(customChars, defaults)).toBe(false)
+    expect(isStudioControlVisible(customChars, {
       ...defaults,
       'character-set': 'custom',
     })).toBe(true)

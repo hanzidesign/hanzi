@@ -5,7 +5,15 @@ import {
   type Texture,
 } from 'three'
 
-export type BlockifyControlValue = string | number | boolean
+import type { StudioControlValue } from './studio-effects'
+import {
+  readStudioBoolean as readBoolean,
+  readStudioEnum as readEnum,
+  readStudioNumber as readNumber,
+  readStudioString as readString,
+} from './studio-control-readers'
+
+export type BlockifyControlValue = StudioControlValue
 export type BlockifyControls = Readonly<Record<string, BlockifyControlValue>>
 
 export const BLOCKIFY_STYLE_IDS = {
@@ -232,26 +240,4 @@ export function applyBlockifyUniforms(
 
 export function disposeBlockifyShaderMaterial(material: ShaderMaterial) {
   material.dispose()
-}
-
-function readNumber(value: BlockifyControlValue | undefined, fallback: number) {
-  return typeof value === 'number' && Number.isFinite(value) ? value : fallback
-}
-
-function readString(value: BlockifyControlValue | undefined, fallback: string) {
-  return typeof value === 'string' ? value : fallback
-}
-
-function readBoolean(value: BlockifyControlValue | undefined) {
-  return value === true ? 1 : 0
-}
-
-function readEnum<T extends Record<string, number>>(
-  value: BlockifyControlValue | undefined,
-  values: T,
-  fallback: keyof T,
-) {
-  return typeof value === 'string' && value in values
-    ? values[value as keyof T]
-    : values[fallback]
 }

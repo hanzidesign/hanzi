@@ -5,9 +5,9 @@ Status: implementation in progress
 
 ## Scope
 
-Implement Matrix Rain as the fourth independent Character effect. It must not import or fall through ASCII, Dithering, or Halftone. The local source stays the selected 3D Character and consumes the shared Model panel. `data/sample.jpg` remains Grainrad-side research input only.
+Implement Matrix Rain as the fourth independent Character effect. It must not import or fall through ASCII, Dithering, or Halftone. The local source stays the selected 3D Character and consumes the shared Model panel. `data/sample.jpg` remains reference-behavior research input only.
 
-## Authoritative Grainrad Settings
+## Authoritative reference editor Settings
 
 | Group | Control | Default | Contract |
 | --- | --- | ---: | --- |
@@ -25,14 +25,14 @@ Implement Matrix Rain as the fourth independent Character effect. It must not im
 | Adjustments | Threshold | 0 | 0...5, step .01 |
 | Color | Rain Color | `#00ff00` | color |
 
-Exact built-in character strings come from the current Grainrad bundle. The state-only `density` field is dead and must not become a local control.
+Exact built-in character strings come from the current reference editor bundle. The state-only `density` field is dead and must not become a local control.
 
 ## Renderer semantics
 
-- Adjust the current source sample with Grainrad brightness/contrast, normalized by 100. Preserve the current bundle behavior: activation, threshold, edge strength, and cell luminance use the raw source; adjustments only affect the faint source background.
+- Adjust the current source sample with the reference editor's brightness/contrast, normalized by 100. Preserve the current bundle behavior: activation, threshold, edge strength, and cell luminance use the raw source; adjustments only affect the faint source background.
 - Cell period is `cellSize * (1 + spacing)`. Glyph margin is `.05 + spacing * .15`.
-- Each stream has exactly three deterministic drops. Preserve Grainrad's seed constants, per-drop speed, wrapped direction distance, squared trail falloff, and `trailLength / 50` normalization.
-- Down/up use vertical streams. Left/right transpose grid coordinates exactly as Grainrad does.
+- Each stream has exactly three deterministic drops. Preserve the reference editor's seed constants, per-drop speed, wrapped direction distance, squared trail falloff, and `trailLength / 50` normalization.
+- Down/up use vertical streams. Left/right transpose grid coordinates exactly as reference editor does.
 - Glyph selection changes at `floor(hash21(cell) * 50 + time * 2)` and is independent of the local rain Speed.
 - Threshold is inclusive against raw cell-center Rec.601 luminance. Preserve the current `threshold=0` behavior where black also passes.
 - Glow scales only leading-head glyph color; it is not a blur. BG Opacity scales the faint source hint by `.1`; output alpha remains 1.
@@ -58,5 +58,5 @@ Exact built-in character strings come from the current Grainrad bundle. The stat
 
 ## Primary sources
 
-- `https://grainrad.com/assets/index-D5s-AdpN.js` — current UI, defaults, character sets, Matrix Rain WGSL.
-- `https://grainrad.com/assets/index-DWlNRnaQ.js` — font atlas and uniform packing.
+- Reference public bundle — current UI, defaults, character sets, Matrix Rain WGSL.
+- Reference public bundle — font atlas and uniform packing.

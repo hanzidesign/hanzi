@@ -15,6 +15,7 @@ describe('Studio shared Model panel contract', () => {
 
   it('separates Model, Model Deform, and 3D Motion ownership', async () => {
     const source = await readFile(join(studioDir, 'StudioLeftPanel.tsx'), 'utf8')
+    const rotationController = await readFile(join(studioDir, 'StudioRotationController.tsx'), 'utf8')
     const styles = await readFile(join(studioDir, 'StudioShell.module.css'), 'utf8')
     const characterIndex = source.indexOf('>Character</div>')
     const modelIndex = source.indexOf('>Model</div>')
@@ -95,6 +96,12 @@ describe('Studio shared Model panel contract', () => {
     expect(motionSource).toContain('label="Y"')
     expect(motionSource).toContain('label="Z"')
     expect(controllerIndex).toBeGreaterThan(-1)
+    expect(motionSource).toContain('readCharacterRotationY={readCharacterRotationY}')
+    expect(rotationController).toContain('Drag anywhere to orbit freely.')
+    expect(rotationController).not.toContain("beginDrag('x'")
+    expect(rotationController).not.toContain("beginDrag('y'")
+    expect(rotationController).not.toContain("beginDrag('z'")
+    expect(rotationController).not.toContain('onKeyDown=')
     expect(scalarControlsIndex).toBeGreaterThan(controllerIndex)
     expect(styles).toContain('grid-template-columns: minmax(0, 1fr) 80px;')
     expect(styles).toMatch(/\.rotationController \{[\s\S]*?width: 80px;[\s\S]*?height: 80px;/)

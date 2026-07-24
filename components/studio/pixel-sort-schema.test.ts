@@ -1,13 +1,13 @@
 import { describe, expect, it } from 'vitest'
 
 import {
-  createDefaultGrainradEffectControls,
-  getGrainradEffectById,
-} from './grainrad-effects'
+  createDefaultStudioEffectControls,
+  getStudioEffectById,
+} from './studio-effects'
 
-describe('Grainrad Pixel Sort schema', () => {
+describe('Studio Pixel Sort schema', () => {
   it('publishes the independent renderer and exact group/control order', () => {
-    const definition = getGrainradEffectById('pixel-sort')
+    const definition = getStudioEffectById('pixel-sort')
 
     expect(definition.renderer).toBe('pixel-sort')
     expect(definition.settingGroups.map((group) => group.title)).toEqual([
@@ -34,7 +34,7 @@ describe('Grainrad Pixel Sort schema', () => {
   })
 
   it('matches every Pixel Sort option, default, range, and step', () => {
-    const definition = getGrainradEffectById('pixel-sort')
+    const definition = getStudioEffectById('pixel-sort')
     const controls = Object.fromEntries(
       definition.settingGroups.flatMap((group) => group.controls).map((control) => [control.id, control]),
     )
@@ -83,7 +83,7 @@ describe('Grainrad Pixel Sort schema', () => {
       kind: 'color',
       defaultValueByTheme: { light: '#ffffff', dark: '#000000' },
     })
-    expect(createDefaultGrainradEffectControls()['pixel-sort']).toMatchObject({
+    expect(createDefaultStudioEffectControls()['pixel-sort']).toMatchObject({
       direction: 'horizontal',
       'sort-mode': 'depth',
       threshold: 0.25,

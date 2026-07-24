@@ -21,7 +21,7 @@ import type {
   CharacterMeshWave,
 } from '@/components/studio/character-mesh-deform'
 import { resetCharacterMeshDeformFeature } from '@/components/studio/character-mesh-deform'
-import { GRAINRAD_EFFECTS } from '@/components/studio/grainrad-effects'
+import { STUDIO_EFFECTS } from '@/components/studio/studio-effects'
 import { useStudioRenderMode } from '@/components/studio/studio-render-context'
 import classes from './StudioShell.module.css'
 
@@ -69,7 +69,7 @@ export default function StudioLeftPanel() {
   )
 }
 
-function StudioModelReset() {
+export function StudioModelReset() {
   const setMeshControl = useStudioStore((store) => store.setMeshControl)
 
   return (
@@ -336,12 +336,12 @@ function CurlSection({ value, update }: DeformSectionProps<CharacterMeshCurl>) {
 }
 
 export function StudioEffectsPanel() {
-  const selectedEffectId = useStudioStore((store) => store.grainradEffect.selectedEffectId)
+  const selectedEffectId = useStudioStore((store) => store.studioEffect.selectedEffectId)
   const setSelectedEffect = useStudioStore((store) => store.setSelectedEffect)
 
   return (
     <div className={classes.effectList}>
-      {GRAINRAD_EFFECTS.map((effect) => (
+      {STUDIO_EFFECTS.map((effect) => (
         <button
           key={effect.id}
           type="button"
@@ -426,6 +426,7 @@ export function StudioMotionPanel() {
       <StudioRotationController
         rotation={mesh.rotation}
         onRotationChange={(rotation) => setMeshControl({ rotation })}
+        readCharacterRotationY={readCharacterRotationY}
       />
       <div className={classes.motionScalarControls}>
         <TerminalToggleRow

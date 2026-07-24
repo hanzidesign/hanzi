@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest'
 
 const studioDir = join(process.cwd(), 'components', 'studio')
 
-describe('Grainrad effect renderer routing contract', () => {
+describe('Studio effect renderer routing contract', () => {
   it('routes Model Deform through every active geometry builder caller', async () => {
     const candidateFiles = (await readdir(studioDir))
       .filter((fileName) => /^Character(?:.*Canvas|Mesh)\.tsx$/.test(fileName))
@@ -164,36 +164,33 @@ describe('Grainrad effect renderer routing contract', () => {
     expect(studioCanvasSource).toContain('<StudioEffectCanvas')
     expect(exportSurfaceSource).toContain('<StudioEffectCanvas')
     expect(exportSurfaceSource).toContain('StudioRenderModeProvider')
-    expect(effectCanvasSource).toContain("selectedEffectId === 'ascii'")
+    expect(effectCanvasSource).toContain("selectedEffect.renderer === 'ascii'")
     expect(effectCanvasSource).toContain('<CharacterAsciiCanvas')
-    expect(effectCanvasSource).toContain("selectedEffectId === 'dithering'")
-    expect(effectCanvasSource).toContain('<CharacterDitheringCanvas')
-    expect(effectCanvasSource).toContain("selectedEffectId === 'halftone'")
-    expect(effectCanvasSource).toContain('<CharacterHalftoneCanvas')
-    expect(effectCanvasSource).toContain("selectedEffectId === 'matrix-rain'")
-    expect(effectCanvasSource).toContain('<CharacterMatrixRainCanvas')
-    expect(effectCanvasSource).toContain("selectedEffectId === 'dots'")
-    expect(effectCanvasSource).toContain('<CharacterDotsCanvas')
-    expect(effectCanvasSource).toContain("selectedEffectId === 'contour'")
-    expect(effectCanvasSource).toContain('<CharacterContourCanvas')
-    expect(effectCanvasSource).toContain("selectedEffectId === 'pixel-sort'")
-    expect(effectCanvasSource).toContain('<CharacterPixelSortCanvas')
-    expect(effectCanvasSource).toContain("selectedEffectId === 'blockify'")
-    expect(effectCanvasSource).toContain('<CharacterBlockifyCanvas')
-    expect(effectCanvasSource).toContain("selectedEffectId === 'threshold'")
-    expect(effectCanvasSource).toContain('<CharacterThresholdCanvas')
-    expect(effectCanvasSource).toContain("selectedEffectId === 'edge-detection'")
-    expect(effectCanvasSource).toContain('<CharacterEdgeDetectionCanvas')
-    expect(effectCanvasSource).toContain("selectedEffectId === 'crosshatch'")
-    expect(effectCanvasSource).toContain('<CharacterCrosshatchCanvas')
-    expect(effectCanvasSource).toContain("selectedEffectId === 'wave-lines'")
-    expect(effectCanvasSource).toContain('<CharacterWaveLinesCanvas')
-    expect(effectCanvasSource).toContain("selectedEffectId === 'noise-field'")
-    expect(effectCanvasSource).toContain('<CharacterNoiseFieldCanvas')
-    expect(effectCanvasSource).toContain("selectedEffectId === 'voronoi'")
-    expect(effectCanvasSource).toContain('<CharacterVoronoiCanvas')
-    expect(effectCanvasSource).toContain("selectedEffectId === 'vhs'")
-    expect(effectCanvasSource).toContain('<CharacterVhsCanvas')
+    expect(effectCanvasSource).toContain(
+      'const effectRendererComponents: Record<NonAsciiEffectRenderer, ComponentType> = {',
+    )
+    expect(effectCanvasSource).toContain('type NonAsciiEffectRenderer = Exclude<StudioEffectRenderer,')
+    for (const [renderer, component] of [
+      ['dithering', 'CharacterDitheringCanvas'],
+      ['halftone', 'CharacterHalftoneCanvas'],
+      ['matrix-rain', 'CharacterMatrixRainCanvas'],
+      ['dots', 'CharacterDotsCanvas'],
+      ['contour', 'CharacterContourCanvas'],
+      ['pixel-sort', 'CharacterPixelSortCanvas'],
+      ['blockify', 'CharacterBlockifyCanvas'],
+      ['threshold', 'CharacterThresholdCanvas'],
+      ['edge-detection', 'CharacterEdgeDetectionCanvas'],
+      ['crosshatch', 'CharacterCrosshatchCanvas'],
+      ['wave-lines', 'CharacterWaveLinesCanvas'],
+      ['noise-field', 'CharacterNoiseFieldCanvas'],
+      ['voronoi', 'CharacterVoronoiCanvas'],
+      ['vhs', 'CharacterVhsCanvas'],
+    ]) {
+      const rendererKey = renderer.includes('-') ? `'${renderer}'` : renderer
+      expect(effectCanvasSource).toContain(`${rendererKey}: ${component}`)
+      expect(effectCanvasSource).not.toContain(`selectedEffectId === '${renderer}'`)
+    }
+    expect(effectCanvasSource).toContain("selectedEffect.renderer !== 'unimplemented'")
     expect(effectCanvasSource).toContain('data-testid="effect-renderer-not-implemented"')
     expect(studioCanvasSource).toContain('effectControls.background')
 
@@ -238,7 +235,7 @@ describe('Grainrad effect renderer routing contract', () => {
     expect(matrixRainCanvasSource).not.toContain('createAsciiShaderMaterial')
     expect(matrixRainCanvasSource).not.toContain('dithering-material')
     expect(matrixRainCanvasSource).not.toContain('halftone-material')
-    expect(matrixRainCanvasSource).not.toContain('grainrad-effect-runtime')
+    expect(matrixRainCanvasSource).not.toContain('studio-effect-runtime')
     expect(matrixRainCanvasSource).toContain('runtime.svgData')
     expect(matrixRainCanvasSource).toContain('<Canvas')
     expect(matrixRainCanvasSource).toContain('SVGLoader')
@@ -271,7 +268,7 @@ describe('Grainrad effect renderer routing contract', () => {
       'dithering-material',
       'halftone-material',
       'matrix-rain-material',
-      'grainrad-effect-runtime',
+      'studio-effect-runtime',
     ]) {
       expect(dotsCanvasSource).not.toContain(forbiddenImport)
     }
@@ -307,7 +304,7 @@ describe('Grainrad effect renderer routing contract', () => {
       'halftone-material',
       'matrix-rain-material',
       'dots-material',
-      'grainrad-effect-runtime',
+      'studio-effect-runtime',
     ]) {
       expect(contourCanvasSource).not.toContain(forbiddenImport)
     }
@@ -350,7 +347,7 @@ describe('Grainrad effect renderer routing contract', () => {
       'matrix-rain-material',
       'dots-material',
       'contour-material',
-      'grainrad-effect-runtime',
+      'studio-effect-runtime',
     ]) {
       expect(pixelSortCanvasSource).not.toContain(forbiddenImport)
     }
@@ -398,7 +395,7 @@ describe('Grainrad effect renderer routing contract', () => {
       'dots-material',
       'contour-material',
       'pixel-sort-material',
-      'grainrad-effect-runtime',
+      'studio-effect-runtime',
     ]) {
       expect(blockifyCanvasSource).not.toContain(forbiddenImport)
     }
@@ -437,7 +434,7 @@ describe('Grainrad effect renderer routing contract', () => {
       'contour-material',
       'pixel-sort-material',
       'blockify-material',
-      'grainrad-effect-runtime',
+      'studio-effect-runtime',
     ]) {
       expect(thresholdCanvasSource).not.toContain(forbiddenImport)
     }
@@ -477,7 +474,7 @@ describe('Grainrad effect renderer routing contract', () => {
       'pixel-sort-material',
       'blockify-material',
       'threshold-material',
-      'grainrad-effect-runtime',
+      'studio-effect-runtime',
     ]) {
       expect(edgeDetectionCanvasSource).not.toContain(forbiddenImport)
     }
@@ -518,7 +515,7 @@ describe('Grainrad effect renderer routing contract', () => {
       'blockify-material',
       'threshold-material',
       'edge-detection-material',
-      'grainrad-effect-runtime',
+      'studio-effect-runtime',
     ]) {
       expect(crosshatchCanvasSource).not.toContain(forbiddenImport)
     }
@@ -560,7 +557,7 @@ describe('Grainrad effect renderer routing contract', () => {
       'threshold-material',
       'edge-detection-material',
       'crosshatch-material',
-      'grainrad-effect-runtime',
+      'studio-effect-runtime',
     ]) {
       expect(waveLinesCanvasSource).not.toContain(forbiddenImport)
     }
@@ -603,7 +600,7 @@ describe('Grainrad effect renderer routing contract', () => {
       'edge-detection-material',
       'crosshatch-material',
       'wave-lines-material',
-      'grainrad-effect-runtime',
+      'studio-effect-runtime',
     ]) {
       expect(noiseFieldCanvasSource).not.toContain(forbiddenImport)
     }
@@ -647,7 +644,7 @@ describe('Grainrad effect renderer routing contract', () => {
       'crosshatch-material',
       'wave-lines-material',
       'noise-field-material',
-      'grainrad-effect-runtime',
+      'studio-effect-runtime',
     ]) {
       expect(voronoiCanvasSource).not.toContain(forbiddenImport)
     }
@@ -692,7 +689,7 @@ describe('Grainrad effect renderer routing contract', () => {
       'wave-lines-material',
       'noise-field-material',
       'voronoi-material',
-      'grainrad-effect-runtime',
+      'studio-effect-runtime',
     ]) {
       expect(vhsCanvasSource).not.toContain(forbiddenImport)
     }
@@ -768,7 +765,7 @@ describe('Grainrad effect renderer routing contract', () => {
       expect(renderer, `${rendererFile} must import its own material`)
         .toContain(ownMaterialModule)
       expect(renderer, `${rendererFile} must not use the generic Effect runtime`)
-        .not.toContain('grainrad-effect-runtime')
+        .not.toContain('studio-effect-runtime')
 
       for (const foreignMaterialModule of materialModules) {
         if (foreignMaterialModule === ownMaterialModule) continue

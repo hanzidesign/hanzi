@@ -25,7 +25,7 @@ import {
   type ShaderMaterial,
 } from 'three'
 import { useStudioStore } from '@/app/studio/studio-store'
-import { withoutSharedControllerValues } from './grainrad-shared-controls'
+import { withoutSharedControllerValues } from './studio-shared-controls'
 import {
   applyNoiseFieldUniforms,
   createNoiseFieldShaderMaterial,
@@ -105,7 +105,7 @@ function CharacterNoiseFieldScene({
   const meshSettings = useStudioStore((store) => store.mesh)
   const animation = useStudioStore((store) => store.animation)
   const { markExportContentReady, readAnimationTime, reportCharacterRotationY } = useStudioRenderMode()
-  const controls = useStudioStore((store) => store.grainradEffect.controls['noise-field'])
+  const controls = useStudioStore((store) => store.studioEffect.controls['noise-field'])
   const sourceForeground = controls.foreground
   const sourceBackground = controls.background
   const sourceColors = useMemo(

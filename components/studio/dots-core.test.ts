@@ -9,7 +9,7 @@ import {
 } from './dots-core'
 
 describe('Dots deterministic equations', () => {
-  it('uses Grainrad square and offset-row hex cell centers', () => {
+  it('uses Studio square and offset-row hex cell centers', () => {
     expect(getDotsCellCenter(0.5, 0.5, 1, 'square')).toEqual([4, 4])
     expect(getDotsCellCenter(12.5, 9.5, 1, 'square')).toEqual([12, 12])
 
@@ -58,7 +58,7 @@ describe('Dots CPU reference', () => {
     expect(pixelAt(output.data, 8, 3, 3)).toEqual([76, 76, 76])
   })
 
-  it('keeps Grainrad dark-value dots at twenty percent of the base radius', () => {
+  it('keeps Studio dark-value dots at twenty percent of the base radius', () => {
     const output = render({
       height: 8,
       rgb: solidRgb(8, 8, [0, 0, 0]),
@@ -108,7 +108,7 @@ describe('Dots CPU reference', () => {
     expect(visible[1]).toBe(visible[2])
   })
 
-  it('uses Background in Original mode even though Grainrad hides that control', () => {
+  it('uses Background in Original mode even though Studio hides that control', () => {
     const source = solidRgb(8, 8, [0, 0, 0])
     const output = render({
       height: 8,

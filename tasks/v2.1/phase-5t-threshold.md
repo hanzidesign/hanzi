@@ -1,14 +1,14 @@
-# Phase 5T — Grainrad Threshold parity
+# Phase 5T — reference editor Threshold parity
 
 Date: 2026-07-13
 
 ## Production sources
 
-- UI/state/WGSL: `https://grainrad.com/assets/index-D5s-AdpN.js`, ETag `2dab4b6866ace0e7533e9b4ba9f11803`
-- WebGPU uploader: `https://grainrad.com/assets/index-DWlNRnaQ.js`, ETag `ba02c2c47ba6903bf24449e932fc725f`
-- WebGL fallback: `https://grainrad.com/assets/index-D4g1FOHw.js`, ETag `a42c53dbf773f2222aee514a5053b9f4`
+- UI/state/WGSL: reference public bundle, ETag `2dab4b6866ace0e7533e9b4ba9f11803`
+- WebGPU uploader: reference public bundle, ETag `ba02c2c47ba6903bf24449e932fc725f`
+- WebGL fallback: reference public bundle, ETag `a42c53dbf773f2222aee514a5053b9f4`
 
-Threshold is WebGPU-only in production. WebGL passes the source through but still applies global Post. Hanzi Studio keeps the selected Character as input; `data/sample.jpg` remains Grainrad-only.
+Threshold is WebGPU-only in production. WebGL passes the source through but still applies global Post. Hanzi Studio keeps the selected Character as input; `data/sample.jpg` remains reference-only.
 
 ## Exact Settings contract
 
@@ -83,4 +83,4 @@ Threshold is WebGPU-only in production. WebGL passes the source through but stil
 
 - Dedicated `threshold` renderer, CPU oracle, material, canvas, store/reset contract, and explicit route.
 - Keep shared 3D Model geometry, transform, auto-rotation, animation time, and deterministic disposal.
-- Do not import prior effect materials or generic Grainrad runtime into the canvas.
+- Do not import prior effect materials or generic Studio runtime into the canvas.

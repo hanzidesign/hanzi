@@ -68,7 +68,7 @@ export function renderContourReference({
         ? 1 - rawCenterBrightness
         : rawCenterBrightness
 
-      // Grainrad's production shader does not invert these four neighbors.
+      // Studio's production shader does not invert these four neighbors.
       const left = sampleBrightness(rgb, width, height, u - sampleOffsetX, v, settings)
       const right = sampleBrightness(rgb, width, height, u + sampleOffsetX, v, settings)
       const top = sampleBrightness(rgb, width, height, u, v - sampleOffsetY, settings)

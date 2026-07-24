@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { Slider } from '@mantine/core'
 import { IoChevronDownOutline, IoChevronUpOutline } from 'react-icons/io5'
 import classes from './StudioShell.module.css'
 
@@ -88,6 +89,7 @@ export function TerminalRangeRow({
 }) {
   const isOutOfRange = allowOutOfRangeValue && (value < min || value > max)
   const outOfRangePosition = (value - min) / (max - min) * 100
+  const sliderValue = Math.min(max, Math.max(min, value))
 
   return (
     <TerminalRowShell
@@ -96,15 +98,24 @@ export function TerminalRangeRow({
       onReset={onReset}
     >
       <span className={classes.rangeInputShell}>
-        <input
-          aria-label={label}
-          className={`${classes.rangeInput} ${isOutOfRange ? classes.rangeInputOutOfRange : ''}`}
-          type="range"
+        <Slider
+          classNames={{
+            root: classes.rangeInput,
+            track: classes.rangeTrack,
+            bar: classes.rangeBar,
+            thumb: isOutOfRange
+              ? `${classes.rangeThumb} ${classes.rangeThumbOutOfRange}`
+              : classes.rangeThumb,
+          }}
           min={min}
           max={max}
           step={step}
-          value={value}
-          onChange={(event) => onChange(Number(event.currentTarget.value))}
+          value={sliderValue}
+          onChange={onChange}
+          label={(nextValue) => displayValue ?? formatNumber(nextValue)}
+          thumbLabel={label}
+          size={1}
+          thumbSize={8}
         />
         {isOutOfRange ? (
           <span

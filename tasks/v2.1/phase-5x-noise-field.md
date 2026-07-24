@@ -1,14 +1,14 @@
-# Phase 5X — Grainrad Noise Field parity
+# Phase 5X — reference editor Noise Field parity
 
 Date: 2026-07-14
 
 ## Production sources
 
-- UI/state/WGSL: `https://grainrad.com/assets/index-D5s-AdpN.js`, ETag `2dab4b6866ace0e7533e9b4ba9f11803`
-- WebGPU uploader: `https://grainrad.com/assets/index-DWlNRnaQ.js`, ETag `ba02c2c47ba6903bf24449e932fc725f`
-- WebGL fallback: `https://grainrad.com/assets/index-D4g1FOHw.js`, ETag `a42c53dbf773f2222aee514a5053b9f4`
+- UI/state/WGSL: reference public bundle, ETag `2dab4b6866ace0e7533e9b4ba9f11803`
+- WebGPU uploader: reference public bundle, ETag `ba02c2c47ba6903bf24449e932fc725f`
+- WebGL fallback: reference public bundle, ETag `a42c53dbf773f2222aee514a5053b9f4`
 
-Noise Field is WebGPU-only in Grainrad. WebGL passes through the source and still runs shared Post. Hanzi Studio keeps the selected 3D Character input and implements a dedicated WebGL shader with the production equations.
+Noise Field is WebGPU-only in reference editor. WebGL passes through the source and still runs shared Post. Hanzi Studio keeps the selected 3D Character input and implements a dedicated WebGL shader with the production equations.
 
 ## Exact Settings contract
 
@@ -67,7 +67,7 @@ The WGSL comment says Octaves `1..6`, but the production UI and executable loop 
 ## Contextual no-ops and quirks
 
 - Speed is a contextual no-op when Animate is OFF.
-- Animate OFF freezes noise at time zero, but Grainrad keeps continuous RAF running.
+- Animate OFF freezes noise at time zero, but the reference editor keeps continuous RAF running.
 - Distort Only means displacement without overlay; it does not disable displacement or become passthrough.
 - Brightness/Contrast apply after displaced sampling but before overlay; overlay can brighten already-clamped adjusted colors before the final clamp.
 - Overlay is positive-only because every production noise branch is converted/returned non-negative.

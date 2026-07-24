@@ -1,14 +1,14 @@
-# Phase 5V — Grainrad Crosshatch parity
+# Phase 5V — reference editor Crosshatch parity
 
 Date: 2026-07-14
 
 ## Production sources
 
-- UI/state/WGSL: `https://grainrad.com/assets/index-D5s-AdpN.js`, ETag `2dab4b6866ace0e7533e9b4ba9f11803`
-- WebGPU uploader: `https://grainrad.com/assets/index-DWlNRnaQ.js`, ETag `ba02c2c47ba6903bf24449e932fc725f`
-- WebGL fallback: `https://grainrad.com/assets/index-D4g1FOHw.js`, ETag `a42c53dbf773f2222aee514a5053b9f4`
+- UI/state/WGSL: reference public bundle, ETag `2dab4b6866ace0e7533e9b4ba9f11803`
+- WebGPU uploader: reference public bundle, ETag `ba02c2c47ba6903bf24449e932fc725f`
+- WebGL fallback: reference public bundle, ETag `a42c53dbf773f2222aee514a5053b9f4`
 
-Crosshatch is WebGPU-only in Grainrad. WebGL passes through the source and still runs Bloom/Post. Hanzi Studio keeps the selected 3D Character as input.
+Crosshatch is WebGPU-only in reference editor. WebGL passes through the source and still runs Bloom/Post. Hanzi Studio keeps the selected 3D Character as input.
 
 ## Exact Settings contract
 

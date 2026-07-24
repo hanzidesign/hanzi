@@ -27,9 +27,9 @@ export default function StudioPostProcessing() {
     resolveVisualFrameSize,
     voronoiMaskTextureRef,
   } = useStudioRenderMode()
-  const selectedEffectId = useStudioStore((store) => store.grainradEffect.selectedEffectId)
+  const selectedEffectId = useStudioStore((store) => store.studioEffect.selectedEffectId)
   const controls = useStudioStore((store) => (
-    store.grainradEffect.controls[store.grainradEffect.selectedEffectId]
+    store.studioEffect.controls[store.studioEffect.selectedEffectId]
   ))
   const animation = useStudioStore((store) => store.animation)
   const processingEffect = useMemo(() => new StudioProcessingEffect(), [])
@@ -52,11 +52,11 @@ export default function StudioPostProcessing() {
   const bloomIntensity = clamp(readNumber(controls?.['bloom-intensity'], 1.5), 0, 2)
   const bloomRadius = clamp(readNumber(controls?.['bloom-radius'], 12) / 20, 0, 1)
   const grainMode = readString(controls?.['grain-mode'], 'noise')
-  const grainIntensity = readNumber(controls?.['grain-intensity'], 5) / 100
+  const grainIntensity = readNumber(controls?.['grain-intensity'], 1) / 100
   const grainSize = readNumber(controls?.['grain-size'], 2)
   const grainSpeed = readNumber(controls?.['grain-speed'], 50)
-  const chromaticOffsetPixels = clamp(readNumber(controls?.['chromatic-offset'], 5), 0, 50)
-  const scanlineOpacity = clamp(readNumber(controls?.['scanline-opacity'], 0.5), 0, 1)
+  const chromaticOffsetPixels = clamp(readNumber(controls?.['chromatic-offset'], 5), 0, 100)
+  const scanlineOpacity = clamp(readNumber(controls?.['scanline-opacity'], 0.2), 0, 1)
   const scanlineSpacing = clamp(readNumber(controls?.['scanline-spacing'], 80), 1, 1000)
   const scanlineOffset = clamp(readNumber(controls?.['scanline-offset'], 0), 0, 20)
   const scanlineSpeed = clamp(readNumber(controls?.['scanline-speed'], 1), 1, 10)

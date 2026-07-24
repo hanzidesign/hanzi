@@ -16,8 +16,20 @@ import {
   readGradientType,
   readStopInsertionPosition,
 } from './GradientColorPicker'
+import { isHexColor } from './gradient-stops'
 
 describe('GradientColorPicker helpers', () => {
+  it.each(['#123456', '#ABCDEF'])('accepts six-digit gradient stop colors (%s)', (value) => {
+    expect(isHexColor(value)).toBe(true)
+  })
+
+  it.each(['#12345', '#1234567', '#12345678', '123456', '#12345g', null, 123456])(
+    'rejects malformed gradient stop colors (%s)',
+    (value) => {
+      expect(isHexColor(value)).toBe(false)
+    },
+  )
+
   it('renders a single-color bar without stops for solid styles', () => {
     expect(createGradientCss('#123456', [])).toBe('#123456')
   })

@@ -7,7 +7,6 @@ import StudioLeftPanel from '@/components/studio/StudioLeftPanel'
 import StudioMobileHeader from '@/components/studio/StudioMobileHeader'
 import StudioMobileTabs from '@/components/studio/StudioMobileTabs'
 import StudioRightPanel from '@/components/studio/StudioRightPanel'
-import StudioSettingsSheet from '@/components/studio/StudioSettingsSheet'
 import StudioThemeToggle from '@/components/studio/StudioThemeToggle'
 import {
   StudioPreviewFrameProvider,
@@ -68,7 +67,6 @@ export default function StudioShell() {
             <StudioRightPanel />
           </aside>
           <StudioMobileTabs />
-          <StudioSettingsSheet />
         </div>
       </StudioRenderModeProvider>
     </StudioPreviewFrameProvider>

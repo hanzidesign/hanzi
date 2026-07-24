@@ -1,3 +1,5 @@
+import { isSixDigitHexColor } from '@/utils/colorValidation'
+
 export type GradientColorStop = {
   color: string
   position: number
@@ -11,7 +13,6 @@ export type GradientSettings = {
   gradientAngle: number
 }
 
-const HEX_COLOR_PATTERN = /^#[0-9a-fA-F]{6}$/
 const RGB_COLOR_PATTERN = /^rgba?\(\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*(\d{1,3})(?:\s*,\s*(0|1|0?\.\d+))?\s*\)$/i
 
 export const DEFAULT_GRADIENT_STOPS: GradientColorStop[] = [
@@ -67,7 +68,7 @@ export function createColorCss(color: string, opacity = 1) {
     return color
   }
 
-  if (!HEX_COLOR_PATTERN.test(color)) {
+  if (!isSixDigitHexColor(color)) {
     return color
   }
 
@@ -140,7 +141,7 @@ export function parseGradientCssSettings(value: string): GradientSettings {
 }
 
 export function parseCssColorToHex(value: string, fallback: string) {
-  if (HEX_COLOR_PATTERN.test(value)) {
+  if (isSixDigitHexColor(value)) {
     return value.toLowerCase()
   }
 
@@ -188,7 +189,7 @@ export function readGradientAngle(value: unknown, fallback = DEFAULT_GRADIENT_SE
 }
 
 export function isHexColor(value: unknown): value is string {
-  return typeof value === 'string' && HEX_COLOR_PATTERN.test(value)
+  return typeof value === 'string' && isSixDigitHexColor(value)
 }
 
 function splitGradientParts(value: string) {

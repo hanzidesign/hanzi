@@ -7,7 +7,15 @@ import {
   type Texture,
 } from 'three'
 
-export type DitheringControlValue = string | number | boolean
+import type { StudioControlValue } from './studio-effects'
+import {
+  readStudioBoolean as readBoolean,
+  readStudioEnum as readId,
+  readStudioNumber as readNumber,
+  readStudioString as readString,
+} from './studio-control-readers'
+
+export type DitheringControlValue = StudioControlValue
 export type DitheringControls = Readonly<Record<string, DitheringControlValue>>
 
 export const DITHERING_ALGORITHM_IDS = {
@@ -380,20 +388,15 @@ export function createDitheringShaderMaterial({
   return material
 }
 
-function resolveAlgorithm(value: DitheringControlValue | undefined) {
-  if (typeof value !== 'string') {
-    return DITHERING_ALGORITHM_IDS['bayer-8x8']
-  }
-
-  return DITHERING_ALGORITHM_IDS[value as keyof typeof DITHERING_ALGORITHM_IDS]
-    ?? DITHERING_ALGORITHM_IDS['bayer-8x8']
-}
-
 export function applyDitheringUniforms(
   material: ShaderMaterial,
   controls: DitheringControls,
 ) {
-  material.uniforms.u_algorithm.value = resolveAlgorithm(controls.algorithm)
+  material.uniforms.u_algorithm.value = readId(
+    controls.algorithm,
+    DITHERING_ALGORITHM_IDS,
+    'bayer-8x8',
+  )
   material.uniforms.u_intensity.value = readNumber(controls.intensity, 1)
   material.uniforms.u_levels.value = readNumber(controls.levels, 2)
   material.uniforms.u_matrixSize.value = readMatrixSize(controls['matrix-size'])
@@ -450,29 +453,9 @@ export function applyDitheringUniforms(
   material.uniforms.u_phosphor.value = readBoolean(controls.phosphor)
 }
 
-function readNumber(value: DitheringControlValue | undefined, fallback: number) {
-  return typeof value === 'number' && Number.isFinite(value) ? value : fallback
-}
-
 function readMatrixSize(value: DitheringControlValue | undefined) {
   const parsed = typeof value === 'string' ? Number(value) : value
   return parsed === 2 || parsed === 4 || parsed === 8 || parsed === 16 ? parsed : 4
-}
-
-function readBoolean(value: DitheringControlValue | undefined) {
-  return value === true ? 1 : 0
-}
-
-function readString(value: DitheringControlValue | undefined, fallback: string) {
-  return typeof value === 'string' ? value : fallback
-}
-
-function readId<T extends string>(
-  value: DitheringControlValue | undefined,
-  ids: Record<T, number>,
-  fallback: T,
-) {
-  return typeof value === 'string' && value in ids ? ids[value as T] : ids[fallback]
 }
 
 const PALETTES: Record<string, readonly string[]> = {

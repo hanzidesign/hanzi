@@ -49,7 +49,7 @@ describe('Dithering CPU reference', () => {
     expect(output.data).toEqual(new Uint8ClampedArray([0]))
   })
 
-  it('applies Grainrad contrast around the 0.5 midpoint', () => {
+  it('applies Studio contrast around the 0.5 midpoint', () => {
     const output = renderDitheringReference({
       grayscale: new Uint8ClampedArray([0, 0, 0, 0, 0, 0, 150, 0]),
       width: 8,
@@ -108,7 +108,7 @@ describe('Dithering CPU reference', () => {
     expect(output.data).toEqual(new Uint8ClampedArray([0]))
   })
 
-  it('owns Grainrad algorithm ids inside the Dithering effect', () => {
+  it('owns Studio algorithm ids inside the Dithering effect', () => {
     expect(DITHERING_ALGORITHM_IDS).toEqual({
       'floyd-steinberg': 0,
       atkinson: 1,
@@ -140,7 +140,7 @@ describe('Dithering CPU reference', () => {
     expect(renderCell('bayer-16x16', 8, 5)).toBe(0)
   })
 
-  it('uses Grainrad interleaved-gradient noise at the quantized pixel position', () => {
+  it('uses Studio interleaved-gradient noise at the quantized pixel position', () => {
     expect(renderCell('interleaved-gradient', 1, 50)).toBe(255)
   })
 
@@ -148,7 +148,7 @@ describe('Dithering CPU reference', () => {
     expect(renderCell('blue-noise', 1, 128)).toBe(0)
   })
 
-  it('matches Grainrad spread constants for error-diffusion noise approximations', () => {
+  it('matches Studio spread constants for error-diffusion noise approximations', () => {
     expect(renderCell('atkinson', 1, 145)).toBe(255)
     expect(renderCell('sierra-lite', 1, 145)).toBe(0)
 

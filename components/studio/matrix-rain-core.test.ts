@@ -27,13 +27,13 @@ const EMPTY_GLYPH: MatrixGlyphMask = {
 }
 
 describe('Matrix Rain deterministic equations', () => {
-  it('matches Grainrad hash constants', () => {
+  it('matches Studio hash constants', () => {
     expect(hash11(0)).toBe(0)
     expect(hash11(73.156)).toBeCloseTo(0.047_933_936_557_683_41, 12)
     expect(hash21([1, 2])).toBeCloseTo(0.938_880_302_662_994_4, 12)
   })
 
-  it('uses exactly three seeded drops with Grainrad speed, phase, length, and square falloff', () => {
+  it('uses exactly three seeded drops with Studio speed, phase, length, and square falloff', () => {
     expect(getMatrixRainIntensity({
       columnIndex: 1,
       direction: 'up',

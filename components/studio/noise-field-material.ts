@@ -1,6 +1,13 @@
 import { ShaderMaterial, Vector2, type Texture } from 'three'
 
-export type NoiseFieldControlValue = string | number | boolean
+import type { StudioControlValue } from './studio-effects'
+import {
+  readStudioBoolean as readBoolean,
+  readStudioEnum as readEnum,
+  readStudioNumber as readNumber,
+} from './studio-control-readers'
+
+export type NoiseFieldControlValue = StudioControlValue
 export type NoiseFieldControls = Readonly<Record<string, NoiseFieldControlValue>>
 
 export const NOISE_FIELD_TYPE_IDS = {
@@ -317,22 +324,4 @@ export function applyNoiseFieldUniforms(
 
 export function disposeNoiseFieldShaderMaterial(material: ShaderMaterial) {
   material.dispose()
-}
-
-function readNumber(value: NoiseFieldControlValue | undefined, fallback: number) {
-  return typeof value === 'number' && Number.isFinite(value) ? value : fallback
-}
-
-function readBoolean(value: NoiseFieldControlValue | undefined) {
-  return value === true ? 1 : 0
-}
-
-function readEnum<T extends Record<string, number>>(
-  value: NoiseFieldControlValue | undefined,
-  values: T,
-  fallback: keyof T,
-) {
-  return typeof value === 'string' && value in values
-    ? values[value as keyof T]
-    : values[fallback]
 }

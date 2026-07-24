@@ -65,7 +65,7 @@ describe('Contour CPU reference', () => {
     expect(pixelAt(far.data, 8, 2, 0)).toEqual([0, 0, 0])
   })
 
-  it('preserves Grainrad’s Invert bug: center is inverted while neighbors are not', () => {
+  it('preserves Studio’s Invert bug: center is inverted while neighbors are not', () => {
     const output = render({
       height: 4,
       rgb: solidRgb(4, 4, [64, 64, 64]),

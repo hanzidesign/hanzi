@@ -18,7 +18,7 @@ describe('Halftone CPU reference', () => {
     expect(pixelAt(output.data, 8, 0, 0)).toEqual([0, 0, 0])
   })
 
-  it('uses Grainrad circle, square, diamond, and line shape distances', () => {
+  it('uses Studio circle, square, diamond, and line shape distances', () => {
     const render = (shape: 'circle' | 'square' | 'diamond' | 'line') => renderHalftoneReference({
       rgb: solidRgb(8, 8, [132, 132, 132]),
       width: 8,
@@ -49,7 +49,7 @@ describe('Halftone CPU reference', () => {
     expect(renderPixel([64, 64, 64], 1, 3, { brightness: 25 })).toEqual([255, 255, 255])
   })
 
-  it('uses Grainrad contrast factor (1 + c) / (1 - 0.99c)', () => {
+  it('uses Studio contrast factor (1 + c) / (1 - 0.99c)', () => {
     expect(renderPixel([160, 160, 160], 0, 3, { contrast: -100 })).toEqual([0, 0, 0])
     expect(renderPixel([160, 160, 160], 0, 3, { contrast: 100 })).toEqual([255, 255, 255])
   })

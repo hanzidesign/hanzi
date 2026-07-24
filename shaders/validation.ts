@@ -1,6 +1,5 @@
 import type { ShaderPreset } from './types'
-
-const HEX_COLOR_PATTERN = /^#[\da-f]{6}$/i
+import { isSixDigitHexColor } from '@/utils/colorValidation'
 
 export const RESERVED_UNIFORMS = [
   'u_time',
@@ -16,8 +15,8 @@ export const RESERVED_UNIFORMS = [
 
 export const RESERVED_UNIFORM_NAMES = new Set<string>(RESERVED_UNIFORMS)
 
-export function isHexColor(value: string) {
-  return HEX_COLOR_PATTERN.test(value)
+export function isHexColor(value: string): boolean {
+  return isSixDigitHexColor(value)
 }
 
 export function validateShaderPreset(preset: ShaderPreset) {
@@ -64,7 +63,7 @@ export function validateShaderPreset(preset: ShaderPreset) {
         }
         break
       case 'color':
-        if (!isHexColor(param.default)) {
+        if (!isSixDigitHexColor(param.default)) {
           throw new Error(
             `Shader preset "${preset.id}" param "${param.id}" has invalid color default "${param.default}".`,
           )

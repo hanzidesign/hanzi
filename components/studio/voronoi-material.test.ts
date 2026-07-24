@@ -20,7 +20,7 @@ function createFixture() {
 }
 
 describe('Voronoi shader material', () => {
-  it('owns an independent shader with exact Grainrad defaults', () => {
+  it('owns an independent shader with exact Studio defaults', () => {
     const { material, sourceTexture } = createFixture()
 
     expect(material.uniforms.u_sourceTexture.value).toBe(sourceTexture)

@@ -1,18 +1,17 @@
 import {
-  ASCII_OUTPUT_WIDTH_MAX,
-  GRAINRAD_COMMON_POST_PROCESSING_GROUPS,
-  GRAINRAD_COMMON_PROCESSING_GROUPS,
-  GRAINRAD_EFFECTS,
-  type GrainradControlValue,
-  type GrainradEffectId,
-  type GrainradSelectOption,
-} from './grainrad-effects'
+  STUDIO_COMMON_POST_PROCESSING_GROUPS,
+  STUDIO_COMMON_PROCESSING_GROUPS,
+  STUDIO_EFFECTS,
+  type StudioControlValue,
+  type StudioEffectId,
+  type StudioSelectOption,
+} from './studio-effects'
 import {
   MATRIX_RAIN_DIRECTION_IDS,
   type MatrixRainDirection,
 } from './matrix-rain-core'
 
-export const GRAINRAD_EFFECT_SHADER_IDS: Record<GrainradEffectId, number> = {
+export const STUDIO_EFFECT_SHADER_IDS: Record<StudioEffectId, number> = {
   ascii: 0,
   dithering: 1,
   halftone: 2,
@@ -34,7 +33,7 @@ export const EFFECT_VALUE_SLOT_COUNT = 24
 export const PROCESSING_VALUE_SLOT_COUNT = 6
 export const POST_VALUE_SLOT_COUNT = 28
 
-export type GrainradEffectRuntime = {
+export type StudioEffectRuntime = {
   effectId: number
   effectValues: number[]
   processingValues: number[]
@@ -47,13 +46,13 @@ export type GrainradEffectRuntime = {
 }
 
 type CompileRuntimeOptions = {
-  selectedEffectId: GrainradEffectId
-  controls: Record<string, GrainradControlValue> | undefined
+  selectedEffectId: StudioEffectId
+  controls: Record<string, StudioControlValue> | undefined
 }
 
 const SELECT_OPTION_INDEXES = new Map<string, Map<string, number>>()
 
-for (const group of GRAINRAD_EFFECTS.flatMap((effect) => effect.settingGroups)) {
+for (const group of STUDIO_EFFECTS.flatMap((effect) => effect.settingGroups)) {
   for (const control of group.controls) {
     if (control.kind === 'select') {
       mergeOptionIndex(control.id, control.options)
@@ -62,8 +61,8 @@ for (const group of GRAINRAD_EFFECTS.flatMap((effect) => effect.settingGroups)) 
 }
 
 for (const group of [
-  ...GRAINRAD_COMMON_PROCESSING_GROUPS,
-  ...GRAINRAD_COMMON_POST_PROCESSING_GROUPS,
+  ...STUDIO_COMMON_PROCESSING_GROUPS,
+  ...STUDIO_COMMON_POST_PROCESSING_GROUPS,
 ]) {
   for (const control of group.controls) {
     if (control.kind === 'select') {
@@ -125,11 +124,10 @@ export const VORONOI_DEDICATED_COLOR_CONTROL_IDS = [
   'background',
 ] as const
 
-const EFFECT_CONTROL_IDS: Record<GrainradEffectId, string[]> = {
+const EFFECT_CONTROL_IDS: Record<StudioEffectId, string[]> = {
   ascii: [
     'scale',
-    'spacing',
-    'output-width',
+    'size',
     'character-set',
     'custom-chars',
     'brightness',
@@ -481,10 +479,10 @@ const NOISE_FIELD_TYPE_IDS: Record<string, number> = {
   worley: 2,
 }
 
-export function compileGrainradEffectRuntime({
+export function compileStudioEffectRuntime({
   selectedEffectId,
   controls,
-}: CompileRuntimeOptions): GrainradEffectRuntime {
+}: CompileRuntimeOptions): StudioEffectRuntime {
   const read = createControlReader(controls)
   const effectValues = createValueSlots(EFFECT_VALUE_SLOT_COUNT)
   const processingValues = createValueSlots(PROCESSING_VALUE_SLOT_COUNT)
@@ -498,8 +496,7 @@ export function compileGrainradEffectRuntime({
   switch (selectedEffectId) {
     case 'ascii':
       effectValues[0] = read.number('scale', 4.3)
-      effectValues[1] = read.number('spacing', 0)
-      effectValues[2] = clampNumber(read.number('output-width', 0), 0, ASCII_OUTPUT_WIDTH_MAX)
+      effectValues[1] = read.number('size', 1)
       effectValues[3] = read.select('character-set')
       effectValues[4] = hashText(read.text('custom-chars', '')) / 997
       effectValues[5] = read.number('brightness', 0)
@@ -727,7 +724,7 @@ export function compileGrainradEffectRuntime({
   processingValues[5] = read.number('shape-matching', 0)
 
   postValues[0] = read.boolean('bloom')
-  postValues[1] = read.number('grain-intensity', 5) / 100
+  postValues[1] = read.number('grain-intensity', 1) / 100
   postValues[2] = read.number('grain-size', 2) / 10
   postValues[3] = read.number('grain-speed', 50) / 100
   postValues[4] = read.boolean('chromatic')
@@ -741,7 +738,7 @@ export function compileGrainradEffectRuntime({
   postValues[12] = read.number('bloom-radius', 12) / 20
   postValues[13] = read.boolean('grain')
   postValues[14] = read.number('chromatic-offset', 5)
-  postValues[15] = read.number('scanline-opacity', 0.5)
+  postValues[15] = read.number('scanline-opacity', 0.2)
   postValues[16] = read.number('scanline-spacing', 80)
   postValues[17] = read.number('vignette-intensity', 0.5)
   postValues[18] = read.number('vignette-radius', 0.5)
@@ -759,7 +756,7 @@ export function compileGrainradEffectRuntime({
   postValues[27] = read.select('grain-mode')
 
   return {
-    effectId: GRAINRAD_EFFECT_SHADER_IDS[selectedEffectId],
+    effectId: STUDIO_EFFECT_SHADER_IDS[selectedEffectId],
     effectValues,
     processingValues,
     postValues,
@@ -771,10 +768,10 @@ export function compileGrainradEffectRuntime({
   }
 }
 
-export function getUnmappedGrainradControls() {
+export function getUnmappedStudioControls() {
   const missing: string[] = []
 
-  for (const effect of GRAINRAD_EFFECTS) {
+  for (const effect of STUDIO_EFFECTS) {
     const mapped = new Set([
       ...EFFECT_CONTROL_IDS[effect.id],
       ...SHARED_PROCESSING_CONTROL_IDS,
@@ -782,8 +779,8 @@ export function getUnmappedGrainradControls() {
     ])
     const visibleIds = [
       ...effect.settingGroups,
-      ...GRAINRAD_COMMON_PROCESSING_GROUPS,
-      ...GRAINRAD_COMMON_POST_PROCESSING_GROUPS,
+      ...STUDIO_COMMON_PROCESSING_GROUPS,
+      ...STUDIO_COMMON_POST_PROCESSING_GROUPS,
     ].flatMap((group) => group.controls.map((control) => control.id))
 
     for (const id of visibleIds) {
@@ -796,7 +793,7 @@ export function getUnmappedGrainradControls() {
   return missing
 }
 
-function createControlReader(controls: Record<string, GrainradControlValue> | undefined) {
+function createControlReader(controls: Record<string, StudioControlValue> | undefined) {
   return {
     number: (id: string, fallback: number) => {
       const value = controls?.[id]
@@ -831,11 +828,7 @@ function createValueSlots(count: number) {
   return Array.from({ length: count }, () => 0)
 }
 
-function clampNumber(value: number, min: number, max: number) {
-  return Math.min(Math.max(value, min), max)
-}
-
-function mergeOptionIndex(controlId: string, options: Array<GrainradSelectOption>) {
+function mergeOptionIndex(controlId: string, options: Array<StudioSelectOption>) {
   const existing = SELECT_OPTION_INDEXES.get(controlId) ?? new Map<string, number>()
 
   for (const option of options) {

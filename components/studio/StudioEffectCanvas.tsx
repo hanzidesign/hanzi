@@ -1,5 +1,6 @@
 'use client'
 
+import type { ComponentType } from 'react'
 import { useStudioStore } from '@/app/studio/studio-store'
 import CharacterAsciiCanvas, {
   type CharacterAsciiStatus,
@@ -18,63 +19,47 @@ import CharacterThresholdCanvas from '@/components/studio/CharacterThresholdCanv
 import CharacterWaveLinesCanvas from '@/components/studio/CharacterWaveLinesCanvas'
 import CharacterVoronoiCanvas from '@/components/studio/CharacterVoronoiCanvas'
 import CharacterVhsCanvas from '@/components/studio/CharacterVhsCanvas'
-import { getGrainradEffectById } from '@/components/studio/grainrad-effects'
+import {
+  getStudioEffectById,
+  type StudioEffectRenderer,
+} from '@/components/studio/studio-effects'
 import classes from './StudioShell.module.css'
 
 const ignoreAsciiStatus = () => undefined
+
+type NonAsciiEffectRenderer = Exclude<StudioEffectRenderer, 'ascii' | 'unimplemented'>
+
+const effectRendererComponents: Record<NonAsciiEffectRenderer, ComponentType> = {
+  dithering: CharacterDitheringCanvas,
+  halftone: CharacterHalftoneCanvas,
+  'matrix-rain': CharacterMatrixRainCanvas,
+  dots: CharacterDotsCanvas,
+  contour: CharacterContourCanvas,
+  'pixel-sort': CharacterPixelSortCanvas,
+  blockify: CharacterBlockifyCanvas,
+  threshold: CharacterThresholdCanvas,
+  'edge-detection': CharacterEdgeDetectionCanvas,
+  crosshatch: CharacterCrosshatchCanvas,
+  'wave-lines': CharacterWaveLinesCanvas,
+  'noise-field': CharacterNoiseFieldCanvas,
+  voronoi: CharacterVoronoiCanvas,
+  vhs: CharacterVhsCanvas,
+}
 
 export default function StudioEffectCanvas({
   onAsciiStatusChange = ignoreAsciiStatus,
 }: {
   onAsciiStatusChange?: (status: CharacterAsciiStatus) => void
 }) {
-  const selectedEffectId = useStudioStore((store) => store.grainradEffect.selectedEffectId)
-  const selectedEffect = getGrainradEffectById(selectedEffectId)
+  const selectedEffectId = useStudioStore((store) => store.studioEffect.selectedEffectId)
+  const selectedEffect = getStudioEffectById(selectedEffectId)
 
-  if (selectedEffectId === 'ascii') {
+  if (selectedEffect.renderer === 'ascii') {
     return <CharacterAsciiCanvas onAsciiStatusChange={onAsciiStatusChange} />
   }
-  if (selectedEffectId === 'dithering') {
-    return <CharacterDitheringCanvas />
-  }
-  if (selectedEffectId === 'halftone') {
-    return <CharacterHalftoneCanvas />
-  }
-  if (selectedEffectId === 'matrix-rain') {
-    return <CharacterMatrixRainCanvas />
-  }
-  if (selectedEffectId === 'dots') {
-    return <CharacterDotsCanvas />
-  }
-  if (selectedEffectId === 'contour') {
-    return <CharacterContourCanvas />
-  }
-  if (selectedEffectId === 'pixel-sort') {
-    return <CharacterPixelSortCanvas />
-  }
-  if (selectedEffectId === 'blockify') {
-    return <CharacterBlockifyCanvas />
-  }
-  if (selectedEffectId === 'threshold') {
-    return <CharacterThresholdCanvas />
-  }
-  if (selectedEffectId === 'edge-detection') {
-    return <CharacterEdgeDetectionCanvas />
-  }
-  if (selectedEffectId === 'crosshatch') {
-    return <CharacterCrosshatchCanvas />
-  }
-  if (selectedEffectId === 'wave-lines') {
-    return <CharacterWaveLinesCanvas />
-  }
-  if (selectedEffectId === 'noise-field') {
-    return <CharacterNoiseFieldCanvas />
-  }
-  if (selectedEffectId === 'voronoi') {
-    return <CharacterVoronoiCanvas />
-  }
-  if (selectedEffectId === 'vhs') {
-    return <CharacterVhsCanvas />
+  if (selectedEffect.renderer !== 'unimplemented') {
+    const Renderer = effectRendererComponents[selectedEffect.renderer]
+    return <Renderer />
   }
 
   return (

@@ -1,4 +1,4 @@
-# Phase 5M — Grainrad Dithering Effect Architecture Correction
+# Phase 5M — reference editor Dithering Effect Architecture Correction
 
 Date: 2026-07-13  
 Branch: `v2.1`  
@@ -7,13 +7,13 @@ Status: plan check-in; application code has not been changed
 
 ## Outcome
 
-Rebuild `/studio` around Grainrad's desktop editor architecture while preserving Hanzi Studio's only local input: the current Character selector plus 3D Motion panel. Correct the renderer boundary so ASCII remains an ASCII-only pipeline and Dithering becomes the first real non-ASCII effect with Grainrad-matched Settings and behavior.
+Rebuild `/studio` around the reference editor's desktop editor architecture while preserving Hanzi Studio's only local input: the current Character selector plus 3D Motion panel. Correct the renderer boundary so ASCII remains an ASCII-only pipeline and Dithering becomes the first real non-ASCII effect with reference-matched Settings and behavior.
 
 This phase is complete only when every visible Dithering control has an effect-local schema, reset/sanitize contract, runtime mapping, and verified visible output behavior on the selected Character.
 
 ## Corrected Product Contract
 
-- Grainrad uses `data/sample.jpg` only as the external behavior probe.
+- The reference editor uses `data/sample.jpg` only as the external behavior probe.
 - Local Hanzi Studio does not accept images. It renders only the selected Character.
 - The local Character keeps the current 3D Motion behavior: position, rotation, depth/extrusion, scale, animation, and auto-spin remain upstream of the chosen visual effect.
 - ASCII keeps its dedicated glyph-atlas renderer and ASCII-only Settings.
@@ -22,7 +22,7 @@ This phase is complete only when every visible Dithering control has an effect-l
 
 ## Evidence Baseline
 
-### Grainrad live layout
+### Reference editor live layout
 
 Measured at a `1280 × 720` viewport on 2026-07-13:
 
@@ -32,7 +32,7 @@ Measured at a `1280 × 720` viewport on 2026-07-13:
 | Center preview | `640px` at this viewport | fills remaining width, overflow hidden |
 | Right sidebar | `352px` / `22rem` | full viewport height, independent vertical scroll, left border |
 
-Grainrad tokens observed in its current public CSS:
+The reference editor tokens observed in its current public CSS:
 
 ```css
 --term-bg: #0a0a0a;
@@ -45,7 +45,7 @@ Grainrad tokens observed in its current public CSS:
 --term-text-bright: #cccccc;
 ```
 
-The project keeps its current typography contract, but matches Grainrad's spacing, density, borders, color hierarchy, control geometry, and three-column layout.
+The project keeps its current typography contract, but matches the reference editor's spacing, density, borders, color hierarchy, control geometry, and three-column layout.
 
 ### Generated implementation reference
 
@@ -53,13 +53,13 @@ Authoritative UI-layout reference:
 
 `data/Generated image 1.png`
 
-Grainrad remains the behavior source for Settings and effect logic; this repository image is the source of truth for local `/studio` visual placement, density, and proportions.
+The reference editor remains the behavior source for Settings and effect logic; this repository image is the source of truth for local `/studio` visual placement, density, and proportions.
 
 Extracted layout rules:
 
 - Edge-to-edge three-column surface; no page margin, floating shell, rounded cards, gradient, or glass treatment.
 - Left sidebar header, expanded Input, expanded Effects, and collapsed Presets use one continuous panel surface with `1px` dividers.
-- Character and 3D Motion sit together inside Input; they do not become a Grainrad file-drop zone.
+- Character and 3D Motion sit together inside Input; they do not become a reference editor file-drop zone.
 - The selected Effect row uses a subtle neutral fill and bright dot, not a raised card.
 - The center Character is the dominant visual; toolbars stay small and pinned to edges.
 - The right sidebar uses compact groups with `112px` labels, `28px` rows, `1px` slider tracks, `8px` thumbs, and minimal gaps.
@@ -122,7 +122,7 @@ Required module boundaries:
    - Runs after the selected effect output.
    - Remains separate from left-side 3D Motion/Animation.
 
-## Grainrad Dithering Settings Contract
+## Reference editor Dithering Settings Contract
 
 ### Dithering
 
@@ -228,7 +228,7 @@ Each channel angle becomes a direction vector for spatially displaced sampling. 
 ### Algorithm families
 
 - Bayer 2/4/8/16: exact ordered threshold matrices.
-- Grainrad-named error diffusion methods: match Grainrad's current blue-noise threshold approximation rather than implementing CPU-style sequential diffusion.
+- reference-named error diffusion methods: match the reference editor's current blue-noise threshold approximation rather than implementing CPU-style sequential diffusion.
   - Floyd `0.50`
   - Atkinson `0.35`
   - Jarvis-Judice-Ninke `0.65`
@@ -238,7 +238,7 @@ Each channel angle becomes a direction vector for spatially displaced sampling. 
   - Sierra Two-Row `0.52`
   - Sierra Lite `0.40`
 - Blue Noise: combine three interleaved-gradient noise layers.
-- Interleaved Gradient: deterministic fragment-coordinate noise with Grainrad's constants.
+- Interleaved Gradient: deterministic fragment-coordinate noise with the reference editor's constants.
 - Clustered Dot: cell size `matrixSize * 2`; radius `(1-luminance) * 0.48`.
 - Crosshatch:
   - UV scale `lineSpacing * 5`.
@@ -262,7 +262,7 @@ Each channel angle becomes a direction vector for spatially displaced sampling. 
 
 ## Deliberate Bug Policy
 
-The current Grainrad WebGPU build exposes two no-op paths:
+The current reference editor WebGPU build exposes two no-op paths:
 
 1. RGB Color Depth is overwritten before the shader reads it.
 2. Custom Palette UI state is not passed into the WebGPU renderer.
@@ -271,7 +271,7 @@ Recommendation: match the intended visible behavior, not these two no-op wiring 
 
 ## Reset Contract
 
-- Right Settings Reset resets only the selected Effect in Hanzi Studio. It must not reset unrelated Effects, even though Grainrad's current non-ASCII reset resets all non-ASCII effect state.
+- Right Settings Reset resets only the selected Effect in Hanzi Studio. It must not reset unrelated Effects, even though the reference editor's current non-ASCII reset resets all non-ASCII effect state.
 - Adjustment row reset affects only its row.
 - Chromatic Reset affects only the Chromatic group.
 - Switching ASCII ↔ Dithering preserves each Effect's local values.
@@ -304,7 +304,7 @@ This selected-only policy preserves effect isolation and avoids surprising cross
 - Implement five color modes, built-in/custom palettes, Levels/Color Depth, five modulation modes, and spatial chromatic sampling.
 - Add per-setting output fixtures/hashes for defaults, min/max, and each option.
 
-### Slice E — Grainrad UI parity
+### Slice E — reference editor UI parity
 
 - Match the measured three-column shell and terminal controls.
 - Keep Character selector and 3D Motion in Input.
@@ -317,14 +317,14 @@ This selected-only policy preserves effect isolation and avoids surprising cross
 - ASCII regression suite.
 - Full Vitest, TypeScript, lint, build, and `git diff --check`.
 - Browser console and renderer-routing checks.
-- Manual Grainrad visual pass with `data/sample.jpg`; local pass uses only selected Characters.
+- Manual reference editor visual pass with `data/sample.jpg`; local pass uses only selected Characters.
 
 ## Acceptance Matrix
 
 | Requirement | Authoritative evidence |
 | --- | --- |
 | Local input is Character-only | DOM contract test and browser inspection; no file-input state/action in local code |
-| Grainrad layout parity | measured `288px / flex / 352px` layout, screenshot comparison, CSS contract test |
+| reference editor layout parity | measured `288px / flex / 352px` layout, screenshot comparison, CSS contract test |
 | ASCII isolation | router test; Dithering files do not import ASCII material/glyph atlas |
 | Dithering settings parity | exact schema/conditional-visibility snapshot against this plan |
 | Effect-local persistence | ASCII ↔ Dithering switch/hydration tests |
@@ -334,7 +334,7 @@ This selected-only policy preserves effect isolation and avoids surprising cross
 
 ## Plan Check-in
 
-Implementation should begin only after the user accepts this Dithering-first plan, including these two recommended deviations from current Grainrad bugs:
+Implementation should begin only after the user accepts this Dithering-first plan, including these two recommended deviations from current reference editor bugs:
 
 1. Color Depth and Custom Palette will work instead of being no-ops.
 2. Settings Reset will reset only the selected Effect instead of all non-ASCII Effects.

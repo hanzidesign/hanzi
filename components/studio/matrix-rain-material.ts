@@ -5,12 +5,18 @@ import {
   type Texture,
 } from 'three'
 
+import type { StudioControlValue } from './studio-effects'
+import {
+  readStudioBoolean as readBoolean,
+  readStudioNumber as readNumber,
+  readStudioString as readString,
+} from './studio-control-readers'
 import type { MatrixRainGlyphAtlas } from './matrix-rain-charset'
 import { MATRIX_RAIN_DIRECTION_IDS } from './matrix-rain-core'
 
 export { MATRIX_RAIN_DIRECTION_IDS } from './matrix-rain-core'
 
-export type MatrixRainControlValue = string | number | boolean
+export type MatrixRainControlValue = StudioControlValue
 export type MatrixRainControls = Readonly<Record<string, MatrixRainControlValue>>
 
 export type CreateMatrixRainShaderMaterialOptions = Readonly<{
@@ -406,18 +412,6 @@ export function applyMatrixRainUniforms(
 
 export function disposeMatrixRainShaderMaterial(material: ShaderMaterial) {
   material.dispose()
-}
-
-function readNumber(value: MatrixRainControlValue | undefined, fallback: number) {
-  return typeof value === 'number' && Number.isFinite(value) ? value : fallback
-}
-
-function readBoolean(value: MatrixRainControlValue | undefined) {
-  return value === true ? 1 : 0
-}
-
-function readString(value: MatrixRainControlValue | undefined, fallback: string) {
-  return typeof value === 'string' ? value : fallback
 }
 
 function readDirection(value: MatrixRainControlValue | undefined) {
