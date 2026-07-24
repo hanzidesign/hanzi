@@ -43,17 +43,12 @@ describe('Threshold CPU reference', () => {
     ])
   })
 
-  it('uses strict two-level thresholding and flips the light boolean for Invert', () => {
+  it('uses strict two-level thresholding', () => {
     const dark = renderPixel([0, 204, 68], {
-      thresholdPoint: 0.5,
-    })
-    const inverted = renderPixel([0, 204, 68], {
-      invert: true,
       thresholdPoint: 0.5,
     })
 
     expect(dark).toEqual([0, 0, 0])
-    expect(inverted).toEqual([255, 255, 255])
   })
 
   it('applies Brightness before production Contrast and uses adjusted source in Original', () => {
@@ -113,11 +108,6 @@ describe('Threshold CPU reference', () => {
       colorMode: 'color',
       levels: 3,
     })).toEqual([0, 128, 255])
-    expect(renderPixel([51, 128, 230], {
-      colorMode: 'color',
-      invert: true,
-      levels: 3,
-    })).toEqual([255, 128, 0])
   })
 
   it('uses posterized Rec.601 luminance as the Mono tint ramp above two Levels', () => {
@@ -126,12 +116,6 @@ describe('Threshold CPU reference', () => {
       foreground: [210, 120, 70],
       levels: 3,
     })).toEqual([128, 79, 54])
-    expect(renderPixel([255, 128, 0], {
-      background: [10, 20, 30],
-      foreground: [210, 120, 70],
-      invert: true,
-      levels: 3,
-    })).toEqual([91, 61, 46])
   })
 
   it('applies Bayer Dither before component posterization above two Levels', () => {
@@ -184,7 +168,6 @@ describe('Threshold CPU reference', () => {
     expect(() => render({ settings: { brightness: 0.5 } })).toThrow('integer')
     expect(() => render({ settings: { contrast: 101 } })).toThrow('between -100 and 100')
     expect(() => render({ settings: { dither: 1 as unknown as boolean } })).toThrow('boolean')
-    expect(() => render({ settings: { invert: 0 as unknown as boolean } })).toThrow('boolean')
     expect(() => render({
       settings: { colorMode: 'mono' as import('./threshold-core').ThresholdColorMode },
     })).toThrow('color mode')
@@ -199,7 +182,6 @@ describe('Threshold CPU reference', () => {
     const variants: ReadonlyArray<Partial<import('./threshold-core').ThresholdSettings>> = [
       { levels: 4 },
       { thresholdPoint: 0.8 },
-      { invert: true },
       { brightness: 30 },
       { contrast: 60 },
       { colorMode: 'color' },

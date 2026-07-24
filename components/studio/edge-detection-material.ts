@@ -35,7 +35,6 @@ uniform vec2 u_sourceSize;
 uniform vec2 u_resolution;
 uniform float u_threshold;
 uniform float u_lineWidth;
-uniform float u_invert;
 uniform float u_algorithm;
 uniform float u_brightness;
 uniform float u_contrast;
@@ -152,7 +151,6 @@ void main() {
   float combinedEdge = max(coarseEdge, fineEdge * 0.7);
   float softness = u_threshold * 0.3;
   float mask = smoothstep(u_threshold - softness, u_threshold + softness, combinedEdge);
-  if (u_invert > 0.5) mask = 1.0 - mask;
   vec3 processedOriginal = edgeAdjustedSample(v_uv);
   vec3 foreground = u_colorMode > 0.5 ? processedOriginal : u_edgeColor;
   vec3 effectColor = mix(u_background, foreground, mask);
@@ -180,7 +178,6 @@ export function createEdgeDetectionShaderMaterial({
       u_resolution: { value: resolution.clone() },
       u_threshold: { value: 0.3 },
       u_lineWidth: { value: 1 },
-      u_invert: { value: 0 },
       u_algorithm: { value: 0 },
       u_brightness: { value: 0 },
       u_contrast: { value: 0 },
@@ -210,7 +207,6 @@ export function applyEdgeDetectionUniforms(material: ShaderMaterial, controls: E
   material.uniforms.u_algorithm.value = readEnum(controls.algorithm, EDGE_DETECTION_ALGORITHM_IDS, 'sobel')
   material.uniforms.u_threshold.value = readNumber(controls.threshold, 0.3)
   material.uniforms.u_lineWidth.value = readNumber(controls['line-width'], 1)
-  material.uniforms.u_invert.value = readBoolean(controls.invert)
   material.uniforms.u_brightness.value = readNumber(controls.brightness, 0) / 100
   material.uniforms.u_contrast.value = readNumber(controls.contrast, 0) / 100
   material.uniforms.u_edgeColor.value.set(readString(controls['edge-color'], '#ffffff'))

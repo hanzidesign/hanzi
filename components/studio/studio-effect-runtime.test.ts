@@ -564,7 +564,6 @@ describe('Phase 5F Studio runtime effect compiler', () => {
         levels: 7,
         'threshold-point': 0.65,
         dither: true,
-        invert: true,
         brightness: 40,
         contrast: -25,
         'color-mode': 'color',
@@ -579,7 +578,7 @@ describe('Phase 5F Studio runtime effect compiler', () => {
       0.65,
       0.4,
       -0.25,
-      1,
+      0,
       1,
     ])
     expect(runtime.effectColorA).toEqual([0x12 / 255, 0x34 / 255, 0x56 / 255])
@@ -595,7 +594,6 @@ describe('Phase 5F Studio runtime effect compiler', () => {
         algorithm: 'laplacian',
         threshold: 0.65,
         'line-width': 3.5,
-        invert: true,
         brightness: 40,
         contrast: -25,
         'color-mode': 'original',
@@ -607,7 +605,7 @@ describe('Phase 5F Studio runtime effect compiler', () => {
     expect(runtime.effectValues.slice(0, 7)).toEqual([
       0.65,
       3.5,
-      1,
+      0,
       2,
       0.4,
       -0.25,
@@ -622,7 +620,11 @@ describe('Phase 5F Studio runtime effect compiler', () => {
     expect(compileStudioEffectRuntime({
       selectedEffectId: 'crosshatch',
       controls: defaults,
-    }).effectValues[3]).toBe(0.08)
+    }).effectValues[3]).toBe(0.01)
+    expect(compileStudioEffectRuntime({
+      selectedEffectId: 'crosshatch',
+      controls: defaults,
+    }).effectValues[13]).toBe(40)
 
     const runtime = compileStudioEffectRuntime({
       selectedEffectId: 'crosshatch',
@@ -634,7 +636,6 @@ describe('Phase 5F Studio runtime effect compiler', () => {
         'line-width': 0.75,
         brightness: 40,
         contrast: -25,
-        invert: true,
         randomness: 0.75,
         'background-density': 40,
         'background-layers': 4,
@@ -654,7 +655,7 @@ describe('Phase 5F Studio runtime effect compiler', () => {
       0.75,
       0.4,
       -0.25,
-      1,
+      0,
       0.75,
       40,
       4,

@@ -20,7 +20,6 @@ describe('Studio Threshold schema', () => {
       'levels',
       'threshold-point',
       'dither',
-      'invert',
       'brightness',
       'contrast',
       'color-mode',
@@ -38,7 +37,7 @@ describe('Studio Threshold schema', () => {
     expect(controls.levels).toMatchObject({ defaultValue: 2, min: 2, max: 8, step: 1 })
     expect(controls['threshold-point']).toMatchObject({ defaultValue: 0.5, min: 0.1, max: 0.9, step: 0.05 })
     expect(controls.dither).toMatchObject({ kind: 'toggle', defaultValue: false })
-    expect(controls.invert).toMatchObject({ kind: 'toggle', defaultValue: false })
+    expect(controls).not.toHaveProperty('invert')
     expect(controls.brightness).toMatchObject({ defaultValue: 0, min: -100, max: 100, step: 1 })
     expect(controls.contrast).toMatchObject({ defaultValue: 0, min: -100, max: 100, step: 1 })
     expect(controls['color-mode']).toMatchObject({
@@ -59,11 +58,12 @@ describe('Studio Threshold schema', () => {
       defaultValue: '#000000',
       visibleWhen: { controlId: 'color-mode', operator: 'equals', value: 'mono' },
     })
-    expect(createDefaultStudioEffectControls().threshold).toMatchObject({
+    const defaults = createDefaultStudioEffectControls().threshold
+    expect(defaults).not.toHaveProperty('invert')
+    expect(defaults).toMatchObject({
       levels: 2,
       'threshold-point': 0.5,
       dither: false,
-      invert: false,
       brightness: 0,
       contrast: 0,
       'color-mode': 'mono',

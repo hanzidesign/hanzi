@@ -108,6 +108,7 @@ function selectColor(
   if (isContour) return lineColor
   if (settings.fillMode === 'lines') return background
 
+  const quantized = Math.floor(centerBrightness * settings.levels) / settings.levels
   const midpoint = quantizedMidpoint(centerBrightness, settings.levels)
   switch (settings.colorMode) {
     case 'original':
@@ -118,9 +119,9 @@ function selectColor(
       ]
     case 'custom':
       return [
-        mix(background[0], lineColor[0], midpoint),
-        mix(background[1], lineColor[1], midpoint),
-        mix(background[2], lineColor[2], midpoint),
+        mix(background[0], lineColor[0], quantized),
+        mix(background[1], lineColor[1], quantized),
+        mix(background[2], lineColor[2], quantized),
       ]
     case 'grayscale':
       return [midpoint, midpoint, midpoint]

@@ -20,7 +20,6 @@ describe('Studio Edge Detection schema', () => {
       'algorithm',
       'threshold',
       'line-width',
-      'invert',
       'brightness',
       'contrast',
       'color-mode',
@@ -46,7 +45,7 @@ describe('Studio Edge Detection schema', () => {
     })
     expect(controls.threshold).toMatchObject({ defaultValue: 0.3, min: 0.1, max: 0.8, step: 0.05 })
     expect(controls['line-width']).toMatchObject({ defaultValue: 1, min: 0.5, max: 4, step: 0.5 })
-    expect(controls.invert).toMatchObject({ kind: 'toggle', defaultValue: false })
+    expect(controls).not.toHaveProperty('invert')
     expect(controls.brightness).toMatchObject({ defaultValue: 0, min: -100, max: 100, step: 1 })
     expect(controls.contrast).toMatchObject({ defaultValue: 0, min: -100, max: 100, step: 1 })
     expect(controls['color-mode']).toMatchObject({
@@ -67,11 +66,12 @@ describe('Studio Edge Detection schema', () => {
       defaultValue: '#000000',
       visibleWhen: { controlId: 'color-mode', operator: 'equals', value: 'mono' },
     })
-    expect(createDefaultStudioEffectControls()['edge-detection']).toMatchObject({
+    const defaults = createDefaultStudioEffectControls()['edge-detection']
+    expect(defaults).not.toHaveProperty('invert')
+    expect(defaults).toMatchObject({
       algorithm: 'sobel',
       threshold: 0.3,
       'line-width': 1,
-      invert: false,
       brightness: 0,
       contrast: 0,
       'color-mode': 'mono',

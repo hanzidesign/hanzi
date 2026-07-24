@@ -108,7 +108,7 @@ void main() {
   } else if (u_fillMode > 0.5) {
     effectColor = u_background;
   } else if (u_colorMode > 1.5) {
-    effectColor = mix(u_background, u_lineColor, quantizedBrightness);
+    effectColor = mix(u_background, u_lineColor, quantized);
   } else if (u_colorMode > 0.5) {
     effectColor = floor(adjustedColor * u_levels) / u_levels + 0.5 / u_levels;
   } else {

@@ -98,6 +98,9 @@ describe('Contour shader material', () => {
       'floor(adjustedColor * u_levels) / u_levels + 0.5 / u_levels',
     )
     expect(CONTOUR_FRAGMENT_SHADER).toContain(
+      'mix(u_background, u_lineColor, quantized)',
+    )
+    expect(CONTOUR_FRAGMENT_SHADER).not.toContain(
       'mix(u_background, u_lineColor, quantizedBrightness)',
     )
     expect(CONTOUR_FRAGMENT_SHADER).toContain('vec3(quantizedBrightness)')

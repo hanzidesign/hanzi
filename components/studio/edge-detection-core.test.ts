@@ -20,20 +20,10 @@ describe('Edge Detection CPU reference', () => {
     expect(sampleEdgeDetectionSourceLinear(source, 4, 1, -1, 2)).toEqual([0, 10 / 255, 20 / 255])
   })
 
-  it('makes every flat field edge-free for every algorithm and Invert flips only the mask', () => {
+  it('makes every flat field edge-free for every algorithm', () => {
     for (const algorithm of ['sobel', 'prewitt', 'laplacian'] as const) {
       expect(renderFlat({ algorithm })).toEqual([0, 0, 0])
-      expect(renderFlat({ algorithm, invert: true })).toEqual([255, 255, 255])
     }
-  })
-
-  it('applies Brightness before Contrast to all samples and Original output', () => {
-    expect(renderFlat({
-      brightness: 25,
-      colorMode: 'original',
-      contrast: 50,
-      invert: true,
-    }, [64, 128, 192])).toEqual([128, 255, 255])
   })
 
   it('locks Contrast -100 to flat 0.5 and makes Brightness a no-op', () => {
@@ -86,16 +76,6 @@ describe('Edge Detection CPU reference', () => {
     expect(changedBackground).not.toEqual(base)
   })
 
-  it('keeps chosen Mono colors raw while B/C changes only the detection mask', () => {
-    expect(renderFlat({
-      brightness: 100,
-      colorMode: 'custom',
-      contrast: 100,
-      edgeColor: [7, 17, 27],
-      invert: true,
-    })).toEqual([7, 17, 27])
-  })
-
   it('makes every functional setting observable in an active context', () => {
     const source = makeFixture(17, 17)
     const cases: Partial<EdgeDetectionSettings>[] = [
@@ -103,7 +83,6 @@ describe('Edge Detection CPU reference', () => {
       { algorithm: 'laplacian' },
       { threshold: 0.7 },
       { lineWidth: 3 },
-      { invert: true },
       { brightness: 25 },
       { contrast: 50 },
       { colorMode: 'original' },

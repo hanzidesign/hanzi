@@ -19,20 +19,19 @@ describe('Crosshatch CPU reference', () => {
       background: [255, 255, 255],
       brightness: -4,
       contrast: 0,
-      density: 6,
-      invert: false,
+      density: 15,
       layers: 3,
       lineColor: [0, 0, 0],
-      lineWidth: 0.08,
+      lineWidth: 0.01,
       randomness: 0,
-      backgroundDensity: 12,
+      backgroundDensity: 8,
       backgroundLayers: 1,
-      backgroundAngle: 45,
-      backgroundLineWidth: 0.08,
+      backgroundAngle: 40,
+      backgroundLineWidth: 0.01,
       backgroundRandomness: 0,
-      backgroundSpeed: 0.1,
+      backgroundSpeed: 40,
     })
-    expect(() => render({ settings: { lineWidth: 0.08 } })).not.toThrow()
+    expect(() => render({ settings: { lineWidth: 0.01 } })).not.toThrow()
   })
 
   it('ports production hash21 and smooth value noise exactly', () => {
@@ -144,16 +143,12 @@ describe('Crosshatch CPU reference', () => {
     )
   })
 
-  it('inverts luminance only and always mixes Background toward Line Color', () => {
+  it('always mixes Background toward Line Color', () => {
     const settings = {
       background: [20, 40, 60] as const,
       brightness: 0,
       lineColor: [220, 180, 140] as const,
     }
-    const normalTrace = trace(settings, [180, 120, 60])
-    const invertedTrace = trace({ ...settings, invert: true }, [180, 120, 60])
-    expect(invertedTrace.luminance).toBeCloseTo(1 - normalTrace.luminance, 12)
-
     const output = render({ height: 1, rgb: solidRgb(2, 1, [255, 255, 255]), settings, width: 2 })
     const fieldPixel = pixelAt(output.data, 2, 0, 0)
     expect(fieldPixel).not.toEqual(settings.background)
@@ -250,7 +245,6 @@ describe('Crosshatch CPU reference', () => {
       { angle: 70 },
       { lineWidth: 0.5 },
       { randomness: 0.8 },
-      { invert: true },
       { brightness: 25 },
       { contrast: 60 },
       { lineColor: [255, 40, 80] },
@@ -390,19 +384,20 @@ describe('Crosshatch CPU reference', () => {
     expect(() => render({ settings: { density: 51 } })).toThrow('between 1 and 50')
     expect(() => render({ settings: { density: 2.5 } })).toThrow('integer')
     expect(() => render({ settings: { layers: 5 } })).toThrow('between 1 and 4')
-    expect(() => render({ settings: { angle: 12 } })).toThrow('increments of 5')
+    expect(() => render({ settings: { angle: 12 } })).not.toThrow()
+    expect(() => render({ settings: { angle: 12.5 } })).toThrow('increments of 1')
     expect(() => render({ settings: { lineWidth: 0 } })).toThrow('between 0.01 and 0.5')
     expect(() => render({ settings: { lineWidth: 0.51 } })).toThrow('between 0.01 and 0.5')
     expect(() => render({ settings: { lineWidth: 0.015 } })).toThrow('increments of 0.01')
     expect(() => render({ settings: { randomness: 0.03 } })).toThrow('increments of 0.05')
     expect(() => render({ settings: { backgroundDensity: 50.5 } })).toThrow('between 1 and 50')
     expect(() => render({ settings: { backgroundLayers: 5 } })).toThrow('between 1 and 4')
-    expect(() => render({ settings: { backgroundAngle: 12 } })).toThrow('increments of 5')
+    expect(() => render({ settings: { backgroundAngle: 12 } })).not.toThrow()
+    expect(() => render({ settings: { backgroundAngle: 12.5 } })).toThrow('increments of 1')
     expect(() => render({ settings: { backgroundLineWidth: 0.015 } })).toThrow('increments of 0.01')
     expect(() => render({ settings: { backgroundRandomness: 0.03 } })).toThrow('increments of 0.05')
-    expect(() => render({ settings: { backgroundSpeed: 10.1 } })).toThrow('between 0 and 10')
+    expect(() => render({ settings: { backgroundSpeed: 100.1 } })).toThrow('between 0 and 100')
     expect(() => render({ settings: { brightness: 1.5 } })).toThrow('integer')
-    expect(() => render({ settings: { invert: 1 as unknown as boolean } })).toThrow('boolean')
     expect(() => render({ settings: { lineColor: [0, 0, 256] } })).toThrow('color channel')
     expect(() => traceCrosshatchAt(makeInput(), -1, 0)).toThrow('in-bounds')
   })

@@ -26,19 +26,18 @@ describe('Crosshatch shader material', () => {
     expect(material.uniforms.u_sourceTexture.value).toBe(sourceTexture)
     expect(material.uniforms.u_sourceSize.value.toArray()).toEqual([1024, 768])
     expect(material.uniforms.u_resolution.value.toArray()).toEqual([1280, 720])
-    expect(material.uniforms.u_density.value).toBe(6)
+    expect(material.uniforms.u_density.value).toBe(15)
     expect(material.uniforms.u_layers.value).toBe(3)
     expect(material.uniforms.u_angle.value).toBeCloseTo(Math.PI / 4)
-    expect(material.uniforms.u_lineWidth.value).toBe(0.08)
-    expect(material.uniforms.u_backgroundDensity.value).toBe(12)
+    expect(material.uniforms.u_lineWidth.value).toBe(0.01)
+    expect(material.uniforms.u_backgroundDensity.value).toBe(8)
     expect(material.uniforms.u_backgroundLayers.value).toBe(1)
-    expect(material.uniforms.u_backgroundAngle.value).toBeCloseTo(Math.PI / 4)
-    expect(material.uniforms.u_backgroundLineWidth.value).toBe(0.08)
+    expect(material.uniforms.u_backgroundAngle.value).toBeCloseTo(40 * Math.PI / 180)
+    expect(material.uniforms.u_backgroundLineWidth.value).toBe(0.01)
     expect(material.uniforms.u_backgroundRandomness.value).toBe(0)
-    expect(material.uniforms.u_backgroundSpeed.value).toBe(0.1)
+    expect(material.uniforms.u_backgroundSpeed.value).toBe(40)
     expect(material.uniforms.u_randomness.value).toBe(0)
     expect(material.uniforms.u_brightnessMap.value).toBe(1)
-    expect(material.uniforms.u_invert.value).toBe(0)
     expect(material.uniforms.u_brightness.value).toBe(-0.04)
     expect(material.uniforms.u_contrast.value).toBe(0)
     expect(material.uniforms.u_lineColor.value.getHexString()).toBe('000000')
@@ -61,7 +60,6 @@ describe('Crosshatch shader material', () => {
       'background-randomness': 0.35,
       'background-speed': 2.4,
       randomness: 0.65,
-      invert: true,
       brightness: 40,
       contrast: -25,
       'line-color': '#123456',
@@ -80,7 +78,6 @@ describe('Crosshatch shader material', () => {
     expect(material.uniforms.u_backgroundRandomness.value).toBe(0.35)
     expect(material.uniforms.u_backgroundSpeed.value).toBe(2.4)
     expect(material.uniforms.u_randomness.value).toBe(0.65)
-    expect(material.uniforms.u_invert.value).toBe(1)
     expect(material.uniforms.u_brightness.value).toBe(0.4)
     expect(material.uniforms.u_contrast.value).toBe(-0.25)
     expect(material.uniforms.u_lineColor.value.getHexString()).toBe('123456')
@@ -202,11 +199,12 @@ describe('Crosshatch shader material', () => {
     expect(CROSSHATCH_FRAGMENT_SHADER).not.toContain('sourceMask')
   })
 
-  it('keeps the buggy luma, luminance-only invert, and fixed palette mix', () => {
+  it('keeps the buggy luma and fixed palette mix without a local Invert control', () => {
     expect(CROSSHATCH_FRAGMENT_SHADER).toContain(
       'dot(color, vec3(0.2326, 0.7152, 0.0722))',
     )
-    expect(CROSSHATCH_FRAGMENT_SHADER).toContain('luminanceValue = 1.0 - luminanceValue;')
+    expect(CROSSHATCH_FRAGMENT_SHADER).not.toContain('uniform float u_invert;')
+    expect(CROSSHATCH_FRAGMENT_SHADER).not.toContain('luminanceValue = 1.0 - luminanceValue;')
     expect(CROSSHATCH_FRAGMENT_SHADER).toContain(
       'vec3 effectColor = mix(u_background, u_lineColor, hatchValue);',
     )

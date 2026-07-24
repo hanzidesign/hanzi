@@ -42,7 +42,6 @@ uniform float u_backgroundRandomness;
 uniform float u_backgroundSpeed;
 uniform float u_brightness;
 uniform float u_contrast;
-uniform float u_invert;
 uniform vec3 u_lineColor;
 uniform vec3 u_background;
 uniform float u_randomness;
@@ -167,9 +166,6 @@ void main() {
   float backgroundPhase = backgroundMotionMask * u_time * 0.08 * u_backgroundSpeed;
   vec3 adjustedColor = applyCrosshatchBrightnessContrast(clamp(sourceColor, 0.0, 1.0));
   float luminanceValue = crosshatchLuminance(adjustedColor);
-  if (u_invert > 0.5) {
-    luminanceValue = 1.0 - luminanceValue;
-  }
   float backgroundHatchStrength = clamp(0.04 - u_brightness * 0.2, 0.006, 0.2);
   float backgroundHatchFloor = backgroundMotionMask * backgroundHatchStrength;
   float darkness = max(1.0 - luminanceValue, backgroundHatchFloor);
@@ -271,19 +267,18 @@ export function createCrosshatchShaderMaterial({
       u_sourceTexture: { value: sourceTexture },
       u_sourceSize: { value: sourceSize.clone() },
       u_resolution: { value: resolution.clone() },
-      u_density: { value: 6 },
+      u_density: { value: 15 },
       u_angle: { value: Math.PI / 4 },
       u_layers: { value: 3 },
-      u_lineWidth: { value: 0.08 },
-      u_backgroundDensity: { value: 12 },
+      u_lineWidth: { value: 0.01 },
+      u_backgroundDensity: { value: 8 },
       u_backgroundLayers: { value: 1 },
-      u_backgroundAngle: { value: Math.PI / 4 },
-      u_backgroundLineWidth: { value: 0.08 },
+      u_backgroundAngle: { value: 40 * Math.PI / 180 },
+      u_backgroundLineWidth: { value: 0.01 },
       u_backgroundRandomness: { value: 0 },
-      u_backgroundSpeed: { value: 0.1 },
+      u_backgroundSpeed: { value: 40 },
       u_brightness: { value: -0.04 },
       u_contrast: { value: 0 },
-      u_invert: { value: 0 },
       u_lineColor: { value: new Color('#000000') },
       u_background: { value: new Color('#ffffff') },
       u_randomness: { value: 0 },
@@ -312,19 +307,18 @@ export function applyCrosshatchUniforms(
   material: ShaderMaterial,
   controls: CrosshatchControls,
 ) {
-  material.uniforms.u_density.value = readNumber(controls.density, 6)
+  material.uniforms.u_density.value = readNumber(controls.density, 15)
   material.uniforms.u_angle.value = readNumber(controls.angle, 45) * (Math.PI / 180)
   material.uniforms.u_layers.value = readNumber(controls.layers, 3)
-  material.uniforms.u_lineWidth.value = readNumber(controls['line-width'], 0.08)
-  material.uniforms.u_backgroundDensity.value = readNumber(controls['background-density'], 12)
+  material.uniforms.u_lineWidth.value = readNumber(controls['line-width'], 0.01)
+  material.uniforms.u_backgroundDensity.value = readNumber(controls['background-density'], 8)
   material.uniforms.u_backgroundLayers.value = readNumber(controls['background-layers'], 1)
-  material.uniforms.u_backgroundAngle.value = readNumber(controls['background-angle'], 45) * (Math.PI / 180)
-  material.uniforms.u_backgroundLineWidth.value = readNumber(controls['background-line-width'], 0.08)
+  material.uniforms.u_backgroundAngle.value = readNumber(controls['background-angle'], 40) * (Math.PI / 180)
+  material.uniforms.u_backgroundLineWidth.value = readNumber(controls['background-line-width'], 0.01)
   material.uniforms.u_backgroundRandomness.value = readNumber(controls['background-randomness'], 0)
-  material.uniforms.u_backgroundSpeed.value = readNumber(controls['background-speed'], 0.1)
+  material.uniforms.u_backgroundSpeed.value = readNumber(controls['background-speed'], 40)
   material.uniforms.u_brightness.value = readNumber(controls.brightness, -4) / 100
   material.uniforms.u_contrast.value = readNumber(controls.contrast, 0) / 100
-  material.uniforms.u_invert.value = readBoolean(controls.invert)
   material.uniforms.u_lineColor.value.set(readString(controls['line-color'], '#000000'))
   material.uniforms.u_background.value.set(readString(controls.background, '#ffffff'))
   material.uniforms.u_randomness.value = readNumber(controls.randomness, 0)

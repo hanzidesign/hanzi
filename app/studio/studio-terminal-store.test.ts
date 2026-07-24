@@ -162,10 +162,10 @@ describe('Phase 5D Studio terminal Studio store', () => {
     store.getState().toggleStudioTheme()
 
     expect(store.getState().studioEffect.controls.crosshatch).toMatchObject({
-      density: 6,
-      'line-width': 0.08,
+      density: 15,
+      'line-width': 0.01,
       'background-layers': 1,
-      'background-speed': 0.1,
+      'background-speed': 40,
       brightness: -15,
     })
 
@@ -186,10 +186,10 @@ describe('Phase 5D Studio terminal Studio store', () => {
 
     store.getState().resetSelectedEffectControls()
     expect(store.getState().studioEffect.controls.crosshatch).toMatchObject({
-      density: 6,
-      'line-width': 0.08,
+      density: 15,
+      'line-width': 0.01,
       'background-layers': 1,
-      'background-speed': 0.1,
+      'background-speed': 40,
       brightness: -4,
     })
 
@@ -946,13 +946,13 @@ describe('Phase 5D Studio terminal Studio store', () => {
       levels: 8,
       'threshold-point': 0.1,
       dither: false,
-      invert: false,
       brightness: 100,
       contrast: -100,
       'color-mode': 'mono',
       foreground: '#ffffff',
       background: '#123456',
     })
+    expect(store.getState().studioEffect.controls.threshold).not.toHaveProperty('invert')
 
     store.getState().setStudioEffectControl('threshold', 'levels', 6)
     store.getState().resetSelectedEffectControls()
@@ -961,13 +961,13 @@ describe('Phase 5D Studio terminal Studio store', () => {
       levels: 2,
       'threshold-point': 0.5,
       dither: false,
-      invert: false,
       brightness: 0,
       contrast: 0,
       'color-mode': 'mono',
       foreground: '#ffffff',
       background: '#000000',
     })
+    expect(store.getState().studioEffect.controls.threshold).not.toHaveProperty('invert')
     expect(store.getState().studioEffect.controls.ascii.scale).toBe(9)
     expect(store.getState().studioEffect.controls.blockify['block-size']).toBe(16)
     expect(store.getState().mesh.taper).toBe(0.4)
@@ -1007,13 +1007,13 @@ describe('Phase 5D Studio terminal Studio store', () => {
       algorithm: 'sobel',
       threshold: 0.8,
       'line-width': 0.5,
-      invert: false,
       brightness: 100,
       contrast: -100,
       'color-mode': 'mono',
       'edge-color': '#ffffff',
       background: '#123456',
     })
+    expect(store.getState().studioEffect.controls['edge-detection']).not.toHaveProperty('invert')
 
     store.getState().setStudioEffectControl('edge-detection', 'algorithm', 'laplacian')
     store.getState().resetSelectedEffectControls()
@@ -1022,13 +1022,13 @@ describe('Phase 5D Studio terminal Studio store', () => {
       algorithm: 'sobel',
       threshold: 0.3,
       'line-width': 1,
-      invert: false,
       brightness: 0,
       contrast: 0,
       'color-mode': 'mono',
       'edge-color': '#ffffff',
       background: '#000000',
     })
+    expect(store.getState().studioEffect.controls['edge-detection']).not.toHaveProperty('invert')
     expect(store.getState().studioEffect.controls.ascii.scale).toBe(9)
     expect(store.getState().studioEffect.controls.threshold.levels).toBe(6)
     expect(store.getState().mesh.bevel).toBe(0.08)
@@ -1070,29 +1070,32 @@ describe('Phase 5D Studio terminal Studio store', () => {
       angle: 90,
       'line-width': 0.15,
       randomness: 1,
-      invert: false,
       brightness: 100,
       contrast: -100,
       'line-color': '#ffffff',
       background: '#123456',
     })
+    expect(store.getState().studioEffect.controls.crosshatch).not.toHaveProperty('invert')
 
     store.getState().setStudioEffectControl('crosshatch', 'line-width', 0.2)
     expect(store.getState().studioEffect.controls.crosshatch['line-width']).toBe(0.2)
     store.getState().resetSelectedEffectControls()
 
     expect(store.getState().studioEffect.controls.crosshatch).toMatchObject({
-      density: 6,
+      density: 15,
       layers: 3,
       angle: 45,
-      'line-width': 0.08,
+      'line-width': 0.01,
       randomness: 0,
-      invert: false,
+      'background-density': 8,
+      'background-angle': 40,
+      'background-line-width': 0.01,
       brightness: -4,
       contrast: 0,
       'line-color': '#ffffff',
       background: '#000000',
     })
+    expect(store.getState().studioEffect.controls.crosshatch).not.toHaveProperty('invert')
     expect(store.getState().studioEffect.controls.threshold.levels).toBe(6)
     expect(store.getState().mesh.thickness).toBe(0.12)
   })

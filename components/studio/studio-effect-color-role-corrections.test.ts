@@ -19,13 +19,15 @@ import {
 import { createMatrixRainGlyphAtlas } from './matrix-rain-charset'
 
 describe('corrected Studio Effect color roles', () => {
-  it('keeps Contour Line Color on contour pixels and Background on the field', () => {
+  it('keeps zero-luminance Contour background exact while retaining filled bands', () => {
     expect(CONTOUR_FRAGMENT_SHADER).toContain('if (isContour)')
     expect(CONTOUR_FRAGMENT_SHADER).toContain('effectColor = u_lineColor;')
     expect(CONTOUR_FRAGMENT_SHADER).toContain('else if (u_fillMode > 0.5)')
     expect(CONTOUR_FRAGMENT_SHADER).toContain('effectColor = u_background;')
-    expect(CONTOUR_FRAGMENT_SHADER).toContain('u_background')
     expect(CONTOUR_FRAGMENT_SHADER).toContain(
+      'mix(u_background, u_lineColor, quantized)',
+    )
+    expect(CONTOUR_FRAGMENT_SHADER).not.toContain(
       'mix(u_background, u_lineColor, quantizedBrightness)',
     )
   })

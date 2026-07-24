@@ -92,18 +92,58 @@ describe('Contour CPU reference', () => {
     expect(pixelAt(white.data, 1, 0, 0)).toEqual([255, 255, 255])
   })
 
-  it('uses two-color midpoint bands for Custom and exposes hidden grayscale mode', () => {
-    const rgb = solidRgb(1, 1, [64, 64, 64])
-    const custom = render({
+  it('keeps a black Custom field exact while retaining filled bands', () => {
+    const rgb = solidRgb(1, 1, [0, 0, 0])
+    const redLine = render({
       height: 1,
       rgb,
       settings: {
-        background: [0, 0, 0],
+        background: [12, 34, 56],
         colorMode: 'custom',
-        lineColor: [200, 100, 0],
+        lineColor: [255, 0, 0],
       },
       width: 1,
     })
+    const blueLine = render({
+      height: 1,
+      rgb,
+      settings: {
+        background: [12, 34, 56],
+        colorMode: 'custom',
+        lineColor: [0, 0, 255],
+      },
+      width: 1,
+    })
+
+    expect(pixelAt(redLine.data, 1, 0, 0)).toEqual([12, 34, 56])
+    expect(blueLine.data).toEqual(redLine.data)
+
+    const redBand = render({
+      height: 1,
+      rgb: solidRgb(1, 1, [64, 64, 64]),
+      settings: {
+        background: [12, 34, 56],
+        colorMode: 'custom',
+        lineColor: [255, 0, 0],
+      },
+      width: 1,
+    })
+    const blueBand = render({
+      height: 1,
+      rgb: solidRgb(1, 1, [64, 64, 64]),
+      settings: {
+        background: [12, 34, 56],
+        colorMode: 'custom',
+        lineColor: [0, 0, 255],
+      },
+      width: 1,
+    })
+
+    expect(blueBand.data).not.toEqual(redBand.data)
+  })
+
+  it('exposes hidden grayscale mode', () => {
+    const rgb = solidRgb(1, 1, [64, 64, 64])
     const grayscale = render({
       height: 1,
       rgb,
@@ -111,7 +151,6 @@ describe('Contour CPU reference', () => {
       width: 1,
     })
 
-    expect(pixelAt(custom.data, 1, 0, 0)).toEqual([62, 31, 0])
     expect(pixelAt(grayscale.data, 1, 0, 0)).toEqual([80, 80, 80])
   })
 

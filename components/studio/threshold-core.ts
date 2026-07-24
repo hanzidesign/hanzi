@@ -5,7 +5,6 @@ export type ThresholdSettings = Readonly<{
   levels: number
   thresholdPoint: number
   dither: boolean
-  invert: boolean
   brightness: number
   contrast: number
   colorMode: ThresholdColorMode
@@ -31,7 +30,6 @@ export const DEFAULT_THRESHOLD_SETTINGS: ThresholdSettings = {
   levels: 2,
   thresholdPoint: 0.5,
   dither: false,
-  invert: false,
   brightness: 0,
   contrast: 0,
   colorMode: 'custom',
@@ -108,14 +106,12 @@ export function renderThresholdReference({
       let color: ThresholdRgb
 
       if (levels <= 2) {
-        let light = rec601(decisionColor) > settings.thresholdPoint
-        if (settings.invert) light = !light
+        const light = rec601(decisionColor) > settings.thresholdPoint
         color = settings.colorMode === 'color'
           ? (light ? adjusted : [0, 0, 0])
           : (light ? foreground : background)
       } else {
-        let posterized = posterize(decisionColor, levels)
-        if (settings.invert) posterized = invertRgb(posterized)
+        const posterized = posterize(decisionColor, levels)
         color = settings.colorMode === 'color'
           ? posterized
           : mixRgb(background, foreground, rec601(posterized))
@@ -134,10 +130,6 @@ function posterize(color: ThresholdRgb, levels: number): ThresholdRgb {
   const denominator = levels - 1
   const quantize = (channel: number) => Math.floor(channel * denominator + 0.5) / denominator
   return [quantize(color[0]), quantize(color[1]), quantize(color[2])]
-}
-
-function invertRgb(color: ThresholdRgb): ThresholdRgb {
-  return [1 - color[0], 1 - color[1], 1 - color[2]]
 }
 
 function mixRgb(from: ThresholdRgb, to: ThresholdRgb, amount: number): ThresholdRgb {
@@ -207,9 +199,6 @@ function assertSettings(settings: ThresholdSettings) {
   }
   if (typeof settings.dither !== 'boolean') {
     throw new RangeError('Threshold dither must be a boolean')
-  }
-  if (typeof settings.invert !== 'boolean') {
-    throw new RangeError('Threshold invert must be a boolean')
   }
   if (!(['custom', 'color'] as const).includes(settings.colorMode)) {
     throw new RangeError('Threshold color mode must be custom or color')

@@ -845,7 +845,6 @@ export const STUDIO_EFFECTS: StudioEffectDefinition[] = [
           rangeControl('levels', 'Levels', 2, 2, 8, 1),
           rangeControl('threshold-point', 'Threshold Point', 0.5, 0.1, 0.9, 0.05),
           toggleControl('dither', 'Dither', false),
-          toggleControl('invert', 'Invert', false),
         ],
       },
       {
@@ -891,7 +890,6 @@ export const STUDIO_EFFECTS: StudioEffectDefinition[] = [
           ]),
           rangeControl('threshold', 'Threshold', 0.3, 0.1, 0.8, 0.05),
           rangeControl('line-width', 'Line Width', 1, 0.5, 4, 0.5),
-          toggleControl('invert', 'Invert', false),
         ],
       },
       {
@@ -930,23 +928,22 @@ export const STUDIO_EFFECTS: StudioEffectDefinition[] = [
       {
         title: 'Crosshatch',
         controls: [
-          rangeControl('density', 'Density', 6, 1, 50, 1),
+          rangeControl('density', 'Density', 15, 1, 50, 1),
           rangeControl('layers', 'Layers', 3, 1, 4, 1),
-          rangeControl('angle', 'Angle', 45, 0, 90, 5, '°'),
-          scaledRangeControl('line-width', 'Line Width', 0.08, 0.01, 0.5, 0.01, 100),
+          rangeControl('angle', 'Angle', 45, 0, 90, 1, '°'),
+          scaledRangeControl('line-width', 'Line Width', 0.01, 0.01, 0.5, 0.01, 100),
           rangeControl('randomness', 'Randomness', 0, 0, 1, 0.05),
-          toggleControl('invert', 'Invert', false),
         ],
       },
       {
         title: 'Background Lines',
         controls: [
-          rangeControl('background-density', 'Density', 12, 1, 50, 1),
+          rangeControl('background-density', 'Density', 8, 1, 50, 1),
           rangeControl('background-layers', 'Layers', 1, 1, 4, 1),
-          rangeControl('background-angle', 'Angle', 45, 0, 90, 5, '°'),
-          scaledRangeControl('background-line-width', 'Line Width', 0.08, 0.01, 0.5, 0.01, 100),
+          rangeControl('background-angle', 'Angle', 40, 0, 90, 1, '°'),
+          scaledRangeControl('background-line-width', 'Line Width', 0.01, 0.01, 0.5, 0.01, 100),
           rangeControl('background-randomness', 'Randomness', 0, 0, 1, 0.05),
-          rangeControl('background-speed', 'Speed', 0.1, 0, 10, 0.1),
+          rangeControl('background-speed', 'Speed', 40, 0, 100, 0.1),
         ],
       },
       {

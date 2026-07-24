@@ -9,7 +9,7 @@ const publicEnv = {
   isProd: process.env.NEXT_PUBLIC_NODE_ENV === 'production',
   isDev: process.env.NEXT_PUBLIC_NODE_ENV === 'development',
   appName: process.env.NEXT_PUBLIC_APP_NAME || 'Hanzi Studio',
-  defaultColorScheme: process.env.NEXT_PUBLIC_COLOR_SCHEME || 'light',
+  defaultColorScheme: process.env.NEXT_PUBLIC_COLOR_SCHEME || 'dark',
   webUrl: getUrl(process.env.NEXT_PUBLIC_WEB_URL),
 }
 

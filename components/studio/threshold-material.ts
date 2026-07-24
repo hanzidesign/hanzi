@@ -47,7 +47,6 @@ uniform float u_dither;
 uniform float u_thresholdPoint;
 uniform float u_brightness;
 uniform float u_contrast;
-uniform float u_invert;
 uniform vec3 u_foreground;
 uniform vec3 u_background;
 uniform float u_colorMode;
@@ -160,9 +159,6 @@ void main() {
   vec3 effectColor;
   if (levels <= 2.0) {
     bool isLight = thresholdLuminance(ditheredColor) > u_thresholdPoint;
-    if (u_invert > 0.5) {
-      isLight = !isLight;
-    }
     if (u_colorMode > 0.5) {
       effectColor = isLight ? adjustedColor : vec3(0.0);
     } else {
@@ -171,9 +167,6 @@ void main() {
   } else {
     float levelScale = levels - 1.0;
     vec3 posterized = floor(ditheredColor * levelScale + 0.5) / levelScale;
-    if (u_invert > 0.5) {
-      posterized = 1.0 - posterized;
-    }
     if (u_colorMode > 0.5) {
       effectColor = clamp(posterized, 0.0, 1.0);
     } else {
@@ -207,7 +200,6 @@ export function createThresholdShaderMaterial({
       u_thresholdPoint: { value: 0.5 },
       u_brightness: { value: 0 },
       u_contrast: { value: 0 },
-      u_invert: { value: 0 },
       u_foreground: { value: new Color('#ffffff') },
       u_background: { value: new Color('#000000') },
       u_colorMode: { value: THRESHOLD_COLOR_MODE_IDS.mono },
@@ -241,7 +233,6 @@ export function applyThresholdUniforms(
   material.uniforms.u_thresholdPoint.value = readNumber(controls['threshold-point'], 0.5)
   material.uniforms.u_brightness.value = readNumber(controls.brightness, 0) / 100
   material.uniforms.u_contrast.value = readNumber(controls.contrast, 0) / 100
-  material.uniforms.u_invert.value = readBoolean(controls.invert)
   material.uniforms.u_foreground.value.set(readString(controls.foreground, '#ffffff'))
   material.uniforms.u_background.value.set(readString(controls.background, '#000000'))
   material.uniforms.u_colorMode.value = readEnum(

@@ -30,7 +30,7 @@ describe('Threshold shader material', () => {
     expect(material.uniforms.u_levels.value).toBe(2)
     expect(material.uniforms.u_thresholdPoint.value).toBe(0.5)
     expect(material.uniforms.u_dither.value).toBe(0)
-    expect(material.uniforms.u_invert.value).toBe(0)
+    expect(material.uniforms).not.toHaveProperty('u_invert')
     expect(material.uniforms.u_brightness.value).toBe(0)
     expect(material.uniforms.u_contrast.value).toBe(0)
     expect(material.uniforms.u_colorMode.value).toBe(0)
@@ -47,7 +47,6 @@ describe('Threshold shader material', () => {
       levels: 7,
       'threshold-point': 0.65,
       dither: true,
-      invert: true,
       brightness: 40,
       contrast: -25,
       'color-mode': 'color',
@@ -60,7 +59,6 @@ describe('Threshold shader material', () => {
     expect(material.uniforms.u_levels.value).toBe(7)
     expect(material.uniforms.u_thresholdPoint.value).toBe(0.65)
     expect(material.uniforms.u_dither.value).toBe(1)
-    expect(material.uniforms.u_invert.value).toBe(1)
     expect(material.uniforms.u_brightness.value).toBe(0.4)
     expect(material.uniforms.u_contrast.value).toBe(-0.25)
     expect(material.uniforms.u_colorMode.value).toBe(1)
@@ -113,7 +111,7 @@ describe('Threshold shader material', () => {
     expect(THRESHOLD_FRAGMENT_SHADER).toContain(
       'bool isLight = thresholdLuminance(ditheredColor) > u_thresholdPoint;',
     )
-    expect(THRESHOLD_FRAGMENT_SHADER).toContain('isLight = !isLight;')
+    expect(THRESHOLD_FRAGMENT_SHADER).not.toContain('u_invert')
     expect(THRESHOLD_FRAGMENT_SHADER).toContain(
       'effectColor = isLight ? adjustedColor : vec3(0.0);',
     )
@@ -122,12 +120,11 @@ describe('Threshold shader material', () => {
     )
   })
 
-  it('ignores Threshold Point above two levels and ports rounding, invert, and both color branches', () => {
+  it('ignores Threshold Point above two levels and ports rounding and both color branches', () => {
     expect(THRESHOLD_FRAGMENT_SHADER).toContain('if (levels <= 2.0)')
     expect(THRESHOLD_FRAGMENT_SHADER).toContain(
       'vec3 posterized = floor(ditheredColor * levelScale + 0.5) / levelScale;',
     )
-    expect(THRESHOLD_FRAGMENT_SHADER).toContain('posterized = 1.0 - posterized;')
     expect(THRESHOLD_FRAGMENT_SHADER).toContain('effectColor = clamp(posterized, 0.0, 1.0);')
     expect(THRESHOLD_FRAGMENT_SHADER).toContain(
       'effectColor = mix(u_background, u_foreground, thresholdLuminance(posterized));',

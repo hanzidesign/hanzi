@@ -314,6 +314,8 @@ describe('Studio effect renderer routing contract', () => {
     expect(contourCanvasSource).toContain('createContourShaderMaterial')
     expect(contourCanvasSource).toContain('applyContourUniforms')
     expect(contourCanvasSource).toContain('disposeContourShaderMaterial')
+    expect(contourCanvasSource).toContain('CONTOUR_FRAGMENT_SHADER')
+    expect(contourCanvasSource).toContain('CONTOUR_VERTEX_SHADER')
     expect(contourCanvasSource).not.toContain('createCharacterGlyphAtlas')
     expect(contourCanvasSource).not.toContain('deriveGlyphDistancePackFromCanvas')
     expect(contourCanvasSource).toContain('WebGLRenderTarget')

@@ -44,6 +44,8 @@ import {
   type CharacterMeshGpuDeformBinding,
 } from '@/components/studio/character-mesh-gpu-deform'
 import {
+  CONTOUR_FRAGMENT_SHADER,
+  CONTOUR_VERTEX_SHADER,
   applyContourUniforms,
   createContourShaderMaterial,
   disposeContourShaderMaterial,
@@ -209,12 +211,19 @@ function CharacterContourScene({
     }
   }, [geometryResult, meshSettings.repeat])
 
-  const material = useMemo(() => createContourShaderMaterial({
-    controls: {},
-    sourceTexture: renderTarget.texture,
-    sourceSize: new Vector2(1, 1),
-    resolution: new Vector2(1, 1),
-  }), [renderTarget.texture])
+  const contourShaderSignature = `${CONTOUR_VERTEX_SHADER}\0${CONTOUR_FRAGMENT_SHADER}`
+  const material = useMemo(() => {
+    void contourShaderSignature
+    return createContourShaderMaterial({
+      controls: {},
+      sourceTexture: renderTarget.texture,
+      sourceSize: new Vector2(1, 1),
+      resolution: new Vector2(1, 1),
+    })
+  }, [
+    contourShaderSignature,
+    renderTarget.texture,
+  ])
 
   useEffect(() => {
     materialRef.current = material

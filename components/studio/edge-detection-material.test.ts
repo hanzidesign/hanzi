@@ -13,7 +13,7 @@ describe('Edge Detection shader material', () => {
     const material = createEdgeDetectionShaderMaterial({ controls: {}, sourceTexture: new Texture() })
     expect(material.uniforms.u_brightnessMap.value).toBe(1)
     applyEdgeDetectionUniforms(material, {
-      algorithm: 'laplacian', threshold: 0.65, 'line-width': 3.5, invert: true,
+      algorithm: 'laplacian', threshold: 0.65, 'line-width': 3.5,
       brightness: 40, contrast: -25, 'edge-color': '#123456', background: '#abcdef',
       'color-mode': 'original',
       'brightness-map': 1.4,
@@ -21,7 +21,7 @@ describe('Edge Detection shader material', () => {
     expect(material.uniforms.u_algorithm.value).toBe(2)
     expect(material.uniforms.u_threshold.value).toBe(0.65)
     expect(material.uniforms.u_lineWidth.value).toBe(3.5)
-    expect(material.uniforms.u_invert.value).toBe(1)
+    expect(material.uniforms).not.toHaveProperty('u_invert')
     expect(material.uniforms.u_brightness.value).toBe(0.4)
     expect(material.uniforms.u_contrast.value).toBe(-0.25)
     expect(material.uniforms.u_colorMode.value).toBe(1)

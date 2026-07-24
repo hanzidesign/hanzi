@@ -6,7 +6,6 @@ export type EdgeDetectionSettings = Readonly<{
   algorithm: EdgeDetectionAlgorithm
   threshold: number
   lineWidth: number
-  invert: boolean
   brightness: number
   contrast: number
   colorMode: EdgeDetectionColorMode
@@ -40,7 +39,6 @@ export const DEFAULT_EDGE_DETECTION_SETTINGS: EdgeDetectionSettings = {
   algorithm: 'sobel',
   threshold: 0.3,
   lineWidth: 1,
-  invert: false,
   brightness: 0,
   contrast: 0,
   colorMode: 'custom',
@@ -101,8 +99,7 @@ export function traceEdgeDetectionAt(
   const fineEdge = detectorMagnitude(input, u, v, stepU * 0.5, stepV * 0.5, fineAlgorithm)
   const combinedEdge = Math.max(coarseEdge, fineEdge * 0.7)
   const softness = settings.threshold * 0.3
-  let mask = smoothstep(settings.threshold - softness, settings.threshold + softness, combinedEdge)
-  if (settings.invert) mask = 1 - mask
+  const mask = smoothstep(settings.threshold - softness, settings.threshold + softness, combinedEdge)
   const processedOriginal = adjustSource(
     sampleEdgeDetectionSourceLinear(rgb, width, height, u, v),
     settings.brightness,
@@ -210,7 +207,6 @@ function assertInput(input: EdgeDetectionReferenceInput) {
   assertRange('lineWidth', settings.lineWidth, 0.5, 4)
   assertRange('brightness', settings.brightness, -100, 100)
   assertRange('contrast', settings.contrast, -100, 100)
-  if (typeof settings.invert !== 'boolean') throw new TypeError('Edge Detection invert must be boolean')
   assertColor(settings.edgeColor, 'edgeColor')
   assertColor(settings.background, 'background')
 }

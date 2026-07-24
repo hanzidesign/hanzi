@@ -248,7 +248,6 @@ const EFFECT_CONTROL_IDS: Record<StudioEffectId, string[]> = {
     'levels',
     'threshold-point',
     'dither',
-    'invert',
     'brightness',
     'contrast',
     'color-mode',
@@ -259,7 +258,6 @@ const EFFECT_CONTROL_IDS: Record<StudioEffectId, string[]> = {
     'algorithm',
     'threshold',
     'line-width',
-    'invert',
     'brightness',
     'contrast',
     'color-mode',
@@ -272,7 +270,6 @@ const EFFECT_CONTROL_IDS: Record<StudioEffectId, string[]> = {
     'angle',
     'line-width',
     'randomness',
-    'invert',
     'background-density',
     'background-layers',
     'background-angle',
@@ -630,7 +627,6 @@ export function compileStudioEffectRuntime({
       effectValues[2] = read.number('threshold-point', 0.5)
       effectValues[3] = read.number('brightness', 0) / 100
       effectValues[4] = read.number('contrast', 0) / 100
-      effectValues[5] = read.boolean('invert')
       effectValues[6] = THRESHOLD_COLOR_MODE_IDS[read.text('color-mode', 'mono')] ?? 0
       effectColorA = read.color('foreground', '#ffffff')
       effectColorB = read.color('background', '#000000')
@@ -638,7 +634,6 @@ export function compileStudioEffectRuntime({
     case 'edge-detection':
       effectValues[0] = read.number('threshold', 0.3)
       effectValues[1] = read.number('line-width', 1)
-      effectValues[2] = read.boolean('invert')
       effectValues[3] = EDGE_DETECTION_ALGORITHM_IDS[read.text('algorithm', 'sobel')] ?? 0
       effectValues[4] = read.number('brightness', 0) / 100
       effectValues[5] = read.number('contrast', 0) / 100
@@ -647,20 +642,19 @@ export function compileStudioEffectRuntime({
       effectColorB = read.color('background', '#000000')
       break
     case 'crosshatch':
-      effectValues[0] = read.number('density', 6)
+      effectValues[0] = read.number('density', 15)
       effectValues[1] = read.number('angle', 45) * Math.PI / 180
       effectValues[2] = read.number('layers', 3)
-      effectValues[3] = read.number('line-width', 0.08)
+      effectValues[3] = read.number('line-width', 0.01)
       effectValues[4] = read.number('brightness', -4) / 100
       effectValues[5] = read.number('contrast', 0) / 100
-      effectValues[6] = read.boolean('invert')
       effectValues[7] = read.number('randomness', 0)
-      effectValues[8] = read.number('background-density', 12)
+      effectValues[8] = read.number('background-density', 8)
       effectValues[9] = read.number('background-layers', 1)
-      effectValues[10] = read.number('background-angle', 45) * Math.PI / 180
-      effectValues[11] = read.number('background-line-width', 0.08)
+      effectValues[10] = read.number('background-angle', 40) * Math.PI / 180
+      effectValues[11] = read.number('background-line-width', 0.01)
       effectValues[12] = read.number('background-randomness', 0)
-      effectValues[13] = read.number('background-speed', 0.1)
+      effectValues[13] = read.number('background-speed', 40)
       effectColorA = read.color('line-color', '#000000')
       effectColorB = read.color('background', '#ffffff')
       break

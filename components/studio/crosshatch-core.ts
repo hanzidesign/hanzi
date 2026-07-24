@@ -12,7 +12,6 @@ export type CrosshatchSettings = Readonly<{
   backgroundLineWidth: number
   backgroundRandomness: number
   backgroundSpeed: number
-  invert: boolean
   brightness: number
   contrast: number
   lineColor: CrosshatchRgb
@@ -56,18 +55,17 @@ export type CrosshatchTrace = Readonly<{
 }>
 
 export const DEFAULT_CROSSHATCH_SETTINGS: CrosshatchSettings = {
-  density: 6,
+  density: 15,
   layers: 3,
   angle: 45,
-  lineWidth: 0.08,
+  lineWidth: 0.01,
   randomness: 0,
-  backgroundDensity: 12,
+  backgroundDensity: 8,
   backgroundLayers: 1,
-  backgroundAngle: 45,
-  backgroundLineWidth: 0.08,
+  backgroundAngle: 40,
+  backgroundLineWidth: 0.01,
   backgroundRandomness: 0,
-  backgroundSpeed: 0.1,
-  invert: false,
+  backgroundSpeed: 40,
   brightness: -4,
   contrast: 0,
   lineColor: [0, 0, 0],
@@ -191,8 +189,7 @@ function traceCrosshatchUnchecked(
     settings.brightness,
     settings.contrast,
   )
-  let luminance = crosshatchLuminance(adjustedSource)
-  if (settings.invert) luminance = 1 - luminance
+  const luminance = crosshatchLuminance(adjustedSource)
   const backgroundHatchStrength = Math.min(
     0.2,
     Math.max(0.006, 0.04 - settings.brightness / 100 * 0.2),
@@ -364,7 +361,7 @@ function assertInput(input: CrosshatchReferenceInput) {
   assertRange('layers', settings.layers, 1, 4)
   assertInteger('layers', settings.layers)
   assertRange('angle', settings.angle, 0, 90)
-  assertStep('angle', settings.angle, 0, 5)
+  assertStep('angle', settings.angle, 0, 1)
   assertRange('lineWidth', settings.lineWidth, 0.01, 0.5)
   assertStep('lineWidth', settings.lineWidth, 0.01, 0.01)
   assertRange('randomness', settings.randomness, 0, 1)
@@ -374,20 +371,17 @@ function assertInput(input: CrosshatchReferenceInput) {
   assertRange('backgroundLayers', settings.backgroundLayers, 1, 4)
   assertInteger('backgroundLayers', settings.backgroundLayers)
   assertRange('backgroundAngle', settings.backgroundAngle, 0, 90)
-  assertStep('backgroundAngle', settings.backgroundAngle, 0, 5)
+  assertStep('backgroundAngle', settings.backgroundAngle, 0, 1)
   assertRange('backgroundLineWidth', settings.backgroundLineWidth, 0.01, 0.5)
   assertStep('backgroundLineWidth', settings.backgroundLineWidth, 0.01, 0.01)
   assertRange('backgroundRandomness', settings.backgroundRandomness, 0, 1)
   assertStep('backgroundRandomness', settings.backgroundRandomness, 0, 0.05)
-  assertRange('backgroundSpeed', settings.backgroundSpeed, 0, 10)
+  assertRange('backgroundSpeed', settings.backgroundSpeed, 0, 100)
   assertStep('backgroundSpeed', settings.backgroundSpeed, 0, 0.1)
   assertRange('brightness', settings.brightness, -100, 100)
   assertInteger('brightness', settings.brightness)
   assertRange('contrast', settings.contrast, -100, 100)
   assertInteger('contrast', settings.contrast)
-  if (typeof settings.invert !== 'boolean') {
-    throw new TypeError('Crosshatch invert must be a boolean')
-  }
   assertColor('lineColor', settings.lineColor)
   assertColor('background', settings.background)
 }
