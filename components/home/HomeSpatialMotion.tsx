@@ -367,9 +367,9 @@ fn atmosphereFragment(input: VertexOut) -> @location(0) vec4f {
 
   let primaryCell = voronoise((fieldUv - vec2f(0.5)) * aspect * 2.56, time);
   let staticTexture = fbm(fieldUv * 2.45 + vec2f(7.2, 3.4));
-  let microCoord = warpedUv * uniforms.uResolution.y * 0.09;
+  let microCoord = warpedUv * uniforms.uResolution.y * 0.24;
   let cell = fract(microCoord) - vec2f(0.5);
-  let microDot = 1.0 - smoothstep(0.055, 0.18, length(cell));
+  let microDot = 1.0 - smoothstep(0.05, 0.16, length(cell));
   let dither = hash21(floor(microCoord));
   let microTexture = microDot * (0.26 + dither * 0.74);
   let centerDistance = length((input.uv - vec2f(0.5)) * vec2f(1.15, 1.0));
