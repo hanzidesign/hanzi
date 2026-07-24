@@ -89,6 +89,7 @@ export default function StudioCanvas() {
         </div>
       ) : null}
       <div className={classes.zoomHud} aria-label="Preview zoom controls">
+        <span className={classes.zoomSpacer} />
         <button
           type="button"
           aria-label="Zoom out"
@@ -111,15 +112,6 @@ export default function StudioCanvas() {
           onClick={resetPreviewView}
         >
           Reset
-        </button>
-        <span className={classes.zoomSpacer} />
-        <button
-          type="button"
-          className={classes.fitButton}
-          aria-label="Fit preview"
-          onClick={resetPreviewView}
-        >
-          Fit <span className={classes.fitIcon} aria-hidden>⌗</span>
         </button>
       </div>
     </div>

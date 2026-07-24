@@ -54,7 +54,7 @@ describe('Phase 5D Studio terminal Studio layout contract', () => {
     expect(mobileHeader).toContain('<span>Fullscreen</span>')
     expect(mobileHeader).toContain('{Math.round(previewZoom * 100)}%')
     expect(mobileHeader).toContain('>Reset</button>')
-    expect(mobileHeader).toContain('>Fit</button>')
+    expect(mobileHeader).not.toContain('>Fit</button>')
     expect(shellSource).toContain("handleFullscreen('[data-studio-terminal-shell]')")
     expect(shellSource).toContain("handleFullscreen('[data-studio-preview]')")
     expect(shellStyles).toMatch(/@media \(max-width: 900px\)[\s\S]*?\.previewTopRail,[\s\S]*?\.zoomHud \{[\s\S]*?display: none;/)
@@ -70,7 +70,16 @@ describe('Phase 5D Studio terminal Studio layout contract', () => {
     expect(canvasSource).not.toContain('rendererStatus')
     expect(canvasSource).not.toContain('rendererMode')
     expect(canvasSource).toContain('className={classes.zoomSpacer}')
-    expect(canvasSource).toContain('aria-label="Fit preview"')
+    expect(canvasSource).not.toContain('aria-label="Fit preview"')
+    expect(canvasSource.indexOf('className={classes.zoomSpacer}')).toBeLessThan(
+      canvasSource.indexOf('aria-label="Zoom out"'),
+    )
+    expect(canvasSource.indexOf('aria-label="Zoom out"')).toBeLessThan(
+      canvasSource.indexOf('className={classes.zoomValue}'),
+    )
+    expect(canvasSource.indexOf('className={classes.zoomValue}')).toBeLessThan(
+      canvasSource.indexOf('aria-label="Zoom in"'),
+    )
     expect(rowSource.indexOf('{children}')).toBeLessThan(
       rowSource.indexOf('<span className={classes.controlValue}>{value}</span>'),
     )

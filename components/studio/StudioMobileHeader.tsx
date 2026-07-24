@@ -17,15 +17,15 @@ import classes from './StudioShell.module.css'
 
 type StudioMobileHeaderProps = {
   onFullscreen: () => void
+  onToggleTheme: () => void
 }
 
 const MENU_ID = 'studio-mobile-header-menu'
 
-export default function StudioMobileHeader({ onFullscreen }: StudioMobileHeaderProps) {
+export default function StudioMobileHeader({ onFullscreen, onToggleTheme }: StudioMobileHeaderProps) {
   const [menuOpen, setMenuOpen] = useState(false)
   const theme = useStudioStore((store) => store.view.theme)
   const previewZoom = useStudioStore((store) => store.view.previewZoom)
-  const toggleStudioTheme = useStudioStore((store) => store.toggleStudioTheme)
   const setPreviewZoom = useStudioStore((store) => store.setPreviewZoom)
   const resetPreviewView = useStudioStore((store) => store.resetPreviewView)
   const ThemeIcon = theme === 'light' ? IoMoonOutline : IoSunnyOutline
@@ -81,7 +81,7 @@ export default function StudioMobileHeader({ onFullscreen }: StudioMobileHeaderP
               type="button"
               className={classes.mobileMenuAction}
               aria-pressed={theme === 'dark'}
-              onClick={toggleStudioTheme}
+              onClick={onToggleTheme}
             >
               <ThemeIcon aria-hidden size={18} />
               <span>Theme</span>
@@ -118,9 +118,8 @@ export default function StudioMobileHeader({ onFullscreen }: StudioMobileHeaderP
                   <IoAddOutline aria-hidden size={18} />
                 </button>
               </div>
-              <div className={classes.mobileMenuFitRow}>
+              <div className={classes.mobileMenuResetRow}>
                 <button type="button" onClick={resetPreviewView}>Reset</button>
-                <button type="button" onClick={resetPreviewView}>Fit</button>
               </div>
             </div>
           </div>
