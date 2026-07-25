@@ -21,6 +21,16 @@ import type {
   CharacterMeshWave,
 } from '@/components/studio/character-mesh-deform'
 import { resetCharacterMeshDeformFeature } from '@/components/studio/character-mesh-deform'
+import {
+  CHARACTER_MESH_BEVEL_MAX,
+  CHARACTER_MESH_BEVEL_MIN,
+  CHARACTER_MESH_EXTRUSION_DEPTH_MAX,
+  CHARACTER_MESH_EXTRUSION_DEPTH_MIN,
+  CHARACTER_MESH_TAPER_MAX,
+  CHARACTER_MESH_TAPER_MIN,
+  CHARACTER_MESH_THICKNESS_MAX,
+  CHARACTER_MESH_THICKNESS_MIN,
+} from '@/components/studio/character-mesh-constants'
 import { STUDIO_EFFECTS } from '@/components/studio/studio-effects'
 import { useStudioRenderMode } from '@/components/studio/studio-render-context'
 import {
@@ -118,7 +128,7 @@ function StudioRepeatReset() {
   )
 }
 
-function StudioMotionReset() {
+export function StudioMotionReset() {
   const setAnimationControl = useStudioStore((store) => store.setAnimationControl)
   const setMeshControl = useStudioStore((store) => store.setMeshControl)
 
@@ -148,27 +158,27 @@ export function StudioModelPanel() {
       <TerminalRangeRow
         label="Extrude"
         value={mesh.extrusionDepth}
-        min={0.01}
-        max={1}
-        step={0.01}
+        min={CHARACTER_MESH_EXTRUSION_DEPTH_MIN}
+        max={CHARACTER_MESH_EXTRUSION_DEPTH_MAX}
+        step={1}
         onChange={(extrusionDepth) => setMeshControl({ extrusionDepth })}
         onReset={() => setMeshControl({ extrusionDepth: DEFAULT_MESH_STATE.extrusionDepth })}
       />
       <TerminalRangeRow
         label="Thickness"
         value={mesh.thickness}
-        min={-0.4}
-        max={0.4}
-        step={0.01}
+        min={CHARACTER_MESH_THICKNESS_MIN}
+        max={CHARACTER_MESH_THICKNESS_MAX}
+        step={0.1}
         onChange={(thickness) => setMeshControl({ thickness })}
         onReset={() => setMeshControl({ thickness: DEFAULT_MESH_STATE.thickness })}
       />
       <TerminalRangeRow
         label="Bevel"
         value={mesh.bevel}
-        min={0}
-        max={0.3}
-        step={0.01}
+        min={CHARACTER_MESH_BEVEL_MIN}
+        max={CHARACTER_MESH_BEVEL_MAX}
+        step={0.1}
         onChange={(bevel) => setMeshControl({ bevel })}
         onReset={() => setMeshControl({ bevel: DEFAULT_MESH_STATE.bevel })}
       />
@@ -185,9 +195,9 @@ export function StudioModelPanel() {
       <TerminalRangeRow
         label="Taper"
         value={mesh.taper}
-        min={-0.8}
-        max={0.8}
-        step={0.01}
+        min={CHARACTER_MESH_TAPER_MIN}
+        max={CHARACTER_MESH_TAPER_MAX}
+        step={0.1}
         onChange={(taper) => setMeshControl({ taper })}
         onReset={() => setMeshControl({ taper: DEFAULT_MESH_STATE.taper })}
       />

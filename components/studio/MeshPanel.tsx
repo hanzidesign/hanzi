@@ -3,6 +3,10 @@
 import { Button, ColorInput, Group, SimpleGrid, Slider, Stack, Switch, Text } from '@mantine/core'
 import { useStudioStore } from '@/app/studio/studio-store'
 import { PanelBox, PanelLabel } from '@/components/studio/PanelPrimitives'
+import {
+  CHARACTER_MESH_EXTRUSION_DEPTH_MAX,
+  CHARACTER_MESH_EXTRUSION_DEPTH_MIN,
+} from '@/components/studio/character-mesh-constants'
 
 const RAD_TO_DEG = 180 / Math.PI
 const DEG_TO_RAD = Math.PI / 180
@@ -21,9 +25,9 @@ export default function MeshPanel() {
           <SliderControl
             label="Extrusion depth"
             value={mesh.extrusionDepth}
-            min={0.02}
-            max={0.6}
-            step={0.01}
+            min={CHARACTER_MESH_EXTRUSION_DEPTH_MIN}
+            max={CHARACTER_MESH_EXTRUSION_DEPTH_MAX}
+            step={1}
             onChange={(extrusionDepth) => setMeshControl({ extrusionDepth })}
           />
           <SliderControl

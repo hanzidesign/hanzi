@@ -11,11 +11,11 @@ import {
 
 function options(deform: CharacterMeshDeformSettings = DEFAULT_CHARACTER_MESH_DEFORM) {
   return {
-    extrusionDepth: 0.2,
+    extrusionDepth: 20,
     thickness: 0.04,
     bevel: 0.02,
     twist: 3,
-    taper: 0.1,
+    taper: 1,
     bend: 2,
     deform,
     displacementSubdivisionLevel: 0,
@@ -30,6 +30,18 @@ describe('character mesh geometry signature', () => {
       bulgePinch: { ...DEFAULT_CHARACTER_MESH_DEFORM.bulgePinch, enabled: true },
     }))).not.toBe(base)
     expect(deriveCharacterMeshGeometrySignature({ ...options(), bevel: 0.03 })).not.toBe(base)
+  })
+
+  it('clamps mapped Extrude and Taper values at their public limits', () => {
+    expect(deriveCharacterMeshGeometrySignature({ ...options(), extrusionDepth: 0 })).toBe(
+      deriveCharacterMeshGeometrySignature({ ...options(), extrusionDepth: 1 }),
+    )
+    expect(deriveCharacterMeshGeometrySignature({ ...options(), extrusionDepth: 101 })).toBe(
+      deriveCharacterMeshGeometrySignature({ ...options(), extrusionDepth: 100 }),
+    )
+    expect(deriveCharacterMeshGeometrySignature({ ...options(), taper: 11 })).toBe(
+      deriveCharacterMeshGeometrySignature({ ...options(), taper: 10 }),
+    )
   })
 
   it('changes at GPU activation boundaries and subdivision class boundaries', () => {

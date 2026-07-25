@@ -6,6 +6,14 @@ import {
 } from './studio-rotation-controller-math'
 
 describe('Studio rotation controller math', () => {
+  it('maps vertical drag direction to model rotation on the X axis', () => {
+    const downward = applyRotationDrag({ x: 0, y: 0, z: 0 }, 0, 24)
+    const upward = applyRotationDrag({ x: 0, y: 0, z: 0 }, 0, -24)
+
+    expect(downward.x).toBeGreaterThan(0)
+    expect(upward.x).toBeLessThan(0)
+  })
+
   it('uses free orbit drag to update the combined Euler rotation', () => {
     const next = applyRotationDrag(
       { x: 0.35, y: -0.2, z: 0.15 },

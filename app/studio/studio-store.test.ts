@@ -121,7 +121,7 @@ describe('studio store', () => {
       },
     }
     const { storage } = createMemoryStorage(
-      JSON.stringify({ state: persisted, version: 17 }),
+      JSON.stringify({ state: persisted, version: 19 }),
     )
     const store = createStudioStore(storage)
 
@@ -278,11 +278,11 @@ describe('studio store', () => {
     const initial = store.getState()
 
     store.getState().setMeshControl({
-      extrusionDepth: 0.4,
+      extrusionDepth: 40,
       thickness: 0.18,
       bevel: 0.08,
       twist: 90,
-      taper: 0.6,
+      taper: 6,
       bend: -45,
       repeat: {
         enabled: true,
@@ -300,7 +300,7 @@ describe('studio store', () => {
 
     expect(store.getState().mesh).toEqual(initial.mesh)
     expect(store.getState().mesh).toMatchObject({
-      extrusionDepth: 0.18,
+      extrusionDepth: 18,
       thickness: 0,
       bevel: 0,
       twist: 0,
@@ -336,7 +336,7 @@ describe('studio store', () => {
       },
     }
     const { storage } = createMemoryStorage(
-      JSON.stringify({ state: persisted, version: 17 }),
+      JSON.stringify({ state: persisted, version: 19 }),
     )
     const store = createStudioStore(storage)
 
@@ -362,7 +362,7 @@ describe('studio store', () => {
       },
     }
     const { storage } = createMemoryStorage(
-      JSON.stringify({ state: persisted, version: 17 }),
+      JSON.stringify({ state: persisted, version: 19 }),
     )
     const store = createStudioStore(storage)
 
@@ -393,7 +393,7 @@ describe('studio store', () => {
         reverse: true,
       },
     }
-    const { storage } = createMemoryStorage(JSON.stringify({ state: persisted, version: 17 }))
+    const { storage } = createMemoryStorage(JSON.stringify({ state: persisted, version: 19 }))
     const store = createStudioStore(storage)
 
     expect(store.getState().animation).toMatchObject({
@@ -474,7 +474,7 @@ describe('studio store', () => {
       },
     }
     const { storage } = createMemoryStorage(
-      JSON.stringify({ state: staleState, version: 17 }),
+      JSON.stringify({ state: staleState, version: 19 }),
     )
     const store = createStudioStore(storage)
 
@@ -503,7 +503,7 @@ describe('studio store', () => {
       mesh: { ...initial.mesh, autoRotate: true },
     }
     const { storage } = createMemoryStorage(
-      JSON.stringify({ state: staleState, version: 17 }),
+      JSON.stringify({ state: staleState, version: 19 }),
     )
     const store = createStudioStore(storage)
 

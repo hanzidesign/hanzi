@@ -56,6 +56,16 @@ import {
   type CharacterMeshDeformSettings,
 } from '@/components/studio/character-mesh-deform'
 import {
+  CHARACTER_MESH_BEVEL_MAX,
+  CHARACTER_MESH_BEVEL_MIN,
+  CHARACTER_MESH_EXTRUSION_DEPTH_MAX,
+  CHARACTER_MESH_EXTRUSION_DEPTH_MIN,
+  CHARACTER_MESH_TAPER_MAX,
+  CHARACTER_MESH_TAPER_MIN,
+  CHARACTER_MESH_THICKNESS_MAX,
+  CHARACTER_MESH_THICKNESS_MIN,
+} from '@/components/studio/character-mesh-constants'
+import {
   MAX_MOTION_SPEED,
   MIN_MOTION_SPEED,
   normalizeMotionSpeed,
@@ -66,7 +76,7 @@ import {
 } from '@/components/studio/ascii-cell-metrics'
 
 export const STUDIO_STORE_STORAGE_KEY = 'hanzi-studio-effects-v2'
-const STUDIO_STORE_STORAGE_VERSION = 17
+const STUDIO_STORE_STORAGE_VERSION = 19
 export const MAX_PATTERN_LAYERS = 3
 const DEFAULT_ART_PATTERN_LAYERS: Array<
   Pick<StudioPatternLayer, 'source' | 'target' | 'enabled' | 'intensity' | 'blendMode' | 'locked'>
@@ -291,7 +301,7 @@ export type StudioPostFxLayer = {
 }
 
 export const DEFAULT_MESH_STATE = {
-  extrusionDepth: 0.18,
+  extrusionDepth: 18,
   thickness: 0,
   bevel: 0,
   twist: 0,
@@ -2789,11 +2799,31 @@ function sanitizeMeshState(value: unknown, fallback: StudioStoreState['mesh']): 
   const deform = readRecord(record.deform)
 
   return {
-    extrusionDepth: readClampedNumber(record.extrusionDepth, fallback.extrusionDepth, 0.01, 1),
-    thickness: readClampedNumber(record.thickness, fallback.thickness, -0.4, 0.4),
-    bevel: readClampedNumber(record.bevel, fallback.bevel, 0, 0.3),
+    extrusionDepth: readClampedNumber(
+      record.extrusionDepth,
+      fallback.extrusionDepth,
+      CHARACTER_MESH_EXTRUSION_DEPTH_MIN,
+      CHARACTER_MESH_EXTRUSION_DEPTH_MAX,
+    ),
+    thickness: readClampedNumber(
+      record.thickness,
+      fallback.thickness,
+      CHARACTER_MESH_THICKNESS_MIN,
+      CHARACTER_MESH_THICKNESS_MAX,
+    ),
+    bevel: readClampedNumber(
+      record.bevel,
+      fallback.bevel,
+      CHARACTER_MESH_BEVEL_MIN,
+      CHARACTER_MESH_BEVEL_MAX,
+    ),
     twist: readClampedNumber(record.twist, fallback.twist, -360, 360),
-    taper: readClampedNumber(record.taper, fallback.taper, -0.8, 0.8),
+    taper: readClampedNumber(
+      record.taper,
+      fallback.taper,
+      CHARACTER_MESH_TAPER_MIN,
+      CHARACTER_MESH_TAPER_MAX,
+    ),
     bend: readClampedNumber(record.bend, fallback.bend, -360, 360),
     deform: sanitizeCharacterMeshDeformSettings(deform, fallback.deform),
     repeat: {

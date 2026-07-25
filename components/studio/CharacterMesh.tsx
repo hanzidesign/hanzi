@@ -39,6 +39,10 @@ type CharacterMeshProps = {
   mesh: {
     extrusionDepth: number
     thickness: number
+    bevel: number
+    twist: number
+    taper: number
+    bend: number
     rotation: { x: number; y: number; z: number }
     scale: number
     position: { x: number; y: number }
@@ -54,6 +58,13 @@ type CharacterMeshProps = {
   mouse: RefObject<Vector2>
   onError: (error: string | null) => void
   onStatusChange: (status: CharacterMeshStatus) => void
+}
+
+type CharacterMeshGeometryOptions = Pick<
+  CharacterMeshProps['mesh'],
+  'extrusionDepth' | 'thickness' | 'bevel' | 'twist' | 'taper' | 'bend' | 'deform'
+> & {
+  displacementSubdivisionLevel: number
 }
 
 export default function CharacterMesh({
@@ -118,32 +129,31 @@ export default function CharacterMesh({
   ])
   const material = materialState.material
   const { size } = useThree()
-  const geometrySignature = deriveCharacterMeshGeometrySignature({
+  const geometryOptions = useMemo<CharacterMeshGeometryOptions>(() => ({
     extrusionDepth: mesh.extrusionDepth,
     thickness: mesh.thickness,
+    bevel: mesh.bevel,
+    twist: mesh.twist,
+    taper: mesh.taper,
+    bend: mesh.bend,
     deform: mesh.deform,
     displacementSubdivisionLevel,
-  })
-  const geometryOptionsRef = useRef({
-    extrusionDepth: mesh.extrusionDepth,
-    thickness: mesh.thickness,
-    deform: mesh.deform,
+  }), [
     displacementSubdivisionLevel,
-  })
-
-  useEffect(() => {
-    geometryOptionsRef.current = {
-      extrusionDepth: mesh.extrusionDepth,
-      thickness: mesh.thickness,
-      deform: mesh.deform,
-      displacementSubdivisionLevel,
-    }
-  }, [
-    displacementSubdivisionLevel,
+    mesh.bend,
+    mesh.bevel,
     mesh.deform,
     mesh.extrusionDepth,
+    mesh.taper,
     mesh.thickness,
+    mesh.twist,
   ])
+  const geometrySignature = deriveCharacterMeshGeometrySignature(geometryOptions)
+  const geometryOptionsRef = useRef(geometryOptions)
+
+  useEffect(() => {
+    geometryOptionsRef.current = geometryOptions
+  }, [geometryOptions])
 
   useEffect(() => {
     onError(materialState.error)
@@ -186,13 +196,7 @@ export default function CharacterMesh({
     }
 
     try {
-      const nextResult = createGeometryResult(
-        svgText,
-        geometryOptionsRef.current.extrusionDepth,
-        geometryOptionsRef.current.thickness,
-        geometryOptionsRef.current.deform,
-        geometryOptionsRef.current.displacementSubdivisionLevel,
-      )
+      const nextResult = createGeometryResult(svgText, geometryOptionsRef.current)
       replaceGeometryResult(nextResult, resultRef, setGeometryResult)
       onStatusChange(IDLE_CHARACTER_MESH_STATUS)
     } catch (error) {
@@ -286,20 +290,14 @@ export default function CharacterMesh({
 
 function createGeometryResult(
   svgText: string,
-  extrusionDepth: number,
-  thickness: number,
-  deform: CharacterMeshDeformSettings,
-  displacementSubdivisionLevel: number,
+  options: CharacterMeshGeometryOptions,
 ) {
   const svg = new SVGLoader().parse(svgText)
   const shapes = svg.paths.flatMap((path) => SVGLoader.createShapes(path))
 
   return createCharacterMeshGeometries({
     shapes,
-    extrusionDepth,
-    thickness,
-    deform,
-    displacementSubdivisionLevel,
+    ...options,
   })
 }
 

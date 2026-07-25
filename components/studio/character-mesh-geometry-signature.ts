@@ -4,6 +4,12 @@ import {
   type CharacterMeshDeformSettings,
   type CharacterMeshLegacyDeformSettings,
 } from '@/components/studio/character-mesh-deform'
+import {
+  CHARACTER_MESH_EXTRUSION_DEPTH_MAX,
+  CHARACTER_MESH_EXTRUSION_DEPTH_MIN,
+  CHARACTER_MESH_TAPER_MAX,
+  CHARACTER_MESH_TAPER_MIN,
+} from '@/components/studio/character-mesh-constants'
 
 /**
  * The inputs that can change the topology or the CPU-built character mesh.
@@ -28,7 +34,6 @@ export type CharacterMeshGeometryTopology = {
   subdivisionLevel: number
 }
 
-const MIN_CHARACTER_EXTRUSION_DEPTH = 0.01
 const MIN_DISPLACEMENT_SUBDIVISION_LEVEL = 0
 const MAX_DISPLACEMENT_SUBDIVISION_LEVEL = 2
 
@@ -109,11 +114,16 @@ export function deriveCharacterMeshGeometrySignature(
 
   return JSON.stringify([
     'character-mesh-geometry-v2',
-    finiteNumber(Math.max(options.extrusionDepth, MIN_CHARACTER_EXTRUSION_DEPTH)),
+    finiteClampedNumber(
+      options.extrusionDepth,
+      CHARACTER_MESH_EXTRUSION_DEPTH_MIN,
+      CHARACTER_MESH_EXTRUSION_DEPTH_MAX,
+      CHARACTER_MESH_EXTRUSION_DEPTH_MIN,
+    ),
     finiteNumber(options.thickness),
     finiteNumber(options.bevel),
     finiteNumber(options.twist),
-    finiteNumber(options.taper),
+    finiteClampedNumber(options.taper, CHARACTER_MESH_TAPER_MIN, CHARACTER_MESH_TAPER_MAX),
     finiteNumber(options.bend),
     cpuDeform,
     topology.gpuDeformActive ? 1 : 0,
@@ -137,4 +147,15 @@ export function sanitizeDisplacementSubdivisionLevel(value: number | undefined) 
 
 function finiteNumber(value: number | undefined) {
   return Number.isFinite(value) ? value : 0
+}
+
+function finiteClampedNumber(
+  value: number | undefined,
+  min: number,
+  max: number,
+  fallback = 0,
+) {
+  return Number.isFinite(value)
+    ? Math.min(max, Math.max(min, value as number))
+    : fallback
 }

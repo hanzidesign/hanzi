@@ -237,10 +237,10 @@ describe('Phase 5D Studio terminal Studio store', () => {
     expect(reloadedStore.getState().studioEffect.controls.crosshatch['line-color']).toBe('#112233')
   })
 
-  it('discards pre-v17 persisted Studio payloads as a hard update', () => {
+  it('discards pre-v19 persisted Studio payloads as a hard update', () => {
     const base = createInitialStudioStoreState()
 
-    for (const version of [1, 7, 16]) {
+    for (const version of [1, 7, 18]) {
       const staleState = {
         ...base,
         character: { country: 'jp', year: '2024', isTc: true },
@@ -295,7 +295,7 @@ describe('Phase 5D Studio terminal Studio store', () => {
         },
       },
     }
-    const { storage } = createMemoryStorage(JSON.stringify({ state: persistedState, version: 17 }))
+    const { storage } = createMemoryStorage(JSON.stringify({ state: persistedState, version: 19 }))
     const store = createStudioStore(storage)
 
     expect(store.getState().studioEffect.controls['pixel-sort']['sort-mode']).toBe('depth')
@@ -348,7 +348,7 @@ describe('Phase 5D Studio terminal Studio store', () => {
       studioEffect: store.getState().studioEffect,
     })
     expect(readPersistedEnvelope()).toMatchObject({
-      version: 17,
+      version: 19,
       state: { studioEffect: store.getState().studioEffect },
     })
     expect(persisted.export).toMatchObject({ selectedFormat: 'apng' })
@@ -380,6 +380,31 @@ describe('Phase 5D Studio terminal Studio store', () => {
     const reloadedStore = createStudioStore(staleStorage.storage)
 
     expect(reloadedStore.getState().view.mobileTab).toBe('input')
+  })
+
+  it('sanitizes current Model public ranges', () => {
+    const base = createInitialStudioStoreState()
+    const { storage } = createMemoryStorage(JSON.stringify({
+      state: {
+        ...base,
+        mesh: {
+          ...base.mesh,
+          extrusionDepth: 999,
+          thickness: -99,
+          bevel: 99,
+          taper: 99,
+        },
+      },
+      version: 19,
+    }))
+    const store = createStudioStore(storage)
+
+    expect(createInitialStudioStoreState().mesh.extrusionDepth).toBe(18)
+    expect(createInitialStudioStoreState().mesh.thickness).toBe(0)
+    expect(store.getState().mesh.extrusionDepth).toBe(100)
+    expect(store.getState().mesh.thickness).toBe(-10)
+    expect(store.getState().mesh.bevel).toBe(20)
+    expect(store.getState().mesh.taper).toBe(10)
   })
 
   it('sanitizes stale non-ASCII persisted state without reviving old panels', () => {
@@ -423,7 +448,7 @@ describe('Phase 5D Studio terminal Studio store', () => {
         expandedSections: expandedSectionsWithoutModelDeform,
       },
     }
-    const { storage } = createMemoryStorage(JSON.stringify({ state: persistedState, version: 17 }))
+    const { storage } = createMemoryStorage(JSON.stringify({ state: persistedState, version: 19 }))
     const store = createStudioStore(storage)
 
     expect(store.getState().view.expandedSections.modelDeform).toBe(true)
@@ -527,9 +552,9 @@ describe('Phase 5D Studio terminal Studio store', () => {
       ...base,
       mesh: {
         ...base.mesh,
-        bevel: 2,
+        bevel: 20,
         twist: -900,
-        taper: 3,
+        taper: 30,
         bend: -400,
       },
       studioEffect: {
@@ -555,14 +580,14 @@ describe('Phase 5D Studio terminal Studio store', () => {
     }
     const { storage } = createMemoryStorage(JSON.stringify({
       state: persistedState,
-      version: 17,
+      version: 19,
     }))
     const store = createStudioStore(storage)
 
     expect(store.getState().mesh).toMatchObject({
-      bevel: 0.3,
+      bevel: 20,
       twist: -360,
-      taper: 0.8,
+      taper: 10,
       bend: -360,
     })
     expect(store.getState().studioEffect.controls.halftone).toMatchObject({
@@ -604,14 +629,14 @@ describe('Phase 5D Studio terminal Studio store', () => {
           },
         },
       }
-      const { storage } = createMemoryStorage(JSON.stringify({ state: persistedState, version: 17 }))
+      const { storage } = createMemoryStorage(JSON.stringify({ state: persistedState, version: 19 }))
       const store = createStudioStore(storage)
 
       expect(store.getState().studioEffect.controls.dithering.algorithm).toBe('bayer-8x8')
     }
   })
 
-  it('fills missing v17 Dithering motion controls and sanitizes invalid Direction', () => {
+  it('fills missing v19 Dithering motion controls and sanitizes invalid Direction', () => {
     const base = createInitialStudioStoreState()
     const legacyDithering: Record<string, string | number | boolean> = {
       ...base.studioEffect.controls.dithering,
@@ -633,7 +658,7 @@ describe('Phase 5D Studio terminal Studio store', () => {
         },
       },
     }
-    const { storage } = createMemoryStorage(JSON.stringify({ state: persistedState, version: 17 }))
+    const { storage } = createMemoryStorage(JSON.stringify({ state: persistedState, version: 19 }))
     const store = createStudioStore(storage)
 
     expect(store.getState().studioEffect.controls.dithering).toMatchObject({
@@ -677,7 +702,7 @@ describe('Phase 5D Studio terminal Studio store', () => {
     }
     const { storage } = createMemoryStorage(JSON.stringify({
       state: persistedState,
-      version: 17,
+      version: 19,
     }))
     const store = createStudioStore(storage)
 
@@ -738,7 +763,7 @@ describe('Phase 5D Studio terminal Studio store', () => {
     }
     const { storage } = createMemoryStorage(JSON.stringify({
       state: persistedState,
-      version: 17,
+      version: 19,
     }))
     const store = createStudioStore(storage)
 
@@ -793,7 +818,7 @@ describe('Phase 5D Studio terminal Studio store', () => {
     }
     const { storage } = createMemoryStorage(JSON.stringify({
       state: persistedState,
-      version: 17,
+      version: 19,
     }))
     const store = createStudioStore(storage)
 
@@ -856,7 +881,7 @@ describe('Phase 5D Studio terminal Studio store', () => {
     }
     const { storage } = createMemoryStorage(JSON.stringify({
       state: persistedState,
-      version: 17,
+      version: 19,
     }))
     const store = createStudioStore(storage)
 
@@ -897,7 +922,7 @@ describe('Phase 5D Studio terminal Studio store', () => {
     const base = createInitialStudioStoreState()
     const { storage } = createMemoryStorage(JSON.stringify({
       state: base,
-      version: 17,
+      version: 19,
     }))
     const store = createStudioStore(storage)
 
@@ -919,7 +944,7 @@ describe('Phase 5D Studio terminal Studio store', () => {
     })
   })
 
-  it('keeps persisted v17 Pixel Sort streak length 200 without migration', () => {
+  it('keeps persisted v19 Pixel Sort streak length 200 without migration', () => {
     const base = createInitialStudioStoreState()
     const persistedPixelSort = {
       ...base.studioEffect.controls['pixel-sort'],
@@ -947,7 +972,7 @@ describe('Phase 5D Studio terminal Studio store', () => {
     }
     const { storage } = createMemoryStorage(JSON.stringify({
       state: persistedState,
-      version: 17,
+      version: 19,
     }))
     const store = createStudioStore(storage)
 
@@ -986,7 +1011,7 @@ describe('Phase 5D Studio terminal Studio store', () => {
         },
       },
     }
-    const { storage } = createMemoryStorage(JSON.stringify({ state: persistedState, version: 17 }))
+    const { storage } = createMemoryStorage(JSON.stringify({ state: persistedState, version: 19 }))
     const store = createStudioStore(storage)
 
     expect(store.getState().studioEffect.controls['pixel-sort'].direction).toBe('radial')
@@ -1025,7 +1050,7 @@ describe('Phase 5D Studio terminal Studio store', () => {
     }
     const { storage } = createMemoryStorage(JSON.stringify({
       state: persistedState,
-      version: 17,
+      version: 19,
     }))
     const store = createStudioStore(storage)
 
@@ -1062,7 +1087,7 @@ describe('Phase 5D Studio terminal Studio store', () => {
     const base = createInitialStudioStoreState()
     const persistedState = {
       ...base,
-      mesh: { ...base.mesh, taper: 0.4 },
+      mesh: { ...base.mesh, taper: 4 },
       studioEffect: {
         ...base.studioEffect,
         selectedEffectId: 'threshold',
@@ -1087,7 +1112,7 @@ describe('Phase 5D Studio terminal Studio store', () => {
     }
     const { storage } = createMemoryStorage(JSON.stringify({
       state: persistedState,
-      version: 17,
+      version: 19,
     }))
     const store = createStudioStore(storage)
 
@@ -1119,7 +1144,7 @@ describe('Phase 5D Studio terminal Studio store', () => {
     expect(store.getState().studioEffect.controls.threshold).not.toHaveProperty('invert')
     expect(store.getState().studioEffect.controls.ascii.scale).toBe(9)
     expect(store.getState().studioEffect.controls.blockify['block-size']).toBe(16)
-    expect(store.getState().mesh.taper).toBe(0.4)
+    expect(store.getState().mesh.taper).toBe(4)
   })
 
   it('sanitizes persisted Edge Detection controls and resets only Edge Detection', () => {
@@ -1149,7 +1174,7 @@ describe('Phase 5D Studio terminal Studio store', () => {
         },
       },
     }
-    const { storage } = createMemoryStorage(JSON.stringify({ state: persistedState, version: 17 }))
+    const { storage } = createMemoryStorage(JSON.stringify({ state: persistedState, version: 19 }))
     const store = createStudioStore(storage)
 
     expect(store.getState().studioEffect.controls['edge-detection']).toMatchObject({
@@ -1210,7 +1235,7 @@ describe('Phase 5D Studio terminal Studio store', () => {
         },
       },
     }
-    const { storage } = createMemoryStorage(JSON.stringify({ state: persistedState, version: 17 }))
+    const { storage } = createMemoryStorage(JSON.stringify({ state: persistedState, version: 19 }))
     const store = createStudioStore(storage)
 
     expect(store.getState().studioEffect.controls.crosshatch).toMatchObject({
@@ -1277,7 +1302,7 @@ describe('Phase 5D Studio terminal Studio store', () => {
         },
       },
     }
-    const { storage } = createMemoryStorage(JSON.stringify({ state: persistedState, version: 17 }))
+    const { storage } = createMemoryStorage(JSON.stringify({ state: persistedState, version: 19 }))
     const store = createStudioStore(storage)
 
     expect(store.getState().studioEffect.controls['wave-lines']).toMatchObject({
@@ -1341,7 +1366,7 @@ describe('Phase 5D Studio terminal Studio store', () => {
         },
       },
     }
-    const { storage } = createMemoryStorage(JSON.stringify({ state: persistedState, version: 17 }))
+    const { storage } = createMemoryStorage(JSON.stringify({ state: persistedState, version: 19 }))
     const store = createStudioStore(storage)
 
     expect(store.getState().studioEffect.controls['noise-field']).toMatchObject({
@@ -1364,7 +1389,7 @@ describe('Phase 5D Studio terminal Studio store', () => {
     const base = createInitialStudioStoreState()
     const persistedState = {
       ...base,
-      mesh: { ...base.mesh, taper: 0.2 },
+      mesh: { ...base.mesh, taper: 2 },
       studioEffect: {
         ...base.studioEffect,
         selectedEffectId: 'voronoi' as const,
@@ -1384,7 +1409,7 @@ describe('Phase 5D Studio terminal Studio store', () => {
         },
       },
     }
-    const { storage } = createMemoryStorage(JSON.stringify({ state: persistedState, version: 17 }))
+    const { storage } = createMemoryStorage(JSON.stringify({ state: persistedState, version: 19 }))
     const store = createStudioStore(storage)
 
     expect(store.getState().studioEffect.controls.voronoi).toMatchObject({
@@ -1401,7 +1426,7 @@ describe('Phase 5D Studio terminal Studio store', () => {
       randomize: 0.8, brightness: 0, contrast: 0,
     })
     expect(store.getState().studioEffect.controls.threshold.levels).toBe(6)
-    expect(store.getState().mesh.taper).toBe(0.2)
+    expect(store.getState().mesh.taper).toBe(2)
   })
 
   it('keeps numeric VHS Scanlines independent from boolean Post Scanlines across persistence and reset', () => {
@@ -1429,7 +1454,7 @@ describe('Phase 5D Studio terminal Studio store', () => {
         },
       },
     }
-    const { storage } = createMemoryStorage(JSON.stringify({ state: persistedState, version: 17 }))
+    const { storage } = createMemoryStorage(JSON.stringify({ state: persistedState, version: 19 }))
     const store = createStudioStore(storage)
 
     expect(store.getState().studioEffect.controls.vhs).toMatchObject({

@@ -17,6 +17,7 @@ import {
   StudioEffectsPanel,
   StudioMotionPanel,
   StudioModelReset,
+  StudioMotionReset,
 } from '@/components/studio/StudioLeftPanel'
 import StudioRightPanel from '@/components/studio/StudioRightPanel'
 import classes from './StudioShell.module.css'
@@ -49,6 +50,10 @@ export default function StudioMobileTabs() {
           {mobileTab === 'input' ? (
             <>
               <CharacterPanel />
+              <div className={classes.inputGroupHeader}>
+                <div className={classes.inputLabel}>3D Motion</div>
+                <StudioMotionReset />
+              </div>
               <StudioMotionPanel />
             </>
           ) : null}

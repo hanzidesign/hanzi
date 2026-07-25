@@ -2,6 +2,16 @@ import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 
 import { describe, expect, it } from 'vitest'
+import {
+  CHARACTER_MESH_BEVEL_MAX,
+  CHARACTER_MESH_BEVEL_MIN,
+  CHARACTER_MESH_EXTRUSION_DEPTH_MAX,
+  CHARACTER_MESH_EXTRUSION_DEPTH_MIN,
+  CHARACTER_MESH_TAPER_MAX,
+  CHARACTER_MESH_TAPER_MIN,
+  CHARACTER_MESH_THICKNESS_MAX,
+  CHARACTER_MESH_THICKNESS_MIN,
+} from './character-mesh-constants'
 
 const studioDir = join(process.cwd(), 'components', 'studio')
 
@@ -131,16 +141,62 @@ describe('Studio shared Model panel contract', () => {
   it('routes every shared Model deformation into ASCII and Dithering geometry', async () => {
     const ascii = await readFile(join(studioDir, 'CharacterAsciiCanvas.tsx'), 'utf8')
     const dithering = await readFile(join(studioDir, 'CharacterDitheringCanvas.tsx'), 'utf8')
+    const shaderMesh = await readFile(join(studioDir, 'CharacterMesh.tsx'), 'utf8')
 
     for (const modelParam of ['bevel', 'twist', 'taper', 'bend']) {
       expect(ascii).toContain(`${modelParam}: mesh.${modelParam}`)
       expect(dithering).toContain(`${modelParam}: meshSettings.${modelParam}`)
+      expect(shaderMesh).toContain(`${modelParam}: mesh.${modelParam}`)
     }
 
     expect(ascii).toContain('createCharacterRepeatTransforms(mesh.repeat)')
     expect(ascii).toContain('scale={transform.scale}')
     expect(dithering).toContain('addCharacterModelCopies(')
     expect(dithering).toContain('meshSettings.repeat')
+  })
+
+  it('uses a 0 to 20 Bevel control scale', async () => {
+    const source = await readFile(join(studioDir, 'StudioLeftPanel.tsx'), 'utf8')
+    const bevelRow = source.slice(source.indexOf('label="Bevel"'), source.indexOf('label="Twist"'))
+
+    expect(CHARACTER_MESH_BEVEL_MIN).toBe(0)
+    expect(CHARACTER_MESH_BEVEL_MAX).toBe(20)
+    expect(bevelRow).toContain('min={CHARACTER_MESH_BEVEL_MIN}')
+    expect(bevelRow).toContain('max={CHARACTER_MESH_BEVEL_MAX}')
+    expect(bevelRow).toContain('step={0.1}')
+  })
+
+  it('uses a 1 to 100 Extrude control scale', async () => {
+    const source = await readFile(join(studioDir, 'StudioLeftPanel.tsx'), 'utf8')
+    const extrudeRow = source.slice(source.indexOf('label="Extrude"'), source.indexOf('label="Thickness"'))
+
+    expect(CHARACTER_MESH_EXTRUSION_DEPTH_MIN).toBe(1)
+    expect(CHARACTER_MESH_EXTRUSION_DEPTH_MAX).toBe(100)
+    expect(extrudeRow).toContain('min={CHARACTER_MESH_EXTRUSION_DEPTH_MIN}')
+    expect(extrudeRow).toContain('max={CHARACTER_MESH_EXTRUSION_DEPTH_MAX}')
+    expect(extrudeRow).toContain('step={1}')
+  })
+
+  it('uses a -10 to 10 Thickness control scale', async () => {
+    const source = await readFile(join(studioDir, 'StudioLeftPanel.tsx'), 'utf8')
+    const thicknessRow = source.slice(source.indexOf('label="Thickness"'), source.indexOf('label="Bevel"'))
+
+    expect(CHARACTER_MESH_THICKNESS_MIN).toBe(-10)
+    expect(CHARACTER_MESH_THICKNESS_MAX).toBe(10)
+    expect(thicknessRow).toContain('min={CHARACTER_MESH_THICKNESS_MIN}')
+    expect(thicknessRow).toContain('max={CHARACTER_MESH_THICKNESS_MAX}')
+    expect(thicknessRow).toContain('step={0.1}')
+  })
+
+  it('uses a -10 to 10 Taper control scale', async () => {
+    const source = await readFile(join(studioDir, 'StudioLeftPanel.tsx'), 'utf8')
+    const taperRow = source.slice(source.indexOf('label="Taper"'), source.indexOf('label="Bend"'))
+
+    expect(CHARACTER_MESH_TAPER_MIN).toBe(-10)
+    expect(CHARACTER_MESH_TAPER_MAX).toBe(10)
+    expect(taperRow).toContain('min={CHARACTER_MESH_TAPER_MIN}')
+    expect(taperRow).toContain('max={CHARACTER_MESH_TAPER_MAX}')
+    expect(taperRow).toContain('step={0.1}')
   })
 
   it('keeps Model Deform sections toggle-gated with Repeat first', async () => {

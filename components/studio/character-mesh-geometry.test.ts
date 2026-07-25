@@ -1,9 +1,10 @@
-import { BufferAttribute, Shape, Vector3 } from 'three'
+import { BufferAttribute, Path, Shape, Vector3 } from 'three'
 import { describe, expect, it } from 'vitest'
 
 import {
   CHARACTER_MESH_BEVEL_SEGMENTS,
   MIN_CHARACTER_EXTRUSION_DEPTH,
+  normalizeCharacterMeshTaper,
   clampCharacterExtrusionDepth,
   createCharacterMeshGeometries,
   sampleCharacterMeshSurfaceNoise,
@@ -17,6 +18,57 @@ function rectangleShape(width: number, height: number) {
   shape.lineTo(width, height)
   shape.lineTo(0, height)
   shape.lineTo(0, 0)
+  return shape
+}
+
+function lShape() {
+  const shape = new Shape()
+  shape.moveTo(0, 0)
+  shape.lineTo(500, 0)
+  shape.lineTo(500, 150)
+  shape.lineTo(150, 150)
+  shape.lineTo(150, 500)
+  shape.lineTo(0, 500)
+  shape.closePath()
+  return shape
+}
+
+function rectangleWithHole() {
+  const shape = rectangleShape(500, 500)
+  const hole = new Path()
+  hole.moveTo(150, 150)
+  hole.lineTo(150, 350)
+  hole.lineTo(350, 350)
+  hole.lineTo(350, 150)
+  hole.closePath()
+  shape.holes.push(hole)
+  return shape
+}
+
+function overlappingShapesWithHole() {
+  const first = rectangleShape(500, 500)
+  const second = new Shape()
+  second.moveTo(250, 0)
+  second.lineTo(750, 0)
+  second.lineTo(750, 500)
+  second.lineTo(250, 500)
+  second.closePath()
+  const hole = new Path()
+  hole.moveTo(40, 150)
+  hole.lineTo(40, 350)
+  hole.lineTo(180, 350)
+  hole.lineTo(180, 150)
+  hole.closePath()
+  first.holes.push(hole)
+  return [first, second]
+}
+
+function acuteShape() {
+  const shape = new Shape()
+  shape.moveTo(0, 0)
+  shape.lineTo(500, 0)
+  shape.lineTo(20, 200)
+  shape.closePath()
   return shape
 }
 
@@ -60,10 +112,51 @@ function axisDeltas(base: number[], changed: number[]) {
 }
 
 describe('character mesh geometry helpers', () => {
+  it('keeps zero Thickness as an identity resize', () => {
+    const implicit = createCharacterMeshGeometries({
+      shapes: [rectangleWithHole()],
+      extrusionDepth: 20,
+    })
+    const explicit = createCharacterMeshGeometries({
+      shapes: [rectangleWithHole()],
+      extrusionDepth: 20,
+      thickness: 0,
+    })
+
+    expect(Array.from(explicit.geometries[0].attributes.position.array)).toEqual(
+      Array.from(implicit.geometries[0].attributes.position.array),
+    )
+  })
+
+  it('unions overlapping source Shapes into one extruded geometry and retains holes', () => {
+    const result = createCharacterMeshGeometries({
+      shapes: overlappingShapesWithHole(),
+      extrusionDepth: 40,
+    })
+
+    expect(result.geometries).toHaveLength(1)
+    expect(result.boundsMin.x).toBeCloseTo(-1)
+    expect(result.boundsMax.x).toBeCloseTo(1)
+    expect(Array.from(result.geometries[0].attributes.position.array).every(Number.isFinite)).toBe(true)
+  })
+
+  it('caps extrusion bevels at acute first corners without degenerate vertices', () => {
+    const result = createCharacterMeshGeometries({
+      shapes: [acuteShape()],
+      extrusionDepth: 40,
+      bevel: 20,
+    })
+
+    for (const geometry of result.geometries) {
+      expect(Array.from(geometry.attributes.position.array).every(Number.isFinite)).toBe(true)
+      expect(Array.from(geometry.index?.array ?? []).every(Number.isFinite)).toBe(true)
+    }
+  })
+
   it('normalizes SVG y-down coordinates into centered upright object space', () => {
     const result = createCharacterMeshGeometries({
       shapes: [rectangleShape(500, 500)],
-      extrusionDepth: 0.2,
+      extrusionDepth: 20,
     })
 
     expect(result.boundsMin).toEqual(new Vector3(-1, -1, -0.1))
@@ -73,7 +166,7 @@ describe('character mesh geometry helpers', () => {
   it('pads shader bounds to preserve 1:1 shader and displacement sampling', () => {
     const result = createCharacterMeshGeometries({
       shapes: [rectangleShape(500, 250)],
-      extrusionDepth: 0.2,
+      extrusionDepth: 20,
     })
 
     expect(result.boundsMin).toEqual(new Vector3(-1, -0.5, -0.1))
@@ -82,8 +175,11 @@ describe('character mesh geometry helpers', () => {
     expect(result.shaderBoundsMax).toEqual(new Vector3(1, 1, 0.1))
   })
 
-  it('clamps extrusion depth to a tiny positive value', () => {
+  it('maps the 1 to 100 Extrude scale to 0.01 to 1 geometry depth', () => {
     expect(clampCharacterExtrusionDepth(0)).toBe(MIN_CHARACTER_EXTRUSION_DEPTH)
+    expect(clampCharacterExtrusionDepth(1)).toBe(0.01)
+    expect(clampCharacterExtrusionDepth(100)).toBe(1)
+    expect(clampCharacterExtrusionDepth(101)).toBe(1)
 
     const result = createCharacterMeshGeometries({
       shapes: [rectangleShape(500, 500)],
@@ -94,21 +190,21 @@ describe('character mesh geometry helpers', () => {
     expect(result.boundsMax.z).toBeCloseTo(MIN_CHARACTER_EXTRUSION_DEPTH / 2)
   })
 
-  it('adds real SVG extrusion bevel geometry when Model Bevel is raised', () => {
+  it('rounds both contour and extrusion edges inward without making the model thicker', () => {
     const flat = createCharacterMeshGeometries({
       shapes: [rectangleShape(500, 500)],
-      extrusionDepth: 0.2,
+      extrusionDepth: 80,
       bevel: 0,
     })
     const smallBevel = createCharacterMeshGeometries({
       shapes: [rectangleShape(500, 500)],
-      extrusionDepth: 0.2,
-      bevel: 0.04,
+      extrusionDepth: 80,
+      bevel: 2,
     })
     const largeBevel = createCharacterMeshGeometries({
       shapes: [rectangleShape(500, 500)],
-      extrusionDepth: 0.2,
-      bevel: 0.08,
+      extrusionDepth: 80,
+      bevel: 4,
     })
 
     expect(largeBevel.geometries[0].attributes.position.count).toBeGreaterThan(
@@ -151,26 +247,124 @@ describe('character mesh geometry helpers', () => {
     const flatProfile = depthProfile(flat)
     const smallProfile = depthProfile(smallBevel)
     const largeProfile = depthProfile(largeBevel)
-    for (const profile of [flatProfile, smallProfile, largeProfile]) {
-      expect(profile.bottomCap).toEqual({ minX: -1, maxX: 1, minY: -1, maxY: 1 })
-      expect(profile.topCap).toEqual({ minX: -1, maxX: 1, minY: -1, maxY: 1 })
+    expect(flatProfile.bottomCap).toEqual({ minX: -1, maxX: 1, minY: -1, maxY: 1 })
+    for (const [result, profile] of [[smallBevel, smallProfile], [largeBevel, largeProfile]] as const) {
+      expect(profile.bottomCap.minX).toBeGreaterThan(-1)
+      expect(profile.bottomCap.maxX).toBeLessThan(1)
+      expect(profile.topCap.minX).toBeGreaterThan(-1)
+      expect(profile.topCap.maxX).toBeLessThan(1)
+      expect(profile.maxSideSpan).toBeCloseTo(2, 4)
+      expect(result.boundsMin.x).toBeGreaterThanOrEqual(-1)
+      expect(result.boundsMax.x).toBeLessThanOrEqual(1)
+      expect(result.boundsMax.z - result.boundsMin.z).toBeCloseTo(0.8, 6)
+      expect(result.boundsMin.z).toBeCloseTo(-0.4, 6)
+      expect(result.boundsMax.z).toBeCloseTo(0.4, 6)
     }
 
     expect(CHARACTER_MESH_BEVEL_SEGMENTS).toBe(6)
     expect(smallProfile.depthLayers.length).toBe(CHARACTER_MESH_BEVEL_SEGMENTS * 2 + 2)
     expect(largeProfile.depthLayers.length).toBe(CHARACTER_MESH_BEVEL_SEGMENTS * 2 + 2)
-    expect(largeProfile.maxSideSpan).toBeGreaterThan(smallProfile.maxSideSpan)
+    expect(largeProfile.bottomCap.maxX - largeProfile.bottomCap.minX).toBeLessThan(
+      smallProfile.bottomCap.maxX - smallProfile.bottomCap.minX,
+    )
+  })
+
+  it('keeps bevel geometry finite when Thickness is also active', () => {
+    const result = createCharacterMeshGeometries({
+      shapes: [rectangleShape(500, 500)],
+      extrusionDepth: 50,
+      thickness: 2,
+      bevel: 5,
+    })
+
+    for (const geometry of result.geometries) {
+      expect(Array.from(geometry.attributes.position.array).every(Number.isFinite)).toBe(true)
+      expect(Array.from(geometry.attributes.normal.array).every(Number.isFinite)).toBe(true)
+    }
+  })
+
+  it('extrudes beveled reflex corners and holes without expanding or corrupting geometry', () => {
+    for (const shape of [lShape(), rectangleWithHole()]) {
+      const result = createCharacterMeshGeometries({
+        shapes: [shape],
+        extrusionDepth: 60,
+        bevel: 4,
+      })
+
+      expect(result.boundsMin.x).toBeGreaterThanOrEqual(-1)
+      expect(result.boundsMax.x).toBeLessThanOrEqual(1)
+      expect(result.boundsMin.y).toBeGreaterThanOrEqual(-1)
+      expect(result.boundsMax.y).toBeLessThanOrEqual(1)
+      expect(result.boundsMax.z - result.boundsMin.z).toBeCloseTo(0.6, 6)
+      for (const geometry of result.geometries) {
+        expect(Array.from(geometry.attributes.position.array).every(Number.isFinite)).toBe(true)
+        expect(Array.from(geometry.attributes.normal.array).every(Number.isFinite)).toBe(true)
+      }
+    }
+  })
+
+  it('continues increasing the rounded contour through the full Bevel range', () => {
+    const low = createCharacterMeshGeometries({
+      shapes: [lShape()],
+      extrusionDepth: 60,
+      bevel: 6,
+    })
+    const high = createCharacterMeshGeometries({
+      shapes: [lShape()],
+      extrusionDepth: 60,
+      bevel: 20,
+    })
+    const nearHigh = createCharacterMeshGeometries({
+      shapes: [lShape()],
+      extrusionDepth: 60,
+      bevel: 16,
+    })
+    const nine = createCharacterMeshGeometries({
+      shapes: [lShape()],
+      extrusionDepth: 60,
+      bevel: 18,
+    })
+
+    const lowPositions = positions(low)
+    const highPositions = positions(high)
+    expect(highPositions).not.toEqual(lowPositions)
+    expect(maxPositionDelta(lowPositions, highPositions)).toBeGreaterThan(0.01)
+    expect(maxPositionDelta(positions(nearHigh), highPositions)).toBeGreaterThan(0.01)
+    expect(maxPositionDelta(positions(nine), highPositions)).toBeGreaterThan(0.001)
+  })
+
+  it('makes Bevel20 materially rounder than Bevel10', () => {
+    const ten = createCharacterMeshGeometries({
+      shapes: [rectangleShape(500, 500)],
+      extrusionDepth: 80,
+      bevel: 10,
+    })
+    const twenty = createCharacterMeshGeometries({
+      shapes: [rectangleShape(500, 500)],
+      extrusionDepth: 80,
+      bevel: 20,
+    })
+
+    expect(maxPositionDelta(positions(ten), positions(twenty))).toBeGreaterThan(0.01)
+    const maxXAtFront = (result: ReturnType<typeof createCharacterMeshGeometries>) => {
+      const position = result.geometries[0].attributes.position
+      const maxZ = Math.max(...Array.from({ length: position.count }, (_, index) => position.getZ(index)))
+      return Math.max(...Array.from({ length: position.count }, (_, index) =>
+        Math.abs(position.getZ(index) - maxZ) < 1e-6 ? position.getX(index) : -Infinity,
+      ))
+    }
+    expect(maxXAtFront(twenty)).toBeLessThan(maxXAtFront(ten))
   })
 
   it('twists the extruded SVG around its Y axis', () => {
     const straight = createCharacterMeshGeometries({
       shapes: [rectangleShape(500, 250)],
-      extrusionDepth: 0.4,
+      extrusionDepth: 40,
       twist: 0,
     })
     const twisted = createCharacterMeshGeometries({
       shapes: [rectangleShape(500, 250)],
-      extrusionDepth: 0.4,
+      extrusionDepth: 40,
       twist: 90,
     })
 
@@ -185,10 +379,15 @@ describe('character mesh geometry helpers', () => {
   })
 
   it('tapers the SVG model so its front and back faces have different spans', () => {
+    expect(normalizeCharacterMeshTaper(-10)).toBe(-1)
+    expect(normalizeCharacterMeshTaper(6)).toBeCloseTo(0.6)
+    expect(normalizeCharacterMeshTaper(10)).toBe(1)
+    expect(normalizeCharacterMeshTaper(11)).toBe(1)
+
     const tapered = createCharacterMeshGeometries({
       shapes: [rectangleShape(500, 500)],
-      extrusionDepth: 0.4,
-      taper: 0.6,
+      extrusionDepth: 40,
+      taper: 6,
     })
     const position = tapered.geometries[0].attributes.position
     const frontX: number[] = []
@@ -207,12 +406,12 @@ describe('character mesh geometry helpers', () => {
   it('bends the SVG face into depth instead of applying a flat transform', () => {
     const flat = createCharacterMeshGeometries({
       shapes: [rectangleShape(500, 500)],
-      extrusionDepth: 0.2,
+      extrusionDepth: 20,
       bend: 0,
     })
     const bent = createCharacterMeshGeometries({
       shapes: [rectangleShape(500, 500)],
-      extrusionDepth: 0.2,
+      extrusionDepth: 20,
       bend: 70,
     })
 
@@ -227,7 +426,7 @@ describe('character mesh geometry helpers', () => {
   it('preserves horizontal orientation while reversing Bend depth for negative angles', () => {
     const baseOptions = {
       shapes: [rectangleShape(500, 500)],
-      extrusionDepth: 0.2,
+      extrusionDepth: 20,
       displacementSubdivisionLevel: 2,
     }
     const base = positions(createCharacterMeshGeometries(baseOptions))
@@ -246,26 +445,72 @@ describe('character mesh geometry helpers', () => {
   it('applies character mesh thickness as geometry, bounds, and UV-affecting planar weight', () => {
     const normal = createCharacterMeshGeometries({
       shapes: [rectangleShape(500, 500)],
-      extrusionDepth: 0.2,
+      extrusionDepth: 20,
       thickness: 0,
     })
     const thicker = createCharacterMeshGeometries({
       shapes: [rectangleShape(500, 500)],
-      extrusionDepth: 0.2,
-      thickness: 0.12,
+      extrusionDepth: 20,
+      thickness: 3,
     })
     const normalUv = normal.geometries[0].attributes.uv.array
     const thickerUv = thicker.geometries[0].attributes.uv.array
 
+    const thinner = createCharacterMeshGeometries({
+      shapes: [rectangleShape(500, 500)],
+      extrusionDepth: 20,
+      thickness: -3,
+    })
+
     expect(thicker.boundsMin.x).toBeLessThan(normal.boundsMin.x)
     expect(thicker.boundsMax.x).toBeGreaterThan(normal.boundsMax.x)
+    expect(thinner.boundsMin.x).toBeGreaterThan(normal.boundsMin.x)
+    expect(thinner.boundsMax.x).toBeLessThan(normal.boundsMax.x)
     expect(Array.from(thickerUv)).not.toEqual(Array.from(normalUv))
+  })
+
+  it('maps the negative Thickness range toward a thin but renderable stroke', () => {
+    const values = [0, -2.5, -5, -7.5, -10]
+    const results = values.map((thickness) => createCharacterMeshGeometries({
+      shapes: [rectangleShape(500, 500)],
+      extrusionDepth: 20,
+      thickness,
+    }))
+    const widths = results.map((result) => result.boundsMax.x - result.boundsMin.x)
+
+    for (let index = 1; index < widths.length; index += 1) {
+      expect(widths[index]).toBeLessThanOrEqual(widths[index - 1] + 1e-6)
+    }
+    expect(widths.at(-1)!).toBeGreaterThan(0)
+    expect(widths.at(-1)!).toBeLessThan(0.1)
+    expect(Array.from(results.at(-1)!.geometries[0].attributes.position.array).every(Number.isFinite)).toBe(true)
+  })
+
+  it('uses each original Shape collapse limit for negative Thickness', () => {
+    const sourceShapes = [rectangleShape(500, 500), rectangleShape(500, 20)]
+    const planarSpans = sourceShapes.map((shape) => {
+      const results = [0, -1, -10].map((thickness) => createCharacterMeshGeometries({
+        shapes: [shape],
+        extrusionDepth: 20,
+        thickness,
+      }))
+      return results.map((result) => Math.min(
+        result.boundsMax.x - result.boundsMin.x,
+        result.boundsMax.y - result.boundsMin.y,
+      ))
+    })
+
+    for (const [normal, lightlyThinned, collapsed] of planarSpans) {
+      expect(lightlyThinned).toBeGreaterThan(normal * 0.5)
+      expect(collapsed).toBeGreaterThan(0)
+      expect(collapsed).toBeLessThan(normal * 0.1)
+    }
   })
 
   it('assigns side-wall UVs with depth variation instead of front-face XY projection', () => {
     const result = createCharacterMeshGeometries({
       shapes: [rectangleShape(500, 500)],
-      extrusionDepth: 0.2,
+      extrusionDepth: 20,
     })
     const geometry = result.geometries[0]
     const position = geometry.attributes.position
@@ -285,7 +530,7 @@ describe('character mesh geometry helpers', () => {
   it('applies CPU Model Deforms and routes Wave and Noise to GPU attributes', () => {
     const base = createCharacterMeshGeometries({
       shapes: [rectangleShape(500, 500)],
-      extrusionDepth: 0.2,
+      extrusionDepth: 20,
     })
     const effects = [
       ['bulgePinch', 1],
@@ -297,7 +542,7 @@ describe('character mesh geometry helpers', () => {
     for (const [key, amount] of effects) {
       const result = createCharacterMeshGeometries({
         shapes: [rectangleShape(500, 500)],
-        extrusionDepth: 0.2,
+        extrusionDepth: 20,
         deform: deformWith(key, amount),
       })
 
@@ -309,7 +554,7 @@ describe('character mesh geometry helpers', () => {
     for (const key of ['wave', 'surfaceNoise'] as const) {
       const result = createCharacterMeshGeometries({
         shapes: [rectangleShape(500, 500)],
-        extrusionDepth: 0.2,
+        extrusionDepth: 20,
         deform: deformWith(key, 1),
       })
       expect(result.gpuDeformActive).toBe(true)
@@ -319,7 +564,7 @@ describe('character mesh geometry helpers', () => {
 
     const disabled = createCharacterMeshGeometries({
       shapes: [rectangleShape(500, 500)],
-      extrusionDepth: 0.2,
+      extrusionDepth: 20,
       deform: deformWith('surfaceNoise', 1, false),
     })
     expect(Array.from(disabled.geometries[0].attributes.position.array)).toEqual(
@@ -330,12 +575,12 @@ describe('character mesh geometry helpers', () => {
   it('keeps surface noise deterministic and shared across duplicate XY coordinates', () => {
     const base = createCharacterMeshGeometries({
       shapes: [rectangleShape(500, 500)],
-      extrusionDepth: 0.2,
+      extrusionDepth: 20,
       displacementSubdivisionLevel: 2,
     })
     const options = {
       shapes: [rectangleShape(500, 500)],
-      extrusionDepth: 0.2,
+      extrusionDepth: 20,
       displacementSubdivisionLevel: 2,
       deform: deformWith('surfaceNoise', 1),
     }
@@ -363,7 +608,7 @@ describe('character mesh geometry helpers', () => {
   it('auto-sizes subdivisions for animated Noise and nonlinear triggers', () => {
     const base = {
       shapes: [rectangleShape(500, 500)],
-      extrusionDepth: 0.2,
+      extrusionDepth: 20,
     }
     const inactive0 = createCharacterMeshGeometries({ ...base, displacementSubdivisionLevel: 0 })
     const inactive1 = createCharacterMeshGeometries({ ...base, displacementSubdivisionLevel: 1 })
@@ -485,12 +730,12 @@ describe('character mesh geometry helpers', () => {
   it('increases geometry density when displacement subdivision is raised', () => {
     const base = createCharacterMeshGeometries({
       shapes: [rectangleShape(500, 500)],
-      extrusionDepth: 0.2,
+      extrusionDepth: 20,
       displacementSubdivisionLevel: 0,
     })
     const subdivided = createCharacterMeshGeometries({
       shapes: [rectangleShape(500, 500)],
-      extrusionDepth: 0.2,
+      extrusionDepth: 20,
       displacementSubdivisionLevel: 2,
     })
 
@@ -504,7 +749,7 @@ describe('character mesh geometry helpers', () => {
   it('preserves displacement UV sampling after subdivision', () => {
     const result = createCharacterMeshGeometries({
       shapes: [rectangleShape(500, 500)],
-      extrusionDepth: 0.2,
+      extrusionDepth: 20,
       displacementSubdivisionLevel: 2,
     })
     const geometry = result.geometries[0]
@@ -518,21 +763,21 @@ describe('character mesh geometry helpers', () => {
     expect(() =>
       createCharacterMeshGeometries({
         shapes: [],
-        extrusionDepth: 0.2,
+        extrusionDepth: 20,
       }),
     ).toThrow(/no drawable SVG shapes/i)
   })
 
   it('keeps neutral and disabled advanced signals exactly unchanged', () => {
-    const base = createCharacterMeshGeometries({ shapes: [rectangleShape(500, 500)], extrusionDepth: 0.2 })
+    const base = createCharacterMeshGeometries({ shapes: [rectangleShape(500, 500)], extrusionDepth: 20 })
     const disabled = createCharacterMeshGeometries({
       shapes: [rectangleShape(500, 500)],
-      extrusionDepth: 0.2,
+      extrusionDepth: 20,
       deform: deformWith('wave', 1, false),
     })
     const zero = createCharacterMeshGeometries({
       shapes: [rectangleShape(500, 500)],
-      extrusionDepth: 0.2,
+      extrusionDepth: 20,
       deform: deformWith('wave', 0),
     })
     expect(positions(disabled)).toEqual(positions(base))
@@ -542,7 +787,7 @@ describe('character mesh geometry helpers', () => {
   it('keeps GPU Noise settings out of static position buffers', () => {
     const options = {
       shapes: [rectangleShape(500, 500)],
-      extrusionDepth: 0.2,
+      extrusionDepth: 20,
       displacementSubdivisionLevel: 2,
       deform: {
         ...DEFAULT_CHARACTER_MESH_DEFORM,
@@ -574,7 +819,7 @@ describe('character mesh geometry helpers', () => {
   it('authors stable GPU attributes and pads animated deform bounds once', () => {
     const result = createCharacterMeshGeometries({
       shapes: [rectangleShape(500, 500)],
-      extrusionDepth: 0.2,
+      extrusionDepth: 20,
       displacementSubdivisionLevel: 2,
       deform: {
         ...DEFAULT_CHARACTER_MESH_DEFORM,
@@ -614,7 +859,7 @@ describe('character mesh geometry helpers', () => {
   it('authors averaged stable surface normals for GPU Noise at duplicate seams', () => {
     const baseOptions = {
       shapes: [rectangleShape(500, 500)],
-      extrusionDepth: 0.2,
+      extrusionDepth: 20,
       displacementSubdivisionLevel: 2,
     }
     const radial = createCharacterMeshGeometries({
@@ -657,12 +902,12 @@ describe('character mesh geometry helpers', () => {
   it('uses radial bulge falloff and leaves outside-radius vertices neutral', () => {
     const base = createCharacterMeshGeometries({
       shapes: [rectangleShape(500, 500)],
-      extrusionDepth: 0.2,
+      extrusionDepth: 20,
       displacementSubdivisionLevel: 2,
     })
     const broad = createCharacterMeshGeometries({
       shapes: [rectangleShape(500, 500)],
-      extrusionDepth: 0.2,
+      extrusionDepth: 20,
       displacementSubdivisionLevel: 2,
       deform: {
         ...DEFAULT_CHARACTER_MESH_DEFORM,
@@ -671,7 +916,7 @@ describe('character mesh geometry helpers', () => {
     })
     const narrow = createCharacterMeshGeometries({
       shapes: [rectangleShape(500, 500)],
-      extrusionDepth: 0.2,
+      extrusionDepth: 20,
       displacementSubdivisionLevel: 2,
       deform: {
         ...DEFAULT_CHARACTER_MESH_DEFORM,
@@ -684,7 +929,7 @@ describe('character mesh geometry helpers', () => {
   })
 
   it('keeps Bulge axis and center semantics isolated to their selected coordinates', () => {
-    const baseOptions = { shapes: [rectangleShape(500, 500)], extrusionDepth: 0.2, displacementSubdivisionLevel: 2 }
+    const baseOptions = { shapes: [rectangleShape(500, 500)], extrusionDepth: 20, displacementSubdivisionLevel: 2 }
     const base = positions(createCharacterMeshGeometries(baseOptions))
     const xAxis = positions(createCharacterMeshGeometries({
       ...baseOptions,
@@ -710,7 +955,7 @@ describe('character mesh geometry helpers', () => {
   })
 
   it('supports Squash axis, pivot, local falloff, preserve volume and secondary scale', () => {
-    const baseOptions = { shapes: [rectangleShape(500, 500)], extrusionDepth: 0.2, displacementSubdivisionLevel: 2 }
+    const baseOptions = { shapes: [rectangleShape(500, 500)], extrusionDepth: 20, displacementSubdivisionLevel: 2 }
     const base = positions(createCharacterMeshGeometries(baseOptions))
     const xAxis = positions(createCharacterMeshGeometries({
       ...baseOptions,
@@ -744,7 +989,7 @@ describe('character mesh geometry helpers', () => {
   })
 
   it('keeps GPU Wave settings out of static position buffers', () => {
-    const baseOptions = { shapes: [rectangleShape(500, 500)], extrusionDepth: 0.2, displacementSubdivisionLevel: 2 }
+    const baseOptions = { shapes: [rectangleShape(500, 500)], extrusionDepth: 20, displacementSubdivisionLevel: 2 }
     const wave = (partial: Partial<typeof DEFAULT_CHARACTER_MESH_DEFORM.wave>) => positions(createCharacterMeshGeometries({
       ...baseOptions,
       deform: { ...DEFAULT_CHARACTER_MESH_DEFORM, wave: { ...DEFAULT_CHARACTER_MESH_DEFORM.wave, enabled: true, amplitude: 1, ...partial } },
@@ -755,7 +1000,7 @@ describe('character mesh geometry helpers', () => {
   })
 
   it('keeps squash amount zero neutral and matches Curl angle 360 to one turn', () => {
-    const base = { shapes: [rectangleShape(500, 500)], extrusionDepth: 0.2, displacementSubdivisionLevel: 2 }
+    const base = { shapes: [rectangleShape(500, 500)], extrusionDepth: 20, displacementSubdivisionLevel: 2 }
     const neutralSquash = createCharacterMeshGeometries({
       ...base,
       deform: { ...DEFAULT_CHARACTER_MESH_DEFORM, squashStretch: { ...DEFAULT_CHARACTER_MESH_DEFORM.squashStretch, enabled: true, amount: 0, pivot: 0.4 } },
@@ -782,7 +1027,7 @@ describe('character mesh geometry helpers', () => {
   })
 
   it('keeps uniform Inflate independent of its center and radius controls', () => {
-    const base = { shapes: [rectangleShape(500, 500)], extrusionDepth: 0.2, displacementSubdivisionLevel: 1 }
+    const base = { shapes: [rectangleShape(500, 500)], extrusionDepth: 20, displacementSubdivisionLevel: 1 }
     const first = createCharacterMeshGeometries({
       ...base,
       deform: { ...DEFAULT_CHARACTER_MESH_DEFORM, inflate: { ...DEFAULT_CHARACTER_MESH_DEFORM.inflate, enabled: true, amount: 1, uniform: true, centerX: -1, centerY: -1, radius: 0.05 } },
@@ -795,7 +1040,7 @@ describe('character mesh geometry helpers', () => {
   })
 
   it('anchors Inflate balance, deflate sign, falloff and nonuniform cutoff', () => {
-    const baseOptions = { shapes: [rectangleShape(500, 500)], extrusionDepth: 0.2, displacementSubdivisionLevel: 2 }
+    const baseOptions = { shapes: [rectangleShape(500, 500)], extrusionDepth: 20, displacementSubdivisionLevel: 2 }
     const base = positions(createCharacterMeshGeometries(baseOptions))
     const depthOnly = positions(createCharacterMeshGeometries({
       ...baseOptions,
@@ -831,7 +1076,7 @@ describe('character mesh geometry helpers', () => {
   })
 
   it('anchors Curl axis planes, pivot with nonzero offset, tightness, falloff and clamp', () => {
-    const baseOptions = { shapes: [rectangleShape(500, 500)], extrusionDepth: 0.2, displacementSubdivisionLevel: 2 }
+    const baseOptions = { shapes: [rectangleShape(500, 500)], extrusionDepth: 20, displacementSubdivisionLevel: 2 }
     const base = positions(createCharacterMeshGeometries(baseOptions))
     const curl = (partial: Partial<typeof DEFAULT_CHARACTER_MESH_DEFORM.curl>) => positions(createCharacterMeshGeometries({
       ...baseOptions,
@@ -858,7 +1103,7 @@ describe('character mesh geometry helpers', () => {
   })
 
   it('preserves longitudinal orientation while reversing Curl depth for negative angles', () => {
-    const baseOptions = { shapes: [rectangleShape(500, 500)], extrusionDepth: 0.2, displacementSubdivisionLevel: 2 }
+    const baseOptions = { shapes: [rectangleShape(500, 500)], extrusionDepth: 20, displacementSubdivisionLevel: 2 }
     const base = positions(createCharacterMeshGeometries(baseOptions))
     const curl = (angle: number) => positions(createCharacterMeshGeometries({
       ...baseOptions,

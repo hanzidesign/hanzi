@@ -191,6 +191,8 @@ describe('Phase 5D Studio terminal Studio layout contract', () => {
     expect(mobileTabs).toContain('StudioModelDeformPanel')
     expect(mobileTabs).toContain('StudioRightPanel includeExport={false} title="Controllers"')
     expect(mobileTabs).toContain('StudioMotionPanel')
+    expect(mobileTabs).toContain('StudioMotionReset')
+    expect(mobileTabs).toContain('3D Motion')
     expect(mobileTabs).not.toContain("id: 'animation'")
     expect(mobileTabs).toContain('Export')
     expect(mobileTabs).toContain('data-studio-mobile-tabs')

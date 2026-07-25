@@ -77,7 +77,7 @@ export function applyRotationDrag(
   )
   const pitch = new Quaternion().setFromAxisAngle(
     X_AXIS,
-    -deltaY * DRAG_RADIANS_PER_PIXEL,
+    deltaY * DRAG_RADIANS_PER_PIXEL,
   )
   const nextEuler = new Euler().setFromQuaternion(
     rotation.premultiply(yaw).premultiply(pitch),

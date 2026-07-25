@@ -15,11 +15,33 @@ import {
   type CharacterMeshDeformSettings,
   type CharacterMeshBulgeProfile,
 } from '@/components/studio/character-mesh-deform'
+import {
+  resizeCharacterShapes,
+  resizeCharacterShapesToCollapseFraction,
+  smoothCharacterShapes,
+  unionCharacterShapes,
+} from './character-shape-fillet'
+import {
+  CHARACTER_MESH_BEVEL_MAX,
+  CHARACTER_MESH_BEVEL_MIN,
+  CHARACTER_MESH_BEVEL_NORMALIZED_PER_UNIT,
+  CHARACTER_MESH_BEVEL_SEGMENTS,
+  CHARACTER_MESH_EXTRUSION_DEPTH_MAX,
+  CHARACTER_MESH_EXTRUSION_DEPTH_MIN,
+  CHARACTER_MESH_EXTRUSION_DEPTH_NORMALIZED_PER_UNIT,
+  CHARACTER_MESH_TAPER_MAX,
+  CHARACTER_MESH_TAPER_MIN,
+  CHARACTER_MESH_TAPER_NORMALIZED_PER_UNIT,
+  CHARACTER_MESH_THICKNESS_MAX,
+  CHARACTER_MESH_THICKNESS_MIN,
+  CHARACTER_MESH_THICKNESS_NORMALIZED_PER_UNIT,
+} from './character-mesh-constants'
 
 export const MIN_CHARACTER_EXTRUSION_DEPTH = 0.01
 export const MIN_DISPLACEMENT_SUBDIVISION_LEVEL = 0
 export const MAX_DISPLACEMENT_SUBDIVISION_LEVEL = 2
-export const CHARACTER_MESH_BEVEL_SEGMENTS = 6
+export { CHARACTER_MESH_BEVEL_SEGMENTS }
+const CHARACTER_EXTRUSION_BEVEL_RADIUS_RATIO = 0.4
 const CHARACTER_GPU_DEFORM_BOUNDS_PADDING = 0.36
 
 export { DEFAULT_CHARACTER_MESH_DEFORM }
@@ -46,7 +68,21 @@ export type CharacterMeshGeometryResult = {
 }
 
 export function clampCharacterExtrusionDepth(extrusionDepth: number) {
-  return Math.max(extrusionDepth, MIN_CHARACTER_EXTRUSION_DEPTH)
+  const safeExtrusionDepth = Number.isFinite(extrusionDepth)
+    ? clamp(
+        extrusionDepth,
+        CHARACTER_MESH_EXTRUSION_DEPTH_MIN,
+        CHARACTER_MESH_EXTRUSION_DEPTH_MAX,
+      )
+    : CHARACTER_MESH_EXTRUSION_DEPTH_MIN
+  return safeExtrusionDepth * CHARACTER_MESH_EXTRUSION_DEPTH_NORMALIZED_PER_UNIT
+}
+
+export function normalizeCharacterMeshTaper(taper: number) {
+  return Number.isFinite(taper)
+    ? clamp(taper, CHARACTER_MESH_TAPER_MIN, CHARACTER_MESH_TAPER_MAX)
+      * CHARACTER_MESH_TAPER_NORMALIZED_PER_UNIT
+    : 0
 }
 
 export function createCharacterMeshGeometries({
@@ -66,7 +102,14 @@ export function createCharacterMeshGeometries({
 
   const safeDeform = sanitizeCharacterMeshDeformSettings(deform)
   const depth = clampCharacterExtrusionDepth(extrusionDepth)
-  const safeBevel = Math.max(0, bevel)
+  const safeThickness = Number.isFinite(thickness)
+    ? clamp(thickness, CHARACTER_MESH_THICKNESS_MIN, CHARACTER_MESH_THICKNESS_MAX)
+    : 0
+  const safeBevel = Number.isFinite(bevel)
+    ? clamp(bevel, CHARACTER_MESH_BEVEL_MIN, CHARACTER_MESH_BEVEL_MAX)
+    : 0
+  const normalizedBevel = safeBevel * CHARACTER_MESH_BEVEL_NORMALIZED_PER_UNIT
+  const normalizedTaper = normalizeCharacterMeshTaper(taper)
   const shapeBounds = getCombinedShapeBounds(shapes)
   const sourceSize = shapeBounds.getSize(new Vector2())
   const sourceSpan = Math.max(sourceSize.x, sourceSize.y)
@@ -76,25 +119,58 @@ export function createCharacterMeshGeometries({
   }
 
   const sourceCenter = shapeBounds.getCenter(new Vector2())
-  const sourceBevelSize = safeBevel * sourceSpan / 2
-  let geometries: BufferGeometry[] = shapes.map(
-    (shape) =>
-      new ExtrudeGeometry(shape, {
-        depth,
-        steps: taper === 0 ? 1 : 8,
-        bevelEnabled: safeBevel > 0,
-        bevelSize: sourceBevelSize,
-        bevelThickness: Math.min(safeBevel, depth / 2),
+  const requestedSourceRadius = normalizedBevel * sourceSpan / 2
+  const negativeThicknessFraction = clamp(-safeThickness / CHARACTER_MESH_THICKNESS_MAX, 0, 1)
+  const resizedShapes = shapes.flatMap((shape) => {
+    if (safeThickness < 0) {
+      return resizeCharacterShapesToCollapseFraction([shape], negativeThicknessFraction).shapes
+    }
+
+    const requestedSourceOffset = safeThickness
+      * CHARACTER_MESH_THICKNESS_NORMALIZED_PER_UNIT
+      * sourceSpan
+      / 2
+    return resizeCharacterShapes([shape], requestedSourceOffset).shapes
+  })
+  const filletedShapes = resizedShapes.flatMap((shape) => normalizedBevel > 0
+    ? smoothCharacterShapes([shape], requestedSourceRadius).shapes
+    : [shape],
+  )
+  const finalShapes = unionCharacterShapes(filletedShapes)
+  if (finalShapes.length === 0) {
+    throw new Error('Character SVG contains no drawable SVG area after geometry processing.')
+  }
+  const geometryEntries = finalShapes.map((shape) => {
+    const extrusionBevelRadius = Math.min(
+      requestedSourceRadius * CHARACTER_EXTRUSION_BEVEL_RADIUS_RATIO,
+      getMaximumSafeShapeBevelRadius(shape),
+    )
+    const appliedNormalized = 2 * extrusionBevelRadius / sourceSpan
+    const bevelThickness = Math.min(
+      appliedNormalized,
+      Math.max(0, (depth - MIN_CHARACTER_EXTRUSION_DEPTH) / 2),
+    )
+    const coreDepth = depth - 2 * bevelThickness
+    return {
+      coreDepth,
+      geometry: new ExtrudeGeometry(shape, {
+        depth: coreDepth,
+        steps: normalizedTaper === 0 ? 1 : 8,
+        bevelEnabled: extrusionBevelRadius > 0 && bevelThickness > 0,
+        bevelSize: extrusionBevelRadius,
+        bevelOffset: -extrusionBevelRadius,
+        bevelThickness,
         bevelSegments: CHARACTER_MESH_BEVEL_SEGMENTS,
       }),
-  )
+    }
+  })
+  let geometries: BufferGeometry[] = geometryEntries.map((entry) => entry.geometry)
 
   try {
     const xyScale = sourceSpan / 2
 
-    for (const geometry of geometries) {
-      normalizeGeometry(geometry, sourceCenter, xyScale, depth)
-      applyCharacterMeshThickness(geometry, thickness)
+    for (const entry of geometryEntries) {
+      normalizeGeometry(entry.geometry, sourceCenter, xyScale, entry.coreDepth)
     }
 
     const sourceDeformationBounds = getCombinedBounds(geometries)
@@ -148,7 +224,7 @@ export function createCharacterMeshGeometries({
         geometry,
         depth,
         twist,
-        taper,
+        normalizedTaper,
         bend,
         stableBounds.min.y,
         stableBounds.max.y,
@@ -210,6 +286,45 @@ export function createCharacterMeshGeometries({
     disposeGeometries(geometries)
     throw error
   }
+}
+
+function getMaximumSafeShapeBevelRadius(shape: Shape) {
+  const extracted = shape.extractPoints(12)
+  let maximumRadius = Infinity
+  for (const contour of [extracted.shape, ...extracted.holes]) {
+    const points = contour.length > 1
+      && Math.hypot(contour[0].x - contour.at(-1)!.x, contour[0].y - contour.at(-1)!.y) <= 1e-7
+      ? contour.slice(0, -1)
+      : contour
+    if (points.length < 3) {
+      continue
+    }
+    for (let index = 0; index < points.length; index += 1) {
+      const previous = points[(index - 1 + points.length) % points.length]
+      const current = points[index]
+      const next = points[(index + 1) % points.length]
+      const incomingX = previous.x - current.x
+      const incomingY = previous.y - current.y
+      const outgoingX = next.x - current.x
+      const outgoingY = next.y - current.y
+      const incomingLength = Math.hypot(incomingX, incomingY)
+      const outgoingLength = Math.hypot(outgoingX, outgoingY)
+      if (incomingLength <= 1e-7 || outgoingLength <= 1e-7) {
+        continue
+      }
+      const cosine = clamp(
+        (incomingX * outgoingX + incomingY * outgoingY) / (incomingLength * outgoingLength),
+        -1,
+        1,
+      )
+      const halfAngleTangent = Math.tan(Math.acos(cosine) / 2)
+      maximumRadius = Math.min(
+        maximumRadius,
+        Math.min(incomingLength, outgoingLength) * halfAngleTangent * 0.35,
+      )
+    }
+  }
+  return Number.isFinite(maximumRadius) ? Math.max(0, maximumRadius) : 0
 }
 
 function applyCharacterMeshDeformation(
@@ -561,54 +676,6 @@ export function sanitizeDisplacementSubdivisionLevel(value: number) {
   )
 }
 
-function applyCharacterMeshThickness(
-  geometry: BufferGeometry,
-  thickness: number,
-) {
-  if (thickness === 0) {
-    return
-  }
-
-  const position = geometry.attributes.position
-  const normal = geometry.attributes.normal
-  const sideNormals = new Map<string, { x: number; y: number; count: number }>()
-
-  for (let index = 0; index < position.count; index += 1) {
-    if (Math.abs(normal.getZ(index)) >= 0.5) {
-      continue
-    }
-
-    const key = xyKey(position.getX(index), position.getY(index))
-    const current = sideNormals.get(key) ?? { x: 0, y: 0, count: 0 }
-    current.x += normal.getX(index)
-    current.y += normal.getY(index)
-    current.count += 1
-    sideNormals.set(key, current)
-  }
-
-  for (let index = 0; index < position.count; index += 1) {
-    const key = xyKey(position.getX(index), position.getY(index))
-    const offset = sideNormals.get(key)
-
-    if (!offset || offset.count === 0) {
-      continue
-    }
-
-    const length = Math.hypot(offset.x, offset.y) || 1
-
-    position.setXY(
-      index,
-      position.getX(index) - (offset.x / length) * thickness,
-      position.getY(index) - (offset.y / length) * thickness,
-    )
-  }
-
-  position.needsUpdate = true
-  geometry.computeVertexNormals()
-  geometry.computeBoundingBox()
-  geometry.computeBoundingSphere()
-}
-
 function assignCharacterMeshUvs(
   geometry: BufferGeometry,
   shaderBoundsMin: Vector3,
@@ -806,10 +873,6 @@ function roundNumber(value: number) {
 
 function normalizeUv(value: number, min: number, size: number) {
   return Math.min(1, Math.max(0, (value - min) / Math.max(size, 0.0001)))
-}
-
-function xyKey(x: number, y: number) {
-  return `${roundNumber(x)}:${roundNumber(y)}`
 }
 
 function stablePositionKey(x: number, y: number, z: number) {
