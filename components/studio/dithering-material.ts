@@ -20,21 +20,12 @@ export type DitheringControls = Readonly<Record<string, DitheringControlValue>>
 
 export const DITHERING_ALGORITHM_IDS = {
   'floyd-steinberg': 0,
-  atkinson: 1,
-  'jarvis-judice-ninke': 2,
-  stucki: 3,
-  burkes: 4,
-  sierra: 5,
-  'sierra-two-row': 6,
-  'sierra-lite': 7,
   'bayer-2x2': 8,
   'bayer-4x4': 9,
   'bayer-8x8': 10,
   'bayer-16x16': 11,
   'clustered-dot': 14,
-  'blue-noise': 17,
   'interleaved-gradient': 19,
-  crosshatch: 20,
 } as const
 
 const DITHERING_COLOR_MODE_IDS = {
@@ -98,13 +89,12 @@ uniform float u_contrast;
 uniform float u_gamma;
 uniform float u_sharpen;
 uniform float u_levels;
-uniform float u_lineWeight;
-uniform float u_lineSpacing;
-uniform float u_layers;
 uniform float u_modulationEnabled;
 uniform float u_modulationType;
 uniform float u_modFrequency;
 uniform float u_modAmplitude;
+uniform float u_modSpeed;
+uniform float u_modDirection;
 uniform float u_colorMode;
 uniform float u_paletteId;
 uniform vec3 u_paletteColors[64];
@@ -137,6 +127,19 @@ float bayerQuadrant(float xBit, float yBit) {
   return xBit < 0.5 ? 3.0 : 1.0;
 }
 
+float bayer2Threshold(vec2 cell) {
+  vec2 wrapped = mod(cell, 2.0);
+  return bayerQuadrant(wrapped.x, wrapped.y) / 4.0;
+}
+
+float bayer4Threshold(vec2 cell) {
+  vec2 wrapped = mod(cell, 4.0);
+  float value =
+    bayerQuadrant(floor(wrapped.x / 2.0), floor(wrapped.y / 2.0)) +
+    4.0 * bayerQuadrant(mod(wrapped.x, 2.0), mod(wrapped.y, 2.0));
+  return value / 16.0;
+}
+
 float bayer8Threshold(vec2 cell) {
   vec2 wrapped = mod(cell, 8.0);
   float value =
@@ -146,8 +149,25 @@ float bayer8Threshold(vec2 cell) {
   return value / 64.0;
 }
 
-float randomThreshold(vec2 pixel, float seed) {
-  return fract(sin(dot(pixel + seed, vec2(12.9898, 78.233))) * 43758.5453);
+float bayer16Threshold(vec2 cell) {
+  vec2 wrapped = mod(cell, 16.0);
+  float value =
+    bayerQuadrant(floor(wrapped.x / 8.0), floor(wrapped.y / 8.0)) +
+    4.0 * bayerQuadrant(mod(floor(wrapped.x / 4.0), 2.0), mod(floor(wrapped.y / 4.0), 2.0)) +
+    16.0 * bayerQuadrant(mod(floor(wrapped.x / 2.0), 2.0), mod(floor(wrapped.y / 2.0), 2.0)) +
+    64.0 * bayerQuadrant(mod(wrapped.x, 2.0), mod(wrapped.y, 2.0));
+  return value / 256.0;
+}
+
+float interleavedGradientThreshold(vec2 pixel) {
+  return fract(52.9829189 * fract(dot(pixel, vec2(0.06711056, 0.00583715))));
+}
+
+float blueNoiseThreshold(vec2 pixel) {
+  float first = interleavedGradientThreshold(pixel);
+  float second = interleavedGradientThreshold(pixel * 1.5 + vec2(17.0, 31.0));
+  float third = interleavedGradientThreshold(pixel * 2.3 + vec2(53.0, 97.0));
+  return fract(first + second * 0.5 + third * 0.25);
 }
 
 vec2 channelOffset(float degrees) {
@@ -223,8 +243,8 @@ float adjustLuminance(float luminance) {
   float contrastFactor = (1.0 + contrast) / (1.0 - contrast * 0.99);
   float adjusted = clamp((brightnessAdjusted - 0.5) * contrastFactor + 0.5, 0.0, 1.0);
   adjusted = pow(adjusted, 1.0 / max(u_gamma, 0.0001));
-  float blackPoint = max(0.0, (u_intensity - 1.0) * 0.5);
-  float whitePoint = min(1.0, 1.0 + (u_intensity - 1.0) * 0.5);
+  float blackPoint = max(0.0, (1.0 - u_intensity) * 0.5);
+  float whitePoint = min(1.0, 1.0 + (1.0 - u_intensity) * 0.5);
   return clamp((adjusted - blackPoint) / max(whitePoint - blackPoint, 0.001), 0.0, 1.0);
 }
 
@@ -233,66 +253,79 @@ float applyModulation(float luminance, vec2 pixel) {
     return luminance;
   }
   vec2 normalized = pixel / max(u_resolution, vec2(1.0));
-  float frequency = max(u_modFrequency, 0.0001);
-  float signal = sin(normalized.x * frequency * 6.2831853);
+  float frequency = max(u_modFrequency, 0.0);
+  float phase = u_time * u_modSpeed * u_modDirection;
+  float signal = sin(normalized.x * frequency * 6.2831853 + phase);
   if (u_modulationType > 0.5 && u_modulationType < 1.5) {
-    signal = sin(normalized.x * frequency * 6.2831853) * sin(normalized.y * frequency * 6.2831853);
+    signal = sin(normalized.x * frequency * 6.2831853 + phase) * sin(normalized.y * frequency * 6.2831853 + phase);
   } else if (u_modulationType > 1.5 && u_modulationType < 2.5) {
-    signal = sin(length(normalized - 0.5) * frequency * 12.5663706);
+    signal = sin(length(normalized - 0.5) * frequency * 12.5663706 + phase);
   } else if (u_modulationType > 2.5 && u_modulationType < 3.5) {
-    signal = sin(normalized.y * frequency * 6.2831853);
+    signal = sin(normalized.y * frequency * 6.2831853 + phase);
   } else if (u_modulationType > 3.5) {
-    signal = sin((normalized.x - normalized.y) * frequency * 6.2831853);
+    signal = sin((normalized.x - normalized.y) * frequency * 6.2831853 + phase);
   }
   return clamp(luminance + signal * u_modAmplitude * 0.1, 0.0, 1.0);
 }
 
-float crosshatch(float luminance, vec2 pixel) {
-  float spacing = max(u_lineSpacing, 1.0);
-  float lineWidth = max(u_lineWeight, 0.01);
-  float ink = 0.0;
-  for (int layer = 0; layer < 4; layer++) {
-    if (float(layer) >= u_layers) {
-      continue;
-    }
-    float angle = 0.78539816 + float(layer) * 1.5707963;
-    vec2 direction = vec2(cos(angle), sin(angle));
-    float line = abs(fract(dot(pixel, direction) / spacing) - 0.5);
-    float layerGate = 1.0 - float(layer + 1) / max(u_layers + 1.0, 2.0);
-    ink = max(ink, step(line, lineWidth * 0.08) * step(luminance, layerGate));
-  }
-  return 1.0 - ink;
-}
-
-float applyDitheringAlgorithm(float luminance, vec2 ditherCell) {
+float ditheringThreshold(vec2 ditherCell) {
   float threshold = bayer8Threshold(ditherCell);
-  if (u_algorithm < 8.0) {
-    threshold = randomThreshold(ditherCell, u_algorithm * 17.0) * 0.75 + 0.125;
+  if (abs(u_algorithm - 0.0) < 0.5) {
+    threshold = 0.5 + (blueNoiseThreshold(ditherCell * u_matrixSize) - 0.5) * 0.5;
+  } else if (abs(u_algorithm - 8.0) < 0.5) {
+    threshold = bayer2Threshold(ditherCell);
+  } else if (abs(u_algorithm - 9.0) < 0.5) {
+    threshold = bayer4Threshold(ditherCell);
+  } else if (abs(u_algorithm - 11.0) < 0.5) {
+    threshold = bayer16Threshold(ditherCell);
   } else if (abs(u_algorithm - 14.0) < 0.5) {
     vec2 centered = fract(ditherCell / 4.0) - 0.5;
     threshold = clamp(length(centered) * 1.4142, 0.0, 1.0);
-  } else if (abs(u_algorithm - 17.0) < 0.5) {
-    threshold = randomThreshold(ditherCell, 71.0);
   } else if (abs(u_algorithm - 19.0) < 0.5) {
-    threshold = fract(52.9829189 * fract(dot(ditherCell, vec2(0.06711056, 0.00583715))));
-  } else if (abs(u_algorithm - 20.0) < 0.5) {
-    return crosshatch(luminance, ditherCell * u_matrixSize);
+    threshold = interleavedGradientThreshold(ditherCell * u_matrixSize);
   }
-  return step(threshold, luminance);
+  return threshold;
 }
 
-vec3 paletteColor(float luminance) {
-  float paletteIndex = floor(clamp(luminance, 0.0, 0.999999) * max(u_paletteCount, 1.0));
-  vec3 selected = u_paletteColors[0];
+float applyDitheringAlgorithm(float luminance, vec2 ditherCell) {
+  return step(ditheringThreshold(ditherCell), luminance);
+}
+
+vec3 paletteColor(float luminance, float threshold) {
+  vec3 lowerColor = u_paletteColors[0];
+  vec3 upperColor = u_paletteColors[0];
+  float lowerLuminance = -1.0;
+  float upperLuminance = 2.0;
   for (int index = 0; index < 64; index++) {
-    if (float(index) < u_paletteCount && abs(float(index) - paletteIndex) < 0.5) {
-      selected = u_paletteColors[index];
+    if (float(index) < u_paletteCount) {
+      vec3 candidate = u_paletteColors[index];
+      float candidateLuminance = dot(candidate, vec3(0.299, 0.587, 0.114));
+      if (abs(candidateLuminance - luminance) < 0.000001) {
+        return candidate;
+      }
+      if (candidateLuminance < luminance && candidateLuminance > lowerLuminance) {
+        lowerColor = candidate;
+        lowerLuminance = candidateLuminance;
+      }
+      if (candidateLuminance > luminance && candidateLuminance < upperLuminance) {
+        upperColor = candidate;
+        upperLuminance = candidateLuminance;
+      }
     }
   }
-  return selected;
+  if (lowerLuminance < 0.0) return upperColor;
+  if (upperLuminance > 1.0) return lowerColor;
+  float blend = (luminance - lowerLuminance) / (upperLuminance - lowerLuminance);
+  return threshold < blend ? upperColor : lowerColor;
 }
 
-vec3 applyColorMode(vec3 sourceColor, float luminance, float dithered, vec2 ditherCell) {
+vec3 applyColorMode(
+  vec3 sourceColor,
+  float luminance,
+  float dithered,
+  float paletteThreshold,
+  vec2 ditherCell
+) {
   if (u_colorMode < 0.5) {
     return mix(u_background, u_foreground, dithered);
   }
@@ -301,7 +334,7 @@ vec3 applyColorMode(vec3 sourceColor, float luminance, float dithered, vec2 dith
     return mix(u_background, u_foreground, clamp(tonal, 0.0, 1.0));
   }
   if (u_colorMode < 2.5) {
-    return paletteColor(luminance);
+    return paletteColor(luminance, paletteThreshold);
   }
   if (u_colorMode < 3.5) {
     float depth = max(u_colorDepth - 1.0, 1.0);
@@ -322,8 +355,11 @@ void main() {
   vec3 sourceColor = sampleSharpenedSource(sourceUv);
   float luminance = adjustLuminance(dot(sourceColor, vec3(0.299, 0.587, 0.114)));
   luminance = applyModulation(luminance, visualPixel);
+  float threshold = ditheringThreshold(ditherCell);
   float dithered = applyDitheringAlgorithm(luminance, ditherCell);
-  vec3 color = applyColorMode(sourceColor, luminance, dithered, ditherCell);
+  bool adaptiveAlgorithm = abs(u_algorithm - 14.0) < 0.5;
+  float paletteThreshold = adaptiveAlgorithm ? 1.0 - dithered : threshold;
+  vec3 color = applyColorMode(sourceColor, luminance, dithered, paletteThreshold, ditherCell);
   color = applySharedProcessing(color, luminance);
   color = applySharedPostProcessing(color, luminance, v_uv);
   gl_FragColor = vec4(color, 1.0);
@@ -345,14 +381,13 @@ export function createDitheringShaderMaterial({
       u_gamma: { value: 1 },
       u_intensity: { value: 1 },
       u_levels: { value: 2 },
-      u_lineWeight: { value: 0.5 },
-      u_lineSpacing: { value: 10 },
-      u_layers: { value: 2 },
       u_matrixSize: { value: 4 },
       u_modulationEnabled: { value: 0 },
       u_modulationType: { value: 0 },
-      u_modFrequency: { value: 5 },
-      u_modAmplitude: { value: 0.1 },
+      u_modFrequency: { value: 10 },
+      u_modAmplitude: { value: 3 },
+      u_modSpeed: { value: 1 },
+      u_modDirection: { value: 1 },
       u_sharpen: { value: 0 },
       u_colorMode: { value: 0 },
       u_paletteId: { value: 0 },
@@ -400,17 +435,17 @@ export function applyDitheringUniforms(
   material.uniforms.u_intensity.value = readNumber(controls.intensity, 1)
   material.uniforms.u_levels.value = readNumber(controls.levels, 2)
   material.uniforms.u_matrixSize.value = readMatrixSize(controls['matrix-size'])
-  material.uniforms.u_lineWeight.value = readNumber(controls['line-weight'], 0.5)
-  material.uniforms.u_lineSpacing.value = readNumber(controls['line-spacing'], 10)
-  material.uniforms.u_layers.value = readNumber(controls.layers, 2)
   material.uniforms.u_modulationEnabled.value = readBoolean(controls.modulation)
   material.uniforms.u_modulationType.value = readId(
     controls['mod-type'],
     DITHERING_MODULATION_TYPE_IDS,
     'wave',
   )
-  material.uniforms.u_modFrequency.value = readNumber(controls['mod-frequency'], 5)
-  material.uniforms.u_modAmplitude.value = readNumber(controls['mod-amplitude'], 0.1)
+  material.uniforms.u_modFrequency.value = readNumber(controls['mod-frequency'], 10)
+  material.uniforms.u_modAmplitude.value = readNumber(controls['mod-amplitude'], 3)
+  const modulationType = readString(controls['mod-type'], 'wave')
+  material.uniforms.u_modSpeed.value = readNumber(controls['mod-speed'], 1)
+  material.uniforms.u_modDirection.value = resolveModulationDirection(controls, modulationType)
   material.uniforms.u_brightness.value = readNumber(controls.brightness, 0)
   material.uniforms.u_contrast.value = readNumber(controls.contrast, 0)
   material.uniforms.u_gamma.value = readNumber(controls.gamma, 1)
@@ -451,6 +486,33 @@ export function applyDitheringUniforms(
   material.uniforms.u_vignette.value = readBoolean(controls.vignette)
   material.uniforms.u_crtCurve.value = readBoolean(controls['crt-curve'])
   material.uniforms.u_phosphor.value = readBoolean(controls.phosphor)
+}
+
+const MODULATION_DIRECTION_CONTROLS: Record<
+  string,
+  { id: string; fallback: string; negative: string; positive: string }
+> = {
+  wave: { id: 'mod-wave-direction', fallback: 'left', negative: 'right', positive: 'left' },
+  grid: { id: 'mod-grid-direction', fallback: 'down-left', negative: 'up-right', positive: 'down-left' },
+  radial: { id: 'mod-radial-direction', fallback: 'outward', negative: 'outward', positive: 'inward' },
+  horizontal: { id: 'mod-horizontal-direction', fallback: 'down', negative: 'up', positive: 'down' },
+  'rgb-split': { id: 'mod-rgb-split-direction', fallback: 'up-left', negative: 'down-right', positive: 'up-left' },
+}
+
+function resolveModulationDirection(
+  controls: DitheringControls,
+  modulationType: string,
+) {
+  const directionControl = MODULATION_DIRECTION_CONTROLS[modulationType]
+    ?? MODULATION_DIRECTION_CONTROLS.wave
+  const direction = readString(controls[directionControl.id], directionControl.fallback)
+
+  const resolvedDirection = direction === directionControl.negative
+    || direction === directionControl.positive
+    ? direction
+    : directionControl.fallback
+
+  return resolvedDirection === directionControl.negative ? -1 : 1
 }
 
 function readMatrixSize(value: DitheringControlValue | undefined) {

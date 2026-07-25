@@ -35,6 +35,11 @@ import {
   type StudioEffectId,
   type StudioSettingGroup,
 } from '@/components/studio/studio-effects'
+import {
+  applyPixelSortColorPreset,
+  PIXEL_SORT_COLOR_PRESET_OPTIONS,
+  type PixelSortColorPresetId,
+} from '@/components/studio/pixel-sort-color-presets'
 import classes from './StudioShell.module.css'
 
 type StudioRightPanelProps = {
@@ -440,8 +445,26 @@ function renderEffectSettings({
             </button>
           ) : undefined}
         >
+          {selectedEffectId === 'pixel-sort' && group.title === 'Color' ? (
+            <TerminalDropdownRow
+              label="Preset"
+              value={readPixelSortColorPreset(controls)}
+              options={[...PIXEL_SORT_COLOR_PRESET_OPTIONS]}
+              onChange={(presetId: PixelSortColorPresetId) => {
+                onChange(selectedEffectId, 'color-preset', presetId)
+                applyPixelSortColorPreset(presetId, theme, (controlId, value) => {
+                  onChange(selectedEffectId, controlId, value)
+                })
+              }}
+            />
+          ) : null}
           {group.controls
-            .filter((control) => isStudioControlVisible(control, controls))
+            .filter((control) => (
+              isStudioControlVisible(control, controls)
+              && !(selectedEffectId === 'pixel-sort'
+                && group.title === 'Color'
+                && control.id === 'color-preset')
+            ))
             .map((control) => renderEffectControl({
               selectedEffectId,
               control,
@@ -634,6 +657,16 @@ function readStringControl(
   const value = controls?.[controlId]
 
   return typeof value === 'string' ? value : fallback
+}
+
+function readPixelSortColorPreset(
+  controls: Record<string, StudioControlValue> | undefined,
+): PixelSortColorPresetId {
+  const value = readStringControl(controls, 'color-preset', 'default')
+
+  return PIXEL_SORT_COLOR_PRESET_OPTIONS.some((option) => option.value === value)
+    ? value as PixelSortColorPresetId
+    : 'default'
 }
 
 function formatControlValue(value: number, unit?: string) {

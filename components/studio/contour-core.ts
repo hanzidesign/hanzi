@@ -6,7 +6,6 @@ export type ContourSettings = Readonly<{
   levels: number
   lineThickness: number
   fillMode: ContourFillMode
-  invert: boolean
   brightness: number
   contrast: number
   colorMode: ContourColorMode
@@ -32,7 +31,6 @@ export const DEFAULT_CONTOUR_SETTINGS: ContourSettings = {
   levels: 8,
   lineThickness: 1,
   fillMode: 'filled',
-  invert: false,
   brightness: 0,
   contrast: 0,
   colorMode: 'original',
@@ -63,12 +61,7 @@ export function renderContourReference({
         settings.brightness,
         settings.contrast,
       )
-      const rawCenterBrightness = luminance(color)
-      const centerBrightness = settings.invert
-        ? 1 - rawCenterBrightness
-        : rawCenterBrightness
-
-      // Studio's production shader does not invert these four neighbors.
+      const centerBrightness = luminance(color)
       const left = sampleBrightness(rgb, width, height, u - sampleOffsetX, v, settings)
       const right = sampleBrightness(rgb, width, height, u + sampleOffsetX, v, settings)
       const top = sampleBrightness(rgb, width, height, u, v - sampleOffsetY, settings)
@@ -231,9 +224,6 @@ function assertSettings(settings: ContourSettings) {
   assertRange('lineThickness', settings.lineThickness, 0.5, 3)
   assertRange('brightness', settings.brightness, -100, 100)
   assertRange('contrast', settings.contrast, -100, 100)
-  if (typeof settings.invert !== 'boolean') {
-    throw new TypeError('Contour invert must be boolean')
-  }
   assertColor('lineColor', settings.lineColor)
   assertColor('background', settings.background)
 }

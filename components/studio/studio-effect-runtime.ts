@@ -111,6 +111,7 @@ const SHARED_POST_CONTROL_IDS = [
 ]
 
 export const PIXEL_SORT_DEDICATED_CONTROL_IDS = [
+  'color-preset',
   'start-color',
   'middle-color',
   'end-color',
@@ -147,13 +148,16 @@ const EFFECT_CONTROL_IDS: Record<StudioEffectId, string[]> = {
     'intensity',
     'levels',
     'matrix-size',
-    'line-weight',
-    'line-spacing',
-    'layers',
     'modulation',
     'mod-type',
+    'mod-wave-direction',
+    'mod-grid-direction',
+    'mod-radial-direction',
+    'mod-horizontal-direction',
+    'mod-rgb-split-direction',
     'mod-frequency',
     'mod-amplitude',
+    'mod-speed',
     'brightness',
     'contrast',
     'gamma',
@@ -215,7 +219,6 @@ const EFFECT_CONTROL_IDS: Record<StudioEffectId, string[]> = {
     'fill-mode',
     'levels',
     'line-thickness',
-    'invert',
     'brightness',
     'contrast',
     'color-mode',
@@ -336,21 +339,12 @@ const EFFECT_CONTROL_IDS: Record<StudioEffectId, string[]> = {
 
 const DITHERING_ALGORITHM_IDS: Record<string, number> = {
   'floyd-steinberg': 0,
-  atkinson: 1,
-  'jarvis-judice-ninke': 2,
-  stucki: 3,
-  burkes: 4,
-  sierra: 5,
-  'sierra-two-row': 6,
-  'sierra-lite': 7,
   'bayer-2x2': 8,
   'bayer-4x4': 9,
   'bayer-8x8': 10,
   'bayer-16x16': 11,
   'clustered-dot': 14,
-  'blue-noise': 17,
   'interleaved-gradient': 19,
-  crosshatch: 20,
 }
 
 const DITHERING_MATRIX_SIZES: Record<string, number> = {
@@ -358,6 +352,43 @@ const DITHERING_MATRIX_SIZES: Record<string, number> = {
   '4': 4,
   '8': 8,
   '16': 16,
+}
+
+const DITHERING_MODULATION_DIRECTION_IDS: Record<string, string> = {
+  wave: 'mod-wave-direction',
+  grid: 'mod-grid-direction',
+  radial: 'mod-radial-direction',
+  horizontal: 'mod-horizontal-direction',
+  'rgb-split': 'mod-rgb-split-direction',
+}
+
+const DITHERING_MODULATION_DIRECTION_DEFAULTS: Record<string, string> = {
+  wave: 'left',
+  grid: 'down-left',
+  radial: 'outward',
+  horizontal: 'down',
+  'rgb-split': 'up-left',
+}
+
+const DITHERING_MODULATION_DIRECTIONS: Record<string, string[]> = {
+  wave: ['left', 'right'],
+  grid: ['down-left', 'up-right'],
+  radial: ['outward', 'inward'],
+  horizontal: ['down', 'up'],
+  'rgb-split': ['up-left', 'down-right'],
+}
+
+const DITHERING_MODULATION_DIRECTION_SIGNS: Record<string, number> = {
+  left: 1,
+  right: -1,
+  'down-left': 1,
+  'up-right': -1,
+  inward: 1,
+  outward: -1,
+  down: 1,
+  up: -1,
+  'up-left': 1,
+  'down-right': -1,
 }
 
 const HALFTONE_SHAPE_IDS: Record<string, number> = {
@@ -529,12 +560,15 @@ export function compileStudioEffectRuntime({
       effectValues[12] = read.number('green-channel', 50) / 360
       effectValues[13] = read.number('blue-channel', 80) / 360
       effectValues[14] = read.number('levels', 2)
-      effectValues[15] = read.number('line-weight', 0.5)
-      effectValues[16] = read.number('line-spacing', 10)
-      effectValues[17] = read.number('layers', 2)
+      effectValues[15] = read.number('mod-speed', 1)
+      effectValues[16] = resolveDitheringModulationDirection(
+        read.text('mod-type', 'wave'),
+        read.text,
+      )
+      effectValues[17] = 0
       effectValues[18] = read.select('mod-type')
-      effectValues[19] = read.number('mod-frequency', 5)
-      effectValues[20] = read.number('mod-amplitude', 0.1)
+      effectValues[19] = read.number('mod-frequency', 10)
+      effectValues[20] = read.number('mod-amplitude', 3)
       effectValues[21] = read.select('palette')
       effectValues[22] = read.number('color-depth', 2)
       effectValues[23] = hashText(read.text('custom-palette', '')) / 997
@@ -593,7 +627,6 @@ export function compileStudioEffectRuntime({
       effectValues[0] = CONTOUR_FILL_MODE_IDS[read.text('fill-mode', 'filled')] ?? 0
       effectValues[1] = read.number('levels', 8)
       effectValues[2] = read.number('line-thickness', 1)
-      effectValues[3] = read.boolean('invert')
       effectValues[4] = read.number('brightness', 0) / 100
       effectValues[5] = read.number('contrast', 0) / 100
       effectValues[6] = CONTOUR_COLOR_MODE_IDS[read.text('color-mode', 'mono')] ?? 2
@@ -604,7 +637,7 @@ export function compileStudioEffectRuntime({
       effectValues[0] = PIXEL_SORT_DIRECTION_IDS[read.text('direction', 'horizontal')] ?? 0
       effectValues[1] = PIXEL_SORT_MODE_IDS[read.text('sort-mode', 'depth')] ?? 4
       effectValues[2] = read.number('threshold', 0.25)
-      effectValues[3] = read.number('streak-length', 500)
+      effectValues[3] = read.number('streak-length', 600)
       effectValues[4] = read.number('intensity', 1)
       effectValues[5] = read.number('randomness', 0.5)
       effectValues[6] = read.boolean('reverse')
@@ -817,6 +850,25 @@ function createControlReader(controls: Record<string, StudioControlValue> | unde
       return parseHexColor(typeof value === 'string' ? value : fallback)
     },
   }
+}
+
+function resolveDitheringModulationDirection(
+  modulationType: string,
+  readText: (id: string, fallback: string) => string,
+) {
+  const controlId = DITHERING_MODULATION_DIRECTION_IDS[modulationType] ?? DITHERING_MODULATION_DIRECTION_IDS.wave
+  const direction = readText(
+    controlId,
+    DITHERING_MODULATION_DIRECTION_DEFAULTS[modulationType]
+      ?? DITHERING_MODULATION_DIRECTION_DEFAULTS.wave,
+  )
+  const fallback = DITHERING_MODULATION_DIRECTION_DEFAULTS[modulationType]
+    ?? DITHERING_MODULATION_DIRECTION_DEFAULTS.wave
+  const resolvedDirection = DITHERING_MODULATION_DIRECTIONS[modulationType]?.includes(direction)
+    ? direction
+    : fallback
+
+  return DITHERING_MODULATION_DIRECTION_SIGNS[resolvedDirection]
 }
 
 function createValueSlots(count: number) {

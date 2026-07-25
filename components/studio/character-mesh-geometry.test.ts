@@ -2,6 +2,7 @@ import { BufferAttribute, Shape, Vector3 } from 'three'
 import { describe, expect, it } from 'vitest'
 
 import {
+  CHARACTER_MESH_BEVEL_SEGMENTS,
   MIN_CHARACTER_EXTRUSION_DEPTH,
   clampCharacterExtrusionDepth,
   createCharacterMeshGeometries,
@@ -99,15 +100,66 @@ describe('character mesh geometry helpers', () => {
       extrusionDepth: 0.2,
       bevel: 0,
     })
-    const beveled = createCharacterMeshGeometries({
+    const smallBevel = createCharacterMeshGeometries({
+      shapes: [rectangleShape(500, 500)],
+      extrusionDepth: 0.2,
+      bevel: 0.04,
+    })
+    const largeBevel = createCharacterMeshGeometries({
       shapes: [rectangleShape(500, 500)],
       extrusionDepth: 0.2,
       bevel: 0.08,
     })
 
-    expect(beveled.geometries[0].attributes.position.count).toBeGreaterThan(
+    expect(largeBevel.geometries[0].attributes.position.count).toBeGreaterThan(
       flat.geometries[0].attributes.position.count,
     )
+
+    const depthProfile = (result: ReturnType<typeof createCharacterMeshGeometries>) => {
+      const position = result.geometries[0].attributes.position
+      const depthLayers = new Set<number>()
+      for (let index = 0; index < position.count; index += 1) {
+        depthLayers.add(Number(position.getZ(index).toFixed(6)))
+      }
+      const sortedDepthLayers = [...depthLayers].sort((a, b) => a - b)
+      const layerBounds = (depth: number) => {
+        const xy = { minX: Infinity, maxX: -Infinity, minY: Infinity, maxY: -Infinity }
+        for (let index = 0; index < position.count; index += 1) {
+          if (Math.abs(position.getZ(index) - depth) > 1e-6) {
+            continue
+          }
+          xy.minX = Math.min(xy.minX, position.getX(index))
+          xy.maxX = Math.max(xy.maxX, position.getX(index))
+          xy.minY = Math.min(xy.minY, position.getY(index))
+          xy.maxY = Math.max(xy.maxY, position.getY(index))
+        }
+        return xy
+      }
+      const sideSpans = sortedDepthLayers.slice(1, -1).map((depth) => {
+        const bounds = layerBounds(depth)
+        return bounds.maxX - bounds.minX
+      })
+
+      return {
+        depthLayers: sortedDepthLayers,
+        bottomCap: layerBounds(sortedDepthLayers[0]),
+        topCap: layerBounds(sortedDepthLayers.at(-1)!),
+        maxSideSpan: Math.max(...sideSpans),
+      }
+    }
+
+    const flatProfile = depthProfile(flat)
+    const smallProfile = depthProfile(smallBevel)
+    const largeProfile = depthProfile(largeBevel)
+    for (const profile of [flatProfile, smallProfile, largeProfile]) {
+      expect(profile.bottomCap).toEqual({ minX: -1, maxX: 1, minY: -1, maxY: 1 })
+      expect(profile.topCap).toEqual({ minX: -1, maxX: 1, minY: -1, maxY: 1 })
+    }
+
+    expect(CHARACTER_MESH_BEVEL_SEGMENTS).toBe(6)
+    expect(smallProfile.depthLayers.length).toBe(CHARACTER_MESH_BEVEL_SEGMENTS * 2 + 2)
+    expect(largeProfile.depthLayers.length).toBe(CHARACTER_MESH_BEVEL_SEGMENTS * 2 + 2)
+    expect(largeProfile.maxSideSpan).toBeGreaterThan(smallProfile.maxSideSpan)
   })
 
   it('twists the extruded SVG around its Y axis', () => {

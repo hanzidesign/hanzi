@@ -135,7 +135,6 @@ describe('Phase 5F Studio runtime effect compiler', () => {
 
     for (const effect of STUDIO_EFFECTS) {
       const baseControls = defaults[effect.id]
-      const baseSignature = signatureFor(effect.id, baseControls)
 
       for (const control of effect.settingGroups.flatMap((group) => group.controls)) {
         if (
@@ -147,8 +146,10 @@ describe('Phase 5F Studio runtime effect compiler', () => {
               control.id as typeof PIXEL_SORT_DEDICATED_CONTROL_IDS[number],
             )
         ) continue
+        const activeControls = getActiveDitheringDirectionControls(effect.id, control.id, baseControls)
+        const baseSignature = signatureFor(effect.id, activeControls)
         const nextControls = {
-          ...baseControls,
+          ...activeControls,
           [control.id]: changedValueFor(control),
         }
 
@@ -188,8 +189,12 @@ describe('Phase 5F Studio runtime effect compiler', () => {
         .filter((control) => control.kind === 'select')
 
       for (const control of selectControls) {
+        if (effect.id === 'pixel-sort' && control.id === 'color-preset') {
+          continue
+        }
+
         const signatures = control.options.map((option) => signatureFor(effect.id, {
-          ...defaults[effect.id],
+          ...getActiveDitheringDirectionControls(effect.id, control.id, defaults[effect.id]),
           [control.id]: option.value,
         }))
 
@@ -294,8 +299,8 @@ describe('Phase 5F Studio runtime effect compiler', () => {
     }).effectValues[0]).toBe(10)
     expect(compileStudioEffectRuntime({
       selectedEffectId: 'dithering',
-      controls: { ...defaults, algorithm: 'crosshatch' },
-    }).effectValues[0]).toBe(20)
+      controls: { ...defaults, algorithm: 'clustered-dot' },
+    }).effectValues[0]).toBe(14)
   })
 
   it('keeps Dithering matrix size in source-pixel units', () => {
@@ -309,6 +314,59 @@ describe('Phase 5F Studio runtime effect compiler', () => {
       selectedEffectId: 'dithering',
       controls: { ...defaults, 'matrix-size': '16' },
     }).effectValues[2]).toBe(16)
+  })
+
+  it('uses the Dithering modulation defaults at the runtime fallback seam', () => {
+    const runtime = compileStudioEffectRuntime({
+      selectedEffectId: 'dithering',
+      controls: {},
+    })
+
+    expect(runtime.effectValues.slice(15, 24)).toEqual([
+      1,
+      1,
+      0,
+      0,
+      10,
+      3,
+      0,
+      2,
+      0,
+    ])
+  })
+
+  it('packs Dithering Mod Speed and the active destination Direction', () => {
+    const defaults = createDefaultStudioEffectControls().dithering
+    const cases = [
+      ['wave', 'mod-wave-direction', 'left', 'right'],
+      ['grid', 'mod-grid-direction', 'down-left', 'up-right'],
+      ['radial', 'mod-radial-direction', 'inward', 'outward'],
+      ['horizontal', 'mod-horizontal-direction', 'down', 'up'],
+      ['rgb-split', 'mod-rgb-split-direction', 'up-left', 'down-right'],
+    ] as const
+
+    for (const [type, controlId, positive, negative] of cases) {
+      const positiveRuntime = compileStudioEffectRuntime({
+        selectedEffectId: 'dithering',
+        controls: { ...defaults, 'mod-type': type, 'mod-speed': 50, [controlId]: positive },
+      })
+      const negativeRuntime = compileStudioEffectRuntime({
+        selectedEffectId: 'dithering',
+        controls: { ...defaults, 'mod-type': type, [controlId]: negative },
+      })
+
+      expect(positiveRuntime.effectValues.slice(15, 18)).toEqual([50, 1, 0])
+      expect(negativeRuntime.effectValues[16]).toBe(-1)
+    }
+
+    expect(compileStudioEffectRuntime({
+      selectedEffectId: 'dithering',
+      controls: { 'mod-type': 'radial' },
+    }).effectValues[16]).toBe(-1)
+    expect(compileStudioEffectRuntime({
+      selectedEffectId: 'dithering',
+      controls: { 'mod-type': 'radial', 'mod-radial-direction': 'sideways' },
+    }).effectValues[16]).toBe(-1)
   })
 
   it('keeps Halftone values in the renderer units verified from Studio', () => {
@@ -435,7 +493,7 @@ describe('Phase 5F Studio runtime effect compiler', () => {
     expect(runtime.effectColorB).toEqual([0xab / 255, 0xcd / 255, 0xef / 255])
   })
 
-  it('packs Contour controls in the exact production uniform units and ids', () => {
+  it('packs Contour controls without the removed effect-local Invert slot', () => {
     const defaults = createDefaultStudioEffectControls().contour
     const runtime = compileStudioEffectRuntime({
       selectedEffectId: 'contour',
@@ -457,7 +515,7 @@ describe('Phase 5F Studio runtime effect compiler', () => {
       1,
       17,
       2.25,
-      1,
+      0,
       0.4,
       -0.25,
       2,
@@ -515,7 +573,7 @@ describe('Phase 5F Studio runtime effect compiler', () => {
     expect(compileStudioEffectRuntime({
       selectedEffectId: 'pixel-sort',
       controls: {},
-    }).effectValues[3]).toBe(500)
+    }).effectValues[3]).toBe(600)
     expect(compileStudioEffectRuntime({
       selectedEffectId: 'pixel-sort',
       controls: {},
@@ -853,4 +911,27 @@ function changedValueFor(control: StudioEffectControl): StudioControlValue {
   }
 
   return control.defaultValue.toLowerCase() === '#123456' ? '#654321' : '#123456'
+}
+
+function getActiveDitheringDirectionControls(
+  effectId: StudioEffectId,
+  controlId: string,
+  controls: Record<string, StudioControlValue>,
+) {
+  if (effectId !== 'dithering') {
+    return controls
+  }
+
+  const modulationTypeByControlId: Record<string, string> = {
+    'mod-wave-direction': 'wave',
+    'mod-grid-direction': 'grid',
+    'mod-radial-direction': 'radial',
+    'mod-horizontal-direction': 'horizontal',
+    'mod-rgb-split-direction': 'rgb-split',
+  }
+  const modulationType = modulationTypeByControlId[controlId]
+
+  return modulationType
+    ? { ...controls, modulation: true, 'mod-type': modulationType }
+    : controls
 }

@@ -25,6 +25,7 @@ describe('Studio Pixel Sort schema', () => {
       'reverse',
       'brightness',
       'contrast',
+      'color-preset',
       'start-color',
       'middle-color',
       'end-color',
@@ -61,12 +62,29 @@ describe('Studio Pixel Sort schema', () => {
       ],
     })
     expect(controls.threshold).toMatchObject({ defaultValue: 0.25, min: 0, max: 0.5, step: 0.05 })
-    expect(controls['streak-length']).toMatchObject({ defaultValue: 500, min: 1, max: 2000, step: 1 })
+    expect(controls['streak-length']).toMatchObject({ defaultValue: 600, min: 1, max: 2000, step: 1 })
     expect(controls.intensity).toMatchObject({ defaultValue: 1, min: 0, max: 2, step: 0.05 })
     expect(controls.randomness).toMatchObject({ defaultValue: 0.5, min: 0, max: 5, step: 0.1 })
     expect(controls.reverse).toMatchObject({ kind: 'toggle', defaultValue: false })
     expect(controls.brightness).toMatchObject({ defaultValue: 0, min: -100, max: 100, step: 1 })
     expect(controls.contrast).toMatchObject({ defaultValue: 0, min: -100, max: 100, step: 1 })
+    expect(controls['color-preset']).toMatchObject({
+      kind: 'select',
+      label: 'Preset',
+      defaultValue: 'default',
+      options: [
+        { value: 'default', label: 'Default' },
+        { value: 'vaporwave', label: 'Vaporwave' },
+        { value: 'ocean', label: 'Ocean' },
+        { value: 'ember', label: 'Ember' },
+        { value: 'mono', label: 'Mono' },
+        { value: 'aurora', label: 'Aurora' },
+        { value: 'candy', label: 'Candy' },
+        { value: 'forest', label: 'Forest' },
+        { value: 'glacier', label: 'Glacier' },
+        { value: 'matrix', label: 'Matrix' },
+      ],
+    })
     expect(controls.mix).toMatchObject({ defaultValue: 1, min: 0, max: 2, step: 0.05 })
     expect(controls['start-color']).toMatchObject({
       kind: 'color',
@@ -87,12 +105,13 @@ describe('Studio Pixel Sort schema', () => {
       direction: 'horizontal',
       'sort-mode': 'depth',
       threshold: 0.25,
-      'streak-length': 500,
+      'streak-length': 600,
       intensity: 1,
       randomness: 0.5,
       reverse: false,
       brightness: 0,
       contrast: 0,
+      'color-preset': 'default',
       'start-color': '#35115c',
       'middle-color': '#c93472',
       'end-color': '#e6a928',

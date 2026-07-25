@@ -1,4 +1,5 @@
 import { DEFAULT_ASCII_SCALE } from './ascii-cell-metrics'
+import { PIXEL_SORT_COLOR_PRESET_OPTIONS } from './pixel-sort-color-presets'
 
 export type StudioControlValue = string | number | boolean
 
@@ -426,22 +427,13 @@ export const STUDIO_EFFECTS: StudioEffectDefinition[] = [
         title: 'Dithering',
         controls: [
           selectControl('algorithm', 'Algorithm', 'bayer-8x8', [
-            { value: 'floyd-steinberg', label: 'Floyd-Steinberg' },
-            { value: 'atkinson', label: 'Atkinson' },
-            { value: 'jarvis-judice-ninke', label: 'Jarvis-Judice-Ninke' },
-            { value: 'stucki', label: 'Stucki' },
-            { value: 'burkes', label: 'Burkes' },
-            { value: 'sierra', label: 'Sierra' },
-            { value: 'sierra-two-row', label: 'Sierra Two-Row' },
-            { value: 'sierra-lite', label: 'Sierra Lite' },
+            { value: 'floyd-steinberg', label: 'Diffusion' },
             { value: 'bayer-2x2', label: 'Bayer 2x2' },
             { value: 'bayer-4x4', label: 'Bayer 4x4' },
             { value: 'bayer-8x8', label: 'Bayer 8x8' },
             { value: 'bayer-16x16', label: 'Bayer 16x16' },
             { value: 'clustered-dot', label: 'Clustered Dot' },
-            { value: 'blue-noise', label: 'Blue Noise' },
             { value: 'interleaved-gradient', label: 'Interleaved Gradient' },
-            { value: 'crosshatch', label: 'Crosshatch' },
           ]),
           rangeControl('intensity', 'Intensity', 1, 0.1, 2, 0.05),
           rangeControl('levels', 'Levels', 2, 2, 32, 1, undefined, {
@@ -459,21 +451,6 @@ export const STUDIO_EFFECTS: StudioEffectDefinition[] = [
             operator: 'in',
             values: ['bayer-2x2', 'bayer-4x4', 'bayer-8x8', 'bayer-16x16', 'clustered-dot'],
           }),
-          rangeControl('line-weight', 'Line Weight', 0.5, 0.1, 1, 0.05, undefined, {
-            controlId: 'algorithm',
-            operator: 'equals',
-            value: 'crosshatch',
-          }),
-          rangeControl('line-spacing', 'Line Spacing', 10, 1, 50, 1, undefined, {
-            controlId: 'algorithm',
-            operator: 'equals',
-            value: 'crosshatch',
-          }),
-          rangeControl('layers', 'Layers', 2, 1, 4, 1, undefined, {
-            controlId: 'algorithm',
-            operator: 'equals',
-            value: 'crosshatch',
-          }),
           toggleControl('modulation', 'Modulation', false),
           selectControl('mod-type', 'Mod Type', 'wave', [
             { value: 'wave', label: 'Wave' },
@@ -486,12 +463,62 @@ export const STUDIO_EFFECTS: StudioEffectDefinition[] = [
             operator: 'equals',
             value: true,
           }),
-          rangeControl('mod-frequency', 'Mod Frequency', 5, 1, 20, 1, undefined, {
+          selectControl('mod-wave-direction', 'Direction', 'left', [
+            { value: 'left', label: 'Left' },
+            { value: 'right', label: 'Right' },
+          ], {
+            all: [
+              { controlId: 'modulation', operator: 'equals', value: true },
+              { controlId: 'mod-type', operator: 'equals', value: 'wave' },
+            ],
+          }),
+          selectControl('mod-grid-direction', 'Direction', 'down-left', [
+            { value: 'down-left', label: 'Down Left' },
+            { value: 'up-right', label: 'Up Right' },
+          ], {
+            all: [
+              { controlId: 'modulation', operator: 'equals', value: true },
+              { controlId: 'mod-type', operator: 'equals', value: 'grid' },
+            ],
+          }),
+          selectControl('mod-radial-direction', 'Direction', 'outward', [
+            { value: 'outward', label: 'Outward' },
+            { value: 'inward', label: 'Inward' },
+          ], {
+            all: [
+              { controlId: 'modulation', operator: 'equals', value: true },
+              { controlId: 'mod-type', operator: 'equals', value: 'radial' },
+            ],
+          }),
+          selectControl('mod-horizontal-direction', 'Direction', 'down', [
+            { value: 'down', label: 'Down' },
+            { value: 'up', label: 'Up' },
+          ], {
+            all: [
+              { controlId: 'modulation', operator: 'equals', value: true },
+              { controlId: 'mod-type', operator: 'equals', value: 'horizontal' },
+            ],
+          }),
+          selectControl('mod-rgb-split-direction', 'Direction', 'up-left', [
+            { value: 'up-left', label: 'Up Left' },
+            { value: 'down-right', label: 'Down Right' },
+          ], {
+            all: [
+              { controlId: 'modulation', operator: 'equals', value: true },
+              { controlId: 'mod-type', operator: 'equals', value: 'rgb-split' },
+            ],
+          }),
+          rangeControl('mod-frequency', 'Mod Frequency', 10, 0, 100, 1, undefined, {
             controlId: 'modulation',
             operator: 'equals',
             value: true,
           }),
-          rangeControl('mod-amplitude', 'Mod Amplitude', 0.1, 0, 10, 0.1, undefined, {
+          rangeControl('mod-amplitude', 'Mod Amplitude', 3, 0, 10, 0.1, undefined, {
+            controlId: 'modulation',
+            operator: 'equals',
+            value: true,
+          }),
+          rangeControl('mod-speed', 'Mod Speed', 1, 0, 50, 0.1, undefined, {
             controlId: 'modulation',
             operator: 'equals',
             value: true,
@@ -587,7 +614,7 @@ export const STUDIO_EFFECTS: StudioEffectDefinition[] = [
           selectControl('shape', 'Shape', 'circle', [...shapeOptions, { value: 'line', label: 'Line' }]),
           rangeControl('dot-scale', 'Dot Scale', 1, 0.5, 2, 0.1),
           rangeControl('spacing', 'Spacing', 8, 1, 20, 1),
-          rangeControl('angle', 'Angle', 45, 0, 90, 5, '°'),
+          rangeControl('angle', 'Angle', 45, 0, 90, 1, '°'),
           toggleControl('invert', 'Invert', false),
         ],
       },
@@ -722,7 +749,6 @@ export const STUDIO_EFFECTS: StudioEffectDefinition[] = [
           ]),
           rangeControl('levels', 'Levels', 8, 3, 20, 1),
           rangeControl('line-thickness', 'Line Thickness', 1, 0.5, 3, 0.25),
-          toggleControl('invert', 'Invert', false),
         ],
       },
       {
@@ -767,7 +793,7 @@ export const STUDIO_EFFECTS: StudioEffectDefinition[] = [
             { value: 'depth', label: 'Depth' },
           ]),
           rangeControl('threshold', 'Threshold', 0.25, 0, 0.5, 0.05),
-          rangeControl('streak-length', 'Streak Length', 500, 1, 2000, 1),
+          rangeControl('streak-length', 'Streak Length', 600, 1, 2000, 1),
           rangeControl('intensity', 'Intensity', 1, 0, 2, 0.05),
           rangeControl('randomness', 'Randomness', 0.5, 0, 5, 0.1),
           toggleControl('reverse', 'Reverse', false),
@@ -783,6 +809,9 @@ export const STUDIO_EFFECTS: StudioEffectDefinition[] = [
       {
         title: 'Color',
         controls: [
+          selectControl('color-preset', 'Preset', 'default', [
+            ...PIXEL_SORT_COLOR_PRESET_OPTIONS,
+          ]),
           colorControl('start-color', 'Start Color', '#35115c', { light: '#35115c', dark: '#1b0836' }),
           colorControl('middle-color', 'Middle Color', '#c93472', { light: '#c93472', dark: '#ff5a9d' }),
           colorControl('end-color', 'End Color', '#e6a928', { light: '#e6a928', dark: '#ffe08a' }),

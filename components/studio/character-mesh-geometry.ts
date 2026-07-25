@@ -19,6 +19,7 @@ import {
 export const MIN_CHARACTER_EXTRUSION_DEPTH = 0.01
 export const MIN_DISPLACEMENT_SUBDIVISION_LEVEL = 0
 export const MAX_DISPLACEMENT_SUBDIVISION_LEVEL = 2
+export const CHARACTER_MESH_BEVEL_SEGMENTS = 6
 const CHARACTER_GPU_DEFORM_BOUNDS_PADDING = 0.36
 
 export { DEFAULT_CHARACTER_MESH_DEFORM }
@@ -66,7 +67,16 @@ export function createCharacterMeshGeometries({
   const safeDeform = sanitizeCharacterMeshDeformSettings(deform)
   const depth = clampCharacterExtrusionDepth(extrusionDepth)
   const safeBevel = Math.max(0, bevel)
-  const sourceBevelSize = safeBevel * getShapeSpan(shapes) / 2
+  const shapeBounds = getCombinedShapeBounds(shapes)
+  const sourceSize = shapeBounds.getSize(new Vector2())
+  const sourceSpan = Math.max(sourceSize.x, sourceSize.y)
+
+  if (sourceSpan <= 0) {
+    throw new Error('Character SVG contains no drawable SVG area.')
+  }
+
+  const sourceCenter = shapeBounds.getCenter(new Vector2())
+  const sourceBevelSize = safeBevel * sourceSpan / 2
   let geometries: BufferGeometry[] = shapes.map(
     (shape) =>
       new ExtrudeGeometry(shape, {
@@ -75,20 +85,11 @@ export function createCharacterMeshGeometries({
         bevelEnabled: safeBevel > 0,
         bevelSize: sourceBevelSize,
         bevelThickness: Math.min(safeBevel, depth / 2),
-        bevelSegments: 2,
+        bevelSegments: CHARACTER_MESH_BEVEL_SEGMENTS,
       }),
   )
 
   try {
-    const sourceBounds = getCombinedBounds(geometries)
-    const sourceSize = sourceBounds.getSize(new Vector3())
-    const sourceCenter = sourceBounds.getCenter(new Vector3())
-    const sourceSpan = Math.max(sourceSize.x, sourceSize.y)
-
-    if (sourceSpan <= 0) {
-      throw new Error('Character SVG contains no drawable SVG area.')
-    }
-
     const xyScale = sourceSpan / 2
 
     for (const geometry of geometries) {
@@ -535,7 +536,7 @@ function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value))
 }
 
-function getShapeSpan(shapes: Shape[]) {
+function getCombinedShapeBounds(shapes: Shape[]) {
   const bounds = new Box2()
 
   for (const shape of shapes) {
@@ -544,8 +545,7 @@ function getShapeSpan(shapes: Shape[]) {
     }
   }
 
-  const size = bounds.getSize(new Vector2())
-  return Math.max(size.x, size.y, 1)
+  return bounds
 }
 
 export function sanitizeDisplacementSubdivisionLevel(value: number) {
@@ -646,7 +646,7 @@ function assignCharacterMeshUvs(
 
 function normalizeGeometry(
   geometry: BufferGeometry,
-  sourceCenter: Vector3,
+  sourceCenter: Vector2,
   xyScale: number,
   depth: number,
 ) {

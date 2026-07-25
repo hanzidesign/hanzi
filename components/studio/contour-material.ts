@@ -7,7 +7,6 @@ import {
 
 import type { StudioControlValue } from './studio-effects'
 import {
-  readStudioBoolean as readBoolean,
   readStudioEnum as readEnum,
   readStudioNumber as readNumber,
   readStudioString as readString,
@@ -55,7 +54,6 @@ uniform float u_contrast;
 uniform vec3 u_lineColor;
 uniform vec3 u_background;
 uniform float u_colorMode;
-uniform float u_invert;
 varying vec2 v_uv;
 
 float contourLuminance(vec3 color) {
@@ -78,9 +76,6 @@ void main() {
   );
   float sourceLuminance = contourLuminance(adjustedColor);
   float brightness = sourceLuminance;
-  if (u_invert > 0.5) {
-    brightness = 1.0 - brightness;
-  }
 
   float quantized = floor(brightness * u_levels) / u_levels;
   float quantizedBrightness = quantized + 0.5 / u_levels;
@@ -89,11 +84,6 @@ void main() {
   float right = sampleContourBrightness(v_uv + vec2(pixelSize.x, 0.0));
   float top = sampleContourBrightness(v_uv + vec2(0.0, -pixelSize.y));
   float bottom = sampleContourBrightness(v_uv + vec2(0.0, pixelSize.y));
-
-  // Studio production leaves this neighbor-invert block empty. Only the
-  // center brightness above is inverted before comparing quantized bands.
-  if (u_invert > 0.5) {
-  }
 
   float leftQ = floor(left * u_levels);
   float rightQ = floor(right * u_levels);
@@ -141,7 +131,6 @@ export function createContourShaderMaterial({
       u_lineColor: { value: new Color('#000000') },
       u_background: { value: new Color('#ffffff') },
       u_colorMode: { value: CONTOUR_COLOR_MODE_IDS.mono },
-      u_invert: { value: 0 },
     },
     vertexShader: CONTOUR_VERTEX_SHADER,
   })
@@ -170,7 +159,6 @@ export function applyContourUniforms(
     CONTOUR_COLOR_MODE_IDS,
     'mono',
   )
-  material.uniforms.u_invert.value = readBoolean(controls.invert)
 }
 
 export function disposeContourShaderMaterial(material: ShaderMaterial) {

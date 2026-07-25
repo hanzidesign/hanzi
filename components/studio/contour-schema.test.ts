@@ -20,7 +20,6 @@ describe('Studio Contour schema', () => {
       'fill-mode',
       'levels',
       'line-thickness',
-      'invert',
       'brightness',
       'contrast',
       'color-mode',
@@ -45,7 +44,6 @@ describe('Studio Contour schema', () => {
     })
     expect(controls.levels).toMatchObject({ defaultValue: 8, min: 3, max: 20, step: 1 })
     expect(controls['line-thickness']).toMatchObject({ defaultValue: 1, min: 0.5, max: 3, step: 0.25 })
-    expect(controls.invert).toMatchObject({ kind: 'toggle', defaultValue: false })
     expect(controls.brightness).toMatchObject({ defaultValue: 0, min: -100, max: 100, step: 1 })
     expect(controls.contrast).toMatchObject({ defaultValue: 0, min: -100, max: 100, step: 1 })
     expect(controls['color-mode']).toMatchObject({

@@ -41,13 +41,12 @@ describe('Dithering shader material', () => {
       intensity: material.uniforms.u_intensity.value,
       levels: material.uniforms.u_levels.value,
       matrixSize: material.uniforms.u_matrixSize.value,
-      lineWeight: material.uniforms.u_lineWeight.value,
-      lineSpacing: material.uniforms.u_lineSpacing.value,
-      layers: material.uniforms.u_layers.value,
       modulation: material.uniforms.u_modulationEnabled.value,
       modulationType: material.uniforms.u_modulationType.value,
       modulationFrequency: material.uniforms.u_modFrequency.value,
       modulationAmplitude: material.uniforms.u_modAmplitude.value,
+      modulationSpeed: material.uniforms.u_modSpeed.value,
+      modulationDirection: material.uniforms.u_modDirection.value,
       brightness: material.uniforms.u_brightness.value,
       contrast: material.uniforms.u_contrast.value,
       gamma: material.uniforms.u_gamma.value,
@@ -65,13 +64,12 @@ describe('Dithering shader material', () => {
       intensity: 1,
       levels: 2,
       matrixSize: 4,
-      lineWeight: 0.5,
-      lineSpacing: 10,
-      layers: 2,
       modulation: 0,
       modulationType: 0,
-      modulationFrequency: 5,
-      modulationAmplitude: 0.1,
+      modulationFrequency: 10,
+      modulationAmplitude: 3,
+      modulationSpeed: 1,
+      modulationDirection: 1,
       brightness: 0,
       contrast: 0,
       gamma: 1,
@@ -94,7 +92,7 @@ describe('Dithering shader material', () => {
     })
 
     applyDitheringUniforms(material, {
-      algorithm: 'sierra-lite',
+      algorithm: 'floyd-steinberg',
       brightness: 24,
       contrast: -18,
       gamma: 1.35,
@@ -104,23 +102,14 @@ describe('Dithering shader material', () => {
 
     expect(DITHERING_ALGORITHM_IDS).toEqual({
       'floyd-steinberg': 0,
-      atkinson: 1,
-      'jarvis-judice-ninke': 2,
-      stucki: 3,
-      burkes: 4,
-      sierra: 5,
-      'sierra-two-row': 6,
-      'sierra-lite': 7,
       'bayer-2x2': 8,
       'bayer-4x4': 9,
       'bayer-8x8': 10,
       'bayer-16x16': 11,
       'clustered-dot': 14,
-      'blue-noise': 17,
       'interleaved-gradient': 19,
-      crosshatch: 20,
     })
-    expect(material.uniforms.u_algorithm.value).toBe(7)
+    expect(material.uniforms.u_algorithm.value).toBe(0)
     expect(material.uniforms.u_intensity.value).toBe(1.4)
     expect(material.uniforms.u_brightness.value).toBe(24)
     expect(material.uniforms.u_contrast.value).toBe(-18)
@@ -130,7 +119,106 @@ describe('Dithering shader material', () => {
     expect(DITHERING_FRAGMENT_SHADER).toContain('sampleSharpenedSource')
   })
 
-  it('maps every Dithering color, modulation, crosshatch, and chromatic control', () => {
+  it('keeps each remaining algorithm family visually distinct in the GPU threshold path', () => {
+    expect(DITHERING_FRAGMENT_SHADER).toContain('float bayer2Threshold(vec2 cell)')
+    expect(DITHERING_FRAGMENT_SHADER).toContain('float bayer4Threshold(vec2 cell)')
+    expect(DITHERING_FRAGMENT_SHADER).toContain('float bayer16Threshold(vec2 cell)')
+    expect(DITHERING_FRAGMENT_SHADER).toContain('return value / 256.0;')
+    expect(DITHERING_FRAGMENT_SHADER).toContain('float blueNoiseThreshold(vec2 pixel)')
+    expect(DITHERING_FRAGMENT_SHADER).toContain('blueNoiseThreshold(ditherCell * u_matrixSize)')
+    expect(DITHERING_FRAGMENT_SHADER).not.toContain('abs(u_algorithm - 17.0) < 0.5')
+    expect(DITHERING_FRAGMENT_SHADER).toContain('abs(u_algorithm - 8.0) < 0.5')
+    expect(DITHERING_FRAGMENT_SHADER).toContain('abs(u_algorithm - 9.0) < 0.5')
+    expect(DITHERING_FRAGMENT_SHADER).toContain('abs(u_algorithm - 11.0) < 0.5')
+    expect(DITHERING_FRAGMENT_SHADER).not.toContain('errorDiffusionSpread')
+  })
+
+  it('uses the selected algorithm result while dithering palette colors', () => {
+    expect(DITHERING_FRAGMENT_SHADER).toContain(
+      'vec3 paletteColor(float luminance, float threshold)',
+    )
+    expect(DITHERING_FRAGMENT_SHADER).toContain(
+      'float candidateLuminance = dot(candidate, vec3(0.299, 0.587, 0.114));',
+    )
+    expect(DITHERING_FRAGMENT_SHADER).toContain('return candidate;')
+    expect(DITHERING_FRAGMENT_SHADER).toContain(
+      'float blend = (luminance - lowerLuminance) / (upperLuminance - lowerLuminance);',
+    )
+    expect(DITHERING_FRAGMENT_SHADER).toContain('return threshold < blend ? upperColor : lowerColor;')
+    expect(DITHERING_FRAGMENT_SHADER).toContain(
+      'bool adaptiveAlgorithm = abs(u_algorithm - 14.0) < 0.5;',
+    )
+    expect(DITHERING_FRAGMENT_SHADER).toContain(
+      'float paletteThreshold = adaptiveAlgorithm ? 1.0 - dithered : threshold;',
+    )
+    expect(DITHERING_FRAGMENT_SHADER).not.toContain('palettePosition')
+    expect(DITHERING_FRAGMENT_SHADER).toContain('return paletteColor(luminance, paletteThreshold);')
+  })
+
+  it('reverses Intensity black/white points while keeping one neutral', () => {
+    expect(DITHERING_FRAGMENT_SHADER).toContain(
+      'float blackPoint = max(0.0, (1.0 - u_intensity) * 0.5);',
+    )
+    expect(DITHERING_FRAGMENT_SHADER).toContain(
+      'float whitePoint = min(1.0, 1.0 + (1.0 - u_intensity) * 0.5);',
+    )
+    expect(DITHERING_FRAGMENT_SHADER).toContain(
+      'return clamp((adjusted - blackPoint) / max(whitePoint - blackPoint, 0.001), 0.0, 1.0);',
+    )
+    expect(DITHERING_FRAGMENT_SHADER).not.toContain('(u_intensity - 1.0) * 0.5')
+  })
+
+  it('allows zero-frequency modulation as a static shader path', () => {
+    expect(DITHERING_FRAGMENT_SHADER).toContain('float frequency = max(u_modFrequency, 0.0);')
+    expect(DITHERING_FRAGMENT_SHADER).not.toContain('max(u_modFrequency, 0.0001)')
+  })
+
+  it('animates modulation with local Speed and destination Direction', () => {
+    const material = createDitheringShaderMaterial({
+      controls: {},
+      sourceTexture: new DataTexture(),
+    })
+    const cases = [
+      ['wave', 'mod-wave-direction', 'left', 'right'],
+      ['grid', 'mod-grid-direction', 'down-left', 'up-right'],
+      ['radial', 'mod-radial-direction', 'inward', 'outward'],
+      ['horizontal', 'mod-horizontal-direction', 'down', 'up'],
+      ['rgb-split', 'mod-rgb-split-direction', 'up-left', 'down-right'],
+    ] as const
+
+    for (const [type, controlId, positive, negative] of cases) {
+      applyDitheringUniforms(material, {
+        'mod-type': type,
+        'mod-speed': 12.5,
+        [controlId]: positive,
+      })
+      expect(material.uniforms.u_modSpeed.value).toBe(12.5)
+      expect(material.uniforms.u_modDirection.value).toBe(1)
+
+      applyDitheringUniforms(material, {
+        'mod-type': type,
+        [controlId]: negative,
+      })
+      expect(material.uniforms.u_modDirection.value).toBe(-1)
+    }
+
+    applyDitheringUniforms(material, { 'mod-type': 'radial' })
+    expect(material.uniforms.u_modDirection.value).toBe(-1)
+    applyDitheringUniforms(material, {
+      'mod-type': 'radial',
+      'mod-radial-direction': 'sideways',
+    })
+    expect(material.uniforms.u_modDirection.value).toBe(-1)
+
+    expect(DITHERING_FRAGMENT_SHADER).toContain(
+      'float phase = u_time * u_modSpeed * u_modDirection;',
+    )
+    expect(DITHERING_FRAGMENT_SHADER).toContain(
+      'sin(length(normalized - 0.5) * frequency * 12.5663706 + phase)',
+    )
+  })
+
+  it('maps every Dithering color, modulation, and chromatic control', () => {
     const material = createDitheringShaderMaterial({
       controls: {},
       sourceTexture: new DataTexture(),
@@ -145,13 +233,12 @@ describe('Dithering shader material', () => {
       'custom-palette': '#112233, #abcdef, #fedcba',
       'foreground': '#fefefe',
       'green-channel': 120,
-      'layers': 4,
       'levels': 9,
-      'line-spacing': 18,
-      'line-weight': 0.75,
       'max-displace': 14,
       'mod-amplitude': 2.5,
       'mod-frequency': 13,
+      'mod-rgb-split-direction': 'down-right',
+      'mod-speed': 7.5,
       'mod-type': 'rgb-split',
       'modulation': true,
       'palette': 'custom',
@@ -159,13 +246,12 @@ describe('Dithering shader material', () => {
     })
 
     expect(material.uniforms.u_levels.value).toBe(9)
-    expect(material.uniforms.u_lineWeight.value).toBe(0.75)
-    expect(material.uniforms.u_lineSpacing.value).toBe(18)
-    expect(material.uniforms.u_layers.value).toBe(4)
     expect(material.uniforms.u_modulationEnabled.value).toBe(1)
     expect(material.uniforms.u_modulationType.value).toBe(4)
     expect(material.uniforms.u_modFrequency.value).toBe(13)
     expect(material.uniforms.u_modAmplitude.value).toBe(2.5)
+    expect(material.uniforms.u_modSpeed.value).toBe(7.5)
+    expect(material.uniforms.u_modDirection.value).toBe(-1)
     expect(material.uniforms.u_colorMode.value).toBe(2)
     expect(material.uniforms.u_paletteId.value).toBe(11)
     expect(material.uniforms.u_paletteCount.value).toBe(3)

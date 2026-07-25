@@ -475,6 +475,32 @@ describe('Phase 5D Studio terminal Studio store', () => {
     expect(store.getState().studioEffect.controls.ascii['color-mode']).toBe('mono')
   })
 
+  it('resets Dithering modulation controls to their schema defaults', () => {
+    const store = createStudioStore()
+
+    store.getState().setSelectedEffect('dithering')
+    store.getState().setStudioEffectControl('dithering', 'mod-frequency', 0)
+    store.getState().setStudioEffectControl('dithering', 'mod-amplitude', 0)
+    store.getState().setStudioEffectControl('dithering', 'mod-speed', 50)
+    store.getState().setStudioEffectControl('dithering', 'mod-wave-direction', 'right')
+    store.getState().setStudioEffectControl('dithering', 'mod-grid-direction', 'up-right')
+    store.getState().setStudioEffectControl('dithering', 'mod-radial-direction', 'inward')
+    store.getState().setStudioEffectControl('dithering', 'mod-horizontal-direction', 'up')
+    store.getState().setStudioEffectControl('dithering', 'mod-rgb-split-direction', 'down-right')
+    store.getState().resetSelectedEffectControls()
+
+    expect(store.getState().studioEffect.controls.dithering).toMatchObject({
+      'mod-frequency': 10,
+      'mod-amplitude': 3,
+      'mod-speed': 1,
+      'mod-wave-direction': 'left',
+      'mod-grid-direction': 'down-left',
+      'mod-radial-direction': 'outward',
+      'mod-horizontal-direction': 'down',
+      'mod-rgb-split-direction': 'up-left',
+    })
+  })
+
   it('preserves effect-local values and resets only the selected Effect', () => {
     const { storage } = createMemoryStorage()
     const store = createStudioStore(storage)
@@ -558,6 +584,62 @@ describe('Phase 5D Studio terminal Studio store', () => {
     expect(store.getState().studioEffect.controls.dithering).toMatchObject({
       algorithm: base.studioEffect.controls.dithering.algorithm,
       intensity: base.studioEffect.controls.dithering.intensity,
+    })
+  })
+
+  it('sanitizes removed persisted Dithering algorithms to Bayer 8x8', () => {
+    for (const algorithm of ['blue-noise', 'crosshatch']) {
+      const base = createInitialStudioStoreState()
+      const persistedState = {
+        ...base,
+        studioEffect: {
+          ...base.studioEffect,
+          selectedEffectId: 'dithering' as const,
+          controls: {
+            ...base.studioEffect.controls,
+            dithering: {
+              ...base.studioEffect.controls.dithering,
+              algorithm,
+            },
+          },
+        },
+      }
+      const { storage } = createMemoryStorage(JSON.stringify({ state: persistedState, version: 17 }))
+      const store = createStudioStore(storage)
+
+      expect(store.getState().studioEffect.controls.dithering.algorithm).toBe('bayer-8x8')
+    }
+  })
+
+  it('fills missing v17 Dithering motion controls and sanitizes invalid Direction', () => {
+    const base = createInitialStudioStoreState()
+    const legacyDithering: Record<string, string | number | boolean> = {
+      ...base.studioEffect.controls.dithering,
+    }
+    delete legacyDithering['mod-speed']
+    delete legacyDithering['mod-wave-direction']
+    const persistedState = {
+      ...base,
+      studioEffect: {
+        ...base.studioEffect,
+        selectedEffectId: 'dithering' as const,
+        controls: {
+          ...base.studioEffect.controls,
+          dithering: {
+            ...legacyDithering,
+            'mod-type': 'radial',
+            'mod-radial-direction': 'sideways',
+          },
+        },
+      },
+    }
+    const { storage } = createMemoryStorage(JSON.stringify({ state: persistedState, version: 17 }))
+    const store = createStudioStore(storage)
+
+    expect(store.getState().studioEffect.controls.dithering).toMatchObject({
+      'mod-speed': 1,
+      'mod-wave-direction': 'left',
+      'mod-radial-direction': 'outward',
     })
   })
 
@@ -719,7 +801,6 @@ describe('Phase 5D Studio terminal Studio store', () => {
       'fill-mode': 'filled',
       levels: 20,
       'line-thickness': 0.5,
-      invert: false,
       brightness: 100,
       contrast: -100,
       'color-mode': 'mono',
@@ -734,7 +815,6 @@ describe('Phase 5D Studio terminal Studio store', () => {
       'fill-mode': 'filled',
       levels: 8,
       'line-thickness': 1,
-      invert: false,
       brightness: 0,
       contrast: 0,
       'color-mode': 'mono',
@@ -760,6 +840,7 @@ describe('Phase 5D Studio terminal Studio store', () => {
           contour: { ...base.studioEffect.controls.contour, levels: 12 },
           'pixel-sort': {
             ...base.studioEffect.controls['pixel-sort'],
+            'color-preset': 'unknown',
             direction: 'unknown',
             'sort-mode': 'black',
             threshold: 9,
@@ -780,6 +861,7 @@ describe('Phase 5D Studio terminal Studio store', () => {
     const store = createStudioStore(storage)
 
     expect(store.getState().studioEffect.controls['pixel-sort']).toMatchObject({
+      'color-preset': 'default',
       direction: 'horizontal',
       'sort-mode': 'depth',
       threshold: 0.5,
@@ -795,10 +877,11 @@ describe('Phase 5D Studio terminal Studio store', () => {
     store.getState().resetSelectedEffectControls()
 
     expect(store.getState().studioEffect.controls['pixel-sort']).toMatchObject({
+      'color-preset': 'default',
       direction: 'horizontal',
       'sort-mode': 'depth',
       threshold: 0.25,
-      'streak-length': 500,
+      'streak-length': 600,
       intensity: 1,
       randomness: 0.5,
       reverse: false,
@@ -808,6 +891,72 @@ describe('Phase 5D Studio terminal Studio store', () => {
     expect(store.getState().studioEffect.controls.ascii.scale).toBe(9)
     expect(store.getState().studioEffect.controls.contour.levels).toBe(12)
     expect(store.getState().mesh.twist).toBe(65)
+  })
+
+  it('retains Pixel Sort preset selection when a color is edited manually', () => {
+    const base = createInitialStudioStoreState()
+    const { storage } = createMemoryStorage(JSON.stringify({
+      state: base,
+      version: 17,
+    }))
+    const store = createStudioStore(storage)
+
+    store.getState().setSelectedEffect('pixel-sort')
+    store.getState().setStudioEffectControl('pixel-sort', 'color-preset', 'ocean')
+    store.getState().setStudioEffectControl('pixel-sort', 'start-color', '#123456')
+
+    expect(store.getState().studioEffect.controls['pixel-sort']).toMatchObject({
+      'color-preset': 'ocean',
+      'start-color': '#123456',
+    })
+    expect(store.getState().studioEffect.controlsByTheme.dark['pixel-sort']).toMatchObject({
+      'color-preset': 'ocean',
+      'start-color': '#123456',
+    })
+    expect(store.getState().studioEffect.controlsByTheme.light['pixel-sort']).toMatchObject({
+      'color-preset': 'default',
+      'start-color': '#35115c',
+    })
+  })
+
+  it('keeps persisted v17 Pixel Sort streak length 200 without migration', () => {
+    const base = createInitialStudioStoreState()
+    const persistedPixelSort = {
+      ...base.studioEffect.controls['pixel-sort'],
+      'streak-length': 200,
+    }
+    const persistedState = {
+      ...base,
+      studioEffect: {
+        ...base.studioEffect,
+        controls: {
+          ...base.studioEffect.controls,
+          'pixel-sort': persistedPixelSort,
+        },
+        controlsByTheme: {
+          light: {
+            ...base.studioEffect.controlsByTheme.light,
+            'pixel-sort': persistedPixelSort,
+          },
+          dark: {
+            ...base.studioEffect.controlsByTheme.dark,
+            'pixel-sort': persistedPixelSort,
+          },
+        },
+      },
+    }
+    const { storage } = createMemoryStorage(JSON.stringify({
+      state: persistedState,
+      version: 17,
+    }))
+    const store = createStudioStore(storage)
+
+    expect(store.getState().studioEffect.controls['pixel-sort']['streak-length']).toBe(200)
+    expect(store.getState().studioEffect.controlsByTheme.light['pixel-sort']['streak-length']).toBe(200)
+    expect(store.getState().studioEffect.controlsByTheme.dark['pixel-sort']['streak-length']).toBe(200)
+
+    store.getState().toggleStudioTheme()
+    expect(store.getState().studioEffect.controls['pixel-sort']['streak-length']).toBe(200)
   })
 
   it('persists Pixel Sort anti-diagonal and radial directions across themes and reset', () => {

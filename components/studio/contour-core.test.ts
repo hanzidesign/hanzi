@@ -65,21 +65,6 @@ describe('Contour CPU reference', () => {
     expect(pixelAt(far.data, 8, 2, 0)).toEqual([0, 0, 0])
   })
 
-  it('preserves Studio’s Invert bug: center is inverted while neighbors are not', () => {
-    const output = render({
-      height: 4,
-      rgb: solidRgb(4, 4, [64, 64, 64]),
-      settings: { invert: true, lineColor: [255, 0, 0] },
-      width: 4,
-    })
-
-    for (let y = 0; y < 4; y += 1) {
-      for (let x = 0; x < 4; x += 1) {
-        expect(pixelAt(output.data, 4, x, y)).toEqual([255, 0, 0])
-      }
-    }
-  })
-
   it('midpoint-quantizes adjusted RGB independently in Original filled mode', () => {
     const output = render({
       height: 1,
@@ -199,7 +184,6 @@ describe('Contour CPU reference', () => {
       { fillMode: 'lines' },
       { levels: 3 },
       { lineThickness: 3 },
-      { invert: true },
       { brightness: 35 },
       { contrast: 65 },
       { colorMode: 'custom' },

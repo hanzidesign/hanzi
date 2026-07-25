@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  applyAdaptiveIntensity,
   DEFAULT_DITHERING_SETTINGS,
   DITHERING_ALGORITHM_IDS,
   renderDitheringReference,
@@ -94,38 +95,62 @@ describe('Dithering CPU reference', () => {
     expect(output.data[2]).toBe(255)
   })
 
-  it('uses Intensity above one as a black-point floor for ordered methods', () => {
-    const output = renderDitheringReference({
-      grayscale: new Uint8ClampedArray([102]),
-      width: 1,
-      height: 1,
-      settings: {
-        ...DEFAULT_DITHERING_SETTINGS,
-        intensity: 2,
-      },
+  it('increases ordered foreground coverage as Intensity rises around neutral', () => {
+    const coverage = [0.1, 1, 2].map((intensity) => {
+      const output = renderDitheringReference({
+        grayscale: new Uint8ClampedArray(16 * 16).fill(128),
+        width: 16,
+        height: 16,
+        settings: {
+          ...DEFAULT_DITHERING_SETTINGS,
+          algorithm: 'bayer-4x4',
+          intensity,
+          matrixSize: 4,
+        },
+      })
+
+      return output.data.reduce((count, value) => count + (value > 0 ? 1 : 0), 0)
     })
 
-    expect(output.data).toEqual(new Uint8ClampedArray([0]))
+    expect(coverage[0]).toBeLessThan(coverage[1])
+    expect(coverage[1]).toBeLessThan(coverage[2])
+  })
+
+  it('increases single Diffusion foreground coverage as Intensity rises', () => {
+    const coverage = [0.1, 1, 2].map((intensity) => {
+      const output = renderDitheringReference({
+        grayscale: new Uint8ClampedArray(16 * 16).fill(128),
+        width: 16,
+        height: 16,
+        settings: {
+          ...DEFAULT_DITHERING_SETTINGS,
+          algorithm: 'floyd-steinberg',
+          intensity,
+        },
+      })
+
+      return output.data.reduce((count, value) => count + (value > 0 ? 1 : 0), 0)
+    })
+
+    expect(coverage[0]).toBeLessThan(coverage[1])
+    expect(coverage[1]).toBeLessThan(coverage[2])
+  })
+
+  it('keeps adaptive foreground luminance increasing with Intensity', () => {
+    expect(applyAdaptiveIntensity(0.5, 0.1)).toBeCloseTo(0.23)
+    expect(applyAdaptiveIntensity(0.5, 1)).toBeCloseTo(0.5)
+    expect(applyAdaptiveIntensity(0.5, 2)).toBeCloseTo(0.8)
   })
 
   it('owns Studio algorithm ids inside the Dithering effect', () => {
     expect(DITHERING_ALGORITHM_IDS).toEqual({
       'floyd-steinberg': 0,
-      atkinson: 1,
-      'jarvis-judice-ninke': 2,
-      stucki: 3,
-      burkes: 4,
-      sierra: 5,
-      'sierra-two-row': 6,
-      'sierra-lite': 7,
       'bayer-2x2': 8,
       'bayer-4x4': 9,
       'bayer-8x8': 10,
       'bayer-16x16': 11,
       'clustered-dot': 14,
-      'blue-noise': 17,
       'interleaved-gradient': 19,
-      crosshatch: 20,
     })
   })
 
@@ -144,31 +169,9 @@ describe('Dithering CPU reference', () => {
     expect(renderCell('interleaved-gradient', 1, 50)).toBe(255)
   })
 
-  it('combines three interleaved-gradient octaves for blue noise', () => {
-    expect(renderCell('blue-noise', 1, 128)).toBe(0)
-  })
-
-  it('matches Studio spread constants for error-diffusion noise approximations', () => {
-    expect(renderCell('atkinson', 1, 145)).toBe(255)
-    expect(renderCell('sierra-lite', 1, 145)).toBe(0)
-
-    expect(renderCell('sierra-lite', 1, 149)).toBe(255)
+  it('keeps the single Diffusion approximation at the former ID-0 spread', () => {
     expect(renderCell('floyd-steinberg', 1, 149)).toBe(0)
-
     expect(renderCell('floyd-steinberg', 1, 152)).toBe(255)
-    expect(renderCell('sierra-two-row', 1, 152)).toBe(0)
-
-    expect(renderCell('sierra-two-row', 1, 153)).toBe(255)
-    expect(renderCell('burkes', 1, 153)).toBe(0)
-
-    expect(renderCell('burkes', 1, 155)).toBe(255)
-    expect(renderCell('sierra', 1, 155)).toBe(0)
-
-    expect(renderCell('sierra', 1, 156)).toBe(255)
-    expect(renderCell('stucki', 1, 156)).toBe(0)
-
-    expect(renderCell('stucki', 1, 158)).toBe(255)
-    expect(renderCell('jarvis-judice-ninke', 1, 158)).toBe(0)
   })
 
   it('returns an interleaved RGB buffer quantized to the requested depth', () => {
@@ -213,36 +216,6 @@ describe('Dithering CPU reference', () => {
     expect(output.data[2 * 4 + 2]).toBe(255)
   })
 
-  it('draws Crosshatch horizontal lines after the first darkness threshold', () => {
-    const output = renderDitheringReference({
-      grayscale: new Uint8ClampedArray(100),
-      width: 1,
-      height: 100,
-      settings: {
-        ...DEFAULT_DITHERING_SETTINGS,
-        algorithm: 'crosshatch',
-      },
-    })
-
-    expect(output.data[0]).toBe(0)
-    expect(output.data[1]).toBe(255)
-  })
-
-  it('uses Crosshatch Line Weight to control stroke thickness', () => {
-    expect(renderCrosshatchPixel({ lineWeight: 0.1 })).toBe(0)
-    expect(renderCrosshatchPixel({ lineWeight: 1 })).toBe(255)
-  })
-
-  it('uses Crosshatch Line Spacing to position the strokes', () => {
-    expect(renderCrosshatchPixel({ lineSpacing: 5 })).toBe(0)
-    expect(renderCrosshatchPixel({ lineSpacing: 10 })).toBe(255)
-  })
-
-  it('uses Crosshatch Layers to add the 45-degree stroke family', () => {
-    expect(renderCrosshatchAt(7, 0, { layers: 1 })).toBe(0)
-    expect(renderCrosshatchAt(7, 0, { layers: 2 })).toBe(255)
-  })
-
   it('uses Tonal levels to blend between Background and Foreground', () => {
     const output = renderDitheringReference({
       grayscale: new Uint8ClampedArray(4).fill(128),
@@ -281,9 +254,9 @@ describe('Dithering CPU reference', () => {
 
   it('dithers between the two nearest built-in GameBoy colors', () => {
     const output = renderDitheringReference({
-      grayscale: new Uint8ClampedArray(4).fill(128),
-      width: 4,
-      height: 1,
+      grayscale: new Uint8ClampedArray(24).fill(128),
+      width: 8,
+      height: 3,
       settings: {
         ...DEFAULT_DITHERING_SETTINGS,
         colorMode: 'palette',
@@ -292,15 +265,15 @@ describe('Dithering CPU reference', () => {
       },
     })
 
-    expect(Array.from(output.data.slice(0, 3))).toEqual([48, 98, 48])
-    expect(Array.from(output.data.slice(6, 9))).toEqual([139, 172, 15])
+    expect(Array.from(output.data.slice(0, 3))).toEqual([139, 172, 15])
+    expect(Array.from(output.data.slice(60, 63))).toEqual([48, 98, 48])
   })
 
   it('uses Custom Palette colors instead of the built-in palette', () => {
     const output = renderDitheringReference({
-      grayscale: new Uint8ClampedArray(4).fill(128),
+      grayscale: new Uint8ClampedArray(12).fill(128),
       width: 4,
-      height: 1,
+      height: 3,
       settings: {
         ...DEFAULT_DITHERING_SETTINGS,
         colorMode: 'palette',
@@ -311,7 +284,107 @@ describe('Dithering CPU reference', () => {
     })
 
     expect(Array.from(output.data.slice(0, 3))).toEqual([255, 255, 255])
-    expect(Array.from(output.data.slice(6, 9))).toEqual([0, 0, 0])
+    expect(Array.from(output.data.slice(24, 27))).toEqual([0, 0, 0])
+  })
+
+  it('selects higher-luminance Palette colors more often at high Intensity', () => {
+    const countHigherLuminance = (intensity: number) => {
+      const output = renderDitheringReference({
+        grayscale: new Uint8ClampedArray(8 * 8).fill(128),
+        width: 8,
+        height: 8,
+        settings: {
+          ...DEFAULT_DITHERING_SETTINGS,
+          colorMode: 'palette',
+          customPalette: [[0, 0, 0], [255, 255, 255]],
+          intensity,
+          matrixSize: 2,
+          palette: 'custom',
+        },
+      })
+
+      return Array.from(output.data).filter((value, index) => index % 3 === 0 && value > 128).length
+    }
+
+    expect(countHigherLuminance(2)).toBeGreaterThan(countHigherLuminance(1))
+  })
+
+  it('keeps zero-frequency modulation finite and equal to the static output', () => {
+    const grayscale = new Uint8ClampedArray(8 * 8).fill(128)
+    const baseSettings: typeof DEFAULT_DITHERING_SETTINGS = {
+      ...DEFAULT_DITHERING_SETTINGS,
+      matrixSize: 2,
+    }
+    const staticOutput = renderDitheringReference({
+      grayscale,
+      width: 8,
+      height: 8,
+      settings: baseSettings,
+    })
+    const zeroFrequencyOutput = renderDitheringReference({
+      grayscale,
+      width: 8,
+      height: 8,
+      settings: {
+        ...baseSettings,
+        modulation: {
+          ...baseSettings.modulation,
+          amplitude: 3,
+          enabled: true,
+          frequency: 0,
+        },
+      },
+    })
+
+    expect(zeroFrequencyOutput.data).toEqual(staticOutput.data)
+    expect(Array.from(zeroFrequencyOutput.data).every(Number.isFinite)).toBe(true)
+  })
+
+  it('uses local modulation Speed and destination Direction to resolve phase', () => {
+    const grayscale = new Uint8ClampedArray(8 * 8).fill(128)
+    const render = (phase: number, speed: number, direction: 1 | -1) => (
+      renderDitheringReference({
+        grayscale,
+        width: 8,
+        height: 8,
+        settings: {
+          ...DEFAULT_DITHERING_SETTINGS,
+          algorithm: 'bayer-2x2',
+          matrixSize: 2,
+          modulation: {
+            ...DEFAULT_DITHERING_SETTINGS.modulation,
+            amplitude: 1,
+            direction,
+            enabled: true,
+            frequency: 1,
+            phase,
+            speed,
+            type: 'wave',
+          },
+        },
+      }).data
+    )
+
+    expect(render(2, 0, -1)).toEqual(render(0, 1, 1))
+    expect(render(0.75, 2, 1)).not.toEqual(render(0.75, 2, -1))
+  })
+
+  it('keeps an exact tonal match from an unsorted Custom Palette', () => {
+    const output = renderDitheringReference({
+      grayscale: new Uint8ClampedArray([0]),
+      width: 1,
+      height: 1,
+      settings: {
+        ...DEFAULT_DITHERING_SETTINGS,
+        algorithm: 'bayer-2x2',
+        colorMode: 'palette',
+        customPalette: [[255, 255, 255], [0, 0, 0], [128, 128, 128]],
+        matrixSize: 2,
+        palette: 'custom',
+      },
+    })
+
+    expect(Array.from(output.data)).toEqual([0, 0, 0])
   })
 
   it('uses Wave modulation to offset the threshold from horizontal UV', () => {
@@ -324,9 +397,11 @@ describe('Dithering CPU reference', () => {
         matrixSize: 2,
         modulation: {
           amplitude: 1,
+          direction: 1,
           enabled: true,
           frequency: 1,
           phase: 0,
+          speed: 1,
           type: 'wave',
         },
       },
@@ -362,9 +437,11 @@ describe('Dithering CPU reference', () => {
         matrixSize: 2,
         modulation: {
           amplitude: 10,
+          direction: 1,
           enabled: true,
           frequency: 1,
           phase: 0,
+          speed: 1,
           type: 'rgb-split',
         },
       },
@@ -387,9 +464,11 @@ describe('Dithering CPU reference', () => {
         matrixSize: 2,
         modulation: {
           amplitude: 0.1,
+          direction: 1,
           enabled: true,
           frequency: 1,
           phase: 0,
+          speed: 1,
           type: 'wave',
         },
       },
@@ -446,42 +525,6 @@ function renderCell(
   return output.data[cellX * 2]
 }
 
-function renderCrosshatchPixel(
-  settings: Partial<typeof DEFAULT_DITHERING_SETTINGS>,
-) {
-  const output = renderDitheringReference({
-    grayscale: new Uint8ClampedArray(125),
-    width: 1,
-    height: 125,
-    settings: {
-      ...DEFAULT_DITHERING_SETTINGS,
-      ...settings,
-      algorithm: 'crosshatch',
-    },
-  })
-
-  return output.data[1]
-}
-
-function renderCrosshatchAt(
-  x: number,
-  y: number,
-  settings: Partial<typeof DEFAULT_DITHERING_SETTINGS>,
-) {
-  const output = renderDitheringReference({
-    grayscale: new Uint8ClampedArray(100 * 100),
-    width: 100,
-    height: 100,
-    settings: {
-      ...DEFAULT_DITHERING_SETTINGS,
-      ...settings,
-      algorithm: 'crosshatch',
-    },
-  })
-
-  return output.data[y * 100 + x]
-}
-
 function renderModulatedPixel(
   type: 'grid' | 'horizontal' | 'radial',
   x: number,
@@ -496,9 +539,11 @@ function renderModulatedPixel(
       matrixSize: 2,
       modulation: {
         amplitude: 1,
+        direction: 1,
         enabled: true,
         frequency: 1,
         phase: 0,
+        speed: 1,
         type,
       },
     },

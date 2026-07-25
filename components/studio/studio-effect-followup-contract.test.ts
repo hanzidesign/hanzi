@@ -38,17 +38,10 @@ const characterSetOptions = [
 ]
 
 const liveDropdownOptionLabels = [
-  'Atkinson',
-  'Jarvis-Judice-Ninke',
-  'Stucki',
-  'Burkes',
-  'Sierra Two-Row',
-  'Sierra Lite',
+  'Diffusion',
   'Bayer 16x16',
   'Clustered Dot',
-  'Blue Noise',
   'Interleaved Gradient',
-  'Crosshatch',
   '16x16 (Very Fine)',
   'Line',
   'Hexagonal Grid',
@@ -179,6 +172,19 @@ describe('Phase 5D Studio follow-up parity contract', () => {
     for (const optionLabel of liveDropdownOptionLabels) {
       expect(effects).toContain(optionLabel)
     }
+    for (const removedOptionLabel of [
+      'Atkinson',
+      'Jarvis-Judice-Ninke',
+      'Stucki',
+      'Burkes',
+      'Sierra',
+      'Sierra Two-Row',
+      'Sierra Lite',
+    ]) {
+      expect(effects).not.toContain(removedOptionLabel)
+    }
+    expect(effects).not.toContain("{ value: 'blue-noise'")
+    expect(effects).not.toContain("{ value: 'crosshatch', label: 'Crosshatch'")
     expect(rightPanel).toContain('selectedEffectId')
     expect(rightPanel).toContain('renderEffectSettings')
   })

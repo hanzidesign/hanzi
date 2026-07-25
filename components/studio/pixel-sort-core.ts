@@ -74,7 +74,7 @@ export const DEFAULT_PIXEL_SORT_SETTINGS: PixelSortSettings = {
   direction: 'horizontal',
   mode: 'depth',
   threshold: 0.25,
-  streakLength: 500,
+  streakLength: 600,
   intensity: 1,
   randomness: 0.5,
   reverse: false,
@@ -251,15 +251,10 @@ function renderTrailScanline(
       settings.streakLength,
       settings.streakLength * lineFactor * clamp01(accumulatedReach),
     )
-    const foregroundActive = occupied && valid
     const exteriorActive = !occupied && valid && limit > 0 && distance <= limit
-    if (foregroundActive || exteriorActive) {
-      const gradientScale = foregroundActive
-        ? Math.max(settings.streakLength * lineFactor, 1)
-        : Math.max(limit, 1e-12)
-      const gradientPosition = foregroundActive
-        ? (sequence / gradientScale) % 1
-        : distance / gradientScale
+    if (exteriorActive) {
+      const gradientScale = Math.max(limit, 1e-12)
+      const gradientPosition = distance / gradientScale
       const gradient = mapPixelSortGradient(color, gradientPosition, settings)
       const offset = pixelIndex * 4
       const base: PixelSortRgb = [output[offset] / 255, output[offset + 1] / 255, output[offset + 2] / 255]

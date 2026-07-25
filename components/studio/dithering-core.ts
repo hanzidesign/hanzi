@@ -1,20 +1,11 @@
 export const DITHERING_ALGORITHM_IDS = {
   'floyd-steinberg': 0,
-  atkinson: 1,
-  'jarvis-judice-ninke': 2,
-  stucki: 3,
-  burkes: 4,
-  sierra: 5,
-  'sierra-two-row': 6,
-  'sierra-lite': 7,
   'bayer-2x2': 8,
   'bayer-4x4': 9,
   'bayer-8x8': 10,
   'bayer-16x16': 11,
   'clustered-dot': 14,
-  'blue-noise': 17,
   'interleaved-gradient': 19,
-  crosshatch: 20,
 } as const
 
 export type DitheringAlgorithm = keyof typeof DITHERING_ALGORITHM_IDS
@@ -24,9 +15,11 @@ export type DitheringRgb = readonly [number, number, number]
 export type DitheringModulationType = 'wave' | 'grid' | 'horizontal' | 'radial' | 'rgb-split'
 export type DitheringModulation = Readonly<{
   amplitude: number
+  direction: 1 | -1
   enabled: boolean
   frequency: number
   phase: number
+  speed: number
   type: DitheringModulationType
 }>
 export type DitheringChromatic = Readonly<{
@@ -49,9 +42,6 @@ export type DitheringSettings = Readonly<{
   gamma: number
   intensity: number
   levels: number
-  lineSpacing: number
-  lineWeight: number
-  layers: number
   matrixSize: DitheringMatrixSize
   modulation: DitheringModulation
   palette: 'gameboy' | 'custom'
@@ -90,15 +80,14 @@ export const DEFAULT_DITHERING_SETTINGS: DitheringSettings = {
   gamma: 1,
   intensity: 1,
   levels: 2,
-  lineSpacing: 10,
-  lineWeight: 0.5,
-  layers: 2,
   matrixSize: 4,
   modulation: {
-    amplitude: 0.1,
+    amplitude: 3,
+    direction: 1,
     enabled: false,
-    frequency: 5,
+    frequency: 10,
     phase: 0,
+    speed: 1,
     type: 'wave',
   },
   palette: 'gameboy',
@@ -127,17 +116,6 @@ const BAYER_4X4 = [
   3, 11, 1, 9,
   15, 7, 13, 5,
 ] as const
-
-const ERROR_DIFFUSION_SPREAD: Partial<Record<DitheringAlgorithm, number>> = {
-  'floyd-steinberg': 0.5,
-  atkinson: 0.35,
-  'jarvis-judice-ninke': 0.65,
-  stucki: 0.6,
-  burkes: 0.55,
-  sierra: 0.58,
-  'sierra-two-row': 0.52,
-  'sierra-lite': 0.4,
-}
 
 const GAMEBOY_PALETTE: readonly DitheringRgb[] = [
   [15, 56, 15],
@@ -193,27 +171,6 @@ export function renderDitheringReference({
       )
       const cellX = Math.floor(x / settings.matrixSize)
       const cellY = Math.floor(y / settings.matrixSize)
-
-      if (settings.algorithm === 'crosshatch') {
-        const luminance = applyAdaptiveIntensity(adjustedLuminance, settings.intensity)
-        const isForeground = crosshatch(
-          x / width,
-          y / height,
-          luminance,
-          settings,
-        )
-
-        writeAdaptiveOutput(
-          data,
-          y * width + x,
-          channels,
-          isForeground,
-          adjustedLuminance,
-          sourceColor,
-          settings,
-        )
-        continue
-      }
 
       if (settings.algorithm === 'clustered-dot') {
         const luminance = applyAdaptiveIntensity(adjustedLuminance, settings.intensity)
@@ -276,7 +233,7 @@ export function renderDitheringReference({
         writeRgb(data, y * width + x, color)
       } else if (settings.colorMode === 'palette') {
         const thresholdWithIntensity = clamp01(
-          threshold + (settings.intensity - 1) * 0.3,
+          threshold + (1 - settings.intensity) * 0.3,
         )
         const gray = Math.round(adjustedLuminance * 255)
         const color = ditherPalette(
@@ -437,20 +394,21 @@ function getModulationDisplacement(
 ): [number, number] {
   const amplitude = modulation.amplitude * 0.05
   const frequency = modulation.frequency * Math.PI * 2
+  const effectivePhase = modulation.phase * modulation.speed * modulation.direction
 
   if (modulation.type === 'wave') {
-    return [0, Math.sin(u * frequency + modulation.phase) * amplitude]
+    return [0, Math.sin(u * frequency + effectivePhase) * amplitude]
   }
 
   if (modulation.type === 'grid') {
     return [
-      Math.sin(v * frequency + modulation.phase) * amplitude,
-      Math.sin(u * frequency + modulation.phase) * amplitude,
+      Math.sin(v * frequency + effectivePhase) * amplitude,
+      Math.sin(u * frequency + effectivePhase) * amplitude,
     ]
   }
 
   if (modulation.type === 'horizontal') {
-    return [Math.sin(v * frequency + modulation.phase) * amplitude, 0]
+    return [Math.sin(v * frequency + effectivePhase) * amplitude, 0]
   }
 
   if (modulation.type === 'radial') {
@@ -459,7 +417,7 @@ function getModulationDisplacement(
     const distance = Math.hypot(centerX, centerY)
     const directionLength = Math.hypot(centerX + 0.0001, centerY + 0.0001)
     const offset = Math.sin(
-      distance * modulation.frequency * Math.PI * 4 + modulation.phase,
+      distance * modulation.frequency * Math.PI * 4 + effectivePhase,
     ) * amplitude
 
     return [
@@ -488,8 +446,11 @@ function sampleSourceColor(
   }
 
   const amplitude = settings.modulation.amplitude * 0.02
+  const effectivePhase = settings.modulation.phase
+    * settings.modulation.speed
+    * settings.modulation.direction
   const basePhase = y / height * settings.modulation.frequency * Math.PI * 2
-    + settings.modulation.phase
+    + effectivePhase
   const sampleChannel = (phaseOffset: number) => {
     const wave = Math.sin(basePhase + phaseOffset) * amplitude
     const displacedX = Math.floor(
@@ -512,22 +473,24 @@ function getThresholdModulationOffset(
   v: number,
   modulation: DitheringModulation,
 ) {
+  const effectivePhase = modulation.phase * modulation.speed * modulation.direction
+
   if (modulation.type === 'wave') {
     return Math.sin(
-      u * modulation.frequency * Math.PI * 2 + modulation.phase,
+      u * modulation.frequency * Math.PI * 2 + effectivePhase,
     ) * modulation.amplitude
   }
 
   if (modulation.type === 'grid') {
-    const xWave = Math.sin(u * modulation.frequency * Math.PI * 2)
-    const yWave = Math.sin(v * modulation.frequency * Math.PI * 2)
+    const xWave = Math.sin(u * modulation.frequency * Math.PI * 2 + effectivePhase)
+    const yWave = Math.sin(v * modulation.frequency * Math.PI * 2 + effectivePhase)
 
     return xWave * yWave * modulation.amplitude
   }
 
   if (modulation.type === 'horizontal') {
     return Math.sin(
-      v * modulation.frequency * Math.PI * 2 + modulation.phase,
+      v * modulation.frequency * Math.PI * 2 + effectivePhase,
     ) * modulation.amplitude
   }
 
@@ -535,7 +498,7 @@ function getThresholdModulationOffset(
     const distance = Math.hypot(u - 0.5, v - 0.5)
 
     return Math.sin(
-      distance * modulation.frequency * Math.PI * 4 + modulation.phase,
+      distance * modulation.frequency * Math.PI * 4 + effectivePhase,
     ) * modulation.amplitude
   }
 
@@ -548,30 +511,30 @@ function ditherPalette(
   palette: readonly DitheringRgb[],
 ) {
   const usablePalette = palette.length >= 2 ? palette.slice(0, 64) : GAMEBOY_PALETTE
-  const nearest = usablePalette
-    .map((candidate) => ({
-      color: candidate,
-      distance: rgbDistance(color, candidate),
-    }))
-    .sort((left, right) => left.distance - right.distance)
-    .slice(0, 2)
-  const totalDistance = nearest[0].distance + nearest[1].distance
+  const luminance = rgbLuminance(color)
+  let lower: { color: DitheringRgb; luminance: number } | undefined
+  let upper: { color: DitheringRgb; luminance: number } | undefined
 
-  if (totalDistance < 0.001) {
-    return nearest[0].color
+  for (const candidate of usablePalette) {
+    const candidateLuminance = rgbLuminance(candidate)
+    if (Math.abs(candidateLuminance - luminance) < 0.000001) return candidate
+    if (candidateLuminance < luminance && (!lower || candidateLuminance > lower.luminance)) {
+      lower = { color: candidate, luminance: candidateLuminance }
+    }
+    if (candidateLuminance > luminance && (!upper || candidateLuminance < upper.luminance)) {
+      upper = { color: candidate, luminance: candidateLuminance }
+    }
   }
 
-  const blend = nearest[0].distance / totalDistance
+  if (!lower) return upper?.color ?? usablePalette[0]
+  if (!upper) return lower.color
 
-  return threshold < blend ? nearest[0].color : nearest[1].color
+  const blend = (luminance - lower.luminance) / (upper.luminance - lower.luminance)
+  return threshold < blend ? upper.color : lower.color
 }
 
-function rgbDistance(left: DitheringRgb, right: DitheringRgb) {
-  return Math.hypot(
-    left[0] - right[0],
-    left[1] - right[1],
-    left[2] - right[2],
-  )
+function rgbLuminance(color: DitheringRgb) {
+  return (color[0] * 0.299 + color[1] * 0.587 + color[2] * 0.114) / 255
 }
 
 function quantizeTonal(luminance: number, threshold: number, levels: number) {
@@ -620,20 +583,14 @@ function getThreshold(
     return interleavedGradientNoise(pixelX, pixelY)
   }
 
-  if (algorithm === 'blue-noise') {
-    return blueNoise(pixelX, pixelY)
-  }
-
-  const spread = ERROR_DIFFUSION_SPREAD[algorithm]
-
-  if (spread !== undefined) {
-    return 0.5 + (blueNoise(pixelX, pixelY) - 0.5) * spread
+  if (algorithm === 'floyd-steinberg') {
+    return 0.5 + (blueNoise(pixelX, pixelY) - 0.5) * 0.5
   }
 
   return getBayerThreshold(algorithm, cellX, cellY)
 }
 
-function applyAdaptiveIntensity(luminance: number, intensity: number) {
+export function applyAdaptiveIntensity(luminance: number, intensity: number) {
   return clamp01(luminance + (intensity - 1) * 0.3)
 }
 
@@ -645,71 +602,6 @@ function clusteredDot(x: number, y: number, matrixSize: number, luminance: numbe
   const radius = (1 - luminance) * 0.48
 
   return distance < radius
-}
-
-function crosshatch(
-  u: number,
-  v: number,
-  luminance: number,
-  settings: DitheringSettings,
-) {
-  const darkness = 1 - luminance
-
-  if (settings.layers < 1) {
-    return false
-  }
-
-  const scaledU = u * settings.lineSpacing * 5
-  const scaledV = v * settings.lineSpacing * 5
-  const baseThickness = settings.lineWeight * 0.15 * (0.5 + darkness * 1.5)
-
-  if (darkness > 0.15 && lineMatches(scaledV, baseThickness, 0.15, darkness)) {
-    return true
-  }
-
-  if (settings.layers >= 2 && darkness > 0.35) {
-    const rotatedY = scaledU * Math.SQRT1_2 + scaledV * Math.SQRT1_2
-
-    if (lineMatches(rotatedY, baseThickness, 0.35, darkness)) {
-      return true
-    }
-  }
-
-  if (
-    settings.layers >= 3
-    && darkness > 0.55
-    && lineMatches(scaledU, baseThickness, 0.55, darkness)
-  ) {
-    return true
-  }
-
-  if (settings.layers >= 4 && darkness > 0.75) {
-    const rotatedY = -scaledU * Math.SQRT1_2 + scaledV * Math.SQRT1_2
-
-    if (lineMatches(rotatedY, baseThickness, 0.75, darkness)) {
-      return true
-    }
-  }
-
-  return false
-}
-
-function lineMatches(
-  linePosition: number,
-  baseThickness: number,
-  darknessThreshold: number,
-  darkness: number,
-) {
-  const distanceFromLine = Math.abs(fract(linePosition) - 0.5)
-  const strength = smoothstep(darknessThreshold, darknessThreshold + 0.1, darkness)
-
-  return distanceFromLine < baseThickness * strength
-}
-
-function smoothstep(edge0: number, edge1: number, value: number) {
-  const normalized = clamp01((value - edge0) / (edge1 - edge0))
-
-  return normalized * normalized * (3 - 2 * normalized)
 }
 
 function getBayerThreshold(algorithm: DitheringAlgorithm, x: number, y: number) {
@@ -766,8 +658,8 @@ function adjustLuminance(value: number, settings: DitheringSettings) {
 }
 
 function applyOrderedIntensity(luminance: number, intensity: number) {
-  const blackPoint = Math.max(0, (intensity - 1) * 0.5)
-  const whitePoint = Math.min(1, 1 + (intensity - 1) * 0.5)
+  const blackPoint = Math.max(0, (1 - intensity) * 0.5)
+  const whitePoint = Math.min(1, 1 + (1 - intensity) * 0.5)
 
   if (luminance < blackPoint) {
     return 0

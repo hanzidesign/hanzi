@@ -26,7 +26,7 @@ describe('Studio Halftone schema', () => {
     })
     expect(controls['dot-scale']).toMatchObject({ defaultValue: 1, min: 0.5, max: 2, step: 0.1 })
     expect(controls.spacing).toMatchObject({ defaultValue: 8, min: 1, max: 20, step: 1 })
-    expect(controls.angle).toMatchObject({ defaultValue: 45, min: 0, max: 90, step: 5, unit: '°' })
+    expect(controls.angle).toMatchObject({ defaultValue: 45, min: 0, max: 90, step: 1, unit: '°' })
     expect(controls.invert).toMatchObject({ kind: 'toggle', defaultValue: false })
     expect(controls.brightness).toMatchObject({ defaultValue: 0, min: -100, max: 100, step: 1 })
     expect(controls.contrast).toMatchObject({ defaultValue: 0, min: -100, max: 100, step: 1 })

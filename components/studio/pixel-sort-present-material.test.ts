@@ -20,7 +20,7 @@ describe('Pixel Sort presentation material', () => {
 
     expect(material.uniforms.u_sortedFrame.value).toBe(first)
     expect(material.uniforms.u_trailFrame.value).toBe(first)
-    expect(material.uniforms.u_streakLength.value).toBe(500)
+    expect(material.uniforms.u_streakLength.value).toBe(600)
     expect(material.uniforms.u_visualResolution.value).toEqual(new Vector2(1, 1))
     expect(material.uniforms.u_intensity.value).toBe(1)
     expect(PIXEL_SORT_PRESENT_FRAGMENT_SHADER).toContain('texture2D(u_sortedFrame, v_uv)')
@@ -100,7 +100,7 @@ describe('Pixel Sort presentation material', () => {
     )
   })
 
-  it('keeps the depth base visible and overlays boundary trails across model and background', () => {
+  it('keeps the depth base visible and overlays boundary trails only on background', () => {
     expect(createPixelSortPresentMaterial(new DataTexture(), {
       settings: {
         direction: 'horizontal',
@@ -129,11 +129,14 @@ describe('Pixel Sort presentation material', () => {
     expect(PIXEL_SORT_PRESENT_FRAGMENT_SHADER).toContain(': u_background;')
     expect(PIXEL_SORT_PRESENT_FRAGMENT_SHADER).toContain('float streakLength = u_streakLength * directionalScale;')
     expect(PIXEL_SORT_PRESENT_FRAGMENT_SHADER).toContain('streakLength * lineFactor * clamp(trail.a, 0.0, 1.0)')
-    expect(PIXEL_SORT_PRESENT_FRAGMENT_SHADER).toContain('step(0.0, trail.b)')
-    expect(PIXEL_SORT_PRESENT_FRAGMENT_SHADER).toContain('float foregroundTrail = float(sourceNonBlack) * step(0.0, trail.b);')
-    expect(PIXEL_SORT_PRESENT_FRAGMENT_SHADER).toContain('max(foregroundTrail, validTrail)')
+    expect(PIXEL_SORT_PRESENT_FRAGMENT_SHADER).toContain('step(0.0001, trail.b)')
+    expect(PIXEL_SORT_PRESENT_FRAGMENT_SHADER).not.toContain('foregroundTrail')
+    expect(PIXEL_SORT_PRESENT_FRAGMENT_SHADER).toContain(
+      'float overlay = u_trailAvailable * float(!sourceNonBlack) * validTrail;',
+    )
     expect(PIXEL_SORT_PRESENT_FRAGMENT_SHADER).toContain('previewGradient(source.a)')
     expect(PIXEL_SORT_PRESENT_FRAGMENT_SHADER).toContain('trail.b / max(effectiveLimit, 0.0001)')
+    expect(PIXEL_SORT_PRESENT_FRAGMENT_SHADER).not.toContain('dot(pixel, axis)')
     expect(PIXEL_SORT_PRESENT_FRAGMENT_SHADER).toContain('mix(base, lineColor, u_intensity * overlay)')
     expect(PIXEL_SORT_PRESENT_FRAGMENT_SHADER).not.toMatch(/streakLength\s*\*\s*u_intensity/)
     expect(PIXEL_SORT_PRESENT_FRAGMENT_SHADER).not.toMatch(/u_(?:shadow|midtone|highlight)/)
@@ -148,7 +151,7 @@ describe('Pixel Sort presentation material', () => {
   })
 
   it('keeps every non-black source pixel visible when the trail is unavailable', () => {
-    expect(resolvePixelSortFallbackOverlay(true, 0)).toBe(1)
+    expect(resolvePixelSortFallbackOverlay(true, 0)).toBe(0)
     expect(resolvePixelSortFallbackOverlay(false, 0)).toBe(0)
     expect(resolvePixelSortFallbackOverlay(false, 0.4)).toBe(0.4)
 
@@ -157,7 +160,7 @@ describe('Pixel Sort presentation material', () => {
 
     expect(material.uniforms.u_trailAvailable.value).toBe(0)
     expect(PIXEL_SORT_PRESENT_FRAGMENT_SHADER).toContain(
-      'overlay = max(float(sourceNonBlack), fallbackOverlay);',
+      'overlay = sourceNonBlack ? 0.0 : fallbackOverlay;',
     )
   })
 
@@ -176,7 +179,9 @@ describe('Pixel Sort presentation material', () => {
     expect(material.uniforms.u_trailAvailable.value).toBe(1)
     expect(material.uniforms.u_trailRadial.value).toBe(1)
     expect(material.uniforms.u_trailMaxRadius.value).toBe(184)
-    expect(PIXEL_SORT_PRESENT_FRAGMENT_SHADER).toContain('u_trailAvailable * max(foregroundTrail, validTrail)')
+    expect(PIXEL_SORT_PRESENT_FRAGMENT_SHADER).toContain(
+      'u_trailAvailable * float(!sourceNonBlack) * validTrail',
+    )
     expect(PIXEL_SORT_PRESENT_FRAGMENT_SHADER).toContain('if (u_renderMode > 0.5)')
   })
 })

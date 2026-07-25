@@ -5,7 +5,7 @@ export function resolvePixelSortFallbackOverlay(
   sourceNonBlack: boolean,
   fallbackOverlay: number,
 ) {
-  return Math.max(sourceNonBlack ? 1 : 0, fallbackOverlay)
+  return sourceNonBlack ? 0 : fallbackOverlay
 }
 
 export type PixelSortPresentMode = 'preview' | 'exact'
@@ -156,7 +156,6 @@ void main() {
 
   vec4 source = texture2D(u_sourceFrame, v_uv);
   bool sourceNonBlack = sourceIsNonBlack(source.rgb);
-  vec2 pixel = v_uv * u_resolution - 0.5;
   vec2 radialPixels = (v_uv - vec2(0.5)) * u_resolution;
   vec2 visualPixel = v_uv * u_visualResolution - 0.5;
   vec2 visualRadialPixels = (v_uv - vec2(0.5)) * u_visualResolution;
@@ -174,21 +173,15 @@ void main() {
     streakLength,
     streakLength * lineFactor * clamp(trail.a, 0.0, 1.0)
   );
-  float validTrail = step(0.0, trail.b)
+  float validTrail = step(0.0001, trail.b)
     * step(0.0001, effectiveLimit)
     * step(trail.b, effectiveLimit);
-  float foregroundTrail = float(sourceNonBlack) * step(0.0, trail.b);
-  float trailGradientT = sourceNonBlack
-    ? fract(
-        dot(pixel, axis) * mix(1.0, -1.0, u_reverse)
-          / max(streakLength * lineFactor, 1.0)
-      )
-    : clamp(trail.b / max(effectiveLimit, 0.0001), 0.0, 1.0);
+  float trailGradientT = clamp(trail.b / max(effectiveLimit, 0.0001), 0.0, 1.0);
   vec3 base = sourceNonBlack
     ? mix(source.rgb, previewGradient(source.a), u_mix)
     : u_background;
   vec3 lineColor = previewGradient(trailGradientT);
-  float overlay = u_trailAvailable * max(foregroundTrail, validTrail);
+  float overlay = u_trailAvailable * float(!sourceNonBlack) * validTrail;
 
   // The unsupported path stays bounded and mask-based. It can only probe one
   // upstream source candidate, but it never replaces or erases the depth base.
@@ -212,7 +205,7 @@ void main() {
     vec4 fallbackCandidate = sampleSourceFrame(fallbackUv);
     float fallbackOverlay = step(0.0001, fallbackLimit)
       * step(0.0001, sourceMaximum(fallbackCandidate.rgb));
-    overlay = max(float(sourceNonBlack), fallbackOverlay);
+    overlay = sourceNonBlack ? 0.0 : fallbackOverlay;
     lineColor = previewGradient(1.0);
   }
 
@@ -269,7 +262,7 @@ export function createPixelSortPresentMaterial(
       u_direction: { value: directionId(settings?.direction) },
       u_sortMode: { value: sortModeId(settings?.mode) },
       u_threshold: { value: settings?.threshold ?? 0.25 },
-      u_streakLength: { value: settings?.streakLength ?? 500 },
+      u_streakLength: { value: settings?.streakLength ?? 600 },
       u_intensity: { value: settings?.intensity ?? 1 },
       u_randomness: { value: settings?.randomness ?? 0.5 },
       u_reverse: { value: settings?.reverse ? 1 : 0 },

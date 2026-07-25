@@ -49,7 +49,7 @@ function texels(data: Uint8ClampedArray) {
 
 describe('Pixel Sort boundary-led CPU renderer', () => {
   it('uses the production defaults and exact line-level randomness contract', () => {
-    expect(DEFAULT_PIXEL_SORT_SETTINGS.streakLength).toBe(500)
+    expect(DEFAULT_PIXEL_SORT_SETTINGS.streakLength).toBe(600)
     expect(DEFAULT_PIXEL_SORT_SETTINGS.intensity).toBe(1)
     expect(DEFAULT_PIXEL_SORT_SETTINGS.randomness).toBe(0.5)
     expect(hashPixelSort11(0)).toBe(0)
@@ -98,21 +98,31 @@ describe('Pixel Sort boundary-led CPU renderer', () => {
     const baseline = texels(frame(pixels, 5, { intensity: 0 }))
     const forward = texels(frame(pixels, 5))
     expect(forward[0]).toEqual(baseline[0])
-    expect(forward.slice(1).every((pixel, index) => pixel.join() !== baseline[index + 1]!.join())).toBe(true)
+    expect(forward[1]).toEqual(baseline[1])
+    expect(forward[2]).not.toEqual(baseline[2])
+    expect(forward[3]).toEqual(baseline[3])
+    expect(forward[4]).not.toEqual(baseline[4])
 
     const reverseBaseline = texels(frame(pixels, 5, { intensity: 0, reverse: true }))
     const reverse = texels(frame(pixels, 5, { reverse: true }))
     expect(reverse[4]).toEqual(reverseBaseline[4])
-    expect(reverse.slice(0, 4).every((pixel, index) => pixel.join() !== reverseBaseline[index]!.join())).toBe(true)
+    expect(reverse[3]).toEqual(reverseBaseline[3])
+    expect(reverse[2]).not.toEqual(reverseBaseline[2])
+    expect(reverse[1]).toEqual(reverseBaseline[1])
+    expect(reverse[0]).not.toEqual(reverseBaseline[0])
   })
 
-  it('overlays one connected trail across both model and exterior pixels', () => {
-    const output = texels(frame([
+  it('overlays one connected trail on exterior pixels without recoloring model pixels', () => {
+    const pixels = [
       [0, 0, 0, 0], [80, 80, 80, 255], [120, 120, 120, 255],
       [0, 0, 0, 0], [0, 0, 0, 0],
+    ] as const
+    const baseline = texels(frame(pixels, 5, { intensity: 0 }))
+    const output = texels(frame([
+      ...pixels,
     ], 5, { streakLength: 3 }))
-    expect(output[1]).not.toEqual([80, 80, 80, 255])
-    expect(output[2]).not.toEqual([120, 120, 120, 255])
+    expect(output[1]).toEqual(baseline[1])
+    expect(output[2]).toEqual(baseline[2])
     expect(output[3]).not.toEqual([0, 0, 0, 255])
     expect(output[4]).not.toEqual([0, 0, 0, 255])
   })
@@ -126,14 +136,43 @@ describe('Pixel Sort boundary-led CPU renderer', () => {
     const baseline = texels(frame(pixels, 8, { intensity: 0, streakLength: 2 }))
     const output = texels(frame(pixels, 8, { streakLength: 2 }))
 
-    expect(output.slice(0, 5).every((pixel, index) => pixel.join() !== baseline[index]!.join())).toBe(true)
+    expect(output.slice(0, 5).every((pixel, index) => pixel.join() === baseline[index]!.join())).toBe(true)
     expect(output.slice(5, 7).every((pixel, index) => pixel.join() !== baseline[index + 5]!.join())).toBe(true)
     expect(output[7]).toEqual(baseline[7])
     const reversed = texels(frame([...pixels].reverse(), 8, { reverse: true, streakLength: 2 }))
     const reversedBaseline = texels(frame([...pixels].reverse(), 8, { intensity: 0, reverse: true, streakLength: 2 }))
-    expect(reversed.slice(3).every((pixel, index) => pixel.join() !== reversedBaseline[index + 3]!.join())).toBe(true)
+    expect(reversed.slice(3).every((pixel, index) => pixel.join() === reversedBaseline[index + 3]!.join())).toBe(true)
     expect(reversed.slice(1, 3).every((pixel, index) => pixel.join() !== reversedBaseline[index + 1]!.join())).toBe(true)
     expect(reversed[0]).toEqual(reversedBaseline[0])
+  })
+
+  it.each([
+    'horizontal', 'vertical', 'diagonal', 'anti-diagonal', 'radial',
+  ] as const)('preserves the depth base on model pixels for %s in both traversal directions', (direction) => {
+    const width = 7
+    const sourceIndex = 22
+    const pixels = Array.from({ length: width * width }, (_, index) => (
+      index === sourceIndex
+        ? [96, 128, 160, 192] as const
+        : [0, 0, 0, 0] as const
+    ))
+
+    for (const reverse of [false, true]) {
+      const baseline = texels(frame(pixels, width, {
+        direction,
+        intensity: 0,
+        reverse,
+        streakLength: 3,
+      }))
+      const output = texels(frame(pixels, width, { direction, reverse, streakLength: 3 }))
+
+      expect(output[sourceIndex]).toEqual(baseline[sourceIndex])
+      expect(output.some((pixel, index) => (
+        index !== sourceIndex
+        && pixels[index]![0] === 0
+        && pixel.join() !== baseline[index]!.join()
+      ))).toBe(true)
+    }
   })
 
   it('retains the depth-colored base at zero intensity and treats RGB occupancy independently of alpha', () => {

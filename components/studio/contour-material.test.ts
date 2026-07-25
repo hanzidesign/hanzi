@@ -36,7 +36,6 @@ describe('Contour shader material', () => {
     expect(material.uniforms.u_lineColor.value.getHexString()).toBe('000000')
     expect(material.uniforms.u_background.value.getHexString()).toBe('ffffff')
     expect(material.uniforms.u_colorMode.value).toBe(2)
-    expect(material.uniforms.u_invert.value).toBe(0)
   })
 
   it('uses source dimensions as output resolution when none is supplied', () => {
@@ -56,7 +55,6 @@ describe('Contour shader material', () => {
       'fill-mode': 'lines',
       levels: 17,
       'line-thickness': 2.25,
-      invert: true,
       brightness: 40,
       contrast: -25,
       'color-mode': 'custom',
@@ -69,7 +67,6 @@ describe('Contour shader material', () => {
     expect(material.uniforms.u_fillMode.value).toBe(1)
     expect(material.uniforms.u_levels.value).toBe(17)
     expect(material.uniforms.u_lineThickness.value).toBe(2.25)
-    expect(material.uniforms.u_invert.value).toBe(1)
     expect(material.uniforms.u_brightness.value).toBe(0.4)
     expect(material.uniforms.u_contrast.value).toBe(-0.25)
     expect(material.uniforms.u_colorMode.value).toBe(2)
@@ -106,12 +103,11 @@ describe('Contour shader material', () => {
     expect(CONTOUR_FRAGMENT_SHADER).toContain('vec3(quantizedBrightness)')
   })
 
-  it('preserves the production center-only Invert bug', () => {
-    expect(CONTOUR_FRAGMENT_SHADER).toContain('brightness = 1.0 - brightness;')
-    expect(CONTOUR_FRAGMENT_SHADER).not.toContain('left = 1.0 - left')
-    expect(CONTOUR_FRAGMENT_SHADER).not.toContain('right = 1.0 - right')
-    expect(CONTOUR_FRAGMENT_SHADER).not.toContain('top = 1.0 - top')
-    expect(CONTOUR_FRAGMENT_SHADER).not.toContain('bottom = 1.0 - bottom')
+  it('does not expose the removed effect-local Invert path', () => {
+    const { material } = createFixture()
+
+    expect(material.uniforms).not.toHaveProperty('u_invert')
+    expect(CONTOUR_FRAGMENT_SHADER).not.toContain('u_invert')
   })
 
   it('uses a non-conflicting Rec.601 helper and exact brightness/contrast factor', () => {

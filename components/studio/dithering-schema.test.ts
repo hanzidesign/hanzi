@@ -21,6 +21,31 @@ describe('Studio Dithering schema', () => {
       max: 2,
       step: 0.05,
     })
+    const algorithm = controls.algorithm
+    expect(algorithm).toMatchObject({
+      kind: 'select',
+      defaultValue: 'bayer-8x8',
+      options: [
+        { value: 'floyd-steinberg', label: 'Diffusion' },
+        { value: 'bayer-2x2', label: 'Bayer 2x2' },
+        { value: 'bayer-4x4', label: 'Bayer 4x4' },
+        { value: 'bayer-8x8', label: 'Bayer 8x8' },
+        { value: 'bayer-16x16', label: 'Bayer 16x16' },
+        { value: 'clustered-dot', label: 'Clustered Dot' },
+        { value: 'interleaved-gradient', label: 'Interleaved Gradient' },
+      ],
+    })
+    if (algorithm.kind !== 'select') throw new Error('Dithering Algorithm must be a select control')
+    const algorithmOptions = algorithm.options
+    expect(algorithmOptions).not.toEqual(expect.arrayContaining([
+      expect.objectContaining({ value: 'atkinson' }),
+      expect.objectContaining({ value: 'jarvis-judice-ninke' }),
+      expect.objectContaining({ value: 'stucki' }),
+      expect.objectContaining({ value: 'burkes' }),
+      expect.objectContaining({ value: 'sierra' }),
+      expect.objectContaining({ value: 'sierra-two-row' }),
+      expect.objectContaining({ value: 'sierra-lite' }),
+    ]))
     expect(controls['matrix-size']).toMatchObject({
       kind: 'select',
       defaultValue: '4',
@@ -64,18 +89,6 @@ describe('Studio Dithering schema', () => {
       kind: 'range', defaultValue: 2, min: 2, max: 32, step: 1,
       visibleWhen: { controlId: 'color-mode', operator: 'in', values: ['tonal', 'rgb'] },
     })
-    expect(controls['line-weight']).toMatchObject({
-      defaultValue: 0.5, min: 0.1, max: 1, step: 0.05,
-      visibleWhen: { controlId: 'algorithm', operator: 'equals', value: 'crosshatch' },
-    })
-    expect(controls['line-spacing']).toMatchObject({
-      defaultValue: 10, min: 1, max: 50, step: 1,
-      visibleWhen: { controlId: 'algorithm', operator: 'equals', value: 'crosshatch' },
-    })
-    expect(controls.layers).toMatchObject({
-      defaultValue: 2, min: 1, max: 4, step: 1,
-      visibleWhen: { controlId: 'algorithm', operator: 'equals', value: 'crosshatch' },
-    })
     expect(controls['mod-type']).toMatchObject({
       kind: 'select', defaultValue: 'wave',
       options: [
@@ -88,13 +101,48 @@ describe('Studio Dithering schema', () => {
       visibleWhen: { controlId: 'modulation', operator: 'equals', value: true },
     })
     expect(controls['mod-frequency']).toMatchObject({
-      defaultValue: 5, min: 1, max: 20, step: 1,
+      defaultValue: 10, min: 0, max: 100, step: 1,
       visibleWhen: { controlId: 'modulation', operator: 'equals', value: true },
     })
     expect(controls['mod-amplitude']).toMatchObject({
-      defaultValue: 0.1, min: 0, max: 10, step: 0.1,
+      defaultValue: 3, min: 0, max: 10, step: 0.1,
       visibleWhen: { controlId: 'modulation', operator: 'equals', value: true },
     })
+    expect(controls['mod-speed']).toMatchObject({
+      defaultValue: 1, min: 0, max: 50, step: 0.1,
+      visibleWhen: { controlId: 'modulation', operator: 'equals', value: true },
+    })
+
+    const directionContracts = {
+      'mod-wave-direction': { type: 'wave', defaultValue: 'left', options: [
+        { value: 'left', label: 'Left' }, { value: 'right', label: 'Right' },
+      ] },
+      'mod-grid-direction': { type: 'grid', defaultValue: 'down-left', options: [
+        { value: 'down-left', label: 'Down Left' }, { value: 'up-right', label: 'Up Right' },
+      ] },
+      'mod-radial-direction': { type: 'radial', defaultValue: 'outward', options: [
+        { value: 'outward', label: 'Outward' }, { value: 'inward', label: 'Inward' },
+      ] },
+      'mod-horizontal-direction': { type: 'horizontal', defaultValue: 'down', options: [
+        { value: 'down', label: 'Down' }, { value: 'up', label: 'Up' },
+      ] },
+      'mod-rgb-split-direction': { type: 'rgb-split', defaultValue: 'up-left', options: [
+        { value: 'up-left', label: 'Up Left' }, { value: 'down-right', label: 'Down Right' },
+      ] },
+    }
+
+    for (const [id, contract] of Object.entries(directionContracts)) {
+      expect(controls[id]).toMatchObject({
+        kind: 'select',
+        label: 'Direction',
+        defaultValue: contract.defaultValue,
+        options: contract.options,
+        visibleWhen: { all: [
+          { controlId: 'modulation', operator: 'equals', value: true },
+          { controlId: 'mod-type', operator: 'equals', value: contract.type },
+        ] },
+      })
+    }
 
     expect(controls.palette).toMatchObject({
       kind: 'select', defaultValue: 'gameboy-4',
@@ -145,7 +193,10 @@ describe('Studio Dithering schema', () => {
     expect(visibleDefaults).toContain('foreground')
     expect(visibleDefaults).not.toContain('levels')
     expect(visibleDefaults).not.toContain('line-weight')
+    expect(visibleDefaults).not.toContain('line-spacing')
+    expect(visibleDefaults).not.toContain('layers')
     expect(visibleDefaults).not.toContain('mod-type')
+    expect(visibleDefaults).not.toContain('mod-speed')
     expect(visibleDefaults).not.toContain('palette')
     expect(visibleDefaults).not.toContain('color-depth')
     expect(visibleDefaults).not.toContain('max-displace')
@@ -153,30 +204,57 @@ describe('Studio Dithering schema', () => {
     expect(visibleDefaults).not.toContain('green-channel')
     expect(visibleDefaults).not.toContain('blue-channel')
 
-    const rgbCrosshatch = {
+    const rgbInterleavedGradient = {
       ...defaults,
-      algorithm: 'crosshatch',
+      algorithm: 'interleaved-gradient',
       modulation: true,
       'color-mode': 'rgb',
       'chromatic-enabled': true,
     }
-    const visibleRgbCrosshatch = controls
-      .filter((control) => isStudioControlVisible(control, rgbCrosshatch))
+    const visibleRgbInterleavedGradient = controls
+      .filter((control) => isStudioControlVisible(control, rgbInterleavedGradient))
       .map((control) => control.id)
 
-    expect(visibleRgbCrosshatch).toEqual(expect.arrayContaining([
+    expect(visibleRgbInterleavedGradient).toEqual(expect.arrayContaining([
       'levels',
-      'line-weight',
-      'line-spacing',
-      'layers',
       'mod-type',
+      'mod-wave-direction',
       'mod-frequency',
       'mod-amplitude',
+      'mod-speed',
       'color-depth',
     ]))
-    expect(visibleRgbCrosshatch).not.toContain('matrix-size')
-    expect(visibleRgbCrosshatch).not.toContain('foreground')
-    expect(visibleRgbCrosshatch).not.toContain('background')
+    expect(visibleRgbInterleavedGradient).not.toContain('matrix-size')
+    expect(visibleRgbInterleavedGradient).not.toContain('foreground')
+    expect(visibleRgbInterleavedGradient).not.toContain('background')
+
+    const directionIds = [
+      'mod-wave-direction',
+      'mod-grid-direction',
+      'mod-radial-direction',
+      'mod-horizontal-direction',
+      'mod-rgb-split-direction',
+    ]
+    const directionIdByType = {
+      wave: 'mod-wave-direction',
+      grid: 'mod-grid-direction',
+      radial: 'mod-radial-direction',
+      horizontal: 'mod-horizontal-direction',
+      'rgb-split': 'mod-rgb-split-direction',
+    }
+
+    for (const [modType, expectedDirectionId] of Object.entries(directionIdByType)) {
+      const visibleDirections = controls
+        .filter((control) => isStudioControlVisible(control, {
+          ...defaults,
+          modulation: true,
+          'mod-type': modType,
+        }))
+        .map((control) => control.id)
+        .filter((id) => directionIds.includes(id))
+
+      expect(visibleDirections).toEqual([expectedDirectionId])
+    }
   })
 
   it('shows an editable custom palette only for Palette + Custom', () => {
