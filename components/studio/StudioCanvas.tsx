@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type CSSProperties } from 'react'
 import { getCharacterDisplayState, useStudioStore } from '@/app/studio/studio-store'
 import {
   IDLE_CHARACTER_ASCII_STATUS,
@@ -9,6 +9,10 @@ import {
 import StudioEffectCanvas from '@/components/studio/StudioEffectCanvas'
 import { isAbortError } from '@/utils/dataUrl'
 import classes from './StudioShell.module.css'
+
+type PreviewCanvasFrameStyle = CSSProperties & {
+  '--studio-preview-zoom': number
+}
 
 export default function StudioCanvas() {
   const character = useStudioStore((store) => store.character)
@@ -39,6 +43,9 @@ export default function StudioCanvas() {
       : theme === 'light'
         ? '#f4f1e8'
         : '#101010'
+  const previewCanvasFrameStyle: PreviewCanvasFrameStyle = {
+    '--studio-preview-zoom': previewZoom,
+  }
 
   useEffect(() => {
     const controller = new AbortController()
@@ -79,7 +86,7 @@ export default function StudioCanvas() {
     >
       <div
         className={classes.previewCanvasFrame}
-        style={{ transform: `scale(${previewZoom})` }}
+        style={previewCanvasFrameStyle}
       >
         <StudioEffectCanvas onAsciiStatusChange={setAsciiStatus} />
       </div>

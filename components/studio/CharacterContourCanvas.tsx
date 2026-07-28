@@ -57,6 +57,8 @@ import {
   type CharacterRepeatSettings,
 } from '@/components/studio/character-model-arrangement'
 
+const CONTOUR_SOURCE_CAMERA_FOV = 50
+
 export default function CharacterContourCanvas() {
   const svgData = useStudioStore((store) => store.runtime.svgData)
   const svgLoadError = useStudioStore((store) => store.runtime.svgLoadError)
@@ -120,6 +122,7 @@ function CharacterContourScene({
     requestId,
     markExportContentReady,
     reportCharacterRotationY,
+    resolvePreviewVerticalFov,
     resolveVisualFrameSize,
   } = useStudioRenderMode()
   const controls = useStudioStore((store) => store.studioEffect.controls.contour)
@@ -288,6 +291,14 @@ function CharacterContourScene({
       markSourceRenderDirty(sourceRenderStateRef.current)
     }
     source.camera.aspect = width / height
+    const sourceFov = resolvePreviewVerticalFov(
+      CONTOUR_SOURCE_CAMERA_FOV,
+      source.camera.aspect,
+    )
+    if (Math.abs(source.camera.fov - sourceFov) > 1e-6) {
+      source.camera.fov = sourceFov
+      markSourceRenderDirty(sourceRenderStateRef.current)
+    }
     source.camera.updateProjectionMatrix()
 
     const sourceNeedsRender = shouldRenderSource(sourceRenderStateRef.current, {
@@ -338,7 +349,7 @@ function createContourSourceScene(
   repeat: CharacterRepeatSettings,
 ): ContourSourceScene {
   const scene = new Scene()
-  const camera = new PerspectiveCamera(50, 1, 0.1, 1000)
+  const camera = new PerspectiveCamera(CONTOUR_SOURCE_CAMERA_FOV, 1, 0.1, 1000)
   camera.position.set(0, 0, 5)
   const group = new Group()
   const material = new MeshStandardMaterial({

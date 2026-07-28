@@ -1,7 +1,7 @@
 'use client'
 
-import { IoExpandOutline } from 'react-icons/io5'
-import { useEffect, useRef, useState, type RefObject } from 'react'
+import { IoContractOutline, IoExpandOutline } from 'react-icons/io5'
+import { useCallback, useEffect, useRef, useState, type RefObject } from 'react'
 import StudioCanvas from '@/components/studio/StudioCanvas'
 import StudioLeftPanel from '@/components/studio/StudioLeftPanel'
 import StudioMobileHeader from '@/components/studio/StudioMobileHeader'
@@ -16,38 +16,42 @@ import {
 import classes from './StudioShell.module.css'
 
 const FULLSCREEN_CHROME_IDLE_MS = 2000
-type FullscreenTarget = 'preview' | 'shell' | null
+type FullscreenTarget = 'preview' | 'shell'
 
 function useStudioFullscreenChrome(
   shellRef: RefObject<HTMLElement | null>,
   previewRef: RefObject<HTMLElement | null>,
 ) {
-  const [fullscreenTarget, setFullscreenTarget] = useState<FullscreenTarget>(null)
+  const [nativeFullscreenTarget, setNativeFullscreenTarget] = useState<FullscreenTarget | null>(
+    null,
+  )
+  const [fallbackTarget, setFallbackTarget] = useState<FullscreenTarget | null>(null)
   const [chromeVisible, setChromeVisible] = useState(true)
-  const fullscreenTargetRef = useRef<FullscreenTarget>(null)
+  const fullscreenTargetRef = useRef<FullscreenTarget | null>(null)
   const chromeTimerRef = useRef<number | null>(null)
+  const fullscreenTarget = nativeFullscreenTarget ?? fallbackTarget
+
+  const clearChromeTimer = useCallback(() => {
+    if (chromeTimerRef.current !== null) {
+      window.clearTimeout(chromeTimerRef.current)
+      chromeTimerRef.current = null
+    }
+  }, [])
+
+  const scheduleChromeHide = useCallback(() => {
+    clearChromeTimer()
+
+    if (fullscreenTargetRef.current === null) {
+      return
+    }
+
+    chromeTimerRef.current = window.setTimeout(() => {
+      setChromeVisible(false)
+      chromeTimerRef.current = null
+    }, FULLSCREEN_CHROME_IDLE_MS)
+  }, [clearChromeTimer])
 
   useEffect(() => {
-    const clearChromeTimer = () => {
-      if (chromeTimerRef.current !== null) {
-        window.clearTimeout(chromeTimerRef.current)
-        chromeTimerRef.current = null
-      }
-    }
-
-    const scheduleChromeHide = () => {
-      clearChromeTimer()
-
-      if (fullscreenTargetRef.current === null) {
-        return
-      }
-
-      chromeTimerRef.current = window.setTimeout(() => {
-        setChromeVisible(false)
-        chromeTimerRef.current = null
-      }, FULLSCREEN_CHROME_IDLE_MS)
-    }
-
     const revealChrome = () => {
       if (fullscreenTargetRef.current === null) {
         return
@@ -65,17 +69,10 @@ function useStudioFullscreenChrome(
           ? 'shell'
           : null
 
-      fullscreenTargetRef.current = nextTarget
-      setFullscreenTarget(nextTarget)
-
-      if (nextTarget === null) {
-        clearChromeTimer()
-        setChromeVisible(true)
-        return
+      if (nextTarget !== null) {
+        setFallbackTarget(null)
       }
-
-      setChromeVisible(true)
-      scheduleChromeHide()
+      setNativeFullscreenTarget(nextTarget)
     }
 
     const activityEvents = ['mousemove', 'pointerdown', 'click', 'keydown', 'focusin'] as const
@@ -92,21 +89,49 @@ function useStudioFullscreenChrome(
       })
       clearChromeTimer()
     }
-  }, [previewRef, shellRef])
+  }, [clearChromeTimer, previewRef, scheduleChromeHide, shellRef])
 
-  return { fullscreenTarget, chromeVisible }
+  useEffect(() => {
+    fullscreenTargetRef.current = fullscreenTarget
+
+    if (fullscreenTarget === null) {
+      clearChromeTimer()
+      setChromeVisible(true)
+      return
+    }
+
+    setChromeVisible(true)
+    scheduleChromeHide()
+  }, [clearChromeTimer, fullscreenTarget, scheduleChromeHide])
+
+  return {
+    fallbackTarget,
+    fullscreenTarget,
+    chromeVisible,
+    setFallbackTarget,
+  }
 }
 
 export default function StudioShell() {
   const shellRef = useRef<HTMLDivElement>(null)
   const previewRef = useRef<HTMLElement>(null)
   const { theme, toggleColorScheme } = useSharedStudioTheme()
-  const { fullscreenTarget, chromeVisible } = useStudioFullscreenChrome(shellRef, previewRef)
+  const {
+    fallbackTarget,
+    fullscreenTarget,
+    chromeVisible,
+    setFallbackTarget,
+  } = useStudioFullscreenChrome(shellRef, previewRef)
 
-  const handleFullscreen = (selector: '[data-studio-preview]' | '[data-studio-terminal-shell]') => {
-    const target = document.querySelector<HTMLElement>(selector)
+  const handleFullscreen = (targetKind: FullscreenTarget) => {
+    const target = targetKind === 'preview' ? previewRef.current : shellRef.current
 
     if (!target) {
+      return
+    }
+
+    if (fallbackTarget !== null) {
+      setFallbackTarget(null)
       return
     }
 
@@ -115,7 +140,23 @@ export default function StudioShell() {
       return
     }
 
-    void target.requestFullscreen()
+    if (window.matchMedia('(max-width: 900px)').matches) {
+      setFallbackTarget(targetKind)
+      return
+    }
+
+    if (typeof target.requestFullscreen !== 'function') {
+      setFallbackTarget(targetKind)
+      return
+    }
+
+    try {
+      void Promise.resolve(target.requestFullscreen()).catch(() => {
+        setFallbackTarget(targetKind)
+      })
+    } catch {
+      setFallbackTarget(targetKind)
+    }
   }
 
   return (
@@ -132,7 +173,7 @@ export default function StudioShell() {
           }
         >
           <StudioMobileHeader
-            onFullscreen={() => handleFullscreen('[data-studio-terminal-shell]')}
+            onFullscreen={() => handleFullscreen('shell')}
             onToggleTheme={toggleColorScheme}
           />
           <aside className={classes.leftPanel} data-studio-left-panel>
@@ -148,6 +189,16 @@ export default function StudioShell() {
             }
           >
             <StudioCanvas />
+            {fullscreenTarget !== null ? (
+              <button
+                type="button"
+                className={classes.fullscreenExitButton}
+                aria-label="Exit fullscreen"
+                onClick={() => handleFullscreen(fullscreenTarget)}
+              >
+                <IoContractOutline aria-hidden size={20} />
+              </button>
+            ) : null}
             <div className={classes.previewTopRail}>
               <div className={classes.previewActions}>
                 <StudioThemeToggle onToggleTheme={toggleColorScheme} />
@@ -155,7 +206,7 @@ export default function StudioShell() {
                   type="button"
                   className={classes.previewActionButton}
                   aria-label="Toggle fullscreen"
-                  onClick={() => handleFullscreen('[data-studio-preview]')}
+                  onClick={() => handleFullscreen('preview')}
                 >
                   <IoExpandOutline aria-hidden size={16} />
                   <span>Fullscreen</span>

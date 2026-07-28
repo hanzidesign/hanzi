@@ -192,8 +192,14 @@
 }
 
 .previewCanvasFrame {
+  --studio-preview-zoom: 1;
+
   position: absolute;
   inset: var(--studio-top-rail-height) 0 var(--studio-bottom-rail-height);
+}
+
+.previewCanvasFrame canvas {
+  transform: scale(var(--studio-preview-zoom));
   transform-origin: center center;
   will-change: transform;
 }
@@ -246,8 +252,13 @@
 .previewTopRail,
 .zoomHud,
 .mobileHeader,
-.mobileTabs {
+.mobileTabs,
+.fullscreenExitButton {
   transition: opacity 180ms ease, transform 180ms ease, visibility 0s linear 180ms;
+}
+
+.fullscreenExitButton {
+  display: none;
 }
 
 .shell[data-studio-fullscreen='preview'] .previewCanvasFrame,
@@ -270,8 +281,10 @@
 .shell[data-studio-fullscreen='shell'] .mobilePanel,
 .shell[data-studio-fullscreen='preview'] .leftPanel,
 .shell[data-studio-fullscreen='preview'] .rightPanel,
+.shell[data-studio-fullscreen='preview'] .mobilePanel,
 .shell:has(.preview:fullscreen) .leftPanel,
-.shell:has(.preview:fullscreen) .rightPanel {
+.shell:has(.preview:fullscreen) .rightPanel,
+.shell:has(.preview:fullscreen) .mobilePanel {
   display: none;
 }
 
@@ -285,7 +298,8 @@
 .shell[data-studio-fullscreen-chrome='visible'] .previewTopRail,
 .shell[data-studio-fullscreen-chrome='visible'] .zoomHud,
 .shell[data-studio-fullscreen-chrome='visible'] .mobileHeader,
-.shell[data-studio-fullscreen-chrome='visible'] .mobileTabs {
+.shell[data-studio-fullscreen-chrome='visible'] .mobileTabs,
+.shell[data-studio-fullscreen-chrome='visible'] .fullscreenExitButton {
   opacity: 1;
   transform: translateY(0);
   visibility: visible;
@@ -296,7 +310,8 @@
 .shell[data-studio-fullscreen-chrome='hidden'] .previewTopRail,
 .shell[data-studio-fullscreen-chrome='hidden'] .zoomHud,
 .shell[data-studio-fullscreen-chrome='hidden'] .mobileHeader,
-.shell[data-studio-fullscreen-chrome='hidden'] .mobileTabs {
+.shell[data-studio-fullscreen-chrome='hidden'] .mobileTabs,
+.shell[data-studio-fullscreen-chrome='hidden'] .fullscreenExitButton {
   opacity: 0;
   pointer-events: none;
   visibility: hidden;
@@ -316,7 +331,8 @@
   .previewTopRail,
   .zoomHud,
   .mobileHeader,
-  .mobileTabs {
+  .mobileTabs,
+  .fullscreenExitButton {
     transition: none;
   }
 }
@@ -1625,6 +1641,39 @@
     border-top: 1px solid var(--studio-border);
     background: var(--studio-panel);
     padding: 4px 8px;
+  }
+
+  .shell[data-studio-fullscreen] .mobileHeader,
+  .shell[data-studio-fullscreen] .mobilePanel,
+  .shell[data-studio-fullscreen] .mobileTabs,
+  .shell:fullscreen .mobileHeader,
+  .shell:fullscreen .mobilePanel,
+  .shell:fullscreen .mobileTabs,
+  .shell:has(.preview:fullscreen) .mobileHeader,
+  .shell:has(.preview:fullscreen) .mobilePanel,
+  .shell:has(.preview:fullscreen) .mobileTabs {
+    display: none;
+  }
+
+  .shell[data-studio-fullscreen] .fullscreenExitButton {
+    position: absolute;
+    z-index: 40;
+    top: 12px;
+    right: 12px;
+    width: 40px;
+    height: 40px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 0;
+    background: color-mix(in srgb, var(--studio-bg) 90%, transparent);
+    color: var(--studio-text-bright);
+    padding: 0;
+  }
+
+  .shell[data-studio-fullscreen] .fullscreenExitButton:focus-visible {
+    outline: 1px solid var(--studio-text-bright);
+    outline-offset: 2px;
   }
 
   .mobileTabButton {

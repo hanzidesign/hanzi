@@ -43,4 +43,62 @@ describe('Studio shared theme and fullscreen chrome contract', () => {
     expect(styles).toContain('pointer-events: none')
     expect(styles).toContain('@media (prefers-reduced-motion: reduce)')
   })
+
+  it('falls back when native fullscreen is unavailable and isolates mobile exit chrome', async () => {
+    const shell = await readFile(join(studioDir, 'StudioShell.tsx'), 'utf8')
+    const styles = await readFile(join(studioDir, 'StudioShell.module.css'), 'utf8')
+
+    expect(shell).toContain('fallbackTarget')
+    expect(shell).toContain('setFallbackTarget')
+    expect(shell).toContain("targetKind === 'preview' ? previewRef.current : shellRef.current")
+    expect(shell).not.toContain("document.querySelector<HTMLElement>(selector)")
+    expect(shell).toContain("typeof target.requestFullscreen !== 'function'")
+    expect(shell).toContain('Promise.resolve(target.requestFullscreen()).catch')
+    expect(shell).toContain('IoContractOutline')
+    expect(shell).toContain('className={classes.fullscreenExitButton}')
+    expect(shell).toContain('aria-label="Exit fullscreen"')
+    expect(shell).toContain("handleFullscreen('preview')")
+    expect(shell).toContain("handleFullscreen('shell')")
+    expect(shell).toContain("window.matchMedia('(max-width: 900px)').matches")
+    expect(styles).toContain('.fullscreenExitButton')
+    expect(styles).toContain(".shell[data-studio-fullscreen] .mobileHeader")
+    expect(styles).toContain(".shell[data-studio-fullscreen] .mobilePanel")
+    expect(styles).toContain(".shell[data-studio-fullscreen] .mobileTabs")
+    expect(styles).toContain('.shell:fullscreen .mobileHeader')
+    expect(styles).toContain('.shell:has(.preview:fullscreen) .mobileTabs')
+    expect(styles).toContain(".shell[data-studio-fullscreen-chrome='visible'] .fullscreenExitButton")
+    expect(styles).toContain(".shell[data-studio-fullscreen-chrome='hidden'] .fullscreenExitButton")
+    expect(styles).toContain(".shell[data-studio-fullscreen='preview'] .mobilePanel")
+    expect(styles).toContain('display: none;')
+  })
+
+  it('keeps preview zoom off the canvas measurement frame', async () => {
+    const canvas = await readFile(join(studioDir, 'StudioCanvas.tsx'), 'utf8')
+    const styles = await readFile(join(studioDir, 'StudioShell.module.css'), 'utf8')
+
+    expect(canvas).toContain('type CSSProperties')
+    expect(canvas).toContain("'--studio-preview-zoom': previewZoom")
+    expect(canvas).toContain('style={previewCanvasFrameStyle}')
+    expect(canvas).not.toContain('transform: `scale(${previewZoom})`')
+    expect(styles).toContain('--studio-preview-zoom: 1')
+    expect(styles).toContain('.previewCanvasFrame canvas')
+    expect(styles).toContain('transform: scale(var(--studio-preview-zoom))')
+    expect(styles).toContain('transform-origin: center center')
+  })
+
+  it('applies width-preserving camera framing before mobile fullscreen renders', async () => {
+    const renderContext = await readFile(join(studioDir, 'studio-render-context.tsx'), 'utf8')
+    const contour = await readFile(join(studioDir, 'CharacterContourCanvas.tsx'), 'utf8')
+
+    expect(renderContext).toContain('resolvePreviewVerticalFov={renderContext.resolvePreviewVerticalFov}')
+    expect(renderContext).toContain('resolvePreviewVerticalFov')
+    expect(renderContext).toContain('mobileMediaQueryRef.current === null')
+    expect(renderContext).toContain('shell === null || !shell.isConnected')
+    expect(renderContext).toContain('}, -2)')
+    expect(contour).toContain('resolvePreviewVerticalFov')
+    expect(contour).toContain('CONTOUR_SOURCE_CAMERA_FOV')
+    expect(contour.indexOf('source.camera.fov =')).toBeLessThan(
+      contour.indexOf('source.camera.updateProjectionMatrix()'),
+    )
+  })
 })

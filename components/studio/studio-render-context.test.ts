@@ -8,7 +8,36 @@ import {
   reportLatestPreviewPointer,
   resolveDirectionalPixelScale,
   resolveStudioVisualFrameSize,
+  resolveWidthPreservingVerticalFov,
 } from './studio-render-context'
+
+describe('width-preserving vertical field of view', () => {
+  it.each([
+    { baseFov: 42, referenceAspect: 390 / 398, currentAspect: 390 / 844 },
+    { baseFov: 50, referenceAspect: 16 / 9, currentAspect: 9 / 16 },
+  ])('preserves horizontal projection for $baseFov degrees', ({
+    baseFov,
+    referenceAspect,
+    currentAspect,
+  }) => {
+    const resolvedFov = resolveWidthPreservingVerticalFov(
+      baseFov,
+      referenceAspect,
+      currentAspect,
+    )
+    const referenceProjection = Math.tan(baseFov * Math.PI / 360) * referenceAspect
+    const resolvedProjection = Math.tan(resolvedFov * Math.PI / 360) * currentAspect
+
+    expect(resolvedProjection).toBeCloseTo(referenceProjection, 12)
+  })
+
+  it('falls back to the base field of view for invalid aspects', () => {
+    expect(resolveWidthPreservingVerticalFov(42, Number.NaN, 1)).toBe(42)
+    expect(resolveWidthPreservingVerticalFov(42, 1, Number.POSITIVE_INFINITY)).toBe(42)
+    expect(resolveWidthPreservingVerticalFov(50, 0, 1)).toBe(50)
+    expect(resolveWidthPreservingVerticalFov(50, 1, -1)).toBe(50)
+  })
+})
 
 describe('Studio preview visual frame registry', () => {
   it('isolates Studio instances, effects, and render scopes', () => {

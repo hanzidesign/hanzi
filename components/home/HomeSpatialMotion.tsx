@@ -22,7 +22,10 @@ type HomeSpatialMotionProps = {
 type PointerTarget = {
   x: number
   y: number
+  pressX: number
+  pressY: number
   lastMovedAt: number
+  lastPressedAt: number
 }
 
 type BackingSize = {
@@ -43,6 +46,8 @@ struct Uniforms {
   uPointerSpeed: f32,
   uDeltaTime: f32,
   uStrokeMaskReady: f32,
+  uPressStrength: f32,
+  uPressPointer: vec2f,
 }
 
 @group(0) @binding(0) var<uniform> uniforms: Uniforms;
@@ -103,7 +108,19 @@ fn trailVertex(@builtin(vertex_index) index: u32) -> VertexOut {
 
 @fragment
 fn trailFragment(input: VertexOut) -> @location(0) vec4f {
-  let blurRadius = ${TRAIL_BLUR_TEXELS} / vec2f(textureDimensions(previousTrail));
+  let aspectRatio = uniforms.uResolution.x / max(uniforms.uResolution.y, 1.0);
+  let aspect = vec2f(aspectRatio, 1.0);
+  let pressBlurDistance = length((input.uv - uniforms.uPressPointer) * aspect);
+  let pressBlurAmount =
+    smoothstep(0.02, 0.28, uniforms.uPressStrength) *
+    (1.0 - smoothstep(0.06, 0.24, pressBlurDistance));
+  let pressBlurScale = mix(
+    1.0,
+    5.5,
+    pressBlurAmount
+  );
+  let blurRadius =
+    ${TRAIL_BLUR_TEXELS} * pressBlurScale / vec2f(textureDimensions(previousTrail));
   let centerTrail = textureSample(previousTrail, linearSampler, input.uv);
   let centerDirection = decodeDirection(centerTrail.rg);
   let liquidUv = mix(input.uv, liquify(input.uv, centerDirection, centerTrail.b), 0.56);
@@ -122,8 +139,6 @@ fn trailFragment(input: VertexOut) -> @location(0) vec4f {
     feedback.b * exp(-0.12 * uniforms.uDeltaTime) - 0.16 * uniforms.uDeltaTime,
     0.0
   );
-  let aspectRatio = uniforms.uResolution.x / max(uniforms.uResolution.y, 1.0);
-  let aspect = vec2f(aspectRatio, 1.0);
   let currentPointer = uniforms.uPointer * aspect;
   let previousPointer = uniforms.uPreviousPointer * aspect;
   let movement = currentPointer - previousPointer;
@@ -138,13 +153,49 @@ fn trailFragment(input: VertexOut) -> @location(0) vec4f {
   var brushRadius = 0.378 * 0.26 * mix(aspectRatio, 1.0, 0.5);
   brushRadius *= mix(0.5, 1.0, clamp(uniforms.uPointerSpeed * 0.3, 0.0, 1.0));
   let capsule = 1.0 - smoothstep(brushRadius * 0.22, brushRadius, brushDistance);
-  let drawStrength = clamp(
+  let movementDrawStrength = clamp(
     (1.0 - exp(-uniforms.uPointerSpeed * uniforms.uDeltaTime * 12.0)) * capsule * capsule,
     0.0,
     1.0
   );
+  var pressDirection = movementDirection;
+  var pressDrawStrength = 0.0;
+  if (uniforms.uPressStrength > 0.0001) {
+    let pressPointer = uniforms.uPressPointer * aspect;
+    let pressVector = brushCenter - pressPointer;
+    let pressDistance = length(pressVector);
+    pressDirection = select(
+      vec2f(cos(uniforms.uTime * 1.7), sin(uniforms.uTime * 1.7)),
+      pressVector / max(pressDistance, 0.0001),
+      pressDistance > 0.0001
+    );
+    let pressProgress = 1.0 - uniforms.uPressStrength;
+    let pressRadiusScale = mix(0.18, 0.78, smoothstep(0.0, 0.72, pressProgress));
+    let pressRadius = 0.14 * mix(aspectRatio, 1.0, 0.5) * pressRadiusScale;
+    let pressAngle = atan2(pressVector.y, pressVector.x);
+    let pressOrganicPhase = dot(uniforms.uPressPointer, vec2f(5.1, 7.7));
+    let pressOrganicRadius = pressRadius * (
+      1.0 +
+      sin(pressAngle * 3.0 + pressOrganicPhase) * 0.11 +
+      sin(pressAngle * 5.0 - pressOrganicPhase * 1.3) * 0.06
+    );
+    let pressBrush = 1.0 - smoothstep(0.0, pressOrganicRadius * 1.35, pressDistance);
+    let pressFade =
+      uniforms.uPressStrength * uniforms.uPressStrength * uniforms.uPressStrength;
+    pressDrawStrength = clamp(
+      (1.0 - exp(-pressFade * uniforms.uDeltaTime * 26.0)) * pressBrush,
+      0.0,
+      1.0
+    );
+  }
+  let drawStrength = max(movementDrawStrength, pressDrawStrength);
+  let drawDirection = select(
+    movementDirection,
+    pressDirection,
+    pressDrawStrength > movementDrawStrength
+  );
   let nextStrength = mix(previousStrength, 1.0, drawStrength);
-  let mixedDirection = retainedDirection * (1.0 - drawStrength) + movementDirection * drawStrength;
+  let mixedDirection = retainedDirection * (1.0 - drawStrength) + drawDirection * drawStrength;
   let mixedMagnitude = length(mixedDirection);
   let nextDirection = select(
     mixedDirection,
@@ -165,6 +216,8 @@ struct Uniforms {
   uPointerSpeed: f32,
   uDeltaTime: f32,
   uStrokeMaskReady: f32,
+  uPressStrength: f32,
+  uPressPointer: vec2f,
 }
 
 @group(0) @binding(0) var<uniform> uniforms: Uniforms;
@@ -310,13 +363,13 @@ fn atmosphereFragment(input: VertexOut) -> @location(0) vec4f {
   );
   let trailNormal = vec2f(-trailAxis.y, trailAxis.x);
   let trailStrength = trail.b * 0.7;
-  let trailColorInfluence = smoothstep(0.015, 0.46, trail.b * trailDirectionMagnitude);
+  let trailColorInfluence = smoothstep(0.0, 0.52, trail.b * trailDirectionMagnitude);
   let trailRainbowBand =
-    (1.0 - smoothstep(0.06, 0.3, abs(trail.b - 0.45))) *
-    smoothstep(0.02, 0.3, trailDirectionMagnitude);
+    (1.0 - smoothstep(0.0, 0.46, abs(trail.b - 0.45))) *
+    smoothstep(0.0, 0.34, trailDirectionMagnitude);
   let trailVisibility =
-    smoothstep(0.018, 0.34, trail.b) *
-    smoothstep(0.008, 0.2, trailDirectionMagnitude);
+    smoothstep(0.0, 0.42, trail.b) *
+    smoothstep(0.0, 0.24, trailDirectionMagnitude);
   let fieldUv = clamp(input.uv - trailDirection * trailStrength * ${TRAIL_MAX_DISPLACEMENT}, vec2f(0.001), vec2f(0.999));
   let polarCenter = vec2f(0.52, 1.05) * aspect;
   let warpDelta = fieldUv * aspect - polarCenter;
@@ -368,32 +421,6 @@ fn atmosphereFragment(input: VertexOut) -> @location(0) vec4f {
     trailIridescence * trailRainbowBand * 0.18
   );
 
-  let polarDelta = input.uv * aspect - polarCenter;
-  let polarRadius = length(polarDelta);
-  let polarAngle = atan2(polarDelta.y, polarDelta.x);
-  let polarGamma = pow(2.0, 1.8);
-  let polarUv = vec2f(
-    pow(fract(polarRadius * 0.29), polarGamma),
-    fract((polarAngle + time * 0.05 + 3.14159265) / 6.2831853)
-  );
-  let detailUv = vec2f(-polarUv.y, polarUv.x) * 26.22 + vec2f(0.0, -time * 0.018);
-  let detailNoise = valueNoise(detailUv);
-  let polarDistortion = 0.5 + 0.5 * sin(
-    polarAngle * 1.45 +
-    polarRadius * 11.0 +
-    detailNoise * 3.4 -
-    time * 0.075
-  );
-  let polarFlow = mix(detailNoise, polarDistortion, 0.38);
-  let polarContour = smoothstep(0.12, 0.68, abs(polarFlow - 0.5));
-  let indigoOverlay = anchoredPalette(
-    polarFlow + 0.35,
-    vec3f(0.239, 0.224, 0.655),
-    vec3f(0.0),
-    0.0
-  );
-  darkColor = screenBlend(darkColor, indigoOverlay * 0.12);
-  lightThemeDarkSource = screenBlend(lightThemeDarkSource, indigoOverlay * 0.12);
   darkColor *= 0.84;
   lightThemeDarkSource *= 0.84;
   darkColor += vec3f((dither - 0.5) / 510.0);
@@ -408,32 +435,88 @@ fn atmosphereFragment(input: VertexOut) -> @location(0) vec4f {
   );
   let darkTrailLuminance = dot(darkColor, vec3f(0.2126, 0.7152, 0.0722));
   let darkRainbowTarget =
-    amplifyChroma(mix(darkTrailIridescence, trailSpectrum, 0.58), 1.58) *
-    (0.36 + darkTrailLuminance * 0.28);
+    amplifyChroma(mix(darkTrailIridescence, trailSpectrum, 0.4), 0.8) *
+    (0.65 + darkTrailLuminance * 0.42);
   let darkRainbowMix = clamp(
-    trailVisibility * 0.26 + trailRainbowBand * 0.12,
+    trailVisibility * 0.58 + trailRainbowBand * 0.28,
     0.0,
-    0.34
+    0.7
   );
   darkColor = screenBlend(
     darkColor,
-    darkRainbowTarget * darkRainbowMix * 1.18
+    darkRainbowTarget * darkRainbowMix * 1.48
   );
 
-  let lightBase = mix(vec3f(0.58, 0.79, 0.98), vec3f(0.86, 0.71, 0.98), staticTexture);
+  let lightBase = mix(vec3f(0.88, 0.94, 0.99), vec3f(0.97, 0.9, 0.99), staticTexture);
   let lightDetailTint = anchoredPalette(
-    polarFlow + 0.2,
+    staticTexture + 0.2,
     vec3f(0.18, 0.4, 0.74),
     vec3f(0.65, 0.38, 0.86),
     0.3
   );
-  var lightAurora = mix(lightBase, lightThemeDarkSource, 0.46);
-  lightAurora = mix(lightAurora, lightDetailTint, 0.055 + polarContour * 0.045);
+  var lightAurora = mix(lightBase, lightThemeDarkSource, 0.2);
+  lightAurora = mix(lightAurora, lightDetailTint, 0.055);
   lightAurora *= 1.0 - microTexture * 0.095;
-  let vividLightAurora = amplifyChroma(lightAurora, 1.48);
-  lightAurora = mix(lightAurora, vividLightAurora, trailColorInfluence * 0.82);
-  lightAurora = screenBlend(lightAurora, vividTrailColor * trailColorInfluence * 0.09);
-  lightAurora = screenBlend(lightAurora, trailIridescence * trailRainbowBand * 0.105);
+  let staticRainbowPhase = lightRainbowPhase;
+  let staticRainbowSpectrum = vec3f(0.5) + 0.5 * cos(
+    6.2831853 * (staticRainbowPhase + vec3f(0.0, 0.333, 0.667))
+  );
+  let staticRainbowColor = amplifyChroma(
+    mix(subtleIridescence(staticRainbowPhase), staticRainbowSpectrum, 0.55),
+    1.45
+  );
+  let staticRainbowMix = clamp(
+    0.055 + smoothstep(0.28, 0.78, primaryCell) * 0.14,
+    0.055,
+    0.265
+  );
+  lightAurora = mix(lightAurora, staticRainbowColor, staticRainbowMix);
+  lightAurora = screenBlend(
+    lightAurora,
+    staticRainbowColor * 0.025
+  );
+  let staticHighlightField = smoothstep(
+    0.46,
+    0.68,
+    primaryCell * 0.72 + staticTexture * 0.28
+  );
+  let staticHighlightBlocks = staticHighlightField * (
+    0.38 + staticTexture * 0.2
+  );
+  lightAurora = mix(
+    lightAurora,
+    vec3f(1.0),
+    clamp(staticHighlightBlocks, 0.0, 0.68)
+  );
+  let vividLightAurora = amplifyChroma(lightAurora, 1.54);
+  lightAurora = mix(lightAurora, vividLightAurora, trailColorInfluence * 0.86);
+  lightAurora = screenBlend(lightAurora, vividTrailColor * trailColorInfluence * 0.12);
+  lightAurora = screenBlend(lightAurora, trailIridescence * trailRainbowBand * 0.16);
+  let lightRainbowTarget = amplifyChroma(
+    mix(trailIridescence, trailSpectrum, 0.76),
+    1.72
+  );
+  let lightRainbowMix = clamp(
+    trailVisibility * 0.52 + trailRainbowBand * 0.28,
+    0.0,
+    0.6
+  );
+  lightAurora = mix(lightAurora, lightRainbowTarget, lightRainbowMix);
+  let lightContourHighlight = clamp(
+    trailVisibility * 0.28 + trailRainbowBand * 0.22,
+    0.0,
+    0.38
+  );
+  let lightHighlightColor = amplifyChroma(
+    mix(vec3f(0.98, 1.0, 1.0), trailIridescence, 0.42),
+    1.2
+  );
+  lightAurora = screenBlend(lightAurora, lightHighlightColor * lightContourHighlight);
+  lightAurora = clamp(
+    (lightAurora - vec3f(0.5)) * 1.1 + vec3f(0.5),
+    vec3f(0.0),
+    vec3f(1.0)
+  );
   let base = mix(darkColor, lightAurora, uniforms.uTheme);
   let maskAlpha = textureSample(strokeMask, linearSampler, warpedUv).a * uniforms.uStrokeMaskReady;
   let lightComposite = mix(
@@ -451,25 +534,53 @@ fn atmosphereFragment(input: VertexOut) -> @location(0) vec4f {
 `
 
 export default function HomeSpatialMotion({ theme }: HomeSpatialMotionProps) {
-  const pointerRef = useRef<PointerTarget>({ x: 0.5, y: 0.5, lastMovedAt: 0 })
+  const pointerRef = useRef<PointerTarget>({
+    x: 0.5,
+    y: 0.5,
+    pressX: 0.5,
+    pressY: 0.5,
+    lastMovedAt: 0,
+    lastPressedAt: Number.NEGATIVE_INFINITY,
+  })
   const strokeFieldRef = useRef<SVGSVGElement>(null)
   const strokesRandomizedRef = useRef(false)
 
   useEffect(() => {
-    const readPointer = (event: PointerEvent) => {
-      const x = event.clientX / Math.max(window.innerWidth, 1)
-      const screenY = event.clientY / Math.max(window.innerHeight, 1)
-      pointerRef.current.x = x
-      pointerRef.current.y = screenY
-      pointerRef.current.lastMovedAt = performance.now()
+    const readPointerCoordinates = (event: PointerEvent) => ({
+      x: event.clientX / Math.max(window.innerWidth, 1),
+      screenY: event.clientY / Math.max(window.innerHeight, 1),
+    })
 
+    const updateStrokePointer = (x: number, screenY: number) => {
       const strokeField = strokeFieldRef.current
       strokeField?.style.setProperty('--stroke-pointer-x', `${x * 2 - 1}`)
       strokeField?.style.setProperty('--stroke-pointer-y', `${1 - screenY * 2}`)
     }
 
+    const readPointer = (event: PointerEvent) => {
+      const { x, screenY } = readPointerCoordinates(event)
+      pointerRef.current.x = x
+      pointerRef.current.y = screenY
+      pointerRef.current.lastMovedAt = performance.now()
+      updateStrokePointer(x, screenY)
+    }
+
+    const pressPointer = (event: PointerEvent) => {
+      const { x, screenY } = readPointerCoordinates(event)
+      const pressedAt = performance.now()
+      pointerRef.current.pressX = x
+      pointerRef.current.pressY = screenY
+      pointerRef.current.lastMovedAt = pressedAt
+      pointerRef.current.lastPressedAt = pressedAt
+      updateStrokePointer(x, screenY)
+    }
+
     window.addEventListener('pointermove', readPointer, { passive: true })
-    return () => window.removeEventListener('pointermove', readPointer)
+    window.addEventListener('pointerdown', pressPointer, { passive: true })
+    return () => {
+      window.removeEventListener('pointermove', readPointer)
+      window.removeEventListener('pointerdown', pressPointer)
+    }
   }, [])
 
   useEffect(() => {
@@ -664,7 +775,7 @@ function WebGpuAtmosphere({
       }
 
       const nextUniformBuffer = nextDevice.createBuffer({
-        size: 48,
+        size: 64,
         usage: GPU_BUFFER_USAGE_UNIFORM | GPU_BUFFER_USAGE_COPY_DST,
       })
       uniformBuffer = nextUniformBuffer
@@ -674,7 +785,7 @@ function WebGpuAtmosphere({
         magFilter: 'linear',
         minFilter: 'linear',
       })
-      const uniformData = new ArrayBuffer(48)
+      const uniformData = new ArrayBuffer(64)
       const uniformFloats = new Float32Array(uniformData)
       const viscousPointer = { x: 0.5, y: 0.5 }
       let previousFrameTime = performance.now()
@@ -957,7 +1068,10 @@ function WebGpuAtmosphere({
         uniformFloats[8] = pointerSpeed
         uniformFloats[9] = deltaSeconds
         uniformFloats[10] = strokeMaskReady ? 1 : 0
-        uniformFloats[11] = 0
+        const pressAge = Math.max(frameTime - pointerRef.current.lastPressedAt, 0)
+        uniformFloats[11] = Math.exp(-pressAge / 260)
+        uniformFloats[12] = pointerRef.current.pressX
+        uniformFloats[13] = pointerRef.current.pressY
         try {
           nextDevice.queue.writeBuffer(nextUniformBuffer, 0, uniformData)
           const commandEncoder = nextDevice.createCommandEncoder()

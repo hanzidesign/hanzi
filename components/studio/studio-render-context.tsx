@@ -16,7 +16,7 @@ import {
   type MutableRefObject,
   type ReactNode,
 } from 'react'
-import type { Texture } from 'three'
+import type { PerspectiveCamera, Texture } from 'three'
 import { useStudioStore } from '@/app/studio/studio-store'
 import { AnimationTimeline } from '@/components/studio/animation-time'
 import StudioPostProcessing from '@/components/studio/studio-post-processing'
@@ -45,6 +45,7 @@ type StudioRenderContextValue = {
     actualWidth: number,
     actualHeight: number,
   ) => StudioVisualFrameSize
+  resolvePreviewVerticalFov: (baseFov: number, currentAspect: number) => number
 }
 
 const emptyVoronoiMaskTextureRef: MutableRefObject<Texture | null> = { current: null }
@@ -129,6 +130,31 @@ export function resolveDirectionalPixelScale(
   const scaleX = safeFrameDimension(actual.width) / safeFrameDimension(visual.width)
   const scaleY = safeFrameDimension(actual.height) / safeFrameDimension(visual.height)
   return Math.hypot(axis.x * scaleX, axis.y * scaleY) / axisLength
+}
+
+export function resolveWidthPreservingVerticalFov(
+  baseFov: number,
+  referenceAspect: number,
+  currentAspect: number,
+) {
+  if (
+    !Number.isFinite(baseFov)
+    || baseFov <= 0
+    || baseFov >= 180
+    || !Number.isFinite(referenceAspect)
+    || referenceAspect <= 0
+    || !Number.isFinite(currentAspect)
+    || currentAspect <= 0
+  ) {
+    return baseFov
+  }
+
+  const horizontalProjection = Math.tan(baseFov * Math.PI / 360) * referenceAspect
+  const resolvedFov = Math.atan(horizontalProjection / currentAspect) * 360 / Math.PI
+
+  return Number.isFinite(resolvedFov) && resolvedFov > 0 && resolvedFov < 180
+    ? resolvedFov
+    : baseFov
 }
 
 export function resolveStudioVisualFrameSize({
@@ -290,6 +316,7 @@ const StudioRenderContext = createContext<StudioRenderContextValue>({
     width: safeFrameDimension(actualWidth),
     height: safeFrameDimension(actualHeight),
   }),
+  resolvePreviewVerticalFov: (baseFov) => baseFov,
 })
 
 let latestPreviewAnimationTime = 0
@@ -314,6 +341,9 @@ export function StudioRenderModeProvider({
   const previewFrameRegistry = inheritedPreviewFrameRegistry ?? fallbackPreviewFrameRegistry
   const selectedEffectId = useStudioStore((store) => store.studioEffect.selectedEffectId)
   const voronoiMaskTextureRef = useRef<Texture | null>(null)
+  const mobilePreviewAspectRef = useRef<number | null>(null)
+  const mobileMediaQueryRef = useRef<MediaQueryList | null>(null)
+  const studioShellElementRef = useRef<HTMLElement | null>(null)
   const [characterRotationSnapshot] = useState(createCharacterRotationSnapshot)
   const [animationTimeline] = useState(
     () => {
@@ -382,6 +412,36 @@ export function StudioRenderModeProvider({
 
     return actual
   }, [exportRender, previewFrameRegistry, selectedEffectId, visualFrameSnapshot])
+  const resolvePreviewVerticalFov = useCallback((baseFov: number, currentAspect: number) => {
+    if (exportRender || typeof window === 'undefined') {
+      return baseFov
+    }
+
+    if (mobileMediaQueryRef.current === null) {
+      mobileMediaQueryRef.current = window.matchMedia('(max-width: 900px)')
+    }
+    if (!mobileMediaQueryRef.current.matches) {
+      return baseFov
+    }
+
+    let shell = studioShellElementRef.current
+    if (shell === null || !shell.isConnected) {
+      shell = document.querySelector<HTMLElement>('[data-studio-terminal-shell]')
+      studioShellElementRef.current = shell
+    }
+    const fullscreenActive = shell?.hasAttribute('data-studio-fullscreen') ?? false
+    if (!fullscreenActive) {
+      if (Number.isFinite(currentAspect) && currentAspect > 0) {
+        mobilePreviewAspectRef.current = currentAspect
+      }
+      return baseFov
+    }
+
+    const referenceAspect = mobilePreviewAspectRef.current
+    return referenceAspect === null
+      ? baseFov
+      : resolveWidthPreservingVerticalFov(baseFov, referenceAspect, currentAspect)
+  }, [exportRender])
 
   return (
     <StudioRenderContext value={{
@@ -399,6 +459,7 @@ export function StudioRenderModeProvider({
       timelineActive: true,
       advanceAnimationTime,
       resolveVisualFrameSize,
+      resolvePreviewVerticalFov,
     }}>
       {children}
     </StudioRenderContext>
@@ -412,6 +473,11 @@ export function StudioRenderCanvas(props: CanvasProps) {
 
   return (
     <FiberCanvas {...canvasProps} dpr={exportRender ? 1 : dpr}>
+      {!exportRender ? (
+        <StudioPreviewCameraFovController
+          resolvePreviewVerticalFov={renderContext.resolvePreviewVerticalFov}
+        />
+      ) : null}
       {children}
       <StudioPostProcessing />
       <StudioRenderFrameObserver {...renderContext} />
@@ -421,6 +487,40 @@ export function StudioRenderCanvas(props: CanvasProps) {
 
 export function useStudioRenderMode() {
   return useContext(StudioRenderContext)
+}
+
+function StudioPreviewCameraFovController({
+  resolvePreviewVerticalFov,
+}: Pick<StudioRenderContextValue, 'resolvePreviewVerticalFov'>) {
+  const baseFovByCameraRef = useRef(new WeakMap<PerspectiveCamera, number>())
+
+  useFrame(({ camera, size }) => {
+    if (!('isPerspectiveCamera' in camera) || camera.isPerspectiveCamera !== true) {
+      return
+    }
+
+    const perspectiveCamera = camera as PerspectiveCamera
+    let baseFov = baseFovByCameraRef.current.get(perspectiveCamera)
+    if (baseFov === undefined) {
+      baseFov = perspectiveCamera.fov
+      baseFovByCameraRef.current.set(perspectiveCamera, baseFov)
+    }
+
+    const currentAspect = size.width / size.height
+    const resolvedFov = resolvePreviewVerticalFov(baseFov, currentAspect)
+    if (
+      !Number.isFinite(resolvedFov)
+      || resolvedFov <= 0
+      || Math.abs(perspectiveCamera.fov - resolvedFov) <= 1e-6
+    ) {
+      return
+    }
+
+    perspectiveCamera.fov = resolvedFov
+    perspectiveCamera.updateProjectionMatrix()
+  }, -2)
+
+  return null
 }
 
 export function readLatestPreviewAnimationTime() {

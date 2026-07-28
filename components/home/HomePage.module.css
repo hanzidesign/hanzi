@@ -8,12 +8,12 @@
 }
 
 :global([data-mantine-color-scheme='light']) .home {
-  --home-background-gradient: linear-gradient(135deg, #b9dcff 0%, #c8d0ff 38%, #b8eddf 69%, #e5c3f6 100%);
-  --home-ambient-blue: rgba(20, 101, 255, 0.76);
-  --home-ambient-cyan: rgba(10, 190, 225, 0.66);
-  --home-ambient-green: rgba(24, 207, 132, 0.6);
-  --home-ambient-indigo: rgba(70, 55, 238, 0.72);
-  --home-ambient-violet: rgba(181, 50, 235, 0.62);
+  --home-background-gradient: linear-gradient(135deg, #f7fbff 0%, #f4f6fc 38%, #f1faf7 69%, #fbf5fc 100%);
+  --home-ambient-blue: rgba(76, 138, 230, 0.36);
+  --home-ambient-cyan: rgba(53, 183, 207, 0.3);
+  --home-ambient-green: rgba(62, 187, 138, 0.28);
+  --home-ambient-indigo: rgba(101, 91, 219, 0.34);
+  --home-ambient-violet: rgba(180, 93, 211, 0.3);
   --home-title: #35383d;
   --home-text: #444a45;
   --home-cta-border: rgba(27, 43, 36, 0.72);
@@ -109,11 +109,11 @@
 :global([data-mantine-color-scheme='light']) .home .ambientField::before,
 :global([data-mantine-color-scheme='light']) .home .ambientField::after {
   mix-blend-mode: multiply;
-  filter: blur(30px) saturate(148%);
+  filter: blur(30px) saturate(128%);
 }
 
 :global([data-mantine-color-scheme='light']) .home .motionCanvas {
-  opacity: 0.9;
+  opacity: 0.82;
 }
 
 @keyframes ambient-color-flow-primary {
