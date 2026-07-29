@@ -458,6 +458,144 @@
   line-height: 1.5;
 }
 
+.presetsPanel {
+  display: grid;
+  gap: 12px;
+}
+
+.presetCreateForm {
+  display: grid;
+  gap: 6px;
+}
+
+.presetNameLabel {
+  color: var(--studio-text-bright);
+  font-size: 12px;
+}
+
+.presetNameRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 6px;
+}
+
+.presetNameInput {
+  min-width: 0;
+  height: 30px;
+  border: 1px solid var(--studio-border);
+  border-radius: 0;
+  background: var(--studio-control);
+  color: var(--studio-text-bright);
+  padding: 0 8px;
+  font: inherit;
+  font-size: 12px;
+}
+
+.presetNameInput:focus-visible {
+  border-color: var(--studio-border-strong);
+  outline: none;
+}
+
+.presetPrimaryButton,
+.presetActionButton {
+  min-height: 30px;
+  border: 1px solid var(--studio-border);
+  background: transparent;
+  color: var(--studio-text);
+  padding: 0 9px;
+  font: inherit;
+  font-size: 11px;
+}
+
+.presetPrimaryButton {
+  border-color: var(--studio-border-strong);
+  color: var(--studio-text-bright);
+}
+
+.presetPrimaryButton:hover,
+.presetActionButton:not(:disabled):hover {
+  border-color: var(--studio-border-strong);
+  color: var(--studio-text-bright);
+  background: color-mix(in srgb, var(--studio-text-bright) 6%, transparent);
+}
+
+.presetActionButton:disabled {
+  opacity: 0.4;
+}
+
+.presetList {
+  display: grid;
+  gap: 4px;
+}
+
+.presetItem,
+.presetEditRow {
+  min-width: 0;
+  border: 1px solid var(--studio-border);
+  padding: 6px;
+}
+
+.presetItem {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 6px;
+}
+
+.presetApplyButton {
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  color: var(--studio-text-bright);
+  padding: 4px 2px;
+  overflow: hidden;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font: inherit;
+  font-size: 12px;
+}
+
+.presetApplyButton:hover {
+  color: var(--studio-text);
+}
+
+.presetItemActions,
+.presetEditActions,
+.presetTransferActions {
+  display: flex;
+  gap: 4px;
+}
+
+.presetEditRow {
+  display: grid;
+  gap: 6px;
+}
+
+.presetDeleteButton {
+  color: var(--studio-danger);
+}
+
+.presetTransferActions {
+  padding-top: 4px;
+  border-top: 1px solid var(--studio-border);
+}
+
+.presetTransferActions .presetActionButton {
+  flex: 1;
+}
+
+.presetStatus {
+  margin: -4px 0 0;
+  color: var(--studio-text-dim);
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.presetStatus[data-tone='error'] {
+  color: var(--studio-danger);
+}
+
 .inputLabel {
   margin: 0 0 8px;
   color: var(--studio-text-bright);

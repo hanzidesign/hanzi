@@ -5,6 +5,7 @@ import Link from 'next/link'
 import type { ReactNode } from 'react'
 import CharacterPanel from '@/components/studio/CharacterPanel'
 import StudioRotationController from '@/components/studio/StudioRotationController'
+import StudioPresetsPanel from '@/components/studio/StudioPresetsPanel'
 import TerminalSection from '@/components/studio/TerminalSection'
 import { TerminalDropdownRow, TerminalRangeRow, TerminalToggleRow } from '@/components/studio/TerminalRows'
 import {
@@ -78,7 +79,7 @@ export default function StudioLeftPanel() {
         <StudioModelDeformPanel />
       </TerminalSection>
       <TerminalSection id="presets" title="Presets">
-        <p className={classes.panelNote}>Effect-local presets will appear here.</p>
+        <StudioPresetsPanel />
       </TerminalSection>
     </>
   )

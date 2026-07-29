@@ -439,7 +439,45 @@ export type StudioStoreState = {
     uploadedDisplacementImageData: string
     uploadedPatternLayerDataById: Record<string, string>
   }
+  presets: StudioPreset[]
 }
+
+/** The terminal configuration captured by a user preset. */
+export type StudioPresetSettings = {
+  character: StudioCharacterState
+  ascii: StudioAsciiState
+  mesh: StudioStoreState['mesh']
+  animation: StudioStoreState['animation']
+  rendererMode: StudioRendererMode
+  export: StudioStoreState['export']
+  studioEffect: StudioStoreState['studioEffect']
+  view: Pick<StudioStoreState['view'], 'backgroundColor'>
+}
+
+export type StudioPreset = {
+  name: string
+  settings: StudioPresetSettings
+}
+
+export const STUDIO_PRESET_NAME_MAX_LENGTH = 80
+
+export type StudioPresetAction = 'save' | 'apply' | 'rename' | 'delete' | 'import'
+export type StudioPresetActionFailureReason = 'invalid-name' | 'not-found'
+
+export type StudioPresetActionResult =
+  | {
+      ok: true
+      operation: StudioPresetAction
+      name?: string
+      oldName?: string
+      overwritten: boolean
+      importedCount?: number
+    }
+  | {
+      ok: false
+      operation: StudioPresetAction
+      reason: StudioPresetActionFailureReason
+    }
 
 export type StudioRandomizeFamilies = {
   morph?: boolean
@@ -520,13 +558,18 @@ export type StudioStoreActions = {
   setPatternLayerLocked: (layerId: string, locked: boolean) => void
   setUploadedPatternLayerData: (layerId: string, dataUrl: string) => void
   setRendererMode: (rendererMode: StudioRendererMode) => void
+  saveStudioPreset: (name: string) => StudioPresetActionResult
+  applyStudioPreset: (name: string) => StudioPresetActionResult
+  renameStudioPreset: (oldName: string, newName: string) => StudioPresetActionResult
+  deleteStudioPreset: (name: string) => StudioPresetActionResult
+  importStudioPresets: (presets: readonly StudioPreset[]) => StudioPresetActionResult
 }
 
 export type StudioStore = StudioStoreState & StudioStoreActions
 
 type PersistedStudioState = Pick<
   StudioStoreState,
-  'character' | 'ascii' | 'mesh' | 'rendererMode' | 'view' | 'export' | 'studioEffect' | 'animation'
+  'character' | 'ascii' | 'mesh' | 'rendererMode' | 'view' | 'export' | 'studioEffect' | 'animation' | 'presets'
 >
 
 export const useStudioStore = createStudioStore()
@@ -1293,6 +1336,161 @@ export function createStudioStore(storage?: StateStorage) {
         setRendererMode: (rendererMode) => {
           set({ rendererMode })
         },
+        saveStudioPreset: (name) => {
+          const normalizedName = normalizeStudioPresetName(name)
+
+          if (!normalizedName) {
+            return { ok: false, operation: 'save', reason: 'invalid-name' }
+          }
+
+          const state = get()
+          const preset: StudioPreset = {
+            name: normalizedName,
+            settings: createStudioPresetSettings(state),
+          }
+          const existingIndex = state.presets.findIndex((entry) => entry.name === normalizedName)
+          const presets = [...state.presets]
+
+          if (existingIndex >= 0) {
+            presets[existingIndex] = preset
+          } else {
+            presets.push(preset)
+          }
+
+          set({ presets })
+          return {
+            ok: true,
+            operation: 'save',
+            name: normalizedName,
+            overwritten: existingIndex >= 0,
+          }
+        },
+        applyStudioPreset: (name) => {
+          const normalizedName = normalizeStudioPresetName(name)
+
+          if (!normalizedName) {
+            return { ok: false, operation: 'apply', reason: 'invalid-name' }
+          }
+
+          const state = get()
+          const preset = state.presets.find((entry) => entry.name === normalizedName)
+
+          if (!preset) {
+            return { ok: false, operation: 'apply', reason: 'not-found' }
+          }
+
+          const settings = sanitizeStudioPresetSettings(preset.settings, createDefaultStudioPresetSettings(), state.view.theme)
+
+          set({
+            character: settings.character,
+            ascii: settings.ascii,
+            mesh: settings.mesh,
+            animation: settings.animation,
+            rendererMode: settings.rendererMode,
+            export: settings.export,
+            studioEffect: settings.studioEffect,
+            view: {
+              ...state.view,
+              backgroundColor: settings.view.backgroundColor,
+            },
+          })
+
+          return { ok: true, operation: 'apply', name: normalizedName, overwritten: false }
+        },
+        renameStudioPreset: (oldName, newName) => {
+          const normalizedOldName = normalizeStudioPresetName(oldName)
+          const normalizedNewName = normalizeStudioPresetName(newName)
+
+          if (!normalizedOldName || !normalizedNewName) {
+            return { ok: false, operation: 'rename', reason: 'invalid-name' }
+          }
+
+          const state = get()
+          const oldIndex = state.presets.findIndex((entry) => entry.name === normalizedOldName)
+
+          if (oldIndex < 0) {
+            return { ok: false, operation: 'rename', reason: 'not-found' }
+          }
+
+          const existingIndex = state.presets.findIndex((entry) => entry.name === normalizedNewName)
+
+          if (normalizedOldName === normalizedNewName) {
+            return { ok: true, operation: 'rename', name: normalizedNewName, oldName: normalizedOldName, overwritten: false }
+          }
+
+          const renamedPreset: StudioPreset = {
+            ...state.presets[oldIndex],
+            name: normalizedNewName,
+          }
+          const presets = state.presets.filter((_, index) => index !== oldIndex && index !== existingIndex)
+          const insertionIndex = Math.min(
+            oldIndex - (existingIndex >= 0 && existingIndex < oldIndex ? 1 : 0),
+            presets.length,
+          )
+          presets.splice(insertionIndex, 0, renamedPreset)
+
+          set({ presets })
+          return {
+            ok: true,
+            operation: 'rename',
+            name: normalizedNewName,
+            oldName: normalizedOldName,
+            overwritten: existingIndex >= 0,
+          }
+        },
+        deleteStudioPreset: (name) => {
+          const normalizedName = normalizeStudioPresetName(name)
+
+          if (!normalizedName) {
+            return { ok: false, operation: 'delete', reason: 'invalid-name' }
+          }
+
+          const state = get()
+          const index = state.presets.findIndex((entry) => entry.name === normalizedName)
+
+          if (index < 0) {
+            return { ok: false, operation: 'delete', reason: 'not-found' }
+          }
+
+          set({ presets: state.presets.filter((_, entryIndex) => entryIndex !== index) })
+          return { ok: true, operation: 'delete', name: normalizedName, overwritten: false }
+        },
+        importStudioPresets: (presets) => {
+          const state = get()
+          const fallback = createDefaultStudioPresetSettings()
+          const normalizedByName = new Map<string, StudioPreset>()
+
+          for (const entry of presets) {
+            const preset = sanitizeStudioPresetWithContext(entry, fallback, state.view.theme)
+
+            if (!preset) {
+              return { ok: false, operation: 'import', reason: 'invalid-name' }
+            }
+
+            normalizedByName.set(preset.name, preset)
+          }
+
+          if (normalizedByName.size === 0) {
+            return { ok: true, operation: 'import', overwritten: false, importedCount: 0 }
+          }
+
+          const existingNames = new Set(state.presets.map((preset) => preset.name))
+          const nextPresets = state.presets.map((preset) => normalizedByName.get(preset.name) ?? preset)
+
+          for (const preset of normalizedByName.values()) {
+            if (!existingNames.has(preset.name)) {
+              nextPresets.push(preset)
+            }
+          }
+
+          set({ presets: nextPresets })
+          return {
+            ok: true,
+            operation: 'import',
+            overwritten: state.presets.some((preset) => normalizedByName.has(preset.name)),
+            importedCount: normalizedByName.size,
+          }
+        },
         resetSvgEffect: () => {
           set({
             svgEffect: {
@@ -1384,6 +1582,7 @@ export function createInitialStudioStoreState(): StudioStoreState {
       uploadedDisplacementImageData: '',
       uploadedPatternLayerDataById: {},
     },
+    presets: [],
   }
 }
 
@@ -1832,6 +2031,7 @@ function selectPersistedState(state: StudioStore): PersistedStudioState {
     view: state.view,
     export: state.export,
     studioEffect: state.studioEffect,
+    presets: state.presets,
   }
 }
 
@@ -1856,7 +2056,123 @@ function sanitizePersistedState(value: unknown): PersistedStudioState {
     view,
     export: sanitizeExportState(persisted.export, base.export),
     studioEffect,
+    presets: sanitizeStudioPresets(persisted.presets, view.theme),
   }
+}
+
+export function normalizeStudioPresetName(value: unknown): string | null {
+  if (typeof value !== 'string') {
+    return null
+  }
+
+  const normalized = value.trim()
+  return normalized.length > 0 && normalized.length <= STUDIO_PRESET_NAME_MAX_LENGTH
+    ? normalized
+    : null
+}
+
+export function sanitizeStudioPresetSettings(
+  value: unknown,
+  fallback: StudioPresetSettings = createDefaultStudioPresetSettings(),
+  theme: StudioTheme = 'dark',
+): StudioPresetSettings {
+  const record = readRecord(value)
+  const character = sanitizeCharacter(record.character, fallback.character)
+  const mesh = sanitizeMeshState(record.mesh, fallback.mesh)
+  const studioEffect = sanitizeStudioEffectState(record.studioEffect, fallback.studioEffect, theme)
+  const ascii = syncAsciiColorsFromControls(
+    sanitizeAsciiState(record.ascii, fallback.ascii),
+    studioEffect.controls.ascii,
+  )
+
+  return {
+    character,
+    ascii,
+    mesh,
+    animation: sanitizeAnimationState(record.animation, fallback.animation),
+    rendererMode: sanitizeRendererMode(record.rendererMode, fallback.rendererMode),
+    export: sanitizeExportState(record.export, fallback.export),
+    studioEffect,
+    view: {
+      backgroundColor: sanitizeHexColor(
+        readRecord(record.view).backgroundColor,
+        fallback.view.backgroundColor,
+      ),
+    },
+  }
+}
+
+export function sanitizeStudioPreset(value: unknown): StudioPreset | null {
+  return sanitizeStudioPresetWithContext(
+    value,
+    createDefaultStudioPresetSettings(),
+    'dark',
+  )
+}
+
+function sanitizeStudioPresetWithContext(
+  value: unknown,
+  fallback: StudioPresetSettings,
+  theme: StudioTheme,
+): StudioPreset | null {
+  const record = readRecord(value)
+  const name = normalizeStudioPresetName(record.name)
+
+  if (!name || !isRecord(record.settings)) {
+    return null
+  }
+
+  return {
+    name,
+    settings: sanitizeStudioPresetSettings(record.settings, fallback, theme),
+  }
+}
+
+function createDefaultStudioPresetSettings(): StudioPresetSettings {
+  return createStudioPresetSettings(createInitialStudioStoreState())
+}
+
+function createStudioPresetSettings(state: StudioStoreState): StudioPresetSettings {
+  return cloneStudioPresetSettings({
+    character: state.character,
+    ascii: state.ascii,
+    mesh: state.mesh,
+    animation: state.animation,
+    rendererMode: state.rendererMode,
+    export: state.export,
+    studioEffect: state.studioEffect,
+    view: {
+      backgroundColor: state.view.backgroundColor,
+    },
+  })
+}
+
+function cloneStudioPresetSettings(settings: StudioPresetSettings): StudioPresetSettings {
+  return structuredClone(settings)
+}
+
+function sanitizeStudioPresets(
+  value: unknown,
+  theme: StudioTheme,
+): StudioPreset[] {
+  if (!Array.isArray(value)) {
+    return []
+  }
+
+  const fallback = createDefaultStudioPresetSettings()
+  const sanitizedByName = new Map<string, StudioPreset>()
+
+  for (const entry of value) {
+    const preset = sanitizeStudioPresetWithContext(entry, fallback, theme)
+
+    if (!preset) {
+      continue
+    }
+
+    sanitizedByName.set(preset.name, preset)
+  }
+
+  return [...sanitizedByName.values()]
 }
 
 function migratePersistedStudioState(value: unknown, version: number): unknown {

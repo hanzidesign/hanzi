@@ -679,4 +679,156 @@ describe('studio store', () => {
       expect(scenario.readLayers(store)).toBe(invalidBefore)
     }
   })
+
+  it('saves and applies terminal presets without changing transient view state', () => {
+    const { storage } = createMemoryStorage()
+    const store = createStudioStore(storage)
+    const initialTheme = store.getState().view.theme
+
+    store.getState().setCharacter('jp', '2024')
+    store.getState().setMeshControl({ extrusionDepth: 32 })
+    store.getState().setAnimationControl({ speed: 2 })
+    store.getState().setBackgroundColor('#112233')
+    expect(store.getState().saveStudioPreset('  Saved  ')).toMatchObject({
+      ok: true,
+      operation: 'save',
+      name: 'Saved',
+      overwritten: false,
+    })
+
+    store.getState().setCharacter('int', '2025')
+    store.getState().setMeshControl({ extrusionDepth: 18 })
+    store.getState().setAnimationControl({ speed: 1 })
+    store.getState().setBackgroundColor('#445566')
+    store.getState().setPreviewZoom(2)
+    store.getState().toggleTerminalSection('input')
+    store.getState().setMobileTab('settings')
+
+    expect(store.getState().applyStudioPreset('Saved')).toMatchObject({
+      ok: true,
+      operation: 'apply',
+      name: 'Saved',
+    })
+    expect(store.getState().character).toEqual({ country: 'jp', year: '2024', isTc: true })
+    expect(store.getState().mesh.extrusionDepth).toBe(32)
+    expect(store.getState().animation.speed).toBe(2)
+    expect(store.getState().view).toMatchObject({
+      theme: initialTheme,
+      backgroundColor: '#112233',
+      previewZoom: 2,
+      mobileTab: 'settings',
+    })
+    expect(store.getState().view.expandedSections.input).toBe(false)
+  })
+
+  it('overwrites, renames with collisions, deletes, and imports last duplicate values', () => {
+    const { storage } = createMemoryStorage()
+    const store = createStudioStore(storage)
+    const save = store.getState().saveStudioPreset
+
+    save('A')
+    store.getState().setBackgroundColor('#112233')
+    expect(save('A')).toMatchObject({ ok: true, overwritten: true })
+    save('B')
+    save('C')
+
+    expect(store.getState().renameStudioPreset('B', 'C')).toMatchObject({
+      ok: true,
+      operation: 'rename',
+      overwritten: true,
+    })
+    expect(store.getState().presets.map((preset) => preset.name)).toEqual(['A', 'C'])
+    expect(store.getState().deleteStudioPreset('missing')).toEqual({
+      ok: false,
+      operation: 'delete',
+      reason: 'not-found',
+    })
+
+    const imported = store.getState().presets[0]
+    if (!imported) {
+      throw new Error('Expected a preset to import')
+    }
+
+    expect(store.getState().importStudioPresets([
+      { ...imported, settings: { ...imported.settings, ascii: { ...imported.settings.ascii, density: 0.2 } } },
+      { ...imported, settings: { ...imported.settings, ascii: { ...imported.settings.ascii, density: 0.8 } } },
+    ])).toMatchObject({ ok: true, importedCount: 1, overwritten: true })
+    expect(store.getState().presets.find((preset) => preset.name === 'A')?.settings.ascii.density).toBe(0.8)
+  })
+
+  it('keeps the source position when a rename overwrites an earlier preset', () => {
+    const { storage } = createMemoryStorage()
+    const store = createStudioStore(storage)
+
+    for (const name of ['Target', 'Before', 'Source', 'After']) {
+      store.getState().saveStudioPreset(name)
+    }
+
+    store.getState().renameStudioPreset('Source', 'Target')
+
+    expect(store.getState().presets.map((preset) => preset.name)).toEqual([
+      'Before',
+      'Target',
+      'After',
+    ])
+  })
+
+  it('persists presets and applies the saved bucket for the current theme', () => {
+    const memory = createMemoryStorage()
+    const store = createStudioStore(memory.storage)
+
+    store.getState().setStudioEffectControl('ascii', 'foreground', '#123456')
+    store.getState().setStudioTheme('light')
+    store.getState().setStudioEffectControl('ascii', 'foreground', '#abcdef')
+    store.getState().saveStudioPreset('Theme pair')
+
+    const reloaded = createStudioStore(memory.storage)
+    expect(reloaded.getState().presets.map((preset) => preset.name)).toEqual(['Theme pair'])
+
+    reloaded.getState().setStudioEffectControl('ascii', 'foreground', '#fedcba')
+    reloaded.getState().setStudioTheme('dark')
+    reloaded.getState().setStudioEffectControl('ascii', 'foreground', '#654321')
+    reloaded.getState().setMobileTab('export')
+    reloaded.getState().applyStudioPreset('Theme pair')
+
+    expect(reloaded.getState().view.theme).toBe('dark')
+    expect(reloaded.getState().view.mobileTab).toBe('export')
+    expect(reloaded.getState().studioEffect.controls.ascii.foreground).toBe('#123456')
+    expect(reloaded.getState().ascii.foregroundColor).toBe('#123456')
+
+    reloaded.getState().setStudioTheme('light')
+    expect(reloaded.getState().studioEffect.controls.ascii.foreground).toBe('#abcdef')
+    expect(reloaded.getState().ascii.foregroundColor).toBe('#abcdef')
+  })
+
+  it('sanitizes hostile imported preset values before storing them', () => {
+    const { storage } = createMemoryStorage()
+    const store = createStudioStore(storage)
+    store.getState().saveStudioPreset('Unsafe')
+    const source = store.getState().presets[0]
+
+    if (!source) {
+      throw new Error('Expected a preset to import')
+    }
+
+    store.getState().importStudioPresets([{
+      ...source,
+      settings: {
+        ...source.settings,
+        ascii: { ...source.settings.ascii, density: 99, foregroundColor: 'invalid' },
+        mesh: { ...source.settings.mesh, extrusionDepth: 999 },
+        animation: { ...source.settings.animation, speed: 999 },
+        view: { backgroundColor: 'not-a-color' },
+      },
+    }])
+
+    const imported = store.getState().presets[0]
+    expect(imported?.settings.ascii.density).toBe(1)
+    expect(imported?.settings.ascii.foregroundColor).toBe(
+      imported?.settings.studioEffect.controls.ascii.foreground,
+    )
+    expect(imported?.settings.mesh.extrusionDepth).toBe(100)
+    expect(imported?.settings.animation.speed).toBe(100)
+    expect(imported?.settings.view.backgroundColor).toBe('#f4f1e8')
+  })
 })

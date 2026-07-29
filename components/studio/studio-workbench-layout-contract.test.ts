@@ -22,13 +22,15 @@ describe('Phase 5D Studio terminal workbench layout contract', () => {
 
   it('keeps panel ownership explicit instead of one all-purpose accordion', async () => {
     const leftPanel = await readFile(join(studioDir, 'StudioLeftPanel.tsx'), 'utf8')
+    const mobileTabs = await readFile(join(studioDir, 'StudioMobileTabs.tsx'), 'utf8')
     const rightPanel = await readFile(join(studioDir, 'StudioRightPanel.tsx'), 'utf8')
 
     expect(leftPanel).toContain('CharacterPanel')
     expect(leftPanel).toContain('StudioEffectsPanel')
     expect(leftPanel).toContain('StudioMotionPanel')
     expect(leftPanel).toContain('id="presets"')
-    expect(leftPanel).not.toContain('StudioPresetsPanel')
+    expect(leftPanel).toContain('StudioPresetsPanel')
+    expect(mobileTabs).not.toContain('StudioPresetsPanel')
     expect(rightPanel).toContain('Settings')
     expect(rightPanel).toContain('Processing')
     expect(rightPanel).toContain('Post-Processing')
