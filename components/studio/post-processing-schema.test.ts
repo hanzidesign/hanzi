@@ -35,7 +35,7 @@ describe('Studio Post-Processing schema', () => {
   it('publishes exact ranges, defaults, and Phosphor options', () => {
     expect(control('bloom-threshold')).toMatchObject({ defaultValue: 0.5, min: 0, max: 1, step: 0.05 })
     expect(control('bloom-soft-threshold')).toMatchObject({ defaultValue: 0.2, min: 0, max: 1, step: 0.05 })
-    expect(control('bloom-intensity')).toMatchObject({ defaultValue: 1.5, min: 0, max: 2, step: 0.1 })
+    expect(control('bloom-intensity')).toMatchObject({ defaultValue: 1.5, min: 0, max: 4, step: 0.1 })
     expect(control('bloom-radius')).toMatchObject({ defaultValue: 12, min: 1, max: 20, step: 1 })
     expect(control('grain-intensity')).toMatchObject({ defaultValue: 1, min: 0, max: 200, step: 1 })
     expect(control('grain-mode')).toMatchObject({

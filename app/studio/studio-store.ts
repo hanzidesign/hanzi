@@ -32,6 +32,7 @@ import {
   STUDIO_EFFECTS,
   STUDIO_EFFECT_IDS,
   createDefaultStudioEffectControls,
+  getStudioControlDefaultValue,
   getStudioProcessingGroups,
   isStudioThemeColorControl,
   type StudioCharacterSet,
@@ -443,14 +444,19 @@ export type StudioStoreState = {
 }
 
 /** The terminal configuration captured by a user preset. */
+export type StudioPresetEffectSettings = {
+  selectedEffectId: StudioEffectId
+  controlsByTheme: Record<StudioTheme, Record<string, StudioControlValue>>
+}
+
 export type StudioPresetSettings = {
   character: StudioCharacterState
-  ascii: StudioAsciiState
+  ascii?: StudioAsciiState
   mesh: StudioStoreState['mesh']
   animation: StudioStoreState['animation']
   rendererMode: StudioRendererMode
   export: StudioStoreState['export']
-  studioEffect: StudioStoreState['studioEffect']
+  studioEffect: StudioPresetEffectSettings
   view: Pick<StudioStoreState['view'], 'backgroundColor'>
 }
 
@@ -1381,14 +1387,40 @@ export function createStudioStore(storage?: StateStorage) {
 
           const settings = sanitizeStudioPresetSettings(preset.settings, createDefaultStudioPresetSettings(), state.view.theme)
 
+          const selectedEffectId = settings.studioEffect.selectedEffectId
+          const currentTheme = state.view.theme
+          const currentThemeControls = settings.studioEffect.controlsByTheme[currentTheme]
+          const nextControlsByTheme = {
+            ...state.studioEffect.controlsByTheme,
+            light: {
+              ...state.studioEffect.controlsByTheme.light,
+              [selectedEffectId]: settings.studioEffect.controlsByTheme.light,
+            },
+            dark: {
+              ...state.studioEffect.controlsByTheme.dark,
+              [selectedEffectId]: settings.studioEffect.controlsByTheme.dark,
+            },
+          }
+          const nextControls = {
+            ...state.studioEffect.controls,
+            [selectedEffectId]: currentThemeControls,
+          }
+
           set({
             character: settings.character,
-            ascii: settings.ascii,
+            ascii:
+              selectedEffectId === 'ascii' && settings.ascii
+                ? syncAsciiColorsFromControls(settings.ascii, currentThemeControls)
+                : state.ascii,
             mesh: settings.mesh,
             animation: settings.animation,
             rendererMode: settings.rendererMode,
             export: settings.export,
-            studioEffect: settings.studioEffect,
+            studioEffect: {
+              selectedEffectId,
+              controls: nextControls,
+              controlsByTheme: nextControlsByTheme,
+            },
             view: {
               ...state.view,
               backgroundColor: settings.view.backgroundColor,
@@ -2079,15 +2111,17 @@ export function sanitizeStudioPresetSettings(
   const record = readRecord(value)
   const character = sanitizeCharacter(record.character, fallback.character)
   const mesh = sanitizeMeshState(record.mesh, fallback.mesh)
-  const studioEffect = sanitizeStudioEffectState(record.studioEffect, fallback.studioEffect, theme)
-  const ascii = syncAsciiColorsFromControls(
-    sanitizeAsciiState(record.ascii, fallback.ascii),
-    studioEffect.controls.ascii,
-  )
+  const studioEffect = sanitizeStudioPresetEffectSettings(record.studioEffect, fallback.studioEffect)
+  const ascii = studioEffect.selectedEffectId === 'ascii'
+    ? syncAsciiColorsFromControls(
+        sanitizeAsciiState(record.ascii, fallback.ascii ?? DEFAULT_ASCII_STATE),
+        studioEffect.controlsByTheme[theme],
+      )
+    : undefined
 
   return {
     character,
-    ascii,
+    ...(ascii ? { ascii } : {}),
     mesh,
     animation: sanitizeAnimationState(record.animation, fallback.animation),
     rendererMode: sanitizeRendererMode(record.rendererMode, fallback.rendererMode),
@@ -2102,12 +2136,66 @@ export function sanitizeStudioPresetSettings(
   }
 }
 
-export function sanitizeStudioPreset(value: unknown): StudioPreset | null {
+export function sanitizeStudioPreset(
+  value: unknown,
+  theme: StudioTheme = 'dark',
+): StudioPreset | null {
   return sanitizeStudioPresetWithContext(
     value,
-    createDefaultStudioPresetSettings(),
-    'dark',
+    getDefaultStudioPresetSettings(),
+    theme,
   )
+}
+
+export function isScopedStudioPresetEffect(value: unknown): boolean {
+  const record = readRecord(value)
+  const selectedEffectId = record.selectedEffectId
+  const controlsByTheme = readRecord(record.controlsByTheme)
+  const light = readRecord(controlsByTheme.light)
+  const dark = readRecord(controlsByTheme.dark)
+
+  if (!STUDIO_EFFECT_IDS.includes(selectedEffectId as StudioEffectId) || !isRecord(controlsByTheme.light) || !isRecord(controlsByTheme.dark)) {
+    return false
+  }
+
+  // Preset buckets are flat controlId -> value data. A nested effect-id bucket
+  // belongs to a different schema and is rejected.
+  return !STUDIO_EFFECT_IDS.some((effectId) => isRecord(light[effectId]) || isRecord(dark[effectId]))
+}
+
+function sanitizeStudioPresetEffectSettings(
+  value: unknown,
+  fallback: StudioPresetEffectSettings,
+): StudioPresetEffectSettings {
+  const record = readRecord(value)
+  const selectedEffectId = sanitizeStudioEffectId(
+    record.selectedEffectId,
+    fallback.selectedEffectId,
+  )
+  const sourceControlsByTheme = readRecord(record.controlsByTheme)
+  const readThemeBucket = (themeName: StudioTheme) => {
+    return readRecord(sourceControlsByTheme[themeName])
+  }
+
+  const sanitizeBucket = (themeName: StudioTheme) => {
+    const fallbackBucket = fallback.selectedEffectId === selectedEffectId
+      ? fallback.controlsByTheme[themeName]
+      : undefined
+    return sanitizeStudioPresetEffectBucket(
+      readThemeBucket(themeName),
+      selectedEffectId,
+      themeName,
+      fallbackBucket,
+    )
+  }
+
+  return {
+    selectedEffectId,
+    controlsByTheme: {
+      light: sanitizeBucket('light'),
+      dark: sanitizeBucket('dark'),
+    },
+  }
 }
 
 function sanitizeStudioPresetWithContext(
@@ -2122,6 +2210,11 @@ function sanitizeStudioPresetWithContext(
     return null
   }
 
+  const effectValue = readRecord(record.settings).studioEffect
+  if (!isScopedStudioPresetEffect(effectValue)) {
+    return null
+  }
+
   return {
     name,
     settings: sanitizeStudioPresetSettings(record.settings, fallback, theme),
@@ -2132,19 +2225,38 @@ function createDefaultStudioPresetSettings(): StudioPresetSettings {
   return createStudioPresetSettings(createInitialStudioStoreState())
 }
 
+let defaultStudioPresetSettings: StudioPresetSettings | undefined
+
+function getDefaultStudioPresetSettings() {
+  defaultStudioPresetSettings ??= createDefaultStudioPresetSettings()
+  return defaultStudioPresetSettings
+}
+
 function createStudioPresetSettings(state: StudioStoreState): StudioPresetSettings {
-  return cloneStudioPresetSettings({
+  const selectedEffectId = state.studioEffect.selectedEffectId
+  const settings: StudioPresetSettings = {
     character: state.character,
-    ascii: state.ascii,
     mesh: state.mesh,
     animation: state.animation,
     rendererMode: state.rendererMode,
     export: state.export,
-    studioEffect: state.studioEffect,
+    studioEffect: {
+      selectedEffectId,
+      controlsByTheme: {
+        light: state.studioEffect.controlsByTheme.light[selectedEffectId],
+        dark: state.studioEffect.controlsByTheme.dark[selectedEffectId],
+      },
+    },
     view: {
       backgroundColor: state.view.backgroundColor,
     },
-  })
+  }
+
+  if (selectedEffectId === 'ascii') {
+    settings.ascii = state.ascii
+  }
+
+  return cloneStudioPresetSettings(settings)
 }
 
 function cloneStudioPresetSettings(settings: StudioPresetSettings): StudioPresetSettings {
@@ -2925,32 +3037,63 @@ function sanitizeStudioEffectControls(
   fallback: Record<StudioEffectId, Record<string, StudioControlValue>>
 ): Record<StudioEffectId, Record<string, StudioControlValue>> {
   const record = readRecord(value)
-  const defaults = createDefaultStudioEffectControls()
-
   return Object.fromEntries(
     STUDIO_EFFECTS.map((effect) => {
-      const effectRecord = readRecord(record[effect.id])
-      const fallbackControls = fallback[effect.id] ?? defaults[effect.id]
-      const controls = Object.fromEntries(
-        [
-          ...effect.settingGroups,
-          ...getStudioProcessingGroups(effect.id),
-          ...STUDIO_COMMON_POST_PROCESSING_GROUPS,
-        ]
-          .flatMap((group) => group.controls)
-          .map((control) => [
-            control.id,
-            sanitizeStudioControlValue(
-              control,
-              effectRecord[control.id],
-              fallbackControls[control.id] ?? control.defaultValue
-            ),
-          ])
-      )
-
-      return [effect.id, controls]
+      return [
+        effect.id,
+        sanitizeStudioEffectBucket(
+          effect,
+          record[effect.id],
+          fallback[effect.id],
+          'light',
+        ),
+      ]
     })
   ) as Record<StudioEffectId, Record<string, StudioControlValue>>
+}
+
+function sanitizeStudioPresetEffectBucket(
+  value: unknown,
+  effectId: StudioEffectId,
+  theme: StudioTheme,
+  fallback?: Record<string, StudioControlValue>,
+) {
+  const effect = STUDIO_EFFECTS.find((entry) => entry.id === effectId)
+
+  if (!effect) {
+    throw new Error(`Expected Studio effect definition for ${effectId}.`)
+  }
+
+  return sanitizeStudioEffectBucket(effect, value, fallback, theme)
+}
+
+function sanitizeStudioEffectBucket(
+  effect: (typeof STUDIO_EFFECTS)[number],
+  value: unknown,
+  fallback: Record<string, StudioControlValue> | undefined,
+  theme: StudioTheme,
+) {
+  const record = readRecord(value)
+
+  return Object.fromEntries(
+    [
+      ...effect.settingGroups,
+      ...getStudioProcessingGroups(effect.id),
+      ...STUDIO_COMMON_POST_PROCESSING_GROUPS,
+    ]
+      .flatMap((group) => group.controls)
+      .map((control) => {
+        const defaultValue = getStudioControlDefaultValue(control, theme)
+        return [
+          control.id,
+          sanitizeStudioControlValue(
+            control,
+            record[control.id],
+            fallback?.[control.id] ?? defaultValue,
+          ),
+        ]
+      }),
+  ) as Record<string, StudioControlValue>
 }
 
 function sanitizeStudioControlValue(

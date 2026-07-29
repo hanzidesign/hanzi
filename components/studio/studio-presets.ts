@@ -1,4 +1,5 @@
 import {
+  isScopedStudioPresetEffect,
   sanitizeStudioPreset,
   type StudioPreset,
 } from '@/app/studio/studio-store'
@@ -36,7 +37,11 @@ export function parseStudioPresetsJson(contents: string): StudioPreset[] {
     throw new StudioPresetsParseError('malformed-json', 'Preset file contains malformed JSON.')
   }
 
-  if (!isRecord(value) || value.kind !== STUDIO_PRESETS_JSON_KIND || value.version !== STUDIO_PRESETS_JSON_VERSION) {
+  if (
+    !isRecord(value) ||
+    value.kind !== STUDIO_PRESETS_JSON_KIND ||
+    value.version !== STUDIO_PRESETS_JSON_VERSION
+  ) {
     throw new StudioPresetsParseError(
       'invalid-envelope',
       'Preset file must use the hanzi-studio-presets format (version 1).',
@@ -47,14 +52,14 @@ export function parseStudioPresetsJson(contents: string): StudioPreset[] {
     throw new StudioPresetsParseError('invalid-envelope', 'Preset file must contain a presets array.')
   }
 
-  return sanitizeVersionOnePresets(
+  return sanitizePresets(
     value.presets,
     'Preset file contains an invalid preset entry.',
   )
 }
 
 export function serializeStudioPresets(presets: readonly StudioPreset[]): string {
-  const sanitizedPresets = sanitizeVersionOnePresets(
+  const sanitizedPresets = sanitizePresets(
     presets,
     'Cannot export an invalid preset entry.',
   )
@@ -68,14 +73,14 @@ export function serializeStudioPresets(presets: readonly StudioPreset[]): string
   return JSON.stringify(envelope, null, 2)
 }
 
-function sanitizeVersionOnePresets(
+function sanitizePresets(
   entries: readonly unknown[],
   invalidMessage: string,
 ): StudioPreset[] {
   const presetsByName = new Map<string, StudioPreset>()
 
   for (const entry of entries) {
-    if (!isVersionOnePresetEntry(entry)) {
+    if (!isPresetEntry(entry)) {
       throw new StudioPresetsParseError('invalid-entry', invalidMessage)
     }
 
@@ -91,21 +96,24 @@ function sanitizeVersionOnePresets(
   return [...presetsByName.values()]
 }
 
-function isVersionOnePresetEntry(value: unknown) {
+function isPresetEntry(value: unknown) {
   if (!isRecord(value) || !isRecord(value.settings)) {
     return false
   }
 
   const settings = value.settings
+  const studioEffect = isRecord(settings.studioEffect) ? settings.studioEffect : {}
 
   return (
     isRecord(settings.character) &&
-    isRecord(settings.ascii) &&
     isRecord(settings.mesh) &&
     isRecord(settings.animation) &&
     typeof settings.rendererMode === 'string' &&
     isRecord(settings.export) &&
-    isRecord(settings.studioEffect) &&
+    isScopedStudioPresetEffect(settings.studioEffect) &&
+    (studioEffect.selectedEffectId === 'ascii'
+      ? isRecord(settings.ascii)
+      : settings.ascii === undefined) &&
     isRecord(settings.view)
   )
 }

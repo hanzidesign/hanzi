@@ -8,6 +8,7 @@ const studioDir = join(process.cwd(), 'components', 'studio')
 describe('Studio presets panel contract', () => {
   it('supports named preset lifecycle and all-preset JSON transfer', async () => {
     const panel = await readFile(join(studioDir, 'StudioPresetsPanel.tsx'), 'utf8')
+    const stylesheet = await readFile(join(studioDir, 'StudioShell.module.css'), 'utf8')
 
     expect(panel).toContain('saveStudioPreset')
     expect(panel).toContain('applyStudioPreset')
@@ -20,6 +21,16 @@ describe('Studio presets panel contract', () => {
     expect(panel).toContain('accept="application/json,.json"')
     expect(panel).toContain('useId()')
     expect(panel).toContain('htmlFor={nameInputId}')
+    expect(panel).toContain('store.studioEffect.selectedEffectId')
+    expect(panel).toContain('store.character')
+    expect(panel).toContain("character.isTc ? 'tc' : 'sc'")
+    expect(panel).toContain('chars[characterScript][character.country][character.year]')
+    expect(panel).toContain('character.country')
+    expect(panel).toContain('character.year')
+    expect(panel).toContain('`${effectId}_${characterGlyph}_${year}-${month}-${day}`')
+    expect(panel).toContain('saveStudioPreset(name.trim() ? name : defaultName)')
+    expect(panel).toContain('placeholder={defaultName}')
+    expect(stylesheet).toMatch(/\.presetItem:hover\s*{[\s\S]*?background:/)
   })
 
   it('renders only in the desktop Presets section', async () => {

@@ -66,7 +66,7 @@ describe('Studio Matrix Rain schema', () => {
     })
     expect(controls['cell-size']).toMatchObject({ defaultValue: 12, min: 4, max: 32, step: 1 })
     expect(controls.spacing).toMatchObject({ defaultValue: 0, min: 0, max: 1, step: 0.05 })
-    expect(controls.speed).toMatchObject({ defaultValue: 1, min: 0.5, max: 3, step: 0.1 })
+    expect(controls.speed).toMatchObject({ defaultValue: 1, min: 0.5, max: 100, step: 0.1 })
     expect(controls['trail-length']).toMatchObject({ defaultValue: 15, min: 5, max: 30, step: 1 })
     expect(controls.direction).toMatchObject({
       defaultValue: 'down',

@@ -49,7 +49,7 @@ export default function StudioPostProcessing() {
   const fillCanvas = controls?.['fill-canvas'] === true
   const bloomThreshold = clamp(readNumber(controls?.['bloom-threshold'], 0.5), 0, 1)
   const bloomSoftThreshold = clamp(readNumber(controls?.['bloom-soft-threshold'], 0.2), 0, 1)
-  const bloomIntensity = clamp(readNumber(controls?.['bloom-intensity'], 1.5), 0, 2)
+  const bloomIntensity = clamp(readNumber(controls?.['bloom-intensity'], 1.5), 0, 4)
   const bloomRadius = clamp(readNumber(controls?.['bloom-radius'], 12) / 20, 0, 1)
   const grainMode = readString(controls?.['grain-mode'], 'noise')
   const grainIntensity = readNumber(controls?.['grain-intensity'], 1) / 100

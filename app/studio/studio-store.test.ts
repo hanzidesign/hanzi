@@ -10,6 +10,12 @@ type StudioStoreHook = ReturnType<typeof createStudioStore>
 import { createDefaultParams } from '@/shaders/uniforms'
 import { getDefaultShaderPreset, getShaderPresetById } from '@/shaders/registry'
 import { DEFAULT_CHARACTER_MESH_DEFORM } from '@/components/studio/character-mesh-deform'
+import {
+  STUDIO_COMMON_POST_PROCESSING_GROUPS,
+  STUDIO_EFFECTS,
+  createDefaultStudioEffectControls,
+  getStudioProcessingGroups,
+} from '@/components/studio/studio-effects'
 
 const OLD_STUDIO_STORE_STORAGE_KEY = 'hanzi-studio-shader-editor-v1'
 
@@ -680,14 +686,47 @@ describe('studio store', () => {
     }
   })
 
-  it('saves and applies terminal presets without changing transient view state', () => {
+  it('saves and applies every current panel setting without changing transient view state', () => {
     const { storage } = createMemoryStorage()
     const store = createStudioStore(storage)
     const initialTheme = store.getState().view.theme
+    const savedMesh = {
+      ...store.getState().mesh,
+      extrusionDepth: 32,
+      thickness: 0.4,
+      bevel: 0.3,
+      twist: 2,
+      taper: -2,
+      bend: 1.5,
+      deform: {
+        ...store.getState().mesh.deform,
+        bulgePinch: { ...store.getState().mesh.deform.bulgePinch, enabled: true, amount: 0.3 },
+        squashStretch: { ...store.getState().mesh.deform.squashStretch, enabled: true, amount: -0.4 },
+        wave: { ...store.getState().mesh.deform.wave, enabled: true, amplitude: 0.6 },
+        surfaceNoise: { ...store.getState().mesh.deform.surfaceNoise, enabled: true, amount: 0.7 },
+        inflate: { ...store.getState().mesh.deform.inflate, enabled: true, amount: 0.2 },
+        curl: { ...store.getState().mesh.deform.curl, enabled: true, angle: 45 },
+      },
+      repeat: { enabled: true, count: 8, radius: 1.5, orientation: 45, size: 0.8 },
+      rotation: { x: 0.5, y: 1, z: 2 },
+      scale: 1.4,
+      position: { x: 0.2, y: -0.3 },
+      autoRotate: false,
+      autoRotateSpeed: 1.25,
+    }
+    const savedAnimation = {
+      ...store.getState().animation,
+      playing: false,
+      speed: 2,
+      reverse: true,
+      timeOffset: 12,
+    }
 
     store.getState().setCharacter('jp', '2024')
-    store.getState().setMeshControl({ extrusionDepth: 32 })
-    store.getState().setAnimationControl({ speed: 2 })
+    store.getState().setMeshControl(savedMesh)
+    store.getState().setAnimationControl(savedAnimation)
+    store.getState().setRendererMode('webgpu-experimental')
+    store.getState().setExportFormat('gif')
     store.getState().setBackgroundColor('#112233')
     expect(store.getState().saveStudioPreset('  Saved  ')).toMatchObject({
       ok: true,
@@ -699,6 +738,8 @@ describe('studio store', () => {
     store.getState().setCharacter('int', '2025')
     store.getState().setMeshControl({ extrusionDepth: 18 })
     store.getState().setAnimationControl({ speed: 1 })
+    store.getState().setRendererMode('webgl')
+    store.getState().setExportFormat('png')
     store.getState().setBackgroundColor('#445566')
     store.getState().setPreviewZoom(2)
     store.getState().toggleTerminalSection('input')
@@ -710,8 +751,10 @@ describe('studio store', () => {
       name: 'Saved',
     })
     expect(store.getState().character).toEqual({ country: 'jp', year: '2024', isTc: true })
-    expect(store.getState().mesh.extrusionDepth).toBe(32)
-    expect(store.getState().animation.speed).toBe(2)
+    expect(store.getState().mesh).toEqual(savedMesh)
+    expect(store.getState().animation).toEqual(savedAnimation)
+    expect(store.getState().rendererMode).toBe('webgpu-experimental')
+    expect(store.getState().export).toMatchObject({ selectedFormat: 'gif' })
     expect(store.getState().view).toMatchObject({
       theme: initialTheme,
       backgroundColor: '#112233',
@@ -719,6 +762,146 @@ describe('studio store', () => {
       mobileTab: 'settings',
     })
     expect(store.getState().view.expandedSections.input).toBe(false)
+  })
+
+  it('stores a complete scoped bucket for every selected effect', () => {
+    const { storage } = createMemoryStorage()
+    const store = createStudioStore(storage)
+
+    for (const effect of STUDIO_EFFECTS) {
+      store.getState().setSelectedEffect(effect.id)
+      store.getState().saveStudioPreset(`Effect ${effect.id}`)
+      const preset = store.getState().presets.at(-1)
+      const settings = preset?.settings
+      if (!settings) {
+        throw new Error(`Expected a preset for ${effect.id}`)
+      }
+
+      expect(settings.studioEffect.selectedEffectId).toBe(effect.id)
+      expect(Object.keys(settings.studioEffect.controlsByTheme)).toEqual(['light', 'dark'])
+      for (const theme of ['light', 'dark'] as const) {
+        const bucket = settings.studioEffect.controlsByTheme[theme]
+        const groups = [
+          ...effect.settingGroups,
+          ...getStudioProcessingGroups(effect.id),
+          ...STUDIO_COMMON_POST_PROCESSING_GROUPS,
+        ]
+        for (const control of groups.flatMap((group) => group.controls)) {
+          expect(bucket).toHaveProperty(control.id)
+        }
+      }
+
+      expect(settings.studioEffect.controlsByTheme.light).not.toHaveProperty('ascii')
+      expect(settings.studioEffect.controlsByTheme.dark).not.toHaveProperty('ascii')
+      if (effect.id === 'ascii') {
+        expect(settings.ascii).toBeDefined()
+      } else {
+        expect(settings.ascii).toBeUndefined()
+      }
+    }
+  })
+
+  it('drops persisted presets that use the unsupported full-effect shape', () => {
+    const initial = createInitialStudioStoreState()
+    const fullEffectPreset = {
+      name: 'Legacy',
+      settings: {
+        character: initial.character,
+        ascii: initial.ascii,
+        mesh: initial.mesh,
+        animation: initial.animation,
+        rendererMode: initial.rendererMode,
+        export: initial.export,
+        studioEffect: {
+          ...initial.studioEffect,
+          selectedEffectId: 'crosshatch' as const,
+          controlsByTheme: {
+            ...initial.studioEffect.controlsByTheme,
+            light: {
+              ...initial.studioEffect.controlsByTheme.light,
+              crosshatch: {
+                ...initial.studioEffect.controlsByTheme.light.crosshatch,
+                brightness: 0.42,
+              },
+            },
+          },
+        },
+        view: { backgroundColor: '#123456' },
+      },
+    }
+    const persisted = {
+      ...initial,
+      presets: [fullEffectPreset],
+    }
+    const { storage } = createMemoryStorage(JSON.stringify({ state: persisted, version: 19 }))
+    const store = createStudioStore(storage)
+    expect(store.getState().presets).toEqual([])
+  })
+
+  it('sanitizes both scoped theme buckets and leaves other effects untouched on apply', () => {
+    const { storage } = createMemoryStorage()
+    const store = createStudioStore(storage)
+    const beforeOtherLight = store.getState().studioEffect.controlsByTheme.light.ascii
+    const beforeOtherDark = store.getState().studioEffect.controlsByTheme.dark.ascii
+
+    store.getState().setSelectedEffect('crosshatch')
+    store.getState().saveStudioPreset('Scoped')
+    const source = store.getState().presets[0]
+    if (!source) throw new Error('Expected scoped preset')
+    store.getState().importStudioPresets([{
+      ...source,
+      settings: {
+        ...source.settings,
+        studioEffect: {
+          ...source.settings.studioEffect,
+          controlsByTheme: {
+            light: { ...source.settings.studioEffect.controlsByTheme.light, brightness: 999 },
+            dark: { ...source.settings.studioEffect.controlsByTheme.dark, brightness: -999 },
+          },
+        },
+      },
+    }])
+    store.getState().setSelectedEffect('ascii')
+    store.getState().setStudioEffectControl('ascii', 'density', 0.2)
+    store.getState().applyStudioPreset('Scoped')
+
+    expect(store.getState().studioEffect.selectedEffectId).toBe('crosshatch')
+    expect(store.getState().studioEffect.controlsByTheme.light.crosshatch.brightness).toBe(100)
+    expect(store.getState().studioEffect.controlsByTheme.dark.crosshatch.brightness).toBe(-100)
+    expect(store.getState().studioEffect.controlsByTheme.light.ascii).toBe(beforeOtherLight)
+    expect(store.getState().studioEffect.controlsByTheme.dark.ascii).toBe(beforeOtherDark)
+  })
+
+  it('uses selected-effect theme defaults for incomplete scoped buckets', () => {
+    const { storage } = createMemoryStorage()
+    const store = createStudioStore(storage)
+    store.getState().setSelectedEffect('crosshatch')
+    store.getState().saveStudioPreset('Incomplete')
+    const source = store.getState().presets[0]
+    if (!source) throw new Error('Expected scoped preset')
+    const light = { ...source.settings.studioEffect.controlsByTheme.light }
+    const dark = { ...source.settings.studioEffect.controlsByTheme.dark }
+    delete light.brightness
+    delete dark.brightness
+
+    store.getState().importStudioPresets([{
+      ...source,
+      settings: {
+        ...source.settings,
+        studioEffect: {
+          ...source.settings.studioEffect,
+          controlsByTheme: { light, dark },
+        },
+      },
+    }])
+
+    const settings = store.getState().presets[0]?.settings
+    expect(settings?.studioEffect.controlsByTheme.light.brightness).toBe(
+      createDefaultStudioEffectControls('light').crosshatch.brightness,
+    )
+    expect(settings?.studioEffect.controlsByTheme.dark.brightness).toBe(
+      createDefaultStudioEffectControls('dark').crosshatch.brightness,
+    )
   })
 
   it('overwrites, renames with collisions, deletes, and imports last duplicate values', () => {
@@ -750,10 +933,10 @@ describe('studio store', () => {
     }
 
     expect(store.getState().importStudioPresets([
-      { ...imported, settings: { ...imported.settings, ascii: { ...imported.settings.ascii, density: 0.2 } } },
-      { ...imported, settings: { ...imported.settings, ascii: { ...imported.settings.ascii, density: 0.8 } } },
+      { ...imported, settings: { ...imported.settings, ascii: { ...imported.settings.ascii!, density: 0.2 } } },
+      { ...imported, settings: { ...imported.settings, ascii: { ...imported.settings.ascii!, density: 0.8 } } },
     ])).toMatchObject({ ok: true, importedCount: 1, overwritten: true })
-    expect(store.getState().presets.find((preset) => preset.name === 'A')?.settings.ascii.density).toBe(0.8)
+    expect(store.getState().presets.find((preset) => preset.name === 'A')?.settings.ascii?.density).toBe(0.8)
   })
 
   it('keeps the source position when a rename overwrites an earlier preset', () => {
@@ -815,7 +998,7 @@ describe('studio store', () => {
       ...source,
       settings: {
         ...source.settings,
-        ascii: { ...source.settings.ascii, density: 99, foregroundColor: 'invalid' },
+        ascii: { ...source.settings.ascii!, density: 99, foregroundColor: 'invalid' },
         mesh: { ...source.settings.mesh, extrusionDepth: 999 },
         animation: { ...source.settings.animation, speed: 999 },
         view: { backgroundColor: 'not-a-color' },
@@ -823,9 +1006,9 @@ describe('studio store', () => {
     }])
 
     const imported = store.getState().presets[0]
-    expect(imported?.settings.ascii.density).toBe(1)
-    expect(imported?.settings.ascii.foregroundColor).toBe(
-      imported?.settings.studioEffect.controls.ascii.foreground,
+    expect(imported?.settings.ascii?.density).toBe(1)
+    expect(imported?.settings.ascii?.foregroundColor).toBe(
+      imported?.settings.studioEffect.controlsByTheme.dark.foreground,
     )
     expect(imported?.settings.mesh.extrusionDepth).toBe(100)
     expect(imported?.settings.animation.speed).toBe(100)

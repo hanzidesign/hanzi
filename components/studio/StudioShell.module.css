@@ -542,6 +542,11 @@
   gap: 6px;
 }
 
+.presetItem:hover {
+  border-color: var(--studio-border-strong);
+  background: color-mix(in srgb, var(--studio-text-bright) 6%, transparent);
+}
+
 .presetApplyButton {
   min-width: 0;
   border: 0;
@@ -554,10 +559,6 @@
   white-space: nowrap;
   font: inherit;
   font-size: 12px;
-}
-
-.presetApplyButton:hover {
-  color: var(--studio-text);
 }
 
 .presetItemActions,

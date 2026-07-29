@@ -238,7 +238,7 @@ export const STUDIO_COMMON_POST_PROCESSING_GROUPS: StudioSettingGroup[] = [
         operator: 'equals',
         value: true,
       }),
-      rangeControl('bloom-intensity', 'Intensity', 1.5, 0, 2, 0.1, undefined, {
+      rangeControl('bloom-intensity', 'Intensity', 1.5, 0, 4, 0.1, undefined, {
         controlId: 'bloom',
         operator: 'equals',
         value: true,
@@ -663,7 +663,7 @@ export const STUDIO_EFFECTS: StudioEffectDefinition[] = [
           ),
           rangeControl('cell-size', 'Cell Size', 12, 4, 32, 1),
           rangeControl('spacing', 'Spacing', 0, 0, 1, 0.05),
-          rangeControl('speed', 'Speed', 1, 0.5, 3, 0.1),
+          rangeControl('speed', 'Speed', 1, 0.5, 100, 0.1),
           rangeControl('trail-length', 'Trail Length', 15, 5, 30, 1),
           selectControl('direction', 'Direction', 'down', [
             { value: 'down', label: 'Down' },

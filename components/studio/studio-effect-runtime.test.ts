@@ -412,7 +412,7 @@ describe('Phase 5F Studio runtime effect compiler', () => {
         'custom-chars': '雨電01',
         'cell-size': 24,
         spacing: 0.35,
-        speed: 2.4,
+        speed: 100,
         'trail-length': 27,
         direction: 'left',
         glow: 1.6,
@@ -430,7 +430,7 @@ describe('Phase 5F Studio runtime effect compiler', () => {
       9,
       24,
       0.35,
-      2.4,
+      100,
       27,
       3,
       1.6,
@@ -849,7 +849,7 @@ describe('Phase 5F Studio runtime effect compiler', () => {
         bloom: true,
         'bloom-threshold': 0.7,
         'bloom-soft-threshold': 0.35,
-        'bloom-intensity': 1.8,
+        'bloom-intensity': 3.8,
         'bloom-radius': 16,
         grain: true,
         'grain-mode': 'pixel',
@@ -877,7 +877,7 @@ describe('Phase 5F Studio runtime effect compiler', () => {
 
     expect(runtime.postValues).toEqual([
       1, 1.25, 0.7, 1.5, 1, 1, 1, 1, 1,
-      0.7, 0.35, 1.8, 0.8, 1, 22, 0.65, 9, 0.8, 0.3, 0.25, 3,
+      0.7, 0.35, 3.8, 0.8, 1, 22, 0.65, 9, 0.8, 0.3, 0.25, 3,
       0x12 / 255, 0x34 / 255, 0x56 / 255, 13, 2.5, 0, 1,
     ])
   })

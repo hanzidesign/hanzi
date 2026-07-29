@@ -47,6 +47,7 @@ describe('Studio shared post-processing compositor contract', () => {
     expect(postProcessing).toContain("readNumber(controls?.['grain-intensity'], 1) / 100")
     expect(postProcessing).toContain("readNumber(controls?.['grain-speed'], 50)")
     expect(postProcessing).not.toContain("readNumber(controls?.['grain-speed'], 50) / 100")
+    expect(postProcessing).toContain("clamp(readNumber(controls?.['bloom-intensity'], 1.5), 0, 4)")
     expect(postProcessing).toContain('mode: grainMode')
     expect(postProcessing).toContain('grainEnabled && grainIntensity > 0')
     expect(postProcessing).toContain("clamp(readNumber(controls?.['chromatic-offset'], 5), 0, 100)")

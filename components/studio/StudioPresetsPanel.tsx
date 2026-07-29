@@ -1,6 +1,7 @@
 'use client'
 
 import { useId, useRef, useState, type ChangeEvent } from 'react'
+import { chars } from '@/assets/chars'
 import {
   STUDIO_PRESET_NAME_MAX_LENGTH,
   useStudioStore,
@@ -19,6 +20,8 @@ type PresetStatus = {
 
 export default function StudioPresetsPanel() {
   const presets = useStudioStore((store) => store.presets)
+  const selectedEffectId = useStudioStore((store) => store.studioEffect.selectedEffectId)
+  const character = useStudioStore((store) => store.character)
   const saveStudioPreset = useStudioStore((store) => store.saveStudioPreset)
   const applyStudioPreset = useStudioStore((store) => store.applyStudioPreset)
   const renameStudioPreset = useStudioStore((store) => store.renameStudioPreset)
@@ -26,6 +29,12 @@ export default function StudioPresetsPanel() {
   const importStudioPresets = useStudioStore((store) => store.importStudioPresets)
   const nameInputId = useId()
   const importInputRef = useRef<HTMLInputElement>(null)
+  const characterScript = character.isTc ? 'tc' : 'sc'
+  const characterGlyph = chars[characterScript][character.country][character.year]
+  const defaultName = createDefaultPresetName(
+    selectedEffectId,
+    characterGlyph,
+  )
   const [name, setName] = useState('')
   const [editingName, setEditingName] = useState<string | null>(null)
   const [renamedValue, setRenamedValue] = useState('')
@@ -78,7 +87,7 @@ export default function StudioPresetsPanel() {
         className={classes.presetCreateForm}
         onSubmit={(event) => {
           event.preventDefault()
-          const result = saveStudioPreset(name)
+          const result = saveStudioPreset(name.trim() ? name : defaultName)
 
           if (handleActionResult(result, result.ok && result.overwritten ? 'Preset updated.' : 'Preset saved.')) {
             setName('')
@@ -94,7 +103,7 @@ export default function StudioPresetsPanel() {
             className={classes.presetNameInput}
             value={name}
             maxLength={STUDIO_PRESET_NAME_MAX_LENGTH}
-            placeholder="My preset"
+            placeholder={defaultName}
             onChange={(event) => setName(event.currentTarget.value)}
           />
           <button type="submit" className={classes.presetPrimaryButton}>
@@ -217,6 +226,18 @@ export default function StudioPresetsPanel() {
       ) : null}
     </div>
   )
+}
+
+function createDefaultPresetName(
+  effectId: string,
+  characterGlyph: string,
+  date = new Date(),
+) {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+
+  return `${effectId}_${characterGlyph}_${year}-${month}-${day}`
 }
 
 function downloadPresetJson(contents: string) {
